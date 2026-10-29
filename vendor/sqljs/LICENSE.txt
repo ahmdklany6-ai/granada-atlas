@@ -1,0 +1,4 @@
+sql.js 1.11.0 — MIT License
+Copyright (c) 2017 sql.js authors (Ophir LOJKINE, Alon Zakai and contributors)
+Full text: https://github.com/sql-js/sql.js/blob/v1.11.0/LICENSE
+SQLite itself is in the public domain.
