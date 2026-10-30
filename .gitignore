@@ -8,6 +8,5 @@
 *.tiff
 *_gis.zip
 granada-atlas-*.json
-tests/px.png
 __pycache__/
 node_modules/

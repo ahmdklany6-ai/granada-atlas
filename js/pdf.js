@@ -17,7 +17,7 @@
     const esc = (s) => String(s || '').replace(/[^\x20-\x7E]/g, '?').replace(/([()\\])/g, '\\$1');
     obj(3, [`<< /Producer (Granada Atlas) /Title (${esc(meta && meta.title)}) /CreationDate (D:${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)}Z) >>`]);
     pages.forEach((p, i) => {
-      const [W, H] = PAPER[p.paper || 'A3L']; const base = 4 + i * 3;
+      const [W, H] = Array.isArray(p.paper) ? p.paper : PAPER[p.paper || 'A3L']; const base = 4 + i * 3;
       const jpg = dataURLBytes(p.canvas.toDataURL('image/jpeg', p.quality || 0.9));
       const content = `q ${W.toFixed(2)} 0 0 ${H.toFixed(2)} 0 0 cm /Im0 Do Q`;
       obj(base, [`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W.toFixed(2)} ${H.toFixed(2)}] /Resources << /XObject << /Im0 ${base + 2} 0 R >> >> /Contents ${base + 1} 0 R >>`]);

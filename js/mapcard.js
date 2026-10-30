@@ -48,6 +48,8 @@
       const tmp = document.createElement('canvas'); tmp.width = iw; tmp.height = ih; tmp.getContext('2d').putImageData(img, 0, 0);
       ctx.imageSmoothingEnabled = true; ctx.drawImage(tmp, 0, 0, W, H);
     }
+    // georeferenced images in EPSG:25830 (WMS snapshots: flood, noise, historical maps)
+    (spec.images || []).forEach(im => { if (!im.img) return; ctx.save(); ctx.globalAlpha = im.alpha == null ? 1 : im.alpha; ctx.imageSmoothingEnabled = true; ctx.drawImage(im.img, X(im.x0), Y(im.y1), (im.x1 - im.x0) / mpp, (im.y1 - im.y0) / mpp); ctx.restore(); });
     // context
     if (spec.context) {
       if (spec.context.streets) { ctx.strokeStyle = spec.context.streetColor || '#D3D5D8'; ctx.lineWidth = 0.8; ctx.beginPath(); spec.context.streets.forEach(g => lines(utm(g), g.type).forEach(l => l.forEach((p, i) => { const q = px(p); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }))); ctx.stroke(); }

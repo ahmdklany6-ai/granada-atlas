@@ -161,6 +161,9 @@
       legend: () => `<ul class="lg">${swd(P.ink, t('poi.transit:bus'))}</ul><p class="lyr-src">${t('g.fFreqGap')}</p>`, src: () => 'OSM highway=bus_stop · ODbL',
       popup: { layers: () => [lid('bus')], html: (p) => `<b dir="auto">${esc(p.nm || '—')}</b><br><small dir="ltr">ref ${esc(p.ref || '—')} · ${esc(p.op || '')}</small><br><small>${t('ly.noFreq')}</small>` } });
 
+    // extra layer definitions registered by other modules (layers_ext.js)
+    const H = { map, S, addSrc, addLyr, lid, status, fc, viewport, matchExpr, t, esc, nf, sw, swl, swd, iso, BEFORE, DETAIL_Z, persist: () => persist(), emit: () => emit(), runLoad: (d) => runLoad(d), applyVis: (d) => applyVis(d) };
+    (root.GA.layersExtra || []).forEach(fn => { try { fn(H).forEach(d => defs.push(d)); } catch (e) { console.warn('layer ext', e); } });
     const byId = Object.fromEntries(defs.map(d => [d.id, d]));
     const userDefs = []; // imported layers (import.js)
 
@@ -181,10 +184,10 @@
     // ---------- state / persistence ----------
     const KEY = 'granada-atlas.layers.v1';
     let saved = {}; try { saved = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { }
-    defs.forEach(d => { S[d.id] = Object.assign({ status: 'idle' }, d.def, (saved.layers || {})[d.id] || {}); });
-    order = (saved.order || []).filter(id => byId[id]); defs.slice().reverse().forEach(d => { if (!order.includes(d.id)) order.push(d.id); }); // top-first
+    defs.forEach(d => { const sv = (saved.layers || {})[d.id] || {}; S[d.id] = Object.assign({ status: 'idle' }, d.def, sv, { opts: Object.assign({}, (d.def && d.def.opts) || {}, sv.opts || {}) }); });
+    order = (saved.order || []).filter(id => byId[id]); { const had = order.length > 0; const missing = defs.slice().reverse().filter(d => !order.includes(d.id)).map(d => d.id); order = had ? missing.concat(order) : missing; } // top-first; layers added in a later version go on top
     if (saved.scope) scope = saved.scope;
-    function persist() { try { const L = {}; defs.forEach(d => L[d.id] = { on: S[d.id].on, opacity: S[d.id].opacity, metric: S[d.id].metric }); localStorage.setItem(KEY, JSON.stringify({ layers: L, order: order.filter(id => byId[id]), scope })); } catch (e) { } }
+    function persist() { try { const L = {}; defs.forEach(d => L[d.id] = { on: S[d.id].on, opacity: S[d.id].opacity, metric: S[d.id].metric, opts: S[d.id].opts }); localStorage.setItem(KEY, JSON.stringify({ layers: L, order: order.filter(id => byId[id]), scope })); } catch (e) { } }
 
     // ---------- runtime ----------
     async function ensureBuilt() {
@@ -200,8 +203,8 @@
       map.on('zoomend', () => emit());
       refreshAll();
     }
-    function applyVis(d) { const on = S[d.id].on; d.layers().forEach(l => map.getLayer(l) && map.setLayoutProperty(l, 'visibility', on ? 'visible' : 'none')); applyOpacity(d); }
-    function applyOpacity(d) { const o = S[d.id].opacity; Object.entries(d.opacityProp || {}).forEach(([l, prop]) => { if (map.getLayer(l)) map.setPaintProperty(l, prop, o); }); if (d.id === 'bld_floors' && map.getLayer(lid('bld_floors', 'ov'))) map.setPaintProperty(lid('bld_floors', 'ov'), 'raster-opacity', o); }
+    function applyVis(d) { const on = S[d.id].on; const vis = d.visLayers ? new Set(d.visLayers()) : null; d.layers().forEach(l => map.getLayer(l) && map.setLayoutProperty(l, 'visibility', on && (!vis || vis.has(l)) ? 'visible' : 'none')); applyOpacity(d); }
+    function applyOpacity(d) { const o = S[d.id].opacity; if (d.applyOpacity) { d.applyOpacity(o); return; } Object.entries(d.opacityProp || {}).forEach(([l, prop]) => { if (map.getLayer(l)) map.setPaintProperty(l, prop, o); }); if (d.id === 'bld_floors' && map.getLayer(lid('bld_floors', 'ov'))) map.setPaintProperty(lid('bld_floors', 'ov'), 'raster-opacity', o); }
     function applyOrder() {
       if (!built) return; const all = order.map(id => byId[id] || userDefs.find(u => u.id === id)).filter(Boolean);
       // order is top-first; move each to just under the labels from bottom to top
@@ -227,6 +230,7 @@
       defs, S, byId, userDefs, get order() { return order; }, get scope() { return scope; }, onChange: (f) => listeners.push(f), ensureBuilt,
       setOn(id, on) { const d = byId[id] || userDefs.find(u => u.id === id); if (!d) return; S[id].on = on; if (built) { applyVis(d); if (on) runLoad(d); } persist(); emit(); },
       setOpacity(id, o) { const d = byId[id] || userDefs.find(u => u.id === id); S[id].opacity = o; if (built) applyOpacity(d); persist(); },
+      control(id, el) { const d = byId[id]; if (!d || !d.onControl) return; const r = d.onControl(el); persist(); if (r !== false) emit(); },
       setMetric(id, m) { S[id].metric = m; byId[id].restyle && byId[id].restyle(); persist(); emit(); },
       move(id, dir) { const i = order.indexOf(id), j = i + dir; if (i < 0 || j < 0 || j >= order.length) return; order.splice(i, 1); order.splice(j, 0, id); applyOrder(); persist(); emit(); },
       setScope(s, rings) { scope = s; if (rings) maskRings = rings; applyMask(); persist(); emit(); },
@@ -239,6 +243,12 @@
         if (!built) return null;
         const all = order.map(id => byId[id] || userDefs.find(u => u.id === id)).filter(d => d && S[d.id].on && d.popup);
         for (const d of all) { const ls = d.popup.layers().filter(l => map.getLayer(l)); if (!ls.length) continue; const f = map.queryRenderedFeatures(point, { layers: ls })[0]; if (f) return { html: d.popup.html(f.properties, f), def: d, feature: f }; }
+        return null;
+      },
+      // raster layers that can describe a clicked point (WMS GetFeatureInfo / WFS)
+      async rasterInfoAt(ll) {
+        if (!built) return null; const all = order.map(id => byId[id]).filter(d => d && S[d.id].on && d.infoAt);
+        for (const d of all) { try { const h = await d.infoAt(ll); if (h) return { html: `<b>${esc(d.title())}</b><br>` + h, def: d }; } catch (e) { } }
         return null;
       },
       // user layers (imports)

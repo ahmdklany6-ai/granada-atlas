@@ -41,7 +41,11 @@
   const sel = GA.selection.create(map, { onChange: (info) => { renderSelectPanel(info); updateMask(); }, intercept: mapClick });
   const IMP = GA.imports.create({ layers: L, store, loadSQL, toast: (m, e) => toast(m, e), onChange: renderLayersPanel });
   const CMP = GA.compare.create({ store, toast: (m, e) => toast(m, e), onClose: () => { $('#tb-compare').classList.remove('on'); map.resize(); }, onExport: exportMulti });
-  window.GA.app = { map, sel, store, L, IMP, CMP, getRun: () => run, secTool, secProfiles }; // exposed for tests
+  window.GA.app = { map, sel, store, L, IMP, CMP, getRun: () => run, secTool, secProfiles, openArea: (id) => openArea(id), openWorkspace: (tab) => openWorkspace(tab) }; // exposed for tests and pages
+  window.GA.toast = (m, e) => toast(m, e);
+  const PG = GA.pages;
+  PG.onChange((r) => { document.querySelectorAll('.tb-btn[data-page]').forEach(b => b.classList.toggle('on', !!r && b.dataset.page === r.name)); if (r) { closeDrawer(); if (CMP.isOpen()) CMP.close(); } else { map.resize(); renderLayersPanel(); } });
+  document.querySelectorAll('.tb-btn[data-page]').forEach(b => b.addEventListener('click', () => PG.current && PG.current.name === b.dataset.page ? PG.close() : PG.go(b.dataset.page)));
   L.onChange(() => { renderLayersPanelSoon(); renderLegend(); });
 
   // ---------- toast ----------
@@ -121,7 +125,7 @@
   const GROUPS = ['bld', 'streets', 'land', 'fac', 'admin', 'terrain', 'user'];
   function renderLayersPanel() {
     const box = $('#panel-layers .block-b'); if (!box) return;
-    const focus = document.activeElement && document.activeElement.closest && document.activeElement.closest('#panel-layers') && document.activeElement.matches('input[type=text]');
+    const focus = document.activeElement && document.activeElement.closest && document.activeElement.closest('#panel-layers') && document.activeElement.matches('input[type=text], input[type=search]');
     if (focus) return; // do not re-render while the user types a layer name
     const st = (id) => { const s = L.S[id]; if (!s || !s.on) return ''; const k = s.status || 'idle'; return `<span class="lyr-st ${k}">${t('ly.st.' + k, { n: s.statusExtra != null && isFinite(s.statusExtra) ? nf(s.statusExtra) : '' })}</span>`; };
     const all = L.order.map(id => L.byId[id] || L.userDefs.find(u => u.id === id)).filter(Boolean);
@@ -142,6 +146,7 @@
   $('#panel-layers').addEventListener('click', async (e) => {
     if (await IMP.onEvent(e)) return;
     const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.lyCtl) { L.control(b.dataset.lyCtl, b); return; }
     if (b.dataset.scope) { L.setScope(b.dataset.scope); updateMask(); return; }
     if (b.dataset.lyUp) return L.move(b.dataset.lyUp, -1);
     if (b.dataset.lyDown) return L.move(b.dataset.lyDown, 1);
@@ -149,10 +154,11 @@
   $('#panel-layers').addEventListener('change', async (e) => {
     if (await IMP.onEvent(e)) return;
     const el = e.target;
+    if (el.dataset.lyCtl && el.type !== 'search') { L.control(el.dataset.lyCtl, el); return; }
     if (el.dataset.ly) { L.setOn(el.dataset.ly, el.checked); IMP.syncState(); store.save(); }
     if (el.dataset.lyMetric) L.setMetric(el.dataset.lyMetric, el.value);
   });
-  $('#panel-layers').addEventListener('input', (e) => { const el = e.target; if (el.dataset.lyOp) { L.setOpacity(el.dataset.lyOp, +el.value); IMP.syncState(); } });
+  let lySearchT; $('#panel-layers').addEventListener('input', (e) => { const el = e.target; if (el.dataset.lyOp) { L.setOpacity(el.dataset.lyOp, +el.value); IMP.syncState(); } if (el.dataset.lyCtl && el.type === 'search') { clearTimeout(lySearchT); lySearchT = setTimeout(() => { L.control(el.dataset.lyCtl, el); const box = $('#panel-layers .block-b'); const keep = el.value; document.activeElement.blur(); renderLayersPanel(); const ne = box.querySelector('input[type=search][data-ly-ctl]'); if (ne) { ne.focus(); ne.value = keep; ne.setSelectionRange(keep.length, keep.length); } }, 300); } });
 
   function renderLegend() {
     const el = $('#legend'); let h = L.legendHTML();
@@ -178,7 +184,7 @@
   function mapClick(e) {
     if (secTool.isDrawing()) return secTool.click(e);
     const info = sel.info(); if (info.measure.on || (info.type === 'polygon' && !info.closed && info.phase === 'shape')) return false;
-    const hit = L.popupAt(e.point); if (!hit) return false;
+    const hit = L.popupAt(e.point); if (!hit) { rasterInfo(e); return false; }
     if (popup) popup.remove();
     const ll = [e.lngLat.lng, e.lngLat.lat]; const box = document.createElement('div'); box.innerHTML = hit.html + (info.phase === 'idle' || info.phase === 'pending' ? `<div class="actions" style="margin-top:6px"><button class="btn btn-small btn-primary" data-setc>${t('sel.setCenter')}</button></div>` : '');
     const b = box.querySelector('[data-setc]'); if (b) b.addEventListener('click', () => { popup.remove(); sel.setCenterDirect(ll); });
@@ -188,6 +194,10 @@
     return true;
   }
 
+  async function rasterInfo(e) { // WMS layers (flood, history): describe the clicked point
+    const ll = [e.lngLat.lng, e.lngLat.lat]; const r = await L.rasterInfoAt(ll); if (!r) return;
+    if (popup) popup.remove(); popup = new maplibregl.Popup({ className: 'atlas-popup', offset: 8, maxWidth: '320px' }).setLngLat(e.lngLat).setHTML(r.html).addTo(map);
+  }
   // ---------- global clicks ----------
   document.addEventListener('click', (e) => {
     const b = e.target.closest('button, [data-open]'); if (!b) return;
@@ -309,7 +319,7 @@
   function renderLeft() {
     const a = areaObj(); const body = $('#left-body');
     $('#left-tabs').innerHTML = TABS.map(k => `<button role="tab" class="${leftTab === k ? 'on' : ''}" data-ltab="${k}" aria-selected="${leftTab === k}">${t('ui.tab.' + k)}</button>`).join('');
-    $('#btn-refresh').hidden = !run; $('#btn-close-report').hidden = !run;
+    $('#btn-refresh').hidden = !run; $('#btn-close-report').hidden = !run; $('#btn-fabric').hidden = !a;
     if (!a) { $('#rep-title').textContent = t('ui.noArea'); $('#rep-meta').innerHTML = ''; }
     else {
       const busy = run && Object.values(run.tasks).some(x => x.state === 'running');
@@ -325,6 +335,7 @@
   $('#left-tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-ltab]'); if (!b) return; leftTab = b.dataset.ltab; renderLeft(); });
   $('#btn-refresh').addEventListener('click', () => { const a = areaObj(); if (a) { GA.compare.cache.clear(); if (!sel.info().ring) sel.loadSpec(a.spec); analyze(); } });
   $('#btn-close-report').addEventListener('click', () => { currentAreaId = null; closeReport(); sel.reset(); });
+  $('#btn-fabric').addEventListener('click', () => { if (currentAreaId) PG.go('fabric', currentAreaId); });
 
   function emptyState() {
     return `<div class="empty-state"><p class="lead">${t('ui.emptyLead')}</p><ol><li>${t('ui.step1')}</li><li>${t('ui.step2')}</li><li>${t('ui.step3')}</li><li>${t('ui.step4')}</li></ol><p class="fine">${t('ui.emptyNote')}</p></div>`;
@@ -337,7 +348,7 @@
     if (run.tasks.data && run.tasks.data.state === 'error') h += `<span class="chip failed">${t('ui.st.failed')}: ${esc(run.tasks.data.error)}</span> <button class="btn btn-tiny" data-retry="data">${t('retry')}</button>`;
     Object.entries(srcs).forEach(([k, r]) => { h += chip(t('ui.src.' + k), r.state === 'ok' ? 'ok' : r.state === 'empty' ? 'empty' : 'failed'); });
     [['photos', 'ph'], ['wiki', 'wiki'], ['research', 'research'], ['climate', 'climate']].forEach(([k]) => { const s = run.tasks[k]; if (!s) return; h += chip(t('ui.src.' + k), s.state === 'running' ? 'loading' : s.state === 'error' ? 'failed' : 'ok'); });
-    h += chip(t('ui.src.gtfs'), 'notconn') + chip(t('ui.src.population'), 'notconn');
+    h += chip(t('ui.src.population'), 'notconn');
     return h + '</div>';
   }
   let cardsCache = null;
@@ -347,7 +358,7 @@
     if (run.stale) h += `<div class="warn">${t('rep.stale')}</div>`;
     if (run.changes && run.changes.length) h += `<div class="changed"><b>${t('rep.changed', { n: run.changes.length })}</b> ${run.changes.slice(0, 6).map(c => `<span dir="ltr">${esc(c.key)}: ${c.from ?? '—'} → ${c.to ?? '—'}</span>`).join(', ')}</div>`;
     if (!run.X) { body.innerHTML = h + (run.tasks.data && run.tasks.data.state === 'running' ? `<div class="loading"><span class="spin"></span>${t('ui.loadingData')}</div>` : ''); return; }
-    const X = run.X; const cards = GAL.cards({ ring: X.ring }, X.parsed, X.R, { dem: X.dem, slope: X.slope, contours: X.contours }); cardsCache = cards;
+    const X = run.X; const cards = GAL.cards({ ring: X.ring }, X.parsed, X.R, { dem: X.dem, slope: X.slope, contours: X.contours, ext: X.ext }); cardsCache = cards;
     h += `<div class="key"><span class="badge badge-est">${t('st.est')}</span> ${t('ui.estKey')} · ${t('ui.cardHint')}</div>`;
     h += `<div class="gallery">${cards.map(c => GAL.cardHTML(c)).join('')}</div>`;
     body.innerHTML = h;
@@ -355,12 +366,16 @@
     const f = MC.fit([X.ring], w, hh, 0.07);
     body.querySelectorAll('canvas[data-canvas]').forEach(cv => { const c = cards.find(k => k.id === cv.dataset.canvas); try { GAL.drawCard(cv, { ring: X.ring }, c, { center: f.center, mpp: f.mpp, w, h: hh }); } catch (e) { console.warn(c.id, e); } });
   }
-  const CARD_LAYER = { fg: ['bld_fg'], heights: ['bld_floors'], periods: ['bld_period'], streets: ['streets'], landuse: ['landuse'], parks: ['parks'], health: ['fac_health'], education: ['fac_education'], stay: ['fac_stay'], transit: ['bus_stops'], elevation: ['elevation', 'contours'], slope: ['slope'] };
+  const CARD_LAYER = { fg: ['bld_fg'], heights: ['bld_floors'], periods: ['bld_period'], streets: ['streets'], landuse: ['landuse'], parks: ['parks'], health: ['fac_health'], education: ['fac_education'], stay: ['fac_stay'], transit: ['bus_stops'], elevation: ['elevation', 'contours'], slope: ['slope'], places: ['places'], bus: ['bus_service'], trees: ['canopy', 'trees'], flood: ['flood'], noise: ['noise'] };
   function cardFeatures(c, key) {
     const X = run && run.X; if (!X) return [];
     const o = X.R.osm;
     if (['health', 'education', 'stay'].includes(c.id)) return X.R.fac[c.id].pts.filter(p => key == null || p.tags._cls === key).map(p => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: p.pt } }));
     if (c.id === 'transit') return X.R.transit.pts.map(p => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: p.pt } }));
+    if (c.id === 'places' && X.R.places) return X.R.places.pts.filter(f => key == null || (f.properties.g || '_none') === key).map(f => ({ type: 'Feature', properties: {}, geometry: f.geometry }));
+    if (c.id === 'bus' && X.R.bus) return X.R.bus.pts.filter(f => key == null || f.properties.service_level === key).map(f => ({ type: 'Feature', properties: {}, geometry: f.geometry }));
+    if (c.id === 'trees' && X.R.trees) return X.R.trees.pts.map(p => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: p.ll } }));
+    if (c.id === 'flood' && X.R.flood) return Object.entries(X.R.flood.features).filter(([k]) => key == null || k === key).flatMap(([, fs]) => fs.map(f => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: f.coordinates } })));
     const src = { heights: o.geo.buildings, periods: o.geo.buildings, fg: o.geo.buildings, streets: o.geo.streets, landuse: o.geo.landuse, parks: o.geo.landuse }[c.id]; if (!src) return [];
     const field = { heights: 'band', periods: 'period', streets: 'tier', landuse: 'cat', parks: 'cat' }[c.id];
     return src.features.filter(f => key == null || !field || String(f.properties[field]) === String(key) || (c.id === 'parks' && f.properties.cat === 'green')).map(f => ({ type: 'Feature', properties: {}, geometry: f.geometry }));
@@ -378,6 +393,9 @@
     if (b.dataset.secOpen) { activeSection = b.dataset.secOpen; secTool.setSections(areaObj().sections, activeSection); renderLeft(); fitSection(); return; }
     if (b.dataset.secDel) { const a = areaObj(); if (b.dataset.armed) { a.sections = a.sections.filter(s => s.id !== b.dataset.secDel); if (activeSection === b.dataset.secDel) activeSection = a.sections[0] ? a.sections[0].id : null; store.upsertArea(a); secProfiles.delete(b.dataset.secDel); secTool.setSections(a.sections, activeSection); return renderLeft(); } b.dataset.armed = '1'; b.textContent = t('ar.confirmDel'); return; }
     if (b.id === 'sec-png') return exportSectionPNG();
+    if (b.id === 'sec-svg') return exportSectionVector('svg');
+    if (b.id === 'sec-pdf') return exportSectionVector('pdf');
+    if (b.id === 'sec-lib') { const a = areaObj(); const s = a && a.sections.find(x => x.id === activeSection); if (!s || !GA.library) return; const p = await profileOf(s); const cv = document.createElement('canvas'); SEC.draw(cv, p, { w: 1600, h: 860, ratio: 1, ve: s.ve || 'auto', floors: !!s.floors }); cv.toBlob(async bl => { await GA.library.addBlob(bl, { title: s.name + ' — ' + a.name, kind: 'image', source: t('lib.srcSection'), date: new Date().toISOString().slice(0, 10), loc: s.pts[0], links: { fabrics: [a.id] }, tags: ['section'] }); toast(t('lib.added')); }, 'image/png'); return; }
     if (b.id === 'obs-add' && run) { const txt = $('#obs-text').value.trim(); if (!txt) return; $('#obs-text').value = ''; store.addObservation({ areaId: run.areaId, text: txt, kind: $('#obs-kind').value, topic: $('#obs-topic').value }); return renderLeft(); }
     if (b.dataset.delobs) { store.removeObservation(b.dataset.delobs); return renderLeft(); }
     if (b.dataset.wall && run) { const p = (run.result.photos || []).find(x => x.id === b.dataset.wall); if (p) { const ok = store.addMaterial({ id: p.id, kind: 'photo', title: p.title, thumb: p.thumb, page: p.page, author: p.author, license: p.license, date: p.date, pt: p.pt, camera: p.camera, depicted: p.depicted, source: 'Wikimedia Commons', areaId: run.areaId }); toast(ok ? t('toast.wall') : t('toast.wallDup')); } }
@@ -430,7 +448,7 @@
   }
   function fitSection() { const a = areaObj(); const s = a && (a.sections || []).find(x => x.id === activeSection); if (s) sel.fitTo([s.pts]); }
   async function profileOf(s) {
-    const key = s.id + JSON.stringify(s.pts) + s.floorH; const c = secProfiles.get(s.id); if (c && c.key === key) return c.p;
+    const key = s.id + JSON.stringify(s.pts) + s.floorH + (s.look || 'left'); const c = secProfiles.get(s.id); if (c && c.key === key) return c.p;
     const p = SEC.compute(s, { floorH: s.floorH || 3 }); secProfiles.set(s.id, { key, p }); p.catch(() => secProfiles.delete(s.id)); return p;
   }
   function renderSections(body, a) {
@@ -444,7 +462,9 @@
     if (s) {
       h += `<div class="sec-opts"><label class="name"><span>${t('sec.name')}</span><input type="text" dir="auto" id="sec-name" value="${esc(s.name)}" maxlength="60"></label>
         <label class="row2">${t('sec.floorH')} <input type="number" id="sec-floor" min="2.4" max="6" step="0.1" value="${s.floorH || 3}" style="width:5em"> ${t('u.m')}</label>
-        <label class="row2">${t('sec.veLabel')} <select id="sec-ve">${['auto', 1, 2, 3, 5, 10].map(v => `<option value="${v}" ${String(s.ve || 'auto') === String(v) ? 'selected' : ''}>${v === 'auto' ? t('sec.veAuto') : '×' + v}</option>`).join('')}</select></label></div>
+        <label class="row2">${t('sec.veLabel')} <select id="sec-ve">${['auto', 1, 2, 3, 5, 10].map(v => `<option value="${v}" ${String(s.ve || 'auto') === String(v) ? 'selected' : ''}>${v === 'auto' ? t('sec.veAuto') : '×' + v}</option>`).join('')}</select></label>
+        <label class="row2">${t('sec.look')} <select id="sec-look"><option value="left" ${s.look !== 'right' ? 'selected' : ''}>${t('sec.look_left')}</option><option value="right" ${s.look === 'right' ? 'selected' : ''}>${t('sec.look_right')}</option></select></label>
+        <label class="chk"><input type="checkbox" id="sec-floors" ${s.floors ? 'checked' : ''}> ${t('sec.floors')}</label></div>
         <div id="sec-out"><div class="loading"><span class="spin"></span>${t('sec.computing')}</div></div>`;
     } else if (!list.length) h += `<p class="note">${t('sec.none')}</p>`;
     body.innerHTML = h;
@@ -455,23 +475,32 @@
     const est = p.cuts.filter(c => c.src === 'levels').length, rep = p.cuts.filter(c => c.src === 'height').length, unk = p.cuts.filter(c => c.src === 'unknown').length;
     const dg = Math.atan(p.maxGrad) * 180 / Math.PI;
     out.innerHTML = `<canvas class="sec-canvas" id="sec-cv"></canvas>
-      <ul class="lg"><li><i class="sw" style="background:#1C1E21"></i><span>${t('sec.lgReported')}</span></li><li><i class="sw hatch"></i><span>${t('sec.lgEstimated', { f: nf(s.floorH || 3, 1) })}</span></li><li><i class="sw ln" style="border-top:3px solid ${PAL.red}"></i><span>${t('sec.lgUnknown')}</span></li><li><i class="sw" style="background:#ECECEA"></i><span>${t('sec.lgBg')}</span></li><li><i class="sw" style="background:#D6D6D3"></i><span>${t('sec.lgGround')}</span></li></ul>
+      <ul class="lg"><li><i class="sw" style="background:#fff;border:2px solid ${PAL.red}"></i><span>${t('sec.lgReported3')}</span></li><li><i class="sw" style="background:#fff;border:2px dashed ${PAL.red}"></i><span>${t('sec.lgEstimated3', { f: nf(s.floorH || 3, 1) })}</span></li><li><i class="sw ln" style="border-top:3px solid ${PAL.red}"></i><span>${t('sec.lgUnknown')}</span></li><li><i class="sw" style="background:#fff;border:1px solid #B9BBBE"></i><span>${t('sec.lgBg3')}</span></li><li><i class="sw dot" style="background:rgba(94,154,91,.3);border:1px dashed #7FA071"></i><span>${t('sec.lgTree')}</span></li><li><i class="sw" style="background:#F3F3F1;border-top:2px solid #1C1E21"></i><span>${t('sec.lgGround')}</span></li></ul>
       <dl class="kpi"><div><dt>${t('sec.length')}</dt><dd>${fmtLen(p.L)}</dd></div><div><dt>${t('g.elevRange')}</dt><dd><span class="num">${nf(p.min)}–${nf(p.max)}</span> ${t('u.m')}</dd></div><div><dt>${t('sec.maxGrad', { b: nf(p.baseline) })}</dt><dd><span class="num">${nf(p.maxGrad * 100, 1)}${I.pctSign()}</span> <small>(${nf(dg, 1)}°)</small></dd></div></dl>
-      <ul class="find"><li>${t('sec.cutsSummary', { n: p.cuts.length, r: rep, e: est, u: unk, b: p.bg.length, bu: p.bgUnknown })}</li>${p.hornMax != null ? `<li>${t('sec.hornMax', { d: nf(p.hornMax, 1), p: nf(Math.tan(p.hornMax * Math.PI / 180) * 100) })}</li>` : ''}${p.missing ? `<li>${t('sec.partialOutside')}</li>` : ''}${p.bErr ? `<li class="error">${esc(p.bErr)}</li>` : ''}</ul>
+      <ul class="find"><li>${t('sec.cutsSummary', { n: p.cuts.length, r: rep, e: est, u: unk, b: p.bg.length, bu: p.bgUnknown })}</li><li>${p.tErr ? t('sec.treesFail', { e: esc(p.tErr) }) : t('sec.treesN', { n: (p.trees || []).length })}</li><li>${t('sec.material')}</li>${p.hornMax != null ? `<li>${t('sec.hornMax', { d: nf(p.hornMax, 1), p: nf(Math.tan(p.hornMax * Math.PI / 180) * 100) })}</li>` : ''}${p.missing ? `<li>${t('sec.partialOutside')}</li>` : ''}${p.bErr ? `<li class="error">${esc(p.bErr)}</li>` : ''}</ul>
       <details class="method"><summary>${t('g.method')}</summary><p>${t('sec.method', { f: nf(s.floorH || 3, 1) })}</p><p>${t('sec.slopeFix')}</p></details>
-      <div class="actions"><button class="btn btn-small" id="sec-png">${t('sec.png')}</button></div>`;
-    const r = SEC.draw($('#sec-cv'), p, { w, h: Math.round(w * 0.55), ve: s.ve || 'auto' }); out.dataset.ve = r.ve;
+      <div class="actions"><button class="btn btn-small" id="sec-png">${t('sec.png')}</button><button class="btn btn-small" id="sec-svg">SVG</button><button class="btn btn-small" id="sec-pdf">PDF</button><button class="btn btn-small" id="sec-lib">${t('lib.addTo')}</button></div>`;
+    const r = SEC.draw($('#sec-cv'), p, { w, h: Math.max(300, Math.round(w * 0.85)), ve: s.ve || 'auto', floors: !!s.floors }); out.dataset.ve = r.ve;
   }
   $('#left-body').addEventListener('change', (e) => {
     const a = areaObj(); const s = a && (a.sections || []).find(x => x.id === activeSection); if (!s) return;
     if (e.target.id === 'sec-name') { s.name = e.target.value.trim() || s.name; store.upsertArea(a); secTool.setSections(a.sections, s.id); renderLeft(); }
     if (e.target.id === 'sec-floor') { const v = parseFloat(e.target.value); if (isFinite(v) && v >= 2.4 && v <= 6) { s.floorH = v; store.upsertArea(a); secProfiles.delete(s.id); renderLeft(); } }
     if (e.target.id === 'sec-ve') { s.ve = e.target.value === 'auto' ? 'auto' : +e.target.value; store.upsertArea(a); renderLeft(); }
+    if (e.target.id === 'sec-look') { s.look = e.target.value; store.upsertArea(a); secProfiles.delete(s.id); secTool.setSections(a.sections, s.id); renderLeft(); }
+    if (e.target.id === 'sec-floors') { s.floors = e.target.checked; store.upsertArea(a); renderLeft(); }
   });
   async function exportSectionPNG() {
     const a = areaObj(); const s = a && a.sections.find(x => x.id === activeSection); if (!s) return; const p = await profileOf(s);
-    const cv = document.createElement('canvas'); SEC.draw(cv, p, { w: 2000, h: 900, ratio: 1, ve: s.ve || 'auto' });
+    const cv = document.createElement('canvas'); SEC.draw(cv, p, { w: 2000, h: 1000, ratio: 2, ve: s.ve || 'auto', floors: !!s.floors });
     cv.toBlob(bl => download(bl, `granada_section_${(s.name || 'section').replace(/[^\p{L}\p{N}]+/gu, '_')}.png`), 'image/png');
+  }
+  async function exportSectionVector(kind) {
+    const a = areaObj(); const s = a && a.sections.find(x => x.id === activeSection); if (!s) return; const p = await profileOf(s);
+    const base = `granada_section_${(s.name || 'section').replace(/[^\p{L}\p{N}]+/gu, '_')}`;
+    if (kind === 'svg') return download(new Blob([SEC.svg(p, { w: 1800, h: 900, ve: s.ve || 'auto', floors: !!s.floors })], { type: 'image/svg+xml' }), base + '.svg');
+    const cv = document.createElement('canvas'); SEC.draw(cv, p, { w: 1684, h: 1050, ratio: 2, ve: s.ve || 'auto', floors: !!s.floors }); // A3 landscape, 300 dpi equivalent
+    const bytes = GA.pdf.build([{ canvas: cv, paper: 'A3L' }], { title: 'Granada Atlas — ' + s.name }); download(new Blob([bytes], { type: 'application/pdf' }), base + '.pdf');
   }
 
   // ---------- notes & sources tab ----------
@@ -543,7 +572,7 @@
     const setMsg = (m) => { exportMsg = `<span class="spin"></span> ${esc(m)}`; const el = $('.x-msg'); if (el) el.innerHTML = exportMsg; };
     try {
       ctx.sections = ctx.area.sections && ctx.area.sections.length ? await sectionsForExport([{ area: ctx.area }]) : [];
-      if (ctx.run && run && run.X) { const iv = GA.compare.indicators(run.X); ctx.indicators = [{ no: 1, name: ctx.area.name, ring: ctx.ring, values: iv }]; }
+      if (ctx.run && run && run.X) { const iv = GA.compare.indicators(run.X); ctx.indicators = [{ no: 1, name: ctx.area.name, ring: ctx.ring, values: iv }]; ctx.v3 = v3Of(run.X); }
       const demGrid = exportOpts.dem && D.inRegion(G.centroidLL(ctx.ring)) ? await D.grid('dem').catch(() => null) : null;
       const r = await GA.gisexport.build(ctx, exportOpts, { loadSQL, elevation: S.elevation, progress: setMsg, demGrid });
       download(new Blob([r.zipBytes], { type: 'application/zip' }), r.filename);
@@ -552,10 +581,11 @@
     } catch (e) { exportMsg = `<div class="error">${t('x.fail', { v: esc(e.message || String(e)) })}</div>`; console.error(e); }
     exportBusy = false; renderDrawerIfOpen();
   }
+  const v3Of = (X) => ({ places: X.R.places ? X.R.places.pts : [], bus: X.R.bus ? X.R.bus.pts : [], trees: X.R.trees ? X.R.trees.pts : [], flood: X.R.flood || null });
   async function exportMulti(Xs) {
     toast(t('x.building'));
     const now = new Date().toISOString();
-    const areas = Xs.map(x => ({ no: x.no, area: x.area, spec: x.area.spec, ring: x.ring, run: { parsed: x.parsed, runAt: now, tasks: { osm: { state: 'ok' } }, result: { osmBase: x.parsed.osmBase } } }));
+    const areas = Xs.map(x => ({ no: x.no, area: x.area, spec: x.area.spec, ring: x.ring, v3: v3Of(x), run: { parsed: x.parsed, runAt: now, tasks: { osm: { state: 'ok' } }, result: { osmBase: x.parsed.osmBase } } }));
     const ctx = { areas, name: 'comparison_' + Xs.length + '_areas', sections: await sectionsForExport(Xs.map(x => ({ no: x.no, area: x.area }))), indicators: Xs.map(x => ({ no: x.no, name: x.area.name, ring: x.ring, values: x.indicators, notes: x.notes })), polyline: SEC.polyline, atLL };
     const demGrid = await D.grid('dem').catch(() => null);
     const r = await GA.gisexport.build(ctx, { gpkg: true, geojson: true, crs: 25830, dem: !!demGrid }, { loadSQL, elevation: S.elevation, demGrid, progress: () => { } });
@@ -573,7 +603,7 @@
         <td><input type="checkbox" data-cmp="${a.id}" ${compareIds().includes(a.id) ? 'checked' : ''} ${!compareIds().includes(a.id) && compareIds().length >= 4 ? 'disabled' : ''}></td>
         <td><button class="link" data-open="${a.id}"><bdi>${esc(a.name)}</bdi></button></td><td>${shapeLabel(a.spec.type)}</td><td>${fmtArea(a.measures.area)}</td>
         <td>${a.analysis ? `<span dir="ltr">${a.analysis.runAt.slice(0, 10)}</span>${a.analysis.stale ? ` <em>${t('ar.stale')}</em>` : ''}` : '—'}</td><td class="num">${(a.sections || []).length}</td>
-        <td><button class="btn btn-tiny" data-rename="${a.id}">${t('ar.rename')}</button> <button class="btn btn-tiny danger" data-del="${a.id}">${t('delete')}</button></td></tr>`).join('')}</tbody></table>
+        <td><button class="btn btn-tiny" data-fabpage="${a.id}">${t('nav.page')}</button> <button class="btn btn-tiny" data-rename="${a.id}">${t('ar.rename')}</button> <button class="btn btn-tiny danger" data-del="${a.id}">${t('delete')}</button></td></tr>`).join('')}</tbody></table>
         <div class="actions"><button class="btn btn-primary" id="btn-compare" ${compareIds().length >= 2 ? '' : 'disabled'}>${t('ar.compare', { n: compareIds().length })}</button></div><p class="fine">${t('ar.compareNote')}</p>`
         : `<p class="lead">${t('ar.empty')}</p>`;
     } else if (drawer === 'status') {
@@ -588,6 +618,7 @@
   $('#drawer').addEventListener('click', (e) => {
     const b = e.target.closest('button, input[type=checkbox]'); if (!b) return;
     if (b.id === 'x-go') return runExport();
+    if (b.dataset.fabpage) { closeDrawer(); return PG.go('fabric', b.dataset.fabpage); }
     if (b.id === 'x-analyze') { closeDrawer(); return analyze(); }
     if (b.dataset.cmp) { const ids = compareIds(); const i = ids.indexOf(b.dataset.cmp); if (b.checked && i < 0) ids.push(b.dataset.cmp); if (!b.checked && i >= 0) ids.splice(i, 1); store.save(); return renderDrawer(); }
     if (b.id === 'btn-compare') { closeDrawer(); return openWorkspace('compare'); }
@@ -608,7 +639,7 @@
   document.querySelectorAll('.tb-btn[data-drawer]').forEach(b => b.addEventListener('click', () => drawer === b.dataset.drawer ? closeDrawer() : openDrawer(b.dataset.drawer)));
   $('#btn-close-drawer').addEventListener('click', closeDrawer);
   $('#tb-measure').addEventListener('click', () => { const on = sel.measureToggle(); toast(on ? t('measure.on') : t('measure.off')); });
-  function openWorkspace(tab) { closeDrawer(); $('#tb-compare').classList.add('on'); CMP.open(tab); }
+  function openWorkspace(tab) { closeDrawer(); if (PG.current) PG.close(); $('#tb-compare').classList.add('on'); CMP.open(tab); }
   $('#tb-compare').addEventListener('click', () => CMP.isOpen() ? CMP.close() : openWorkspace());
 
   // ---------- start ----------
@@ -617,6 +648,7 @@
     try { await L.ensureBuilt(); } catch (e) { toast(t('ly.loadFail', { v: e.message }), true); }
     renderLayersPanel(); renderLegend(); drawSavedAreas(); updateMask();
     IMP.restore();
+    PG.route();
   });
   renderSelectPanel(sel.info()); renderLeft(); renderLayersPanel();
 })();

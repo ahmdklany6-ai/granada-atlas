@@ -28,24 +28,33 @@ Fixed in every language: **analysis and results on the left**, **study-area cont
 | Exercise 1.2: city overview with numbered samples, five components per fabric with Ready / Needs review / Missing, justification + sentence, ≥ 4 fabrics required, A3 sheets at one print scale + combined PDF | works |
 | Photos (Wikimedia Commons): camera position vs depicted place, inside vs nearby, full localised dates, author + licence; Street View / Google Maps link-outs (official Maps URLs, no key) | works |
 | Official sources: Ayuntamiento de Granada (urbanismo, Archivo Municipal cartography), IGN, CNIG Fototeca, Catastro — links only | works |
-| Transit service frequency (GTFS), population per neighbourhood, accessibility (network analysis), Google Street View imagery inside the tool | not connected — shown as gaps |
+| **v3** Places and activities (Overture, 19,842 points, clustered, category / confidence / closed filters, search) and scheduled bus service of 26 October 2026 (692 stops, trips per day or 7–9 window, route / level / scheduled filters, proportional symbols) as citywide layers, in analysis cards, comparisons and GIS exports | works |
+| **v3** Environmental layers from live official services: SNCZI flood zones T10/T50/T100/T500 + ARPSI (MITECO), strategic noise Lden/Ln (MITECO SICA, 3rd round), Copernicus tree-cover density 2018 (10 m), MODIS land-surface temperature (1 km, one 8-day period), OSM mapped trees (zoom ≥ 15) | works (needs the services online) |
+| **v3** Fabric pages (`#/fabric/<id>`): identity, maps, findings, photos, sections, IGN historical snapshots of the same extent, climate, research questions / responses, attachments; reorder / hide / caption; A3 PDF and single PNGs | works |
+| **v3** General Information library (`#/library`): files, images, links, notes in IndexedDB on this browser only; tags, Unsorted, search, links to fabrics / exercises / themes, ZIP backup and import | works |
+| **v3** Historical explorer (`#/history`): IGN georeferenced series (MTN50 1st editions, 1895 planimetry, 1956–57, 1973–86, 1981–86 flights, PNOA), opacity, swipe, date of the sheet/flight at the view centre, linked places, archive of non-georeferenced scans (publication date vs depicted period), collage | works |
+| **v3** Sections redrawn: cut buildings outlined red with white interior, estimates dashed, background paler by distance on the viewing side, illustrative trees, scale figure, horizontal + vertical scale bars, location line; PNG, SVG, PDF | works |
+| **v3** Studio (`#/studio`): editable schedule + checklist, five Miro squares per student (Draft → Ready → Exported → Uploaded only when confirmed by hand), climate-mapping board, exercise registry, resources; Exercise 1.3 (`#/ex13`): identity page + five maps at one frame, scale and north, PDF + PNGs | works |
+| Population grid, education / unemployment data, municipal 2022 noise data, municipal tree inventory, GTFS route geometry, accessibility (network analysis), Google Street View imagery inside the tool | not connected — shown as gaps |
 
 ## Published data (`data/`)
 
 Built by `tools/build_data.js` from the supplied open datasets (the originals are not in this repository):
 OSM buildings, streets, land use, parks, rivers, bus stops, neighbourhood/district/municipal boundaries (ODbL, extract of 23 Oct 2026); facility snapshot via Overpass (30 Oct 2026, ODbL); JRC GHSL urban centre; IGN MDT25 terrain, contours, hillshade, slope (CC BY 4.0).
 Vectors are stored in 1 km EPSG:25830 tiles (`data/vec/<layer>/<x>_<y>.json` + `index.json`); DEM and slope as Int16/Uint16 grids in their native 25 m EPSG:25830 grid. `data/manifest.json` lists every layer with source, licence, date, fields and the excluded inputs (with reasons).
-Not published: PDFs, QGIS projects, QML files, NUMPOINTS layers, analysis reports.
+`tools/build_extra.js` builds `data/vec/places.json` (Overture Maps Places, CDLA-Permissive-2.0), `data/vec/bus_service.json` (supplied schedule file of 26 Oct 2026), a 100 m built-density grid and a 4 m figure-ground raster. `data/ref/` holds two figures from Silveira et al. 2025 (CC BY 4.0).
+Not published: the supplied PDF reports (noise, flood, education/unemployment, strategic environmental study), PDFs, QGIS projects, QML files, NUMPOINTS layers, analysis reports.
 
 ## GIS download
 
 One ZIP: GeoPackage (EPSG:25830 default or 4326, QGIS styles inside, `layer_status`, `field_dictionary`, `sources`), GeoJSON per layer (EPSG:4326) with `.qml`, `styles/`, README (language + English), `metadata.json`, and an IGN MDT25 GeoTIFF crop in its native 25 m grid.
-Layers: study_area, buildings, streets, landuse, parks_open_space, public_facilities, transit_stops, pois_all, facilities, photos_commons, climate_cell, **sections, section_profile, section_cuts, area_indicators**. From the comparison workspace the same package covers 2–4 areas with `area_no` / `area_name` on every feature.
+Layers: study_area, buildings, streets, landuse, parks_open_space, public_facilities, transit_stops, pois_all, facilities, photos_commons, climate_cell, sections, section_profile, section_cuts, area_indicators, **places, bus_service, trees, flood_zones**. From the comparison workspace the same package covers 2–4 areas with `area_no` / `area_name` on every feature.
 
 ## Validation
 
 - `node tests/geometry.test.js`, `clip.test.js`, `proj.test.js`, `export.test.js <dir>` then `python3 tests/validate_export.py <dir>/*` (independent GeoPackage/WKB/GeoJSON/GeoTIFF/QML checks, second projection implementation).
 - `python3 tests/ui_test_v2.py <out>` — headless acceptance tests on the real `data/`: fixed layout in ar/he/en, citywide layers before any selection, area fitted between panels, gallery content, sections (two named sections, drag edits only the edited one, heights never invented), comparison of 2/3/4 areas, Exercise 1.2 (incomplete with 2, complete with 4, A3 PDF), single and multi-area exports, a v1 project still opening, terrain/boundary alignment.
+- `python3 tests/ui_test_v3.py <out>` — v3 layers before selection, filters/search, new cards and indicators, sections (red cuts, look direction, SVG), library persistence/backup, fabric page order/captions/PDF, history swipe/info/archive/collage, studio schedule/squares/climate board/registry, Exercise 1.3 PDF (6 pages), GIS export with the new layers (external services stubbed).
 - `python3 tests/import_test.py <supplied_data_dir> <out>` — Shapefile, GeoJSON, GeoPackage layer choice, QML, GeoTIFF, QGZ, persistence.
 
 ## Licences

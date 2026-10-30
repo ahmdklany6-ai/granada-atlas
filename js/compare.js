@@ -27,8 +27,11 @@
     const p = (async () => {
       const { parsed, results } = await D.areaData(ring);
       const [dem, slope, health, bus, contours] = await Promise.all([D.grid('dem').catch(() => null), D.grid('slope').catch(() => null), D.single('fac_health').catch(() => null), D.single('bus_stops').catch(() => null), D.single('contours_10m').catch(() => null)]);
-      const R = await GAL.compute({ ring }, parsed, { health, bus, dem, slope });
-      return { area, ring, parsed, results, R, dem, slope, contours: contours ? contours.features : [] };
+      const [places, busSvc] = await Promise.all([D.single('places').catch(() => null), D.single('bus_service').catch(() => null)]);
+      const ext = root.GA.galleryExt ? await root.GA.galleryExt.load(ring) : {};
+      const R = await GAL.compute({ ring }, parsed, { health, bus, dem, slope, places, busSvc, ext });
+      Object.entries(ext.status || {}).forEach(([k, v]) => results[k] = v);
+      return { area, ring, parsed, results, R, dem, slope, contours: contours ? contours.features : [], ext };
     })();
     cache.set(key, p); p.catch(() => cache.delete(key)); return p;
   }
@@ -45,6 +48,10 @@
       health_n: X.R.fac.health.n, health_per_km2: X.R.fac.health.perKm2, education_n: X.R.fac.education.n, education_per_km2: X.R.fac.education.perKm2, stay_n: X.R.fac.stay.n, stay_per_km2: X.R.fac.stay.perKm2,
       bus_n: X.R.transit.n, bus_per_km2: X.R.transit.perKm2, bus_cover300: X.R.transit.cover300,
       elev_min: T ? T.min : null, elev_max: T ? T.max : null, relief_m: T ? T.relief : null, steep_share_15deg: T ? (sc['15-25'] + sc['25-35'] + sc['35+']) / sn : null, slope_p90_deg: T ? T.slopeP90 : null,
+      places_n: X.R.places ? X.R.places.n : null, places_per_km2: X.R.places ? X.R.places.perKm2 : null, places_mix: X.R.places && X.R.places.n ? X.R.places.evenness : null, places_food_share: X.R.places && X.R.places.n ? (X.R.places.by.food_and_drink || 0) / X.R.places.n : null, places_closed_share: X.R.places && X.R.places.nAll ? X.R.places.closed / X.R.places.nAll : null,
+      bus_mapped: X.R.bus ? X.R.bus.mapped : null, bus_sched: X.R.bus ? X.R.bus.withService : null, bus_sched_share: X.R.bus && X.R.bus.mapped ? X.R.bus.withService / X.R.bus.mapped : null, bus_max_trips: X.R.bus && X.R.bus.mapped ? X.R.bus.maxTrips : null, bus_routes: X.R.bus && X.R.bus.mapped ? X.R.bus.routes.length : null, bus_nearest_m: X.R.bus ? X.R.bus.nearestServed : null,
+      canopy_mean: X.R.canopy ? X.R.canopy.mean / 100 : null, trees_mapped: X.R.trees ? X.R.trees.n : null, trees_per_ha: X.R.trees ? X.R.trees.n / (X.R.area_m2 / 1e4) : null,
+      flood_t10_share: X.R.flood ? X.R.flood.zones.q10.share : null, flood_t100_share: X.R.flood ? X.R.flood.zones.q100.share : null, flood_t500_share: X.R.flood ? X.R.flood.zones.q500.share : null,
     };
   }
   const IND_ROWS = [
@@ -53,10 +60,15 @@
     ['street_km_per_km2', 'cmp.density', (v) => nf(v, 1)], ['ped_share', 'cmp.ped', 'pct'], ['green_share', 'cmp.green', 'pct'],
     ['health_n', 'cmp.i.healthN', (v) => nf(v)], ['health_per_km2', 'cmp.i.healthD', (v) => nf(v, 1)], ['education_n', 'cmp.i.eduN', (v) => nf(v)], ['education_per_km2', 'cmp.i.eduD', (v) => nf(v, 1)],
     ['stay_n', 'cmp.i.stayN', (v) => nf(v)], ['stay_per_km2', 'cmp.i.stayD', (v) => nf(v, 1)], ['bus_n', 'cmp.i.busN', (v) => nf(v)], ['bus_per_km2', 'cmp.i.busD', (v) => nf(v, 1)], ['bus_cover300', 'g.cover300', 'pct'],
+    ['places_n', 'cmp3.placesN', (v) => nf(v)], ['places_per_km2', 'cmp3.placesD', (v) => nf(v, 0)], ['places_mix', 'cmp3.mix', (v) => nf(v, 2)], ['places_food_share', 'cmp3.food', 'pct'], ['places_closed_share', 'cmp3.closed', 'pct'],
+    ['bus_mapped', 'cmp3.busMapped', (v) => nf(v)], ['bus_sched', 'cmp3.busSched', (v) => nf(v)], ['bus_max_trips', 'cmp3.busMax', (v) => nf(v)], ['bus_routes', 'cmp3.busRoutes', (v) => nf(v)], ['bus_nearest_m', 'cmp3.busNear', (v) => nf(v) + ' m'],
+    ['canopy_mean', 'cmp3.canopy', 'pct'], ['trees_mapped', 'cmp3.trees', (v) => nf(v)], ['trees_per_ha', 'cmp3.treesHa', (v) => nf(v, 1)],
+    ['flood_t10_share', 'cmp3.flood10', 'pct'], ['flood_t100_share', 'cmp3.flood100', 'pct'], ['flood_t500_share', 'cmp3.flood500', 'pct'],
     ['relief_m', 'g.relief', (v) => nf(v) + ' m'], ['steep_share_15deg', 'g.steepShare', 'pct'], ['slope_p90_deg', 'g.slopeP90', (v) => nf(v, 1) + '°'],
   ];
   const fmtInd = (row, v) => v == null || !isFinite(v) ? null : row[2] === 'pct' ? nf(v * 100, v < 0.1 ? 1 : 0) + I.pctSign() : row[2](v);
-  const TOPIC_KEY = { fg: 'gsi', heights: 'median_floors', periods: 'start_coverage', streets: 'street_km_per_km2', landuse: 'green_share', parks: 'green_share', health: 'health_per_km2', education: 'education_per_km2', stay: 'stay_per_km2', transit: 'bus_per_km2', elevation: 'relief_m', slope: 'steep_share_15deg' };
+  const ALL_TOPICS = ['fg', 'heights', 'periods', 'streets', 'landuse', 'parks', 'places', 'health', 'education', 'stay', 'transit', 'bus', 'trees', 'flood', 'noise', 'elevation', 'slope'];
+  const TOPIC_KEY = { fg: 'gsi', heights: 'median_floors', periods: 'start_coverage', streets: 'street_km_per_km2', landuse: 'green_share', parks: 'green_share', health: 'health_per_km2', education: 'education_per_km2', stay: 'stay_per_km2', transit: 'bus_per_km2', elevation: 'relief_m', slope: 'steep_share_15deg', places: 'places_per_km2', bus: 'bus_sched_share', trees: 'canopy_mean', flood: 'flood_t100_share' };
 
   function fairness(Xs) {
     const notes = []; const ar = Xs.map(x => x.R.area_m2);
@@ -92,7 +104,13 @@
       else if (it.line) { ctx.strokeStyle = it.line; ctx.lineWidth = Math.max(1, it.w || 1); ctx.setLineDash(it.dash ? [4, 2] : []); ctx.beginPath(); ctx.moveTo(sx, cy); ctx.lineTo(sx + 18, cy); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1; }
       else if (it.dot) { ctx.fillStyle = it.dot; ctx.beginPath(); ctx.arc(sx + 9, cy, 5, 0, Math.PI * 2); ctx.fill(); }
       else if (it.ramp) { const g = ctx.createLinearGradient(sx, 0, sx + 18, 0); g.addColorStop(0, `rgb(${it.ramp[0].slice(0, 3)})`); g.addColorStop(1, `rgb(${it.ramp[1].slice(0, 3)})`); ctx.fillStyle = g; ctx.fillRect(sx, cy - 6, 18, 12); }
-      ctx.fillStyle = '#1C1E21'; ctx.textAlign = rtl ? 'right' : 'left'; ctx.fillText(label, rtl ? sx - 6 : sx + 24, cy);
+      ctx.fillStyle = '#1C1E21'; ctx.textAlign = rtl ? 'right' : 'left';
+      if (w > maxW) { // long label: wrap onto its own lines
+        const lines = []; let ln = ''; label.split(' ').forEach(wd => { const tt = ln ? ln + ' ' + wd : wd; if (ctx.measureText(tt).width > maxW - 30 && ln) { lines.push(ln); ln = wd; } else ln = tt; }); if (ln) lines.push(ln);
+        lines.forEach((l, k) => ctx.fillText(l, rtl ? sx - 6 : sx + 24, cy + k * (rowH - 4)));
+        cy += (lines.length - 1) * (rowH - 4); cx = maxW; return;
+      }
+      ctx.fillText(label, rtl ? sx - 6 : sx + 24, cy);
       cx += w;
     });
     return cy + rowH;
@@ -143,8 +161,8 @@
       const W = Math.max(220, Math.min(360, Math.floor((c.clientWidth - (Xs.length - 1) * 12) / Xs.length))); const H = Math.round(W * 0.8);
       const view = sharedView(Xs, W, H);
       const elev = Xs.filter(x => x.R.terrain).map(x => x.R.terrain); const elevRange = elev.length ? [Math.min(...elev.map(e => e.min)), Math.max(...elev.map(e => e.max), Math.min(...elev.map(e => e.min)) + 10)] : null;
-      const cardsBy = Xs.map(x => GAL.cards({ ring: x.ring }, x.parsed, x.R, { dem: x.dem, slope: x.slope, contours: x.contours, elevRange }));
-      const ALL = ['fg', 'heights', 'periods', 'streets', 'landuse', 'parks', 'health', 'education', 'stay', 'transit', 'elevation', 'slope'];
+      const cardsBy = Xs.map(x => GAL.cards({ ring: x.ring }, x.parsed, x.R, { dem: x.dem, slope: x.slope, contours: x.contours, elevRange, ext: x.ext }));
+      const ALL = ALL_TOPICS;
       let h = `<div class="ok">${t('cmp.scaleNote', { s: nf(view.mpp, 2) })}</div>`;
       if (notes.length) h += `<div class="warn"><div><b>${t('cmp.fairTitle')}</b><ul class="find">${notes.map(n => `<li>${n}</li>`).join('')}</ul></div></div>`;
       h += `<div class="ws-pick"><b>${t('cmp.topics')}</b>${ALL.map(k => `<label><input type="checkbox" data-ws-topic="${k}" ${topics.includes(k) ? 'checked' : ''}> ${t('g.' + k)}</label>`).join('')}</div>`;
@@ -246,7 +264,7 @@
       const iv = indicators(X); [['buildings', 'b.count'], ['gsi', 'b.gsi'], ['levels_coverage', 'cmp.levelsCov'], ['median_floors', 'g.medianFloors'], ['street_km_per_km2', 'cmp.density'], ['green_share', 'cmp.green'], ['relief_m', 'g.relief']].forEach(([k, lab]) => { const row = IND_ROWS.find(r => r[0] === k); const v = fmtInd(row, iv[k]); ctx.fillText(`${t(lab).replace(/<[^>]+>/g, '')}: ${v == null ? t('nodata') : v}`, lx, y); y += 23; });
       // panels
       const PX0 = rtl ? M : M + LW + 40, PW = Wp - 2 * M - LW - 40; const gap = 26; const pw = Math.floor((PW - 2 * gap) / 3), ph = 470;
-      const cards = GAL.cards({ ring: X.ring }, X.parsed, X.R, { dem: X.dem, slope: X.slope, contours: X.contours });
+      const cards = GAL.cards({ ring: X.ring }, X.parsed, X.R, { dem: X.dem, slope: X.slope, contours: X.contours, ext: X.ext });
       const panel = async (id, titleKey, px, py, w) => {
         ctx.textAlign = rtl ? 'right' : 'left'; ctx.font = `700 22px ${font}`; ctx.fillStyle = '#1C1E21'; ctx.fillText(t(titleKey), rtl ? px + w : px, py - 10);
         const cd = cards.find(k => k.id === id); const off = document.createElement('canvas');
@@ -312,7 +330,7 @@
     el.addEventListener('change', (e) => {
       const x = e.target;
       if (x.dataset.wsPick) { const L = tab === 'compare' ? proj().compare : proj().ex12; const i = L.ids.indexOf(x.dataset.wsPick); if (x.checked && i < 0) L.ids.push(x.dataset.wsPick); if (!x.checked && i >= 0) L.ids.splice(i, 1); store.save(); render(); }
-      if (x.dataset.wsTopic) { topics = x.checked ? topics.concat([x.dataset.wsTopic]) : topics.filter(k => k !== x.dataset.wsTopic); const ALL = ['fg', 'heights', 'periods', 'streets', 'landuse', 'parks', 'health', 'education', 'stay', 'transit', 'elevation', 'slope']; topics.sort((a, b) => ALL.indexOf(a) - ALL.indexOf(b)); renderCompare(el.querySelector('#ws-content'), lastXs); }
+      if (x.dataset.wsTopic) { topics = x.checked ? topics.concat([x.dataset.wsTopic]) : topics.filter(k => k !== x.dataset.wsTopic); const ALL = ALL_TOPICS; topics.sort((a, b) => ALL.indexOf(a) - ALL.indexOf(b)); renderCompare(el.querySelector('#ws-content'), lastXs); }
       if (x.dataset.exJust != null && x.matches('[data-ex-just]')) { const F = proj().ex12.fabrics; F[x.dataset.exJust] = Object.assign(F[x.dataset.exJust] || {}, { just: x.value }); store.save(); }
       if (x.dataset.exSent != null && x.matches('[data-ex-sent]')) { const F = proj().ex12.fabrics; F[x.dataset.exSent] = Object.assign(F[x.dataset.exSent] || {}, { sentence: x.value }); store.save(); }
       const id = x.dataset.exJust || x.dataset.exSent; if (id) { const fb = proj().ex12.fabrics[id] || {}; const li = el.querySelector(`[data-ex-textst="${id}"]`); if (li) li.lastElementChild.outerHTML = stBadge(fb.just && fb.just.trim() && fb.sentence && fb.sentence.trim() ? 'ready' : 'missing'); }
@@ -320,5 +338,5 @@
     return { open, close, render, isOpen: () => !el.hidden, get lastXs() { return lastXs; }, exportSheets, indicators };
   }
 
-  root.GA.compare = { create, prepare, ringOf, indicators, styleOf, IND_ROWS, cache, wrap, legendCanvas };
+  root.GA.compare = { create, prepare, ringOf, indicators, styleOf, IND_ROWS, cache, wrap, legendCanvas, fmtInd, ALL_TOPICS, fairness, topicFinding };
 })(window);
