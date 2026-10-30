@@ -10,8 +10,8 @@
   const singleCache = new Map();
   const grids = {};
 
-  async function getJSON(url) { const r = await fetch(url, { cache: 'force-cache' }); if (!r.ok) throw new Error('HTTP ' + r.status + ' — ' + url); return r.json(); }
-  function loadManifest() { if (!manifestP) manifestP = getJSON(BASE + 'manifest.json').then(m => (manifest = m)).catch(e => { manifestP = null; throw e; }); return manifestP; }
+  async function getJSON(url, cache) { const r = await fetch(url, { cache: cache || 'force-cache' }); if (!r.ok) throw new Error('HTTP ' + r.status + ' — ' + url); return r.json(); }
+  function loadManifest() { if (!manifestP) manifestP = getJSON(BASE + 'manifest.json', 'no-cache') /* always revalidated: it describes every other file */.then(m => (manifest = m)).catch(e => { manifestP = null; throw e; }); return manifestP; }
 
   function cellsForBBox(bb, pad) { // bb in lon/lat, pad in metres
     pad = pad || 0; const C = manifest.cellSize_m;

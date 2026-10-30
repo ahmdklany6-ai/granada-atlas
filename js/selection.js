@@ -36,6 +36,7 @@
       return null;
     }
     function draw() {
+      if (!map.getSource('sel') && !map.isStyleLoaded()) { map.once('load', draw); return; }
       ensureLayers(); const r = ring();
       map.getSource('sel').setData(fc(r ? [{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [r] } }] : []));
       let draft = [];
