@@ -70,18 +70,29 @@ is_in(${center[1].toFixed(6)},${center[0].toFixed(6)})->.c;area.c["boundary"="ad
 
   // ---- Photographs: Wikimedia Commons geosearch with licence metadata ----
   function stripHtml(s) { const d = document.createElement('div'); d.innerHTML = s || ''; return (d.textContent || '').trim(); }
+  // Camera position and depicted place are kept apart: Commons stores the camera location
+  // ({{Location}}) as the primary coordinate and an object location ({{Object location}}) as a
+  // second coordinate when both exist. With a single coordinate of unstated type we do not
+  // guess which one it is.
   async function commons(center, radius, ring) {
     const r = Math.min(10000, Math.max(50, Math.round(radius)));
-    const url = `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=geosearch&ggsnamespace=6&ggscoord=${center[1]}|${center[0]}&ggsradius=${r}&ggslimit=80&prop=imageinfo|coordinates&iiprop=url|extmetadata|mime&iiurlwidth=480`;
+    const url = `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=geosearch&ggsnamespace=6&ggscoord=${center[1]}|${center[0]}&ggsradius=${r}&ggslimit=80&prop=imageinfo|coordinates&coprimary=all&coprop=type|name|dim&colimit=max&iiprop=url|extmetadata|mime&iiurlwidth=480`;
     const j = await fetchJSON(url, { timeout: 25000 }); const pages = Object.values((j.query && j.query.pages) || {});
     return pages.map(p => {
-      const ii = (p.imageinfo || [])[0] || {}, md = ii.extmetadata || {}; const co = (p.coordinates || [])[0];
-      const pt = co ? [co.lon, co.lat] : null;
+      const ii = (p.imageinfo || [])[0] || {}, md = ii.extmetadata || {}; const cs = p.coordinates || [];
+      const ll = (c) => c ? [c.lon, c.lat] : null;
+      let cam = cs.find(c => /camera/i.test(c.type || '')), obj = cs.find(c => /object/i.test(c.type || ''));
+      const prim = cs.find(c => c.primary !== undefined), sec = cs.find(c => c.primary === undefined);
+      if (!cam && !obj && prim && sec) { cam = prim; obj = sec; }
+      const single = !cam && !obj && cs.length ? cs[0] : null;
+      const camera = ll(cam), depicted = ll(obj), loc = ll(single);
+      const pt = camera || depicted || loc;
       return {
         id: 'commons:' + p.pageid, title: (p.title || '').replace(/^File:/, ''), thumb: ii.thumburl, page: ii.descriptionurl, mime: ii.mime,
         author: stripHtml(md.Artist && md.Artist.value), license: stripHtml(md.LicenseShortName && md.LicenseShortName.value), licenseUrl: md.LicenseUrl && md.LicenseUrl.value,
-        date: stripHtml(md.DateTimeOriginal && md.DateTimeOriginal.value) || stripHtml(md.DateTime && md.DateTime.value), pt,
-        inside: pt ? G.pointInRing(pt, ring) : false,
+        date: stripHtml(md.DateTimeOriginal && md.DateTimeOriginal.value) || stripHtml(md.DateTime && md.DateTime.value), dateKind: md.DateTimeOriginal ? 'taken' : 'uploaded', pt,
+        camera, depicted, locUnknownKind: !!loc,
+        inside: pt ? G.pointInRing(pt, ring) : false, cameraInside: camera ? G.pointInRing(camera, ring) : null, depictedInside: depicted ? G.pointInRing(depicted, ring) : null,
       };
     }).filter(x => x.thumb && /^image\/(jpeg|png|webp|tiff)/.test(x.mime || 'image/jpeg'));
   }
@@ -123,6 +134,10 @@ is_in(${center[1].toFixed(6)},${center[0].toFixed(6)})->.c;area.c["boundary"="ad
     { name: 'Wikipedia (es/en/ar)', status: 'live', use: 'reg.wiki', license: 'CC BY-SA', url: 'https://www.wikipedia.org' },
     { name: 'OpenAlex', status: 'live', use: 'reg.openalex', note: 'reg.openalexNote', license: 'CC0', url: 'https://openalex.org' },
     { name: 'Catastro INSPIRE (Edificios BU)', status: 'planned', use: 'reg.catastro', note: 'reg.catastroNote', url: 'https://www.catastro.hacienda.gob.es/webinspire/index.html' },
+    { name: 'IGN MDT25 (terrain, supplied)', status: 'live', use: 'reg.mdt', license: 'CC BY 4.0', url: 'https://centrodedescargas.cnig.es/' },
+    { name: 'OpenStreetMap extract (supplied, 23 Oct 2026) + Overpass facilities snapshot (30 Oct 2026)', status: 'live', use: 'reg.osmLocal', license: 'ODbL 1.0', url: 'https://www.openstreetmap.org/copyright' },
+    { name: 'Google Street View (link-out only)', status: 'live', use: 'reg.sv', note: 'reg.svNote', license: 'Google Maps Terms', url: 'https://developers.google.com/maps/documentation/urls/get-started' },
+    { name: 'Google Maps Platform (Street View Static / Places Photos)', status: 'planned', key: true, use: 'reg.gmp', note: 'reg.gmpNote', url: 'https://developers.google.com/maps/documentation/streetview/overview' },
     { name: 'GTFS · Granada city bus (NAP)', status: 'planned', key: true, use: 'reg.gtfs', note: 'reg.gtfsNote', url: 'https://mobilitydatabase.org/feeds/gtfs/mdb-2769' },
     { name: 'INE · secciones censales', status: 'planned', use: 'reg.ine', note: 'reg.ineNote', url: 'https://www.ine.es' },
     { name: 'GHSL (GHS-POP / GHS-BUILT-S)', status: 'planned', use: 'reg.ghsl', note: 'reg.ghslNote', url: 'https://human-settlement.emergency.copernicus.eu/download.php' },

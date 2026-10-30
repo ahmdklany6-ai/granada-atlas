@@ -80,6 +80,18 @@
     'R.fields': ['قاموس الحقول (أسماء الحقول ثابتة بالإنجليزية في كل اللغات)', 'מילון השדות (שמות השדות קבועים באנגלית בכל השפות)', 'Field dictionary (field names stay in English in every language)'],
     'R.retrieved': ['تاريخ الجلب', 'תאריך אחזור', 'Retrieved'], 'R.osmBase': ['لقطة OSM', 'תמונת OSM', 'OSM snapshot'],
     'R.validation': ['التحقق', 'בדיקה', 'Validation'],
+    'L.sections': ['خطوط المقاطع', 'קווי חתך', 'Section lines'],
+    'L.section_profile': ['نقاط مقطع التضاريس (MDT25)', 'נקודות פרופיל הקרקע (MDT25)', 'Section terrain profile points (MDT25)'],
+    'L.section_cuts': ['المباني المقطوعة في المقاطع', 'מבנים חתוכים בחתכים', 'Buildings cut by sections'],
+    'L.area_indicators': ['مؤشرات المقارنة لكل منطقة', 'מדדי השוואה לכל אזור', 'Comparison indicators per area'],
+    'L.facilities': ['المرافق: صحة، تعليم، إقامة', 'מוסדות: בריאות, חינוך, לינה', 'Facilities: health, education, stays'],
+    'N.sections': ['خطوط مرسومة يدويًا (A → B مع الرؤوس الوسيطة).', 'קווים שסומנו ידנית (A → B עם הקודקודים שביניהם).', 'Hand-drawn lines (A → B with intermediate vertices).'],
+    'N.profile': ['ارتفاع IGN MDT25 (25 م، استيفاء ثنائي الخطية) على طول كل مقطع.', 'גובה IGN MDT25 (25 מ׳, אינטרפולציה בילינארית) לאורך כל חתך.', 'IGN MDT25 elevation (25 m, bilinear) along each section.'],
+    'N.cuts': ['مقطع كل مبنى يعبره الخط. height_source: height (وسم OSM)، levels (تقدير = طوابق × floor_h_m)، unknown (لا ارتفاع).', 'מקטע כל מבנה שהקו חוצה. height_source: height (תג OSM), levels (הערכה = קומות × floor_h_m), unknown (ללא גובה).', 'One segment per building crossed. height_source: height (OSM tag), levels (estimate = floors × floor_h_m), unknown (no height).'],
+    'N.indicators': ['قيم NULL تعني «لا بيانات» وليست صفرًا. القيم للمساحة (لكل كم²)، لا لكل ساكن.', 'ערכי NULL פירושם «אין נתונים», לא אפס. הערכים לשטח (לקמ״ר), לא לנפש.', 'NULL means "no data", not zero. Values are per area (per km²), not per resident.'],
+    'N.facilities': ['لقطة Overpass؛ نقطة واحدة لكل عنصر داخل المنطقة.', 'תמונת Overpass; נקודה אחת לכל ישות בתוך האזור.', 'Overpass snapshot; one point per feature inside the area.'],
+    'N.mdt': ['IGN MDT25 بشبكته الأصلية (EPSG:25830، 25 م)، مقصوص إلى الإطار المحيط بالمناطق + 50 م. قيم صحيحة بالمتر.', 'IGN MDT25 ברשת המקורית (EPSG:25830, 25 מ׳), חתוך למלבן התוחם של האזורים + 50 מ׳. ערכים שלמים במטרים.', 'IGN MDT25 in its native grid (EPSG:25830, 25 m), cropped to the bounding box of the areas + 50 m. Integer metres.'],
+    'R.mdtLic': ['IGN MDT25 © Instituto Geográfico Nacional، CC BY 4.0 (scne.es).', 'IGN MDT25 © Instituto Geográfico Nacional, CC BY 4.0 (scne.es).', 'IGN MDT25 © Instituto Geográfico Nacional, CC BY 4.0 (scne.es).'],
   });
 
   // ---------- field dictionaries (stable names; meanings translated) ----------
@@ -93,9 +105,17 @@
     points: OSM_ID.concat([F('category', 'TEXT', 'المجموعة: public، worship، transit، tourism، food، everyday، shop، green، heritage، office، craft', 'קבוצה: public, worship, transit, tourism, food, everyday, shop, green, heritage, office, craft', 'Group: public, worship, transit, tourism, food, everyday, shop, green, heritage, office, craft'), F('subcategory', 'TEXT', 'الفئة الفرعية (مثل public:education)', 'תת-קטגוריה (למשל public:education)', 'Subcategory (e.g. public:education)'), F('amenity', 'TEXT', 'وسم amenity', 'תג amenity', 'amenity tag'), F('shop', 'TEXT', 'وسم shop', 'תג shop', 'shop tag'), F('tourism', 'TEXT', 'وسم tourism', 'תג tourism', 'tourism tag'), F('leisure', 'TEXT', 'وسم leisure', 'תג leisure', 'leisure tag'), F('historic', 'TEXT', 'وسم historic', 'תג historic', 'historic tag'), F('railway', 'TEXT', 'وسم railway', 'תג railway', 'railway tag'), F('highway', 'TEXT', 'وسم highway', 'תג highway', 'highway tag'), F('operator', 'TEXT', 'المشغّل', 'מפעיל', 'Operator'), F('route_ref', 'TEXT', 'أرقام الخطوط إذا موسومة', 'מספרי קווים אם מתויגים', 'Route numbers if tagged'), F('opening_hours', 'TEXT', 'ساعات العمل', 'שעות פתיחה', 'Opening hours'), F('wheelchair', 'TEXT', 'إمكانية الوصول بالكرسي', 'נגישות לכיסא גלגלים', 'Wheelchair access'), F('from_polygon', 'INTEGER', '1 إذا كانت النقطة مركز مضلع', '1 אם הנקודה היא מרכז פוליגון', '1 if the point is a polygon centroid')]),
     section_line: [F('orientation', 'TEXT', 'WE (غرب→شرق) أو NS (جنوب→شمال)', 'WE (מערב→מזרח) או NS (דרום→צפון)', 'WE (west→east) or NS (south→north)'), F('length_m', 'REAL', 'طول الخط (م)', 'אורך הקו (מ׳)', 'Line length (m)'), F('relief_m', 'REAL', 'فرق الارتفاع (م)', 'הפרש גבהים (מ׳)', 'Height difference (m)'), F('min_elev_m', 'REAL', 'أدنى ارتفاع (م)', 'גובה מזערי (מ׳)', 'Minimum elevation (m)'), F('max_elev_m', 'REAL', 'أعلى ارتفاع (م)', 'גובה מרבי (מ׳)', 'Maximum elevation (m)'), F('source', 'TEXT', 'المصدر', 'מקור', 'Source')],
     section_points: [F('seq', 'INTEGER', 'الترتيب على الخط', 'סדר לאורך הקו', 'Order along the line'), F('dist_m', 'REAL', 'المسافة من بداية الخط (م)', 'מרחק מתחילת הקו (מ׳)', 'Distance from the line start (m)'), F('elev_m', 'REAL', 'الارتفاع (م فوق سطح البحر)', 'גובה (מ׳ מעל פני הים)', 'Elevation (m above sea level)')],
-    photos_commons: [F('commons_id', 'TEXT', 'معرّف الصفحة في Commons', 'מזהה הדף ב-Commons', 'Commons page id'), F('title', 'TEXT', 'عنوان الملف الأصلي', 'כותרת הקובץ המקורית', 'Original file title'), F('author', 'TEXT', 'المؤلف', 'מחבר', 'Author'), F('license', 'TEXT', 'الترخيص', 'רישיון', 'Licence'), F('license_url', 'TEXT', 'رابط الترخيص', 'קישור לרישיון', 'Licence URL'), F('date', 'TEXT', 'تاريخ الصورة', 'תאריך התצלום', 'Photo date'), F('page_url', 'TEXT', 'صفحة الملف', 'דף הקובץ', 'File page'), F('inside', 'INTEGER', '1 إذا داخل الحدود', '1 אם בתוך הגבול', '1 if inside the boundary')],
+    photos_commons: [F('commons_id', 'TEXT', 'معرّف الصفحة في Commons', 'מזהה הדף ב-Commons', 'Commons page id'), F('title', 'TEXT', 'عنوان الملف الأصلي', 'כותרת הקובץ המקורית', 'Original file title'), F('author', 'TEXT', 'المؤلف', 'מחבר', 'Author'), F('license', 'TEXT', 'الترخيص', 'רישיון', 'Licence'), F('license_url', 'TEXT', 'رابط الترخيص', 'קישור לרישיון', 'Licence URL'), F('date', 'TEXT', 'تاريخ الصورة', 'תאריך התצלום', 'Photo date'), F('page_url', 'TEXT', 'صفحة الملف', 'דף הקובץ', 'File page'), F('inside', 'INTEGER', '1 إذا داخل الحدود', '1 אם בתוך הגבול', '1 if inside the boundary'), F('point_is', 'TEXT', 'النقطة: camera / depicted_place / unspecified', 'הנקודה: camera / depicted_place / unspecified', 'The point is: camera / depicted_place / unspecified'), F('depicted_lon', 'REAL', 'خط طول المكان المصوَّر إن اختلف', 'קו אורך של המקום המצולם אם שונה', 'Depicted place longitude, if different'), F('depicted_lat', 'REAL', 'خط عرض المكان المصوَّر', 'קו רוחב של המקום המצולם', 'Depicted place latitude')],
     climate_cell: [F('year', 'INTEGER', 'السنة', 'שנה', 'Year'), F('model_elev_m', 'REAL', 'ارتفاع الخلية في النموذج (م)', 'גובה התא במודל (מ׳)', 'Cell elevation in the model (m)'), F('hot_days_35', 'INTEGER', 'أيام عظمى ≥ 35°م', 'ימים עם מקסימום ≥ 35°C', 'Days with max ≥ 35 °C'), F('nights_20', 'INTEGER', 'ليالٍ صغرى ≥ 20°م', 'לילות עם מינימום ≥ 20°C', 'Nights with min ≥ 20 °C'), F('precip_mm', 'REAL', 'مجموع الأمطار (مم)', 'סך משקעים (מ״מ)', 'Total precipitation (mm)'), F('jul_max_c', 'REAL', 'متوسط عظمى يوليو (°م)', 'ממוצע מקסימום ביולי (°C)', 'July mean daily max (°C)'), F('jan_min_c', 'REAL', 'متوسط صغرى يناير (°م)', 'ממוצע מינימום בינואר (°C)', 'January mean daily min (°C)')],
   };
+  FIELDS.sections = [F('section_id', 'TEXT', 'معرّف المقطع', 'מזהה החתך', 'Section id'), F('section_name', 'TEXT', 'اسم المقطع', 'שם החתך', 'Section name'), F('n_vertices', 'INTEGER', 'عدد الرؤوس', 'מספר קודקודים', 'Number of vertices'), F('length_m', 'REAL', 'الطول (م)', 'אורך (מ׳)', 'Length (m)'), F('min_elev_m', 'REAL', 'أدنى ارتفاع (م)', 'גובה מזערי (מ׳)', 'Minimum elevation (m)'), F('max_elev_m', 'REAL', 'أعلى ارتفاع (م)', 'גובה מרבי (מ׳)', 'Maximum elevation (m)'), F('max_grad_pct', 'REAL', 'أقصى انحدار على الخط فوق ≥25 م (٪)', 'שיפוע מרבי לאורך הקו על בסיס ≥25 מ׳ (%)', 'Max gradient along the line over ≥25 m (%)'), F('max_grad_deg', 'REAL', 'نفسه بالدرجات', 'אותו ערך במעלות', 'Same, in degrees'), F('floor_h_m', 'REAL', 'ارتفاع الطابق المستخدم للتقدير (م)', 'גובה קומה ששימש להערכה (מ׳)', 'Floor height used for estimates (m)'), F('source', 'TEXT', 'المصدر', 'מקור', 'Source')];
+  FIELDS.section_profile = [F('section_id', 'TEXT', 'معرّف المقطع', 'מזהה החתך', 'Section id'), F('seq', 'INTEGER', 'الترتيب', 'סדר', 'Order'), F('dist_m', 'REAL', 'المسافة من A (م)', 'מרחק מ-A (מ׳)', 'Distance from A (m)'), F('elev_m', 'REAL', 'الارتفاع (م فوق سطح البحر)؛ NULL خارج النموذج', 'גובה (מ׳ מעל פני הים); NULL מחוץ למודל', 'Elevation (m a.s.l.); NULL outside the model')];
+  FIELDS.section_cuts = [F('section_id', 'TEXT', 'معرّف المقطع', 'מזהה החתך', 'Section id'), F('osm_id', 'TEXT', 'معرّف المبنى في OSM', 'מזהה המבנה ב-OSM', 'Building OSM id'), F('name', 'TEXT', 'الاسم', 'שם', 'Name'), F('d_from_m', 'REAL', 'بداية القطع من A (م)', 'תחילת החיתוך מ-A (מ׳)', 'Cut start from A (m)'), F('d_to_m', 'REAL', 'نهاية القطع من A (م)', 'סוף החיתוך מ-A (מ׳)', 'Cut end from A (m)'), F('base_elev_m', 'REAL', 'أدنى ارتفاع للأرض تحت القطع (م)', 'גובה הקרקע הנמוך תחת החיתוך (מ׳)', 'Lowest ground under the cut (m)'), F('height_m', 'REAL', 'الارتفاع (م)؛ NULL إذا غير معروف', 'גובה (מ׳); NULL אם לא ידוע', 'Height (m); NULL if unknown'), F('height_source', 'TEXT', 'height / levels / unknown', 'height / levels / unknown', 'height / levels / unknown'), F('levels', 'REAL', 'عدد الطوابق إذا موسوم', 'מספר קומות אם מתויג', 'Floors if tagged'), F('estimated', 'INTEGER', '1 إذا كان الارتفاع تقديرًا من الطوابق', '1 אם הגובה הוא הערכה מקומות', '1 if the height is estimated from floors')];
+  const IND = ['area_km2', 'buildings', 'buildings_per_ha', 'gsi', 'levels_coverage', 'median_floors', 'start_coverage', 'street_km_per_km2', 'ped_share', 'green_share', 'health_n', 'health_per_km2', 'education_n', 'education_per_km2', 'stay_n', 'stay_per_km2', 'bus_n', 'bus_per_km2', 'bus_cover300', 'elev_min', 'elev_max', 'relief_m', 'steep_share_15deg', 'slope_p90_deg'];
+  FIELDS.area_indicators = [F('area_no', 'INTEGER', 'رقم المنطقة', 'מספר האזור', 'Area number'), F('area_name', 'TEXT', 'اسم المنطقة', 'שם האזור', 'Area name')].concat(IND.map(k => F(k, 'REAL', k, k, k)), [F('notes', 'TEXT', 'ملاحظات عدالة المقارنة', 'הערות להוגנות ההשוואה', 'Comparison fairness notes')]);
+  FIELDS.facilities = OSM_ID.slice(0, 1).concat([F('name', 'TEXT', 'الاسم', 'שם', 'Name'), F('grp', 'TEXT', 'health / education / stay', 'health / education / stay', 'health / education / stay'), F('cls', 'TEXT', 'الصنف (hospital، school، hotel…)', 'סוג (hospital, school, hotel…)', 'Class (hospital, school, hotel…)'), F('from_polygon', 'INTEGER', '1 إذا كانت النقطة مركز مضلع', '1 אם הנקודה היא מרכז פוליגון', '1 if the point is a polygon centre')]);
+  const AREA_F = [F('area_no', 'INTEGER', 'رقم المنطقة في المقارنة', 'מספר האזור בהשוואה', 'Area number in the comparison'), F('area_name', 'TEXT', 'اسم المنطقة', 'שם האזור', 'Area name')];
+  let MULTI = false;
   FIELDS.parks_open_space = FIELDS.landuse; FIELDS.public_facilities = FIELDS.points; FIELDS.transit_stops = FIELDS.points; FIELDS.pois_all = FIELDS.points;
   const LI = { ar: 0, he: 1, en: 2 };
 
@@ -192,7 +212,8 @@
     } else ['section_line', 'section_points'].forEach(id => out.push({ id, status: 'unavailable', reason: run && run.tasks && run.tasks.terrain && run.tasks.terrain.state === 'error' ? 'x.failed' : 'x.notFetched' }));
     // photos
     if (res.photos) {
-      const ph = res.photos.filter(p => p.pt).map(p => ({ geometry: { type: 'Point', coordinates: p.pt }, properties: { commons_id: p.id, title: p.title, author: p.author || null, license: p.license || null, license_url: p.licenseUrl || null, date: p.date || null, page_url: p.page || null, inside: p.inside ? 1 : 0 } }));
+      const ph = res.photos.filter(p => p.pt).map(p => ({ geometry: { type: 'Point', coordinates: p.pt }, properties: { commons_id: p.id, title: p.title, author: p.author || null, license: p.license || null, license_url: p.licenseUrl || null, date: p.date || null, page_url: p.page || null, inside: p.inside ? 1 : 0,
+        point_is: p.camera ? 'camera' : p.depicted ? 'depicted_place' : 'unspecified', depicted_lon: p.camera && p.depicted ? p.depicted[0] : null, depicted_lat: p.camera && p.depicted ? p.depicted[1] : null } }));
       out.push({ id: 'photos_commons', geomType: 'POINT', status: ph.length ? 'ready' : 'empty', note: 'N.photos', features: ph });
     } else out.push({ id: 'photos_commons', status: 'unavailable', reason: 'x.notFetched' });
     // climate
@@ -203,7 +224,41 @@
     ['population', 'gtfs', 'catastro', 'lst'].forEach(id => out.push({ id, status: 'unavailable', reason: 'x.notConnected', planned: true }));
     return out;
   }
-  function fieldsFor(id) { return FIELDS[id] || []; }
+  function fieldsFor(id) { const f = FIELDS[id] || []; return MULTI && f.length && !f.some(x => x.name === 'area_no') ? AREA_F.concat(f) : f; }
+
+  // sections, indicators and facilities (new in v2); used for one area and for several
+  function extraLayers(ctx) {
+    const out = []; const secs = ctx.sections || [];
+    if (secs.length) {
+      out.push({ id: 'sections', geomType: 'LINESTRING', status: 'ready', note: 'N.sections', features: secs.map(p => ({ geometry: { type: 'LineString', coordinates: p.pts }, properties: Object.assign({}, p._area || {}, { section_id: p.id, section_name: p.name, n_vertices: p.pts.length, length_m: +p.L.toFixed(2), min_elev_m: p.min, max_elev_m: p.max, max_grad_pct: +(p.maxGrad * 100).toFixed(1), max_grad_deg: +(Math.atan(p.maxGrad) * 180 / Math.PI).toFixed(1), floor_h_m: p.floorH, source: 'IGN MDT25 (25 m, bilinear); OSM buildings' }) })) });
+      const pf = []; const cuts = [];
+      secs.forEach(p => { const pl = ctx.polyline(p.pts);
+        p.dist.forEach((d, i) => pf.push({ geometry: { type: 'Point', coordinates: ctx.atLL(pl, d) }, properties: Object.assign({}, p._area || {}, { section_id: p.id, seq: i + 1, dist_m: +d.toFixed(2), elev_m: p.elev[i] == null ? null : +p.elev[i].toFixed(2) }) }));
+        p.cuts.forEach(c => { cuts.push({ geometry: { type: 'LineString', coordinates: [ctx.atLL(pl, c.d0), ctx.atLL(pl, c.d1)] }, properties: Object.assign({}, p._area || {}, { section_id: p.id, osm_id: c.id, name: c.name, d_from_m: +c.d0.toFixed(2), d_to_m: +c.d1.toFixed(2), base_elev_m: c.base == null ? null : +c.base.toFixed(1), height_m: c.h == null ? null : +c.h.toFixed(1), height_source: c.src, levels: c.lv == null ? null : c.lv, estimated: c.src === 'levels' ? 1 : 0 }) }); }); });
+      out.push({ id: 'section_profile', geomType: 'POINT', status: 'ready', note: 'N.profile', features: pf });
+      out.push({ id: 'section_cuts', geomType: 'LINESTRING', status: cuts.length ? 'ready' : 'empty', note: 'N.cuts', features: cuts });
+    }
+    if (ctx.indicators && ctx.indicators.length) out.push({ id: 'area_indicators', geomType: 'POLYGON', status: 'ready', note: 'N.indicators', features: ctx.indicators.map(x => ({ geometry: { type: 'Polygon', coordinates: [G.closeRing(x.ring)] }, properties: Object.assign({ area_no: x.no, area_name: x.name }, x.values, { notes: x.notes || null }) })) });
+    return out;
+  }
+  function facilitiesLayer(ctx) {
+    const parsed = ctx.run && ctx.run.parsed; if (!parsed) return null; const ring = ctx.ring; const bb = G.bbox(ring);
+    const fs = parsed.pois.filter(p => p.tags && p.tags._fac && G.inBBox(p.pt, bb) && G.pointInRing(p.pt, ring)).map(p => ({ geometry: { type: 'Point', coordinates: p.pt }, properties: { osm_id: p.id, name: p.tags.name || null, grp: p.tags._fac, cls: p.tags._cls, from_polygon: p.isArea ? 1 : 0 } }));
+    return { id: 'facilities', geomType: 'POINT', status: fs.length ? 'ready' : 'empty', note: 'N.facilities', features: fs };
+  }
+  // several study areas → one layer per theme with area_no/area_name on every feature
+  function multiLayers(ctx) {
+    const merged = {}; const order = [];
+    ctx.areas.forEach(a => {
+      const ls = buildLayers(a); const fl = facilitiesLayer(a); if (fl) ls.splice(ls.findIndex(l => l.id === 'pois_all') + 1 || ls.length, 0, fl);
+      ls.forEach(l => {
+        if (!merged[l.id]) { merged[l.id] = Object.assign({}, l, { features: l.features ? [] : undefined }); order.push(l.id); }
+        const m = merged[l.id];
+        if (l.features) { if (!m.features) m.features = []; l.features.forEach(f => m.features.push({ geometry: f.geometry, properties: Object.assign({ area_no: a.no, area_name: a.area.name }, f.properties) })); m.status = m.features.length ? 'ready' : 'empty'; delete m.reason; }
+      });
+    });
+    return order.map(id => merged[id]).concat(extraLayers(ctx));
+  }
 
   // ---------- styles ----------
   function styleFor(id, lang) {
@@ -221,6 +276,11 @@
       case 'section_points': return Q.single({ kind: 'marker', color: P.red, size: 1.4 });
       case 'photos_commons': return Q.single({ kind: 'marker', color: P.ink, size: 1.8 });
       case 'climate_cell': return Q.single({ kind: 'marker', color: P.blue, size: 3 });
+      case 'sections': return Q.single({ kind: 'line', color: P.ink, width: 0.7 });
+      case 'section_profile': return Q.single({ kind: 'marker', color: P.ink, size: 0.8 });
+      case 'section_cuts': return Q.categorized('height_source', 'line', [{ value: 'height', label: 'height (OSM)', sym: { color: P.ink, width: 1.4 } }, { value: 'levels', label: 'levels × floor_h_m (estimate)', sym: { color: '#6E737A', width: 1.4, dash: '2;1' } }, { value: 'unknown', label: 'unknown', sym: { color: P.red, width: 1.4 } }]);
+      case 'area_indicators': return Q.single({ kind: 'fill', color: P.red, alpha: 0.05, outline: P.red, outlineWidth: 0.6 });
+      case 'facilities': return Q.categorized('grp', 'marker', [{ value: 'health', label: 'health', sym: { color: P.red, size: 2.4 } }, { value: 'education', label: 'education', sym: { color: P.blue, size: 2.4 } }, { value: 'stay', label: 'stay', sym: { color: P.ink, size: 2.4 } }]);
     }
     return null;
   }
@@ -268,11 +328,11 @@
     if (extra.runAt) L.push(`${t('R.retrieved')}: ${extra.runAt}`);
     L.push('', t('R.open'), '', t('R.contents'), '-'.repeat(30));
     layers.filter(l => l.status !== 'unavailable').forEach(l => L.push(`• ${l.id} — ${t('L.' + l.id)}: ${l.status === 'empty' ? t('x.empty') : t('x.features', { n: l.features.length })}. ${l.note ? t(l.note) : ''}`));
-    if (extra.dem) L.push(`• ${extra.dem.file} — ${t('L.elevation')}: ${extra.dem.W}×${extra.dem.H} px, ${extra.dem.cell.toFixed(1)} m. ${t('N.dem')}`);
+    if (extra.dem) L.push(`• ${extra.dem.file} — ${t('L.elevation')}: ${extra.dem.W}×${extra.dem.H} px, ${extra.dem.cell.toFixed(1)} m. ${t(extra.dem.mdt ? 'N.mdt' : 'N.dem')}`);
     L.push('', t('R.missing'), '-'.repeat(30));
     layers.filter(l => l.status === 'unavailable').forEach(l => L.push(`• ${l.id} — ${t('L.' + l.id)}: ${t(l.reason)}`));
     L.push('', t('R.emptyNote'), '', t('R.limits'), '-'.repeat(30), '• ' + t('R.lim1'), '• ' + t('R.lim2'), '• ' + t('R.lim3'));
-    L.push('', t('R.sources'), '-'.repeat(30), '• ' + t('R.osmLic'), '• ' + t('R.demLic'), '• ' + t('R.eraLic'), '• ' + t('R.commonsLic'));
+    L.push('', t('R.sources'), '-'.repeat(30), '• ' + t('R.osmLic'), '• ' + t('R.mdtLic'), '• ' + t('R.demLic'), '• ' + t('R.eraLic'), '• ' + t('R.commonsLic'));
     L.push('', t('R.fields'), '-'.repeat(30));
     layers.filter(l => l.status !== 'unavailable').forEach(l => { L.push('', `[${l.id}]`); fieldsFor(l.id).forEach(f => L.push(`  ${f.name} (${f.type}): ${f.d[li]}`)); });
     L.push('', t('R.validation'), '-'.repeat(30), t('x.validated'));
@@ -282,7 +342,12 @@
   // ---------- main ----------
   async function build(ctx, opts, deps) {
     const lang = I.lang; const now = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
-    const layers = buildLayers(ctx); const files = []; const slug = (ctx.area && ctx.area.name ? ctx.area.name : 'study_area').normalize('NFKC').replace(/[^\p{L}\p{N}\- ]+/gu, '').trim().replace(/\s+/g, '_').slice(0, 40) || 'study_area';
+    MULTI = !!ctx.areas;
+    if (MULTI) { ctx.spec = ctx.spec || { type: 'multi' }; ctx.ring = ctx.ring || ctx.areas[0].ring; ctx.area = ctx.area || { name: ctx.name || 'comparison' }; }
+    let layers;
+    if (MULTI) layers = multiLayers(ctx);
+    else { layers = buildLayers(ctx); const fl = facilitiesLayer(ctx); if (fl) layers.splice(layers.findIndex(l => l.id === 'pois_all') + 1, 0, fl); layers = layers.concat(extraLayers(ctx)); if (ctx.sections && ctx.sections.length) layers = layers.filter(l => !((l.id === 'section_line' || l.id === 'section_points') && l.status === 'unavailable')); }
+    const files = []; const slug = (ctx.area && ctx.area.name ? ctx.area.name : 'study_area').normalize('NFKC').replace(/[^\p{L}\p{N}\- ]+/gu, '').trim().replace(/\s+/g, '_').slice(0, 40) || 'study_area';
     const base = 'granada_' + slug;
     const avail = layers.filter(l => l.status !== 'unavailable');
     const meta = { generator: 'Granada Atlas', created: now, language: lang, area: ctx.area ? ctx.area.name : null, shape: ctx.spec.type, area_m2: +G.ringArea(ctx.ring).toFixed(2), osm_snapshot: ctx.run && ctx.run.result && ctx.run.result.osmBase || null, analysis_run: ctx.run && ctx.run.runAt || null,
@@ -298,7 +363,8 @@
         { table: 'layer_status', title: 'layer_status', description: 'Every layer of this export, including unavailable ones', fields: [{ name: 'layer', type: 'TEXT' }, { name: 'status', type: 'TEXT' }, { name: 'features', type: 'INTEGER' }, { name: 'explanation', type: 'TEXT' }], rows: layers.map(l => ({ layer: l.id, status: l.status, features: l.features ? l.features.length : 0, explanation: l.reason ? t(l.reason) : l.note ? t(l.note) : '' })) },
         { table: 'field_dictionary', title: 'field_dictionary', description: 'Meaning of every field (stable English names)', fields: [{ name: 'layer', type: 'TEXT' }, { name: 'field', type: 'TEXT' }, { name: 'type', type: 'TEXT' }, { name: 'description', type: 'TEXT' }, { name: 'description_en', type: 'TEXT' }], rows: avail.flatMap(l => fieldsFor(l.id).map(f => ({ layer: l.id, field: f.name, type: f.type, description: f.d[LI[lang]], description_en: f.d[2] }))) },
         { table: 'sources', title: 'sources', description: 'Sources, licences and dates', fields: [{ name: 'source', type: 'TEXT' }, { name: 'licence', type: 'TEXT' }, { name: 'data_date', type: 'TEXT' }, { name: 'retrieved', type: 'TEXT' }, { name: 'layers', type: 'TEXT' }], rows: [
-          { source: 'OpenStreetMap via Overpass API', licence: 'ODbL 1.0 — © OpenStreetMap contributors', data_date: meta.osm_snapshot, retrieved: meta.analysis_run, layers: 'buildings, streets, landuse, parks_open_space, public_facilities, transit_stops, pois_all' },
+          { source: 'OpenStreetMap (supplied extract 2026-10-23; facilities via Overpass API)', licence: 'ODbL 1.0 — © OpenStreetMap contributors', data_date: meta.osm_snapshot, retrieved: meta.analysis_run, layers: 'buildings, streets, landuse, parks_open_space, public_facilities, transit_stops, pois_all, facilities, section_cuts' },
+          { source: 'IGN MDT25 (Instituto Geográfico Nacional)', licence: 'CC BY 4.0 — © Instituto Geográfico Nacional', data_date: '2008–2015', retrieved: null, layers: 'sections, section_profile, section_cuts' + (opts.dem && deps.demGrid ? ', elevation_mdt25 GeoTIFF' : '') },
           { source: 'Copernicus DEM GLO-90 via Open-Meteo Elevation API', licence: 'CC BY 4.0 (Open-Meteo); © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the EU and ESA', data_date: 'DEM release 2021', retrieved: meta.analysis_run, layers: 'section_line, section_points' + (opts.dem ? ', elevation GeoTIFF' : '') },
           { source: 'ERA5 via Open-Meteo Historical Weather API', licence: 'CC BY 4.0', data_date: ctx.run && ctx.run.result && ctx.run.result.climate ? ctx.run.result.climate.year : null, retrieved: meta.analysis_run, layers: 'climate_cell' },
           { source: 'Wikimedia Commons API', licence: 'per file (see author, license fields)', data_date: null, retrieved: meta.analysis_run, layers: 'photos_commons' } ] },
@@ -315,7 +381,22 @@
     if (opts.styles !== false) avail.forEach(l => { const s = styleFor(l.id, lang); if (s) files.push({ name: 'styles/' + l.id + '.qml', data: s }); });
     if (opts.styles !== false && avail.some(l => l.id === 'buildings')) files.push({ name: 'styles/buildings_period.qml', data: styleFor('buildings_period', lang) });
     let demInfo = null;
-    if (opts.dem) {
+    if (opts.dem && deps.demGrid) { // IGN MDT25 crop in its native 25 m EPSG:25830 grid
+      const g = deps.demGrid; const rings = MULTI ? ctx.areas.map(a => a.ring) : [ctx.ring];
+      const U = rings.flat().map(p => PJ.EPSG25830.forward(p)); const pad = 50;
+      const i0 = Math.max(0, Math.floor((Math.min(...U.map(p => p[0])) - pad - g.ox) / g.px)), i1 = Math.min(g.width - 1, Math.ceil((Math.max(...U.map(p => p[0])) + pad - g.ox) / g.px));
+      const j0 = Math.max(0, Math.floor((g.oy - Math.max(...U.map(p => p[1])) - pad) / g.py)), j1 = Math.min(g.height - 1, Math.ceil((g.oy - Math.min(...U.map(p => p[1])) + pad) / g.py));
+      if (i1 > i0 && j1 > j0) {
+        const W = i1 - i0 + 1, H = j1 - j0 + 1; const data = new Float32Array(W * H);
+        for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) { const v = g.arr[(j0 + j) * g.width + i0 + i]; data[j * W + i] = v === g.nodata ? -9999 : v; }
+        const file = 'elevation_mdt25_epsg25830.tif';
+        files.push({ name: file, data: TIF.write({ width: W, height: H, data, originX: g.ox + i0 * g.px, originY: g.oy - j0 * g.py, pixelX: g.px, pixelY: g.py, epsg: 25830, geographic: false, nodata: -9999,
+          metadata: { SOURCE: 'IGN MDT25 (Modelo Digital del Terreno 25 m), catalogue epochs 2008-2015', UNITS: 'metre above mean sea level (Alicante)', NATIVE_RESOLUTION: '25 m', CELL: g.px.toFixed(3) + ' x ' + g.py.toFixed(3) + ' m', CROP: 'bounding box of the study area(s) + 50 m; not masked', LICENSE: 'CC BY 4.0 - Instituto Geografico Nacional', RETRIEVED: now } }) });
+        demInfo = { file, W, H, cell: g.px, valid: Array.from(data).filter(v => v !== -9999).length, mdt: true };
+        meta.elevation = { file, width: W, height: H, cell_m: +g.px.toFixed(3), crs: 'EPSG:25830', nodata: -9999, valid_pixels: demInfo.valid, source: 'IGN MDT25' };
+      }
+    }
+    if (opts.dem && !demInfo) {
       const plan = demPlan(ctx.ring, opts.crs, opts.demCell || 30);
       const data = await fetchDEM(plan, deps.elevation, (a, b) => deps.progress && deps.progress(t('x.stepDem', { a, b })));
       const file = `elevation_glo90_epsg${opts.crs}.tif`;
@@ -329,6 +410,7 @@
     if (lang !== 'en') files.push({ name: 'README_en.txt', data: readme(ctx, layers, opts, 'en', rx) }); // English copy for sharing
     files.push({ name: 'metadata.json', data: JSON.stringify(meta, null, 1) });
     const zipBytes = Z.zip(files.map(f => ({ name: base + '/' + f.name, data: f.data })));
+    MULTI = false;
     return { zipBytes, filename: base + '_gis.zip', files: files.map(f => ({ name: f.name, size: typeof f.data === 'string' ? f.data.length : f.data.length })), layers, demInfo };
   }
 

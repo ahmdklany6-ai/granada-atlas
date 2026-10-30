@@ -1,5 +1,11 @@
-# Never publish saved projects, backups or test output
+# Never publish saved projects, backups, private imports or test output
 *.gpkg
+*.qgz
+*.qgs
+*.qml
+*.pdf
+*.tif
+*.tiff
 *_gis.zip
 granada-atlas-*.json
 tests/px.png

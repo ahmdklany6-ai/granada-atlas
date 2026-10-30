@@ -11,6 +11,13 @@
   const fmtArea = (m2) => m2 >= 1e6 ? unit(nf(m2 / 1e6, 2), 'km2') : m2 >= 1e4 ? unit(nf(m2 / 1e4, 2), 'ha') : unit(nf(m2), 'm2');
   const fmtLen = (m) => m >= 1000 ? unit(nf(m / 1000, 2), 'km') : unit(nf(m), 'm');
   const plain = (h) => String(h).replace(/<[^>]+>/g, '');
+  const LOC = { ar: 'ar-u-nu-latn', he: 'he', en: 'en-GB' };
+  function fullDate(s) { // readable, localised; partial or free-text dates are shown as written
+    const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
+    if (!m) return `<span dir="auto">${esc(String(s).slice(0, 40))}</span>`;
+    const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    try { return `<span>${d.toLocaleDateString(LOC[I.lang] || 'en-GB', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })}</span>`; } catch (e) { return `<span dir="ltr">${m[1]}-${m[2]}-${m[3]}</span>`; }
+  }
 
   const STATUS = ['doc', 'est', 'gap', 'obs', 'hyp', 'int'];
   const badge = (k) => `<span class="badge badge-${k}" title="${esc(t('st.' + k + '.t'))}">${t('st.' + k)}</span>`;
@@ -184,17 +191,41 @@
     b12 += gap('roof.gapT', 'roof.gapB', [t('roof.task1'), t('roof.task2')]);
     H.push(sectionWrap('roof', 'Roofs · Construcción', b12, false));
 
-    // 13 Photos
+    // 13 Photos — camera position and depicted place kept apart; full dates; author and licence
     let b13 = taskState(T.photos, 'photos');
+    const c0 = area.spec.center;
+    b13 += `<p class="fine">${t('ph.svLead')} <a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${c0[1].toFixed(6)},${c0[0].toFixed(6)}" target="_blank" rel="noopener">${t('ph.svOpen')}</a> · <a href="https://www.google.com/maps/search/?api=1&query=${c0[1].toFixed(6)},${c0[0].toFixed(6)}" target="_blank" rel="noopener">${t('ph.gmOpen')}</a></p>`;
     if (R.photos) {
-      const ins = R.photos.filter(p => p.inside), near = R.photos.filter(p => !p.inside);
-      b13 += `<div class="note">${t('ph.count', { a: nf(ins.length), b: nf(near.length) })}</div>`;
-      const card = (p) => `<figure class="ph"><a href="${esc(p.page)}" target="_blank" rel="noopener"><img loading="lazy" src="${esc(p.thumb)}" alt="${esc(p.title)}"></a>
-        <figcaption><bdi>${esc((p.author || t('ph.noAuthor')).slice(0, 40))}</bdi> · <span dir="ltr">${esc(p.license || '?')}</span>${p.date ? ` · <span dir="ltr">${esc(p.date.slice(0, 10))}</span>` : ''}${p.inside ? '' : ` · <em>${t('ph.outside')}</em>`}
+      const rank = (p) => p.cameraInside || p.depictedInside || (p.locUnknownKind && p.inside) ? 0 : 1;
+      const list = R.photos.slice().sort((a, b) => rank(a) - rank(b));
+      const ins = list.filter(p => rank(p) === 0);
+      b13 += `<div class="note">${t('ph.count', { a: nf(ins.length), b: nf(list.length - ins.length) })}</div>`;
+      const where = (pt, inside) => pt ? (inside ? `<em>${t('ph.insideB')}</em>` : t('ph.nearB')) : '';
+      const card = (p) => {
+        const loc = [];
+        if (p.camera) loc.push(`${t('ph.camera')}: ${where(p.camera, p.cameraInside)}`);
+        if (p.depicted) loc.push(`${t('ph.depicted')}: ${where(p.depicted, p.depictedInside)}`);
+        if (!p.camera && !p.depicted && p.pt) loc.push(`${t('ph.locUnknown')}: ${where(p.pt, p.inside)}`);
+        if (!p.camera && p.depicted) loc.push(t('ph.noCamera'));
+        return `<figure class="ph"><a href="${esc(p.page)}" target="_blank" rel="noopener"><img loading="lazy" src="${esc(p.thumb)}" alt="${esc(p.title)}"></a>
+        <figcaption><bdi>${esc((p.author || t('ph.noAuthor')).slice(0, 60))}</bdi> · <span dir="ltr">${esc(p.license || '?')}</span><br>${p.date ? `${t(p.dateKind === 'taken' ? 'ph.taken' : 'ph.uploaded')}: ${fullDate(p.date)}` : t('ph.noDate')}
+        <span class="loc">${loc.join(' · ')}</span>
         <button class="btn btn-tiny" data-wall="${esc(p.id)}">${t('ph.toWall')}</button></figcaption></figure>`;
-      b13 += `<div class="photos">${ins.concat(near).slice(0, 24).map(card).join('')}</div>`;
+      };
+      b13 += `<div class="photos">${list.slice(0, 30).map(card).join('')}</div><p class="fine">${t('ph.locNote')}</p>`;
     }
     H.push(sectionWrap('ph', 'Photographs · Fotografías', b13, true));
+
+    // 13b Municipal and official sources (verified links)
+    const ML = [
+      ['https://www.granada.org/urbanismo.nsf/byclave!OpenView&Count=30&ResortDescending=1', 'muni.urbanismo', 'Ayuntamiento de Granada · Urbanismo'],
+      ['https://www.granada.org/inet/archivomunpal.nsf/xbyclave/wcartografia', 'muni.cartoColl', 'Archivo Municipal de Granada · Colección de cartografía y mapas (1613–1995)'],
+      ['https://www.granada.org/inet/archivomunpal.nsf/41db3cd3ff38e932c12578b50023ae33/194e19cec986f8f3c1257f9c003e625e!OpenDocument', 'muni.cartoHist', 'Archivo Municipal · Cartografía Histórica de Granada XVII–XX'],
+      ['https://www.ign.es/resources/acercaDe/libDigPub/Planimetria_Urbana_Granada.pdf', 'muni.ignPlan', 'IGN · Planimetría urbana de Granada'],
+      ['https://fototeca.cnig.es/', 'muni.fototeca', 'CNIG · Fototeca Digital'],
+      ['https://www.sedecatastro.gob.es/', 'muni.catastro', 'Dirección General del Catastro · Sede electrónica'],
+    ];
+    H.push(sectionWrap('muni', 'Official sources · Fuentes oficiales', `<ul class="linklist">${ML.map(([u, k, n]) => `<li><a href="${u}" target="_blank" rel="noopener" dir="ltr">${esc(n)}</a><small>${t(k)}</small></li>`).join('')}</ul><p class="fine">${t('muni.note')}</p>`, false));
 
     // 14 Literature
     let b14 = taskState(T.wiki, 'wiki');
@@ -210,9 +241,10 @@
     H.push(`<section class="obs" id="topic-obs"><h3>${t('t.obs')}</h3><ul class="obs-list">${obs || `<li class="note">${t('obs.empty')}</li>`}</ul>
       <div class="obs-form"><textarea id="obs-text" rows="2" dir="auto" placeholder="${esc(t('obs.ph'))}"></textarea>
       <div class="obs-row"><select id="obs-kind"><option value="obs">${t('st.obs')}</option><option value="hyp">${t('st.hyp')}</option></select><select id="obs-topic">${topicKeys.map(k => `<option value="${k}">${tlabel(k)}</option>`).join('')}</select><button class="btn" id="obs-add">${t('save')}</button></div></div></section>`);
+    if (ctx.only) return H.filter(h => { const m = h.match(/id="topic-([a-z]+)"/); return !m || ctx.only.includes(m[1]); }).join('');
     return H.join('');
   }
 
   root.GA = root.GA || {};
-  root.GA.report = { render, esc, iso, nf, pct, fmtArea, fmtLen, unit, badge, bandLabel, periodLabel, STATUS };
+  root.GA.report = { render, fullDate, esc, iso, nf, pct, fmtArea, fmtLen, unit, badge, bandLabel, periodLabel, STATUS };
 })(window);

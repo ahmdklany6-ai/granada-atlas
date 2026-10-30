@@ -5,10 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>أطلس غرناطة</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Frank+Ruhl+Libre:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Sans+Hebrew:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Sans+Hebrew:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css">
 <link rel="stylesheet" href="css/app.css">
 <script src="js/i18n.js"></script>
+<script src="js/i18n_gallery.js"></script>
+<script src="js/i18n_ui.js"></script>
 <script>GA.i18n.apply();</script>
 </head>
 <body>
@@ -16,7 +18,7 @@
   <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name" data-i18n="app.name">أطلس غرناطة</span><span class="brand-es" dir="ltr">Granada · Atlas de lectura urbana</span></div>
   <nav class="tb">
     <button class="tb-btn" data-drawer="areas" data-i18n="nav.areas">المناطق المحفوظة</button>
-    <button class="tb-btn" data-drawer="layers" data-i18n="nav.layers">الطبقات</button>
+    <button class="tb-btn" id="tb-compare" data-i18n="nav.compare">مقارنة وتمرين 1.2</button>
     <button class="tb-btn" id="tb-measure" data-i18n="nav.measure">قياس مسافة</button>
     <button class="tb-btn tb-gis" data-drawer="export" data-i18n="nav.export">تنزيل بيانات GIS</button>
     <button class="tb-btn" data-drawer="status" data-i18n="nav.status">حالة الأداة</button>
@@ -25,46 +27,70 @@
 </header>
 
 <main class="stage">
-  <div id="map" data-i18n-aria="map.aria"></div>
-  <div class="north" data-i18n-aria="north"><svg viewBox="0 0 24 40" width="18" height="30" aria-hidden="true"><path d="M12 2 L20 30 L12 24 L4 30 Z" fill="currentColor"/><text x="12" y="39" text-anchor="middle" font-size="9" font-family="IBM Plex Mono, monospace" fill="currentColor">N</text></svg></div>
-
-  <aside id="panel-select" class="panel">
-    <div class="panel-h"><span class="plate" data-i18n="sel.plate">STUDY AREA</span><h2 data-i18n="sel.title">منطقة الدراسة</h2></div>
-    <div class="panel-b"></div>
+  <!-- LEFT: analysis and results (fixed in every language) -->
+  <aside id="col-left" class="col col-left" data-i18n-aria="ui.analysisPanel">
+    <div class="col-h">
+      <div class="col-h-row">
+        <div><span class="plate" data-i18n="ui.analysisPlate">ANALYSIS</span><h2 id="rep-title"></h2><div id="rep-meta" class="meta"></div></div>
+        <div class="tools"><button class="btn btn-small" id="btn-refresh" data-i18n="rep.refresh" hidden>تحديث</button><button class="icon-btn" id="btn-close-report" data-i18n-title="close" hidden>✕</button></div>
+      </div>
+      <div class="tabs" id="left-tabs" role="tablist"></div>
+    </div>
+    <div id="left-body" class="col-b"></div>
+    <div class="resizer" data-resize="left" data-i18n-title="ui.resize"></div>
   </aside>
+  <button class="col-toggle" id="tog-left" data-i18n-title="ui.toggleLeft">◀</button>
 
+  <div id="map" data-i18n-aria="map.aria"></div>
+  <div class="north" data-i18n-aria="north"><svg viewBox="0 0 24 40" width="16" height="27" aria-hidden="true"><path d="M12 2 L20 30 L12 24 L4 30 Z" fill="currentColor"/><text x="12" y="39" text-anchor="middle" font-size="9" font-family="IBM Plex Mono, monospace" fill="currentColor">N</text></svg></div>
   <div id="measure-out" class="measure-out" hidden></div>
+  <div id="mode-banner" class="mode-banner" hidden></div>
   <div id="legend" class="legend" hidden></div>
 
-  <aside id="panel-report" class="report" hidden>
-    <div class="rep-h">
-      <div><span class="plate" data-i18n="rep.plate">PRELIMINARY READING</span><h2 id="rep-title"></h2><div id="rep-meta" class="rep-meta"></div></div>
-      <div class="rep-tools"><button class="btn btn-small" id="btn-refresh" data-i18n="rep.refresh">تحديث البيانات</button><button class="btn btn-small" id="btn-wide" data-i18n-title="wide">⇔</button><button class="btn btn-small" id="btn-close-report" data-i18n-title="close">✕</button></div>
-    </div>
-    <div class="key"><span class="badge badge-doc" data-i18n="st.doc"></span><span class="badge badge-est" data-i18n="st.est"></span><span class="badge badge-gap" data-i18n="st.gap"></span><span class="badge badge-obs" data-i18n="st.obs"></span><span class="badge badge-hyp" data-i18n="st.hyp"></span><span class="key-t" data-i18n="rep.keyHint"></span></div>
-    <div id="rep-notice"></div>
-    <div id="rep-body" class="rep-body"></div>
+  <!-- RIGHT: study area controls, then layers -->
+  <button class="col-toggle" id="tog-right" data-i18n-title="ui.toggleRight">▶</button>
+  <aside id="col-right" class="col col-right" data-i18n-aria="ui.studyPanel">
+    <div class="resizer" data-resize="right" data-i18n-title="ui.resize"></div>
+    <section id="panel-select" class="block">
+      <header data-collapse="select"><h2 data-i18n="sel.title">منطقة الدراسة</h2><span class="chev">▾</span></header>
+      <div class="block-b"></div>
+    </section>
+    <section id="panel-layers" class="block">
+      <header data-collapse="layers"><h2 data-i18n="nav.layers">الطبقات</h2><span class="chev">▾</span></header>
+      <div class="block-b"></div>
+    </section>
   </aside>
 
   <section id="drawer" class="drawer" hidden>
     <div class="drawer-h"><h3 id="drawer-title"></h3><button class="btn btn-small" id="btn-close-drawer" data-i18n-title="close">✕</button></div>
     <div id="drawer-body" class="drawer-b"></div>
   </section>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <section id="workspace" class="workspace" hidden></section>
 </main>
+<div id="modal" class="modal" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <noscript>This tool needs JavaScript · تحتاج الأداة إلى JavaScript · הכלי דורש JavaScript</noscript>
 <script src="vendor/maplibre/maplibre-gl.js"></script>
 <script src="js/palette.js"></script>
 <script src="js/geo.js"></script>
+<script src="js/proj.js"></script>
 <script src="js/analysis.js"></script>
 <script src="js/clip.js"></script>
-<script src="js/proj.js"></script>
 <script src="js/style.js"></script>
 <script src="js/store.js"></script>
 <script src="js/sources.js"></script>
 <script src="js/report.js"></script>
 <script src="js/selection.js"></script>
+<script src="js/data.js"></script>
+<script src="js/io/tiffread.js"></script>
+<script src="js/mapcard.js"></script>
+<script src="js/gallery.js"></script>
+<script src="js/section.js"></script>
+<script src="js/pdf.js"></script>
+<script src="js/layers.js"></script>
+<script src="js/import.js"></script>
+<script src="js/compare.js"></script>
 <script src="js/export/zip.js"></script>
 <script src="js/export/gpkg.js"></script>
 <script src="js/export/geotiff.js"></script>

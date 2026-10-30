@@ -12,7 +12,7 @@
     let pendingPopup = null; let cursor = null; let measure = { on: false, pts: [] };
     const emit = () => opts.onChange && opts.onChange(api.info());
 
-    function blank() { return { phase: 'idle', center: null, pending: null, type: null, radius: 250, side: 500, verts: [], closed: false }; }
+    function blank() { return { phase: 'idle', center: null, pending: null, type: null, radius: 125, side: 250, verts: [], closed: false }; }
     const snap = () => JSON.stringify({ phase: s.phase, center: s.center, type: s.type, radius: s.radius, side: s.side, verts: s.verts, closed: s.closed });
     function commit() { history.push(snap()); if (history.length > 100) history.shift(); }
 
@@ -96,6 +96,7 @@
     // ---------- map events ----------
     map.on('click', (e) => {
       if (Date.now() - lastMarkerDown < 350) return;
+      if (opts.intercept && opts.intercept(e)) return; // another tool (e.g. section drawing) owns the click
       const ll = [e.lngLat.lng, e.lngLat.lat];
       if (measure.on) { measure.pts.push(ll); draw(); emit(); return; }
       if (s.type === 'polygon' && !s.closed) {
@@ -122,7 +123,8 @@
         if (!s.pending) return; commit();
         const prev = s.center; s.center = s.pending; s.pending = null;
         if (s.type === 'polygon' && prev && s.verts.length) s.verts = G.translate(s.verts, prev, s.center);
-        s.phase = s.type ? 'shape' : 'choose';
+        if (!s.type) s.type = 'square'; // default: a 250 m north-oriented square
+        s.phase = 'shape';
         if (pendingPopup) { const p = pendingPopup; pendingPopup = null; p.remove(); }
         draw(); emit();
       },
@@ -140,7 +142,8 @@
       ring,
       spec() { return { type: s.type, center: s.center, radius: s.radius, side: s.side, verts: s.verts.slice(), closed: s.closed }; },
       loadSpec(sp) { commit(); s = Object.assign(blank(), sp, { phase: 'shape', pending: null }); draw(); emit(); },
-      fitTo() { const r = ring(); if (!r) return; const b = G.bbox(r); const rtl = document.documentElement.dir === 'rtl'; map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: { top: 60, bottom: 60, left: rtl ? 60 : 380, right: rtl ? 380 : 60 }, duration: 600, maxZoom: 17 }); },
+      fitTo(rings) { const all = (rings || [ring()]).filter(Boolean).flat(); if (!all.length) return; const b = G.bbox(all); map.resize(); const c = map.getContainer(); const pad = Math.max(24, Math.min(70, Math.min(c.clientWidth, c.clientHeight) * 0.1)); map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: pad, duration: 600, maxZoom: 17.5 }); }, // the map container already sits between the panels
+      setCenterDirect(ll) { commit(); const prev = s.center; s.center = ll; if (s.type === 'polygon' && prev && s.verts.length) s.verts = G.translate(s.verts, prev, ll); if (!s.type) s.type = 'square'; s.phase = 'shape'; draw(); emit(); },
       redraw() { draw(); },
       measureToggle(on) { measure.on = on == null ? !measure.on : on; if (!measure.on) cursor = null; draw(); emit(); return measure.on; },
       measureClear() { measure.pts = []; draw(); emit(); },
