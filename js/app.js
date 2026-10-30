@@ -21,6 +21,7 @@
   if (ui.rw) rootEl.style.setProperty('--rw', ui.rw + 'px');
   if (ui.lc || (ui.lc == null && innerWidth < 1000)) document.body.classList.add('left-collapsed');
   if (ui.rc) document.body.classList.add('right-collapsed');
+  if (innerWidth < 1000 && !document.body.classList.contains('left-collapsed') && !document.body.classList.contains('right-collapsed')) document.body.classList.add('left-collapsed'); // narrow: keep the map visible
   Object.entries(ui.blocks || {}).forEach(([k, v]) => { const b = document.querySelector(`[data-collapse="${k}"]`); if (b && v) b.parentElement.classList.add('collapsed'); });
 
   // ---------- map ----------
