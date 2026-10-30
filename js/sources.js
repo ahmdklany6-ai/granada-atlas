@@ -77,7 +77,9 @@ is_in(${center[1].toFixed(6)},${center[0].toFixed(6)})->.c;area.c["boundary"="ad
   async function commons(center, radius, ring) {
     const r = Math.min(10000, Math.max(50, Math.round(radius)));
     const url = `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=geosearch&ggsnamespace=6&ggscoord=${center[1]}|${center[0]}&ggsradius=${r}&ggslimit=80&prop=imageinfo|coordinates&coprimary=all&coprop=type|name|dim&colimit=max&iiprop=url|extmetadata|mime&iiurlwidth=480`;
-    const j = await fetchJSON(url, { timeout: 25000 }); const pages = Object.values((j.query && j.query.pages) || {});
+    const j = await fetchJSON(url, { timeout: 25000 });
+    if (j.error) throw new Error('Wikimedia Commons: ' + (j.error.info || j.error.code)); // API errors arrive with HTTP 200
+    const pages = Object.values((j.query && j.query.pages) || {});
     return pages.map(p => {
       const ii = (p.imageinfo || [])[0] || {}, md = ii.extmetadata || {}; const cs = p.coordinates || [];
       const ll = (c) => c ? [c.lon, c.lat] : null;
