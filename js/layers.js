@@ -229,7 +229,8 @@
         BLD.forEach(k => byId[k].buildLite());
         applyOrder(); BLD.forEach(k => applyVis(byId[k]));
         await waitLoaded(id, 20000);
-        lite.state = 2; BLD.forEach(k => applyVis(byId[k])); emit();
+        lite.state = 2; BLD.forEach(k => applyVis(byId[k]));
+        const z = map.getZoom(); BLD.forEach(k => { if (S[k].on && z >= LITE_Z && z < DETAIL_Z) status(k, 'lite', lite.n); }); emit();
       })().catch(e => { lite.state = -1; console.warn('buildings_lite', e); throw e; });
       return lite.p;
     }
@@ -298,7 +299,7 @@
           if (S[d.id].status !== 'ok' || !BLD.includes(d.id)) status(d.id, 'loading', S[d.id].statusExtra);
           const n = await d.update(); if (n === 'stale') return;
           if (n === 'city') status(d.id, d.id === 'bld_floors' ? 'city' : 'zoomLite');
-          else if (n === 'lite') status(d.id, 'lite', lite.n);
+          else if (n === 'lite') status(d.id, lite.state === 2 ? 'lite' : 'loading', lite.n); // the 50 m view stays until the footprints arrive
           else status(d.id, n === 'zoom' ? 'zoom' : n === 'overview' ? 'overview' : n === 0 ? 'empty' : 'ok', n);
         }
       } catch (e) { status(d.id, e.code === 'too_large' ? 'zoom' : 'failed', e.message); }
