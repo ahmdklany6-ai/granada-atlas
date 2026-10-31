@@ -116,6 +116,11 @@ def main():
             pg.evaluate('GA.pages.close()'); pg.evaluate('GA.i18n.setLang("en")')
             check('no page errors', not errors, errors[:4])
 
+            # resizing a desktop window with both panels open down to phone width leaves only one panel open
+            pg.evaluate('document.body.classList.remove("left-collapsed", "right-collapsed")'); pg.set_viewport_size({'width': 390, 'height': 844}); time.sleep(0.8)
+            both = pg.evaluate('!document.body.classList.contains("left-collapsed") && !document.body.classList.contains("right-collapsed")')
+            check('narrow: never both side panels open after a resize', not both)
+            pg.set_viewport_size({'width': 1440, 'height': 900}); time.sleep(0.5)
             # narrow and medium layouts in three languages
             for (w, h) in [(390, 844), (820, 1180), (1024, 768)]:
                 pg.set_viewport_size({'width': w, 'height': h}); time.sleep(0.5)

@@ -72,6 +72,8 @@
   updateToggles();
   const narrow = () => innerWidth < 1000;
   function onlyOne(side) { if (!narrow()) return; const other = side === 'left' ? 'right-collapsed' : 'left-collapsed'; if (!document.body.classList.contains(other)) { document.body.classList.add(other); ui[side === 'left' ? 'rc' : 'lc'] = true; } }
+  // narrow screens never show both side panels: when the window becomes narrow (rotation, resize), keep one
+  addEventListener('resize', () => { if (narrow() && !document.body.classList.contains('left-collapsed') && !document.body.classList.contains('right-collapsed')) { onlyOne(run ? 'left' : 'right'); updateToggles(); map.resize(); } });
   $('#tog-left').addEventListener('click', () => { if (document.body.classList.contains('left-collapsed')) onlyOne('left'); document.body.classList.toggle('left-collapsed'); ui.lc = document.body.classList.contains('left-collapsed'); saveUI(); updateToggles(); map.resize(); if (!ui.lc) renderLeft(); });
   $('#tog-right').addEventListener('click', () => { if (document.body.classList.contains('right-collapsed')) onlyOne('right'); document.body.classList.toggle('right-collapsed'); ui.rc = document.body.classList.contains('right-collapsed'); saveUI(); updateToggles(); map.resize(); });
   document.querySelectorAll('[data-collapse]').forEach(h => h.addEventListener('click', () => { const b = h.parentElement; b.classList.toggle('collapsed'); ui.blocks = ui.blocks || {}; ui.blocks[h.dataset.collapse] = b.classList.contains('collapsed'); saveUI(); }));
@@ -282,7 +284,7 @@
     const prevSnap = a.analysis && a.analysis.snapshot;
     run = { areaId: a.id, runAt: new Date().toISOString(), result: {}, tasks: {}, ring: info.ring, center: info.center, prevSnap };
     if (leftTab !== 'sections') leftTab = 'maps';
-    if (document.body.classList.contains('left-collapsed')) { onlyOne('left'); document.body.classList.remove('left-collapsed'); ui.lc = false; saveUI(); updateToggles(); map.resize(); }
+    onlyOne('left'); if (document.body.classList.contains('left-collapsed')) { document.body.classList.remove('left-collapsed'); ui.lc = false; saveUI(); updateToggles(); map.resize(); }
     renderLeft(); sel.fitTo(); updateMask();
     const center = info.center; const radius = Math.max(...G.openRing(info.ring).map(p => G.haversine(center, p)));
     const myRun = run;
