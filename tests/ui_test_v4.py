@@ -133,3 +133,10 @@ def main():
     print(f'\n{len(fails)} failure(s)'); [print(' -', f) for f in fails]
 
 if __name__ == '__main__': main()
+
+# static check: the build in index.html matches version.json and every asset query
+if __name__ == '__main__':
+    import re as _re
+    html = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read(); ver = json.load(open(os.path.join(ROOT, 'version.json')))['build']
+    qs = set(_re.findall(r'\?v=([0-9.]+)"', html)); b = _re.search(r"GA_BUILD = '([^']+)'", html).group(1)
+    print(('PASS ' if qs == {ver} and b == ver else 'FAIL ') + f'build check: version.json {ver}, GA_BUILD {b}, asset queries {qs}')
