@@ -257,6 +257,7 @@
     const a = store.get().areas.find(x => x.id === id); if (!a) return;
     currentAreaId = id; sel.loadSpec(a.spec); sel.fitTo(); closeDrawer(); activeSection = (a.sections && a.sections[0] && a.sections[0].id) || null;
     if (a.analysis && a.analysis.result) { run = restoreRun(a); loadGallery(a); } else { run = null; }
+    if (run && document.body.classList.contains('left-collapsed')) { onlyOne('left'); document.body.classList.remove('left-collapsed'); ui.lc = false; saveUI(); updateToggles(); map.resize(); } // show its analysis
     secTool.setSections(a.sections || [], null); renderLeft(); updateMask(); renderLegend();
   }
   function restoreRun(a) {
