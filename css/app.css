@@ -675,3 +675,6 @@ details.assign[open] > summary { border-bottom: 1px solid var(--line); } details
 .ann-f input, .ann-f select, .ann-f textarea { width: 100%; min-width: 0; }
 .ann-f label { min-width: 0; }
 @media (max-width: 480px) { .brand-name { display: none; } .lang { gap: 2px; } .lang-btn { padding-inline: 4px; font-size: 13px; } }
+/* the map's scale bar is always bottom-left and the north arrow top-right (physical), so the enlarge label sits
+   bottom-right in every language */
+.enl { inset-inline-end: auto; right: 8px; left: auto; }
