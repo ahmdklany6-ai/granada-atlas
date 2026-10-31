@@ -72,16 +72,34 @@
     const p = root.GA.sources.fetchJSON(u, { timeout: 45000 }).then(j => j.features || []); floodCache.set(key, p); p.catch(() => floodCache.delete(key)); return p;
   }
   // share of the study area inside each return-period zone (exact polygon clipping)
+  // Flood exposure per return period. SNCZI models selected reaches, and not every reach has every period (around the
+  // city centre the Darro / Genil / Beiro studies have T10, T100 and T500 but no T50). So a period with no polygon is
+  // only "0 %" when every reach modelled nearby for the other periods is also modelled for it; otherwise it is
+  // "not modelled here". A failed request is "unavailable". Missing data never becomes zero.
+  const reachOf = (f) => String((f.properties && (f.properties.rio || f.properties.zona)) || '').trim();
   async function floodExposure(ring) {
     const bb = G.bbox(ring); const pad = 0.002; const b2 = [bb[0] - pad, bb[1] - pad, bb[2] + pad, bb[3] + pad];
+    const near = 0.02; const b3 = [bb[0] - near, bb[1] - near, bb[2] + near, bb[3] + near]; // reaches modelled within ~2 km
     const A = G.ringArea(ring); const out = { area_m2: A, zones: {}, features: {}, reaches: [] };
-    for (const z of FLOOD) {
-      const fs = await floodWFS(z.layer, b2); let s = 0; const clipped = [];
+    const res = await Promise.all(FLOOD.map(z => Promise.all([floodWFS(z.layer, b2), floodWFS(z.layer, b3)]).then(([fs, wide]) => ({ z, fs, wide }), e => ({ z, err: (e && e.message) || String(e) }))));
+    const reachSets = {}; res.forEach(r => { if (!r.err) reachSets[r.z.k] = new Set(r.wide.map(reachOf).filter(Boolean)); });
+    const allReaches = new Set(); Object.values(reachSets).forEach(st => st.forEach(x => allReaches.add(x)));
+    res.forEach(({ z, fs, err }) => {
+      if (err) { out.zones[z.k] = { status: 'failed', error: err, m2: null, share: null }; out.features[z.k] = []; return; }
+      const missing = [...allReaches].filter(x => !reachSets[z.k].has(x));
+      let s = 0; const clipped = [];
       fs.forEach(f => { const g = f.geometry; if (!g) return; const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : []; polys.forEach(pl => { try { const c = CL.clipPolygon(pl, ring); c.forEach(q => { const a = G.ringArea(q[0]) - q.slice(1).reduce((x, h) => x + G.ringArea(h), 0); if (a > 0) { s += a; clipped.push({ type: 'Polygon', coordinates: q, props: f.properties }); } }); } catch (e) { } }); });
-      out.zones[z.k] = { m2: s, share: s / A, n: fs.length, study: fs[0] && fs[0].properties ? fs[0].properties.estudio || null : null, date: fs[0] && fs[0].properties ? (fs[0].properties.fecha_apro || fs[0].properties.fecha_geo || null) : null };
+      const notModelled = missing.length > 0 && s === 0;
+      out.zones[z.k] = { status: notModelled ? 'not_modelled' : 'ok', missingReaches: missing, m2: notModelled ? null : s, share: notModelled ? null : s / A, n: fs.length,
+        study: fs[0] && fs[0].properties ? fs[0].properties.estudio || null : null, date: fs[0] && fs[0].properties ? (fs[0].properties.fecha_apro || fs[0].properties.fecha_geo || null) : null,
+        partial: missing.length > 0 && s > 0 };
       out.features[z.k] = clipped;
-    }
+    });
+    // nested periods must not shrink as the return period grows; if they do, say so instead of hiding it
+    const seq = FLOOD.map(z => out.zones[z.k]).filter(v => v.share != null); out.inconsistent = seq.some((v, i) => i && v.share + 1e-9 < seq[i - 1].share);
+    out.anyFailed = Object.values(out.zones).some(v => v.status === 'failed');
     try { const ar = await floodWFS('agua:Zi_arpsi', b2); out.reaches = ar.map(f => ({ code: f.properties.codigo_sub || f.properties.apsfr_code, name: f.properties.nombre_sub || f.properties.apsf_name, geometry: f.geometry })); } catch (e) { out.reachErr = e.message; }
+    if (Object.values(out.zones).every(v => v.status === 'failed')) throw new Error(out.zones.q100.error || 'flood service');
     return out;
   }
 

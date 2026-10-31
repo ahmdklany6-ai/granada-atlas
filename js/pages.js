@@ -18,8 +18,8 @@
     if (!r || !reg[r.name]) { if (current) { current = null; el.hidden = true; el.innerHTML = ''; listeners.forEach(f => f(null)); } return; }
     current = r; el.hidden = false; document.getElementById('workspace').hidden = true;
     const P = reg[r.name];
-    el.innerHTML = `<div class="pg-h"><div class="pg-h-l"><span class="plate">${esc(P.plate ? P.plate() : '')}</span><h2 id="pg-title">${esc(P.title ? P.title(...r.params) : r.name)}</h2>${P.nav ? `<nav class="tabs pg-nav">${P.nav(...r.params)}</nav>` : ''}</div><div class="actions">${P.actions ? P.actions(...r.params) : ''}<button class="btn btn-small" id="pg-close">${t('ws.backToMap')}</button></div></div><div class="pg-b" id="pg-body"></div>`;
-    el.querySelector('#pg-close').onclick = close;
+    el.innerHTML = `<div class="pg-h"><div class="pg-h-l"><span class="plate">${esc(P.plate ? P.plate() : '')}</span><h2 id="pg-title"${P.heroTitle ? ' class="sr-only"' : ''}>${esc(P.title ? P.title(...r.params) : r.name)}</h2>${P.nav ? `<nav class="tabs pg-nav">${P.nav(...r.params)}</nav>` : ''}</div><div class="actions">${P.actions ? P.actions(...r.params) : ''}<button class="btn btn-small" id="pg-close">${t('ws.backToMap')}</button></div></div><div class="pg-b" id="pg-body"></div>`;
+    el.querySelector('#pg-close').onclick = () => { close(); if (P.afterClose) P.afterClose(...r.params); };
     listeners.forEach(f => f(r));
     try { await P.render(el.querySelector('#pg-body'), ...r.params); } catch (e) { console.error(e); el.querySelector('#pg-body').innerHTML = `<div class="error">${esc(e.message || String(e))}</div>`; }
   }

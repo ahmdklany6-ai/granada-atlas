@@ -48,7 +48,7 @@
       const ks = Object.keys(by).filter(k => k !== '_none'); const n = ks.reduce((s, k) => s + by[k], 0);
       const H = n ? -ks.reduce((s, k) => { const p = by[k] / n; return s + p * Math.log(p); }, 0) : null; const even = n && ks.length > 1 ? H / Math.log(ks.length) : (n ? 0 : null);
       const cf = open.map(f => f.properties.cf).filter(v => v != null).sort((a, b) => a - b);
-      R.places = { nAll: all.length, n: open.length, closed: all.length - open.length, by, cats, perKm2: open.length / aKm2, evenness: even, groupsPresent: ks.length, confMedian: cf.length ? cf[cf.length >> 1] : null, lowConf: cf.filter(v => v < 0.5).length, missingStatus: open.filter(f => !f.properties.s).length, pts: open };
+      R.places = { nAll: all.length, n: open.length, closed: all.length - open.length, by, cats, perKm2: open.length / aKm2, evenness: even, groupsPresent: ks.length, confMedian: cf.length ? cf[cf.length >> 1] : null, lowConf: cf.filter(v => v < 0.5).length, knownOpen: open.filter(f => f.properties.s === 'open').length, tempClosed: open.filter(f => f.properties.s === 'temporarily_closed').length, missingStatus: open.filter(f => !f.properties.s).length, pts: open };
     }
     if (extras.busSvc) {
       const stops = extras.busSvc.features; const inS = stops.filter(f => inside(f.geometry.coordinates)); const served = inS.filter(f => f.properties.trips_day > 0);
@@ -92,9 +92,9 @@
       insertAfter('parks', { id: 'places', title: t('g3.places'), mainLayer: 'places', src: { name: 'Overture Maps Foundation — Places', detail: t('g3.placesDate'), license: 'CDLA-Permissive-2.0' }, highlightField: 'g',
         spec: { context: { buildings: ctxB, streets: ctxS }, layers: [{ type: 'point', items: Pl.pts.map(f => ({ g: f.geometry, fill: PL.PLACE_COL[f.properties.g || '_none'], r: 3 })) }] },
         legend: gs.slice(0, 9).map(g => ({ dot: PL.PLACE_COL[g], label: `${t('pg.' + g)} (${Pl.by[g]})`, key: g })),
-        ind: [[t('g.count'), nf(Pl.n)], [t('g.perKm2'), u(nf(Pl.perKm2), 'perkm2'), 'est'], [t('g3.mix'), Pl.evenness == null ? '—' : nf(Pl.evenness, 2), 'est']],
+        ind: [[t('v5.placesCount'), nf(Pl.n)], [t('g.perKm2'), u(nf(Pl.perKm2), 'perkm2'), 'est'], [t('g3.mix'), Pl.evenness == null ? '—' : nf(Pl.evenness, 2), 'est']],
         chart: Pl.n ? { kind: 'stack', items: gs.map(g => ({ label: t('pg.' + g), v: Pl.by[g] / Pl.n, col: PL.PLACE_COL[g], key: g })) } : null,
-        find: Pl.n ? [t('g3.fPlaces', { n: nf(Pl.n), g: t('pg.' + top), p: pct(Pl.by[top] / Pl.n), k: Pl.groupsPresent }), t('g3.fPlacesQual', { c: nf(Pl.closed), m: nf(Pl.missingStatus), l: nf(Pl.lowConf) }), t('g3.placesCaveat')] : [t('g3.fPlacesNone'), t('g3.placesCaveat')],
+        find: Pl.n ? [t('v5.fPlaces', { n: nf(Pl.n), g: t('pg.' + top), p: pct(Pl.by[top] / Pl.n), k: Pl.groupsPresent }), t('v5.fPlacesStatus', { o: nf(Pl.knownOpen), u: nf(Pl.missingStatus), tc: nf(Pl.tempClosed || 0), c: nf(Pl.closed) }), t('v5.fPlacesConf', { l: nf(Pl.lowConf) }), t('g3.placesCaveat')] : [t('g3.fPlacesNone'), t('g3.placesCaveat')],
         method: t('g3.mPlaces') });
     }
     // scheduled bus service
@@ -121,14 +121,22 @@
     } else insertAfter('places', gap('trees', t('g3.trees'), 'tcd'));
     // flood
     if (R.flood) {
-      const F = R.flood; const z = F.zones; const anyF = X.FLOOD.some(k => z[k.k].m2 > 0);
-      const items = []; ['q500', 'q100', 'q50', 'q10'].forEach(k => (F.features[k] || []).forEach(p => items.push({ g: { type: 'Polygon', coordinates: p.coordinates }, fill: X.FLOOD.find(q => q.k === k).color, alpha: 0.75 })));
+      const F = R.flood; const z = F.zones; const anyF = X.FLOOD.some(k => z[k.k] && z[k.k].m2 > 0);
+      // a share is shown only where the period is modelled; otherwise the reason, never 0 %
+      const sh = (k) => { const v = z[k] || {}; return v.status === 'ok' ? pct(v.share, 1) + (v.partial ? '*' : '') : v.status === 'not_modelled' ? t('v5.notModelled') : t('v5.unavail'); };
+      const okP = X.FLOOD.filter(q => z[q.k] && z[q.k].status === 'ok'); const nm = X.FLOOD.filter(q => z[q.k] && z[q.k].status === 'not_modelled'); const fl = X.FLOOD.filter(q => z[q.k] && z[q.k].status === 'failed');
+      const items = []; ['q500', 'q100', 'q50', 'q10'].forEach(k => (F.features[k] || []).forEach(p => items.push({ g: { type: 'Polygon', coordinates: p.coordinates }, fill: X.FLOOD.find(q => q.k === k).color, alpha: 0.75, p: Object.assign({ _kind: 'flood', T: X.FLOOD.find(q => q.k === k).T }, p.props || {}) })));
       insertAfter('trees', { id: 'flood', title: t('g3.flood'), mainLayer: 'flood', src: { name: 'MITECO — SNCZI', detail: t('g3.floodDetail'), license: t('g3.floodLic') },
         spec: { images: ext.floodImg ? [Object.assign({ alpha: 0.35 }, ext.floodImg)] : [], context: { buildings: ctxB, streets: ctxS }, layers: [{ type: 'fill', items }, { type: 'line', items: (F.reaches || []).filter(r => r.geometry).map(r => ({ g: r.geometry, stroke: '#0B2E4F', width: 2.4 })) }] },
-        legend: X.FLOOD.map(q => ({ sw: q.color, label: `T = ${q.T} (${q.p} ${t('ly3.perYear')})`, key: q.k })).concat([{ line: '#0B2E4F', w: 2.4, label: t('ly3.arpsi') }]),
-        ind: [[t('g3.floodT10'), pct(z.q10.share, 1), 'est'], [t('g3.floodT100'), pct(z.q100.share, 1), 'est'], [t('g3.floodT500'), pct(z.q500.share, 1), 'est']],
-        chart: anyF ? { kind: 'hbars', unit: t('g3.shareUnit'), items: X.FLOOD.map(q => ({ label: 'T' + q.T, v: z[q.k].share * 100, col: q.color })) } : null,
-        find: [anyF ? t('g3.fFlood', { a: pct(z.q10.share, 1), b: pct(z.q100.share, 1), c: pct(z.q500.share, 1) }) : t('g3.fFloodNone'), (F.reaches || []).length ? t('g3.fReach', { r: [...new Set(F.reaches.map(r => r.name).filter(Boolean))].slice(0, 3).join(', ') }) : null, t('g3.floodCaveat')].filter(Boolean),
+        legend: X.FLOOD.map(q => ({ sw: q.color, label: `T = ${q.T} (${q.p} ${t('ly3.perYear')})${z[q.k] && z[q.k].status !== 'ok' ? ' — ' + (z[q.k].status === 'not_modelled' ? t('v5.notModelled') : t('v5.unavail')) : ''}`, key: q.k })).concat([{ line: '#0B2E4F', w: 2.4, label: t('ly3.arpsi') }]),
+        ind: [[t('g3.floodT10'), sh('q10'), 'est'], [t('v5.floodT50'), sh('q50'), 'est'], [t('g3.floodT100'), sh('q100'), 'est'], [t('g3.floodT500'), sh('q500'), 'est']],
+        chart: anyF ? { kind: 'hbars', unit: t('g3.shareUnit'), items: okP.map(q => ({ label: 'T' + q.T, v: z[q.k].share * 100, col: q.color })) } : null,
+        find: [okP.length ? (anyF ? t('v5.fFlood', { list: okP.map(q => `T${q.T} ${pct(z[q.k].share, 1)}`).join(' · ') }) : t('v5.fFloodZero', { list: okP.map(q => 'T' + q.T).join(', ') })) : null,
+          nm.length ? t('v5.fFloodNotModelled', { T: nm.map(q => 'T' + q.T).join(', '), r: [...new Set(nm.flatMap(q => z[q.k].missingReaches || []))].slice(0, 4).join('; ') }) : null,
+          fl.length ? t('v5.fFloodFailed', { T: fl.map(q => 'T' + q.T).join(', ') }) + ` <button class="btn btn-tiny" data-retry-ext="flood">${t('v4.retry')}</button>` : null,
+          okP.some(q => z[q.k].partial) ? t('v5.fFloodPartial') : null,
+          F.inconsistent ? t('v5.fFloodInconsistent') : null,
+          (F.reaches || []).length ? t('g3.fReach', { r: [...new Set(F.reaches.map(r => r.name).filter(Boolean))].slice(0, 3).join(', ') }) : null, t('g3.floodCaveat')].filter(Boolean),
         method: t('g3.mFlood') });
     } else insertAfter('trees', gap('flood', t('g3.flood'), 'flood'));
     // noise (display only — values are drawn by the service, not computed here)

@@ -192,11 +192,11 @@ def main():
             check('multi-area export (area_no on every feature) with indicators', 'area_indicators.geojson' in mfiles and '.gpkg' in mfiles, mfiles[:300])
 
             # ---------- 10: Exercise 1.2 ----------
-            pg.click('[data-ws-tab="ex12"]')
-            pg.evaluate('(ids) => { const p = GA.app.store.get(); p.ex12 = { ids, fabrics: {} }; GA.app.store.save(); GA.app.CMP.render(); }', pick[:2]); wait(pg, 'document.querySelector(".ex-card")', 60000)
+            # v5: one Comparison workspace; the exercise tools are its expandable "assignment" section
+            pg.evaluate('(ids) => { const p = GA.app.store.get(); p.compare = { ids, unified: true }; p.ex12 = { ids, fabrics: {} }; GA.app.store.save(); GA.app.CMP.open("ex12"); }', pick[:2]); wait(pg, 'document.querySelector("#ws-assign[open] .ex-card")', 60000)
             two = pg.evaluate('document.querySelector(".ex-status").innerText')
             check('Exercise 1.2 with 2 fabrics is marked incomplete (needs ≥4)', 'Incomplete' in two and 'at least 4' in two, two)
-            pg.evaluate('(ids) => { const p = GA.app.store.get(); p.ex12.ids = ids; GA.app.store.save(); GA.app.CMP.render(); }', pick); wait(pg, 'document.querySelectorAll(".ex-card").length === 4', 60000)
+            pg.evaluate('(ids) => { const p = GA.app.store.get(); p.compare.ids = ids; GA.app.store.save(); GA.app.CMP.render(); }', pick); wait(pg, 'document.querySelectorAll("#ws-assign[open] .ex-card").length === 4', 60000)
             four = pg.evaluate('document.querySelector(".ex-status").innerText')
             check('Exercise 1.2 with 4 fabrics meets the minimum', 'minimum of 4 is met' in four, four)
             pg.fill(f'[data-ex-just="{pick[0]}"]', 'Dense compact block fabric along the historic axis.'); pg.press(f'[data-ex-just="{pick[0]}"]', 'Tab')

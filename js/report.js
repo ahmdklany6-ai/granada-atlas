@@ -12,12 +12,8 @@
   const fmtLen = (m) => m >= 1000 ? unit(nf(m / 1000, 2), 'km') : unit(nf(m), 'm');
   const plain = (h) => String(h).replace(/<[^>]+>/g, '');
   const LOC = { ar: 'ar-u-nu-latn', he: 'he', en: 'en-GB' };
-  function fullDate(s) { // readable, localised; partial or free-text dates are shown as written
-    const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
-    if (!m) return `<span dir="auto">${esc(String(s).slice(0, 40))}</span>`;
-    const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
-    try { return `<span>${d.toLocaleDateString(LOC[I.lang] || 'en-GB', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })}</span>`; } catch (e) { return `<span dir="ltr">${m[1]}-${m[2]}-${m[3]}</span>`; }
-  }
+  function fullDate(s) { return root.GA.dates.html(s); } // parsed reliably; original metadata kept in the tooltip
+
 
   const STATUS = ['doc', 'est', 'gap', 'obs', 'hyp', 'int'];
   const badge = (k) => `<span class="badge badge-${k}" title="${esc(t('st.' + k + '.t'))}">${t('st.' + k)}</span>`;

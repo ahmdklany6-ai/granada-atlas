@@ -73,16 +73,34 @@
         if (inRings(pl.u[0], rings)) ds.push(0); if (inRings(pl.u[pl.u.length - 1], rings)) ds.push(pl.L);
         ds.sort((a, b) => a - b); const intervals = [];
         for (let i = 1; i < ds.length; i++) { const a = ds[i - 1], b = ds[i]; if (b - a < 0.3) continue; if (inRings(at(pl, (a + b) / 2), rings)) intervals.push([a, b]); }
-        if (intervals.length) intervals.forEach(([a, b]) => { const base = groundMin(a, b); cuts.push(Object.assign({ id: pr.id, name: pr.nm || null, type: pr.b, d0: a, d1: b, base, material }, height)); });
+        const attrs = { rs: pr.rs || null, rl: pr.rl != null && isFinite(+pr.rl) ? +pr.rl : null, lvu: pr.lvu != null && isFinite(+pr.lvu) ? +pr.lvu : null, hi: pr.hi || null, sd: pr.sd || null };
+        if (intervals.length) intervals.forEach(([a, b]) => { const base = groundMin(a, b); cuts.push(Object.assign({ id: pr.id, name: pr.nm || null, type: pr.b, d0: a, d1: b, base, material }, attrs, height)); });
         else {
           const c = rings[0].reduce((s, p) => [s[0] + p[0] / rings[0].length, s[1] + p[1] / rings[0].length], [0, 0]); const pj = project(pl, c);
           if (pj.off > 60) return; if (sideOf(c) !== look) return; if (height.h == null) { bgUnknown++; return; }
           const ext = rings[0].map(p => project(pl, p).d); const d0 = Math.min(...ext), d1 = Math.max(...ext); if (d1 - d0 < 0.5) return;
-          bg.push(Object.assign({ id: pr.id, d0, d1, off: pj.off, base: ground(pj.d), material }, height));
+          bg.push(Object.assign({ id: pr.id, name: pr.nm || null, d0, d1, off: pj.off, base: ground(pj.d), material }, attrs, height));
         }
       });
     });
     bg.sort((a, b) => b.off - a.off);
+    // ground surfaces from mapped data: green areas crossed (parks, grass, woodland), streets and watercourses crossed
+    const surf = { green: [], streets: [], water: [] }; let sErr = null;
+    try {
+      const bbL = G.bbox(sec.pts);
+      const [st, pk, lu, wa] = await Promise.all([D.chunked('streets', bbL, 30, 40).catch(() => []), D.chunked('parks', bbL, 30, 40).catch(() => []), D.chunked('landuse', bbL, 30, 40).catch(() => []), D.single('water').then(j => j.features).catch(() => [])]);
+      const inBB = (c) => c[0] >= bbL[0] - 0.003 && c[0] <= bbL[2] + 0.003 && c[1] >= bbL[1] - 0.003 && c[1] <= bbL[3] + 0.003;
+      const crossings = (fs, kind) => { const out = []; const seen = new Set(); fs.forEach(f => { const g = f.geometry; const lines = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : []; lines.forEach(Lc => { if (!Lc.some(inBB)) return; const C = Lc.map(U); for (let i = 1; i < pl.u.length; i++) for (let j = 1; j < C.length; j++) { const tt = segX(pl.u[i - 1], pl.u[i], C[j - 1], C[j]); if (tt == null) continue; const d = pl.cum[i - 1] + tt * (pl.cum[i] - pl.cum[i - 1]); const key = f.properties.id + ':' + Math.round(d); if (seen.has(key)) continue; seen.add(key); const a1 = Math.atan2(pl.u[i][1] - pl.u[i - 1][1], pl.u[i][0] - pl.u[i - 1][0]), a2 = Math.atan2(C[j][1] - C[j - 1][1], C[j][0] - C[j - 1][0]); out.push({ d, sin: Math.max(0.2, Math.abs(Math.sin(a1 - a2))), p: f.properties, kind }); } }); }); return out; };
+      crossings(st, 'street').forEach(c => { const p = c.p; const lanes = p.ln != null && isFinite(parseFloat(p.ln)) ? parseFloat(p.ln) : null; const sideW = /both/.test(p.sw || '') ? 2 : /left|right/.test(p.sw || '') ? 1 : 0;
+        const w = lanes ? lanes * 3.0 + sideW * 1.5 : null; surf.streets.push({ d: c.d, span: w ? w / c.sin : null, name: p.nm || null, hw: p.hw, surface: p.sf || null, lanes, sidewalk: p.sw || null, bridge: !!p.br, tunnel: !!p.tu }); });
+      surf.water = crossings(wa, 'water').map(c => ({ d: c.d, name: c.p.nm || null, kind: c.p.ww }));
+      const GREEN_LU = /^(grass|forest|flowerbed|meadow|orchard|village_green|recreation_ground|allotments)$/;
+      pk.concat(lu.filter(f => GREEN_LU.test(f.properties.lu || ''))).forEach(f => polysOf(f.geometry).forEach(poly => { const rings = poly.map(r => r.map(U)); const ds = [];
+        for (let i = 1; i < pl.u.length; i++) rings.forEach(R => { for (let j = 1; j < R.length; j++) { const tt = segX(pl.u[i - 1], pl.u[i], R[j - 1], R[j]); if (tt != null) ds.push(pl.cum[i - 1] + tt * (pl.cum[i] - pl.cum[i - 1])); } });
+        if (inRings(pl.u[0], rings)) ds.push(0); if (inRings(pl.u[pl.u.length - 1], rings)) ds.push(pl.L); ds.sort((a, b) => a - b);
+        for (let i = 1; i < ds.length; i++) { const a = ds[i - 1], b = ds[i]; if (b - a > 0.5 && inRings(at(pl, (a + b) / 2), rings)) surf.green.push({ d0: a, d1: b, name: f.properties.nm || null, kind: f.properties.le || f.properties.lu }); } }));
+      surf.streets.sort((a, b) => a.d - b.d);
+    } catch (e) { sErr = e.message; }
     // mapped trees: real positions (OSM snapshot) projected onto the line; only inside a disclosed corridor on the viewing
     // side (plus trees standing on the line itself). Recorded height / crown diameter are used when tagged; otherwise the
     // tree is drawn later as a fixed-size schematic symbol, never with an invented size.
@@ -101,7 +119,7 @@
     const A0 = PJ.EPSG25830.inverse(pl.u[0]), B0 = PJ.EPSG25830.inverse(pl.u[pl.u.length - 1]);
     const az = (Math.atan2(pl.u[pl.u.length - 1][0] - pl.u[0][0], pl.u[pl.u.length - 1][1] - pl.u[0][1]) * 180 / Math.PI + 360) % 360;
     return { id: sec.id, name: sec.name, pts: sec.pts, L: pl.L, step, dist, elev, min: Math.min(...ev), max: Math.max(...ev), missing,
-      maxGrad: maxG, maxGradAt: maxAt, baseline: k * step, hornMax, cuts: cuts.sort((a, b) => a.d0 - b.d0), bg, bgUnknown, trees, tErr, treeTs, corridor, nearTrees: NEAR, rowsNear, floorH, bErr, look,
+      maxGrad: maxG, maxGradAt: maxAt, baseline: k * step, hornMax, cuts: cuts.sort((a, b) => a.d0 - b.d0), bg, bgUnknown, trees, tErr, treeTs, corridor, nearTrees: NEAR, rowsNear, surf, sErr, floorH, bErr, look,
       ref: { a: pl.u[0], b: pl.u[pl.u.length - 1], aLL: A0, bLL: B0, azimuth: az }, vertexD: pl.cum.slice(), computed: new Date().toISOString() };
   }
 
@@ -143,81 +161,147 @@
     return 20;
   }
   const RED = '#992B2A', INK = '#1C1E21';
+  // Drawing hierarchy: cut buildings = red outline, white interior; elevations behind = fine grey, paler with distance;
+  // terrain = continuous dark line; trees = mapped positions. Detail has two levels: (1) evidence — OSM attributes
+  // (roof shape, roof levels, floors, underground floors, street surface/lanes, green areas) and details the user
+  // documented with a source; (2) optional illustrative detail (o.illustrative), drawn lighter and labelled as such.
+  const ROOF_TRI = /^(gabled|pyramidal|saltbox|crosspitched|gambrel)$/, ROOF_TRAP = /^(hipped|side_hipped|half-hipped|quadruple_saltbox|mansard)$/, ROOF_ARC = /^(round|dome|onion)$/;
+  const MAT = { tiles: '#B5654A', slate: '#59606A', metal: '#8A9097', green: '#6E9461', membrane: '#A8A8A8', render: '#D9D3C7', brick: '#B9785C', stone: '#BFB6A4', concrete: '#B3B5B8', glass: '#9DB4C0', timber: '#A07A52' };
   function paint(pt, prof, o) {
-    const W = pt.W, H = pt.H; const font = o.font; const rtl = I.dir() === 'rtl';
+    const W = pt.W, H = pt.H; const font = o.font; const rtl = I.dir() === 'rtl'; const notes = o.notes || {}; const ill = !!o.illustrative;
+    const fs = W >= 1200 ? 12 : 10; const floorH = prof.floorH || 3;
     pt.rect(0, 0, W, H, { fill: '#FFFFFF' });
-    const treeN = (prof.trees || []).filter(x => !x.row).length, treeH_n = (prof.trees || []).filter(x => !x.row && x.h).length;
-    const acc = t('sec.accuracy3') + ' ' + t('v4.secTrees', { c: nf(prof.corridor || 15), n: nf(treeN), near: nf(prof.nearTrees || 5), h: nf(treeH_n), r: nf(prof.rowsNear || 0), date: (prof.treeTs || '').slice(0, 10) || '—' }); const accLines = []; { let line = ''; acc.split(' ').forEach(w => { const tt = line ? line + ' ' + w : w; if (pt.measure(tt, `10px ${font}`) > W - 16 && line) { accLines.push(line); line = w; } else line = tt; }); if (line) accLines.push(line); }
-    const ml = 50, mr = 18, mt = 30, mb = 84 + 13 * accLines.length; const pw = W - ml - mr, ph = H - mt - mb;
+    const ml = 50, mr = 18, mt = 34, mb = 70; const pw = W - ml - mr, ph = H - mt - mb;
     const ve = o.ve === 'auto' || !o.ve ? chooseVE(prof, W, H) : +o.ve;
     const xs = pw / prof.L; const ys = xs * ve;
-    const treeH = (tr) => tr.h || 0; // schematic symbols have no height in metres
-    const tops = prof.cuts.concat(prof.bg).filter(c => c.h != null).map(c => c.base + c.h).concat((prof.trees || []).map(tr => tr.base + treeH(tr)));
-    const top = Math.max(prof.max, ...tops); const mid = (prof.min + top) / 2;
-    let lo = mid - ph / 2 / ys; if (lo > prof.min - 2) lo = prof.min - Math.max(2, (top - prof.min) * 0.08);
+    const treeH = (tr) => tr.h || 0;
+    const tops = prof.cuts.concat(prof.bg).filter(c => c.h != null).map(c => c.base + c.h + (c.rl ? 0 : 0)).concat((prof.trees || []).map(tr => tr.base + treeH(tr)));
+    const bottoms = prof.cuts.filter(c => c.lvu && c.base != null).map(c => c.base - c.lvu * floorH);
+    const top = Math.max(prof.max, ...tops); const bot = Math.min(prof.min, ...bottoms); const mid = (bot + top) / 2;
+    let lo = mid - ph / 2 / ys; if (lo > bot - 2) lo = bot - Math.max(2, (top - bot) * 0.08);
+    if ((top - bot) * ys > ph * 0.94) lo = bot - (ph * 0.04) / ys; // too tall for the chosen exaggeration: keep the ground in view, let the tops run off
     const X = (d) => ml + d * xs, Y = (e) => mt + ph - (e - lo) * ys;
     const hiE = lo + ph / ys; const eStep = [1, 2, 5, 10, 20, 25, 50, 100].find(s => (hiE - lo) / s <= 7) || 200;
+    const hits = []; const flags = { roofSchematic: false, roofLevels: false, basement: false, illustrative: false, documented: false, streetEst: false, green: false };
     pt.clip(ml, mt, pw, ph);
-    for (let e = Math.ceil(lo / eStep) * eStep; e <= hiE; e += eStep) pt.path([[ml, Y(e)], [ml + pw, Y(e)]], { stroke: '#EFEFED', lw: 0.8 });
-    // trees: recorded size to scale; otherwise a fixed-size schematic symbol (dashed). Background = lighter and thinner.
+    for (let e = Math.ceil(lo / eStep) * eStep; e <= hiE; e += eStep) pt.path([[ml, Y(e)], [ml + pw, Y(e)]], { stroke: '#F1F1EF', lw: 0.7 });
+    // ---- roof geometry for an envelope [x0,x1] whose eaves are at yE (screen) ----
+    const roofPts = (shape, x0, x1, yE, rh) => { const yR = yE - rh; const w = x1 - x0;
+      if (ROOF_TRI.test(shape)) return [[x0, yE], [(x0 + x1) / 2, yR], [x1, yE]];
+      if (ROOF_TRAP.test(shape)) return [[x0, yE], [x0 + w * 0.3, yR], [x1 - w * 0.3, yR], [x1, yE]];
+      if (shape === 'skillion') return [[x0, yE], [x0, yR], [x1, yE]];
+      if (ROOF_ARC.test(shape)) { const out = []; for (let i = 0; i <= 16; i++) { const a = Math.PI * i / 16; out.push([x0 + w / 2 - Math.cos(a) * w / 2, yE - Math.sin(a) * rh]); } return out; }
+      return null; };
+    const roofH = (c, w_m) => c.rl ? c.rl * floorH : Math.max(1.2, Math.min(3.5, w_m * 0.25)); // roof:levels × floor height, else schematic
+    const matBand = (pts, col, off) => { if (!col) return; pt.path(pts.map(([x, y]) => [x, y - off]), { stroke: col, lw: 2.2, alpha: 0.85 }); };
+    // ---- textures (subtle, exterior surfaces / background elevations only) ----
+    const texture = (x0, y0, x1, y1, mat, alpha) => { const col = MAT[mat]; if (!col) return; pt.rect(x0, y0, x1 - x0, y1 - y0, { fill: col, alpha: 0.12 * alpha });
+      if (mat === 'brick') { const sp = Math.max(3, 0.6 * ys); for (let y = y1 - sp; y > y0; y -= sp) pt.path([[x0, y], [x1, y]], { stroke: col, lw: 0.4, alpha: 0.5 * alpha }); }
+      else if (mat === 'stone') { const sp = Math.max(5, 1.2 * ys); for (let y = y1 - sp; y > y0; y -= sp) pt.path([[x0, y], [x1, y]], { stroke: col, lw: 0.5, alpha: 0.5 * alpha }); }
+      else if (mat === 'glass') { const sp = Math.max(6, 1.5 * xs); for (let x = x0 + sp; x < x1; x += sp) pt.path([[x, y0], [x, y1]], { stroke: col, lw: 0.4, alpha: 0.5 * alpha }); } };
+    const windows = (x0, x1, base, levels, alpha) => { // illustrative openings: one row per floor, regular spacing — not surveyed
+      const ww = 1.2 * xs, wh = 1.4 * ys, sp = 3.2 * xs; if (ww < 1.5 || wh < 1.5) return; flags.illustrative = true;
+      for (let k = 0; k < levels; k++) { const yb = Y(base + k * floorH + 0.9); for (let x = x0 + sp / 2; x + ww < x1 - sp / 4; x += sp) pt.rect(x, yb - wh, ww, wh, { stroke: '#B9BBBE', lw: 0.5, alpha, dash: [1.5, 1.2] }); } };
+    // ---- trees ----
     const drawTree = (tr) => {
       if (tr.base == null) return; const near = tr.near; const col = near ? '#4E6B45' : '#93A68B'; const lw = near ? 1.1 : 0.7; const alpha = near ? 1 : 0.55;
-      const x = X(tr.d), y0 = Y(tr.base);
-      if (tr.h) { const top = Y(tr.base + tr.h); const r = tr.crown ? Math.max(2, tr.crown / 2 * xs) : Math.max(3, Math.min((y0 - top) * 0.3, tr.h * 0.3 * xs)); const cy = top + Math.min(r, (y0 - top) * 0.45);
+      const x = X(tr.d), y0 = Y(tr.base); const sc = W >= 1200 ? 1.4 : 1;
+      if (tr.h) { const tp = Y(tr.base + tr.h); const r = tr.crown ? Math.max(2, tr.crown / 2 * xs) : Math.max(3, Math.min((y0 - tp) * 0.3, tr.h * 0.3 * xs)); const cy = tp + Math.min(r, (y0 - tp) * 0.45);
         pt.path([[x, y0], [x, cy + r * 0.5]], { stroke: col, lw, alpha }); pt.circle(x, cy, r, { fill: '#FFFFFF', stroke: col, lw, alpha, dash: tr.crown ? null : [3, 2] }); }
-      else { const r = tr.row ? 4 : 5; pt.path([[x, y0], [x, y0 - 9]], { stroke: col, lw, alpha }); pt.circle(x, y0 - 9 - r, r, { fill: '#FFFFFF', stroke: col, lw, alpha, dash: [2, 1.6] }); if (tr.row) pt.text('row', x, y0 - 9 - 2 * r - 3, { font, size: 8, align: 'center', color: col }); }
+      else { const r = (tr.row ? 4 : 5) * sc; pt.path([[x, y0], [x, y0 - 9 * sc]], { stroke: col, lw, alpha }); pt.circle(x, y0 - 9 * sc - r, r, { fill: '#FFFFFF', stroke: col, lw, alpha, dash: [2, 1.6] }); if (tr.row) pt.text(t('v5.row'), x, y0 - 9 * sc - 2 * r - 3, { font, size: 8, align: 'center', color: col }); }
     };
     const trs = (prof.trees || []).slice().sort((a, b) => b.off - a.off);
-    // depth: background buildings and background trees painted together from far to near (painter's order), so a
-    // building in front of a tree hides it and a tree in front of a building is drawn over it; farther = paler
-    const drawBg = (b) => { const fade = Math.max(0.25, 1 - b.off / 70); const col = b.material ? '#8A8F96' : '#B9BBBE'; pt.rect(X(b.d0), Y(b.base + b.h), X(b.d1) - X(b.d0), Y(b.base) - Y(b.base + b.h), { fill: '#FFFFFF', stroke: col, lw: 0.7, alpha: fade }); };
+    // ---- background elevations (with mapped roof shapes, documented materials, illustrative openings) ----
+    const drawBg = (b) => {
+      const fade = Math.max(0.25, 1 - b.off / 70); const n = notes[b.id] || {}; const col = '#B9BBBE';
+      const x0 = X(b.d0), x1 = X(b.d1); const shape = n.roof || b.rs; const rh = shape && !/^(flat|many|multi)$/.test(shape) ? roofH(b, b.d1 - b.d0) : 0;
+      const hWall = b.src === 'height' ? Math.max(1, b.h - rh) : b.h; const yE = Y(b.base + hWall), yB = Y(b.base);
+      pt.rect(x0, yE, x1 - x0, yB - yE, { fill: '#FFFFFF', stroke: col, lw: 0.7, alpha: fade });
+      if (n.wall) { texture(x0, yE, x1, yB, n.wall, fade); flags.documented = true; }
+      if (n.openings === 'regular' && b.lv) { windows(x0, x1, b.base, b.lv, fade); flags.documented = true; } else if (ill && b.lv) windows(x0, x1, b.base, b.lv, fade * 0.8);
+      if (rh) { const rp = roofPts(shape, x0, x1, yE, rh * ys); if (rp) { pt.path(rp, { stroke: col, lw: 0.7, alpha: fade, fill: '#FFFFFF' }); if (n.roofMat) matBand(rp, MAT[n.roofMat], 1.5); } }
+      hits.push({ id: b.id, kind: 'bg', x0, x1, y0: Y(b.base + b.h), y1: yB, b });
+    };
     prof.bg.map(b => ({ off: b.off, f: () => drawBg(b) })).concat(trs.filter(tr => !tr.near).map(tr => ({ off: tr.off, f: () => drawTree(tr) }))).sort((a, b) => b.off - a.off).forEach(x => x.f());
     trs.filter(tr => tr.near).forEach(drawTree);
-    // ground
+    // ---- terrain and ground surfaces ----
     const g = []; prof.dist.forEach((d, i) => { const e = prof.elev[i]; if (e != null) g.push([X(d), Y(e)]); });
-    if (g.length) { pt.path(g.concat([[g[g.length - 1][0], mt + ph + 2], [g[0][0], mt + ph + 2]]), { fill: '#F3F3F1', close: true }); pt.path(g, { stroke: INK, lw: 1.6 }); }
-    // cut buildings: red envelope, white interior
-    prof.cuts.forEach(c => {
-      if (c.base == null) return; const x0 = X(c.d0), x1 = X(c.d1); const y0 = Y(c.base);
-      if (c.h == null) { pt.path([[x0, y0 - 1.5], [x1, y0 - 1.5]], { stroke: RED, lw: 3 }); return; }
-      const y1 = Y(c.base + c.h);
-      pt.rect(x0, y1, x1 - x0, y0 - y1, { fill: '#FFFFFF' });
-      if (c.src === 'height') pt.path([[x0, y0], [x0, y1], [x1, y1], [x1, y0]], { stroke: RED, lw: 2.2 });
-      else { pt.path([[x0, y0], [x0, y1]], { stroke: RED, lw: 2.2 }); pt.path([[x1, y0], [x1, y1]], { stroke: RED, lw: 2.2 }); pt.path([[x0, y1], [x1, y1]], { stroke: RED, lw: 2.2, dash: [4, 3] }); }
-      if (o.floors && c.lv && c.lv > 1) for (let k = 1; k < c.lv; k++) { const yy = Y(c.base + c.h * k / c.lv); pt.path([[x0 + 1, yy], [x1 - 1, yy]], { stroke: RED, lw: 0.5, dash: [2, 2], alpha: 0.6 }); }
+    const gy = (d) => { const i = Math.max(0, Math.min(prof.elev.length - 1, Math.round(d / prof.step))); return prof.elev[i] == null ? null : Y(prof.elev[i]); };
+    if (g.length) pt.path(g.concat([[g[g.length - 1][0], mt + ph + 2], [g[0][0], mt + ph + 2]]), { fill: '#F4F3F0', close: true });
+    const sf = prof.surf || { green: [], streets: [], water: [] };
+    sf.green.forEach(z => { flags.green = true; const seg = g.filter(p => p[0] >= X(z.d0) && p[0] <= X(z.d1)); if (seg.length > 1) { pt.path(seg, { stroke: '#7FA071', lw: 3.2, alpha: 0.7 }); for (let x = X(z.d0) + 3; x < X(z.d1); x += 5) { const y = gy((x - ml) / xs); if (y != null) pt.path([[x, y - 1], [x + 1.2, y - 4]], { stroke: '#7FA071', lw: 0.6, alpha: 0.8 }); } } });
+    sf.streets.forEach(z => { const y = gy(z.d); if (y == null) return; if (z.span) { flags.streetEst = true; const a = X(z.d - z.span / 2), b2 = X(z.d + z.span / 2); pt.path([[a, y], [b2, y]], { stroke: '#5E636A', lw: 2.6, alpha: 0.75 }); if (/sett|cobble|paving|stone/.test(z.surface || '')) for (let x = a + 2; x < b2; x += 3) pt.path([[x, y + 1.8], [x, y + 3.4]], { stroke: '#5E636A', lw: 0.5 }); pt.path([[a, y - 3], [a, y + 3]], { stroke: '#5E636A', lw: 0.6 }); pt.path([[b2, y - 3], [b2, y + 3]], { stroke: '#5E636A', lw: 0.6 }); } else pt.path([[X(z.d), y - 3], [X(z.d), y + 3]], { stroke: '#5E636A', lw: 0.9 }); });
+    sf.water.forEach(z => { const y = gy(z.d); if (y == null) return; const x = X(z.d); pt.path([[x - 5, y + 2], [x - 2.5, y], [x, y + 2], [x + 2.5, y], [x + 5, y + 2]], { stroke: '#4E7FA6', lw: 1.1 }); });
+    if (g.length) pt.path(g, { stroke: INK, lw: 1.7 });
+    // ---- cut buildings: red outline, white interior; mapped roof shape; floors and underground floors from OSM ----
+    prof.cuts.forEach((c, ci) => {
+      if (c.base == null) return; const x0 = X(c.d0), x1 = X(c.d1); const y0 = Y(c.base); const n = notes[c.id] || {};
+      if (n.wall || n.roofMat || n.balconies) flags.documented = true;
+      if (c.h == null) { pt.path([[x0, y0 - 1.5], [x1, y0 - 1.5]], { stroke: RED, lw: 3 }); hits.push({ id: c.id, kind: 'cut', x0, x1, y0: y0 - 12, y1: y0 + 2, c }); return; }
+      const shape = n.roof || c.rs; const pitched = shape && !/^(flat|many|multi|not applicable)$/.test(shape);
+      const rh = pitched ? roofH(c, c.d1 - c.d0) : 0; if (pitched) { if (c.rl) flags.roofLevels = true; else flags.roofSchematic = true; }
+      const hWall = c.src === 'height' ? Math.max(1, c.h - rh) : c.h; const yE = Y(c.base + hWall);
+      // exterior material band (documented) — outside the walls, interior stays white
+      if (n.wall && MAT[n.wall]) { pt.path([[x0 - 2, y0], [x0 - 2, yE]], { stroke: MAT[n.wall], lw: 2.2, alpha: 0.85 }); pt.path([[x1 + 2, y0], [x1 + 2, yE]], { stroke: MAT[n.wall], lw: 2.2, alpha: 0.85 }); }
+      pt.rect(x0, yE, x1 - x0, y0 - yE, { fill: '#FFFFFF' });
+      const solid = c.src === 'height';
+      pt.path([[x0, y0], [x0, yE]], { stroke: RED, lw: 2.2 }); pt.path([[x1, y0], [x1, yE]], { stroke: RED, lw: 2.2 });
+      const rp = pitched ? roofPts(shape, x0, x1, yE, rh * ys) : null;
+      if (rp) { pt.path(rp.concat([[rp[0][0], rp[0][1]]]), { fill: '#FFFFFF' }); pt.path(rp, { stroke: RED, lw: c.rl || n.roofH ? 2.2 : 1.6, dash: c.rl || n.roofH ? null : [4, 3] }); pt.path([[x0, yE], [x1, yE]], { stroke: RED, lw: 0.6, alpha: 0.5 }); if (n.roofMat) matBand(rp, MAT[n.roofMat], 2.5); }
+      else pt.path([[x0, yE], [x1, yE]], { stroke: RED, lw: 2.2, dash: solid ? null : [4, 3] });
+      if (shape && /^(many|multi)$/.test(shape)) pt.text(t('v5.roofComplex'), (x0 + x1) / 2, yE + 10, { font, size: 8, align: 'center', color: RED });
+      if ((o.floors || ill) && c.lv && c.lv > 1) for (let k = 1; k < c.lv; k++) { const yy = Y(c.base + hWall * k / c.lv); pt.path([[x0 + 1, yy], [x1 - 1, yy]], { stroke: RED, lw: 0.5, dash: [2, 2], alpha: 0.55 }); }
+      if (c.lvu) { flags.basement = true; const yb = Y(c.base - c.lvu * floorH); pt.path([[x0, y0], [x0, yb], [x1, yb], [x1, y0]], { stroke: RED, lw: 0.9, dash: [3, 2], alpha: 0.7 }); }
+      // balconies: only where documented by the user (with a source); on facades that face open ground
+      if (n.balconies === 'yes' && c.lv) {
+        const floors = parseFloors(n.balconyFloors, c.lv); const prev = prof.cuts[ci - 1], next = prof.cuts[ci + 1];
+        const sides = []; if (!prev || prev.d1 < c.d0 - 0.5) sides.push(-1); if (!next || next.d0 > c.d1 + 0.5) sides.push(1);
+        const dep = 1.2 * xs; sides.forEach(sd => floors.forEach(k => { const yy = Y(c.base + hWall * k / c.lv); const xa = sd < 0 ? x0 : x1, xb = xa + sd * dep; pt.path([[xa, yy], [xb, yy]], { stroke: '#3C4046', lw: 1.6 }); pt.path([[xb, yy], [xb, yy - 1.0 * ys]], { stroke: '#3C4046', lw: 0.7 }); pt.path([[xa, yy - 1.0 * ys], [xb, yy - 1.0 * ys]], { stroke: '#3C4046', lw: 0.7 }); }));
+      }
+      hits.push({ id: c.id, kind: 'cut', x0, x1, y0: Y(c.base + c.h), y1: y0, c });
     });
     pt.unclip();
-    // labels on cut buildings
-    let lastX = -1e9; prof.cuts.forEach(c => { if (c.base == null) return; const xm = X((c.d0 + c.d1) / 2); if (xm - lastX < 28) return; const y = Math.max(mt + 10, Y(c.base + (c.h || 0)) - 3); const txt = c.h == null ? '?' : c.src === 'height' ? nf(c.h, 1) + ' m' : '≈' + nf(c.h, 0) + ' m'; pt.text(txt, xm, y, { font, size: 10, align: 'center', color: c.h == null ? RED : INK }); lastX = xm; });
+    // ---- labels: heights on cut buildings, street and watercourse names below the ground ----
+    let lastX = -1e9; prof.cuts.forEach(c => { if (c.base == null) return; const xm = X((c.d0 + c.d1) / 2); if (xm - lastX < 30) return; const y = Math.max(mt + 10, Y(c.base + (c.h || 0)) - 4); const txt = c.h == null ? '?' : c.src === 'height' ? nf(c.h, 1) + ' m' : '≈' + nf(c.h, 0) + ' m'; pt.text(txt, xm, y, { font, size: fs, align: 'center', color: c.h == null ? RED : INK }); lastX = xm; });
+    let lastS = -1e9; const named = new Set(); sf.streets.concat(sf.water.map(w => Object.assign({ water: true }, w))).sort((a, b) => a.d - b.d).forEach(z => { const x = X(z.d); const y = gy(z.d); if (y == null || !z.name || named.has(z.name)) return; const tw = pt.measure(z.name, `${fs - 1}px ${font}`); if (x - tw / 2 < lastS + 8) return; pt.text(z.name, x, Math.min(mt + ph - 4, y + fs + 8), { font, size: fs - 1, align: 'center', color: z.water ? '#4E7FA6' : '#5E636A', dir: 'auto' }); lastS = x + tw / 2; named.add(z.name); });
     // scale figure (1.75 m) near A
     { const d = Math.min(prof.L * 0.03 + 2 / xs, prof.L * 0.1); const i = Math.max(0, Math.min(prof.dist.length - 1, Math.round(d / prof.step))); const e = prof.elev[i]; if (e != null) { const x = X(prof.dist[i]), y = Y(e), hh = 1.75 * ys; if (hh > 4) { pt.path([[x, y], [x, y - hh * 0.82]], { stroke: '#5E636A', lw: Math.max(0.8, hh * 0.06) }); pt.circle(x, y - hh * 0.9, Math.max(1, hh * 0.09), { fill: '#5E636A' }); } } }
-    // axes
-    pt.path([[ml, mt], [ml, mt + ph]], { stroke: INK, lw: 1 }); // elevation axis only: no distance axis (the scale bar gives distance)
-    for (let e = Math.ceil(lo / eStep) * eStep; e <= hiE; e += eStep) pt.text(nf(e), ml - 5, Y(e), { font, size: 10, align: 'right', baseline: 'middle', color: '#3C4046' });
-    pt.text(t('sec.elevAxis'), 12, mt + ph / 2, { font, size: 10, align: 'center', baseline: 'middle', color: '#3C4046', rotate: -Math.PI / 2, dir: I.dir() });
-    // graphic scale bars: horizontal and vertical (they differ when exaggerated)
-    { const len = [5, 10, 20, 25, 50, 100, 200, 500].find(v => v * xs >= 60) || 1000; const x0 = ml, y0 = mt + ph + 32; pt.rect(x0, y0, len * xs, 3, { fill: INK }); pt.text(`${len} m`, x0 + len * xs + 4, y0 + 2, { font, size: 10, baseline: 'middle' });
-      const vl = [50, 20, 10, 5, 2, 1].find(v => v * ys <= 30) || 1; const vx = x0 + len * xs + 52; pt.rect(vx, y0 + 3 - vl * ys, 3, vl * ys, { fill: RED }); pt.text(`${vl} m ↕`, vx + 6, y0 + 2, { font, size: 10, baseline: 'middle', color: RED }); }
-    // vertex letters and look direction
+    // elevation axis only (no distance axis): the scale bar gives distance
+    pt.path([[ml, mt], [ml, mt + ph]], { stroke: INK, lw: 1 });
+    for (let e = Math.ceil(lo / eStep) * eStep; e <= hiE; e += eStep) pt.text(nf(e), ml - 5, Y(e), { font, size: fs - 1, align: 'right', baseline: 'middle', color: '#3C4046' });
+    pt.text(t('sec.elevAxis'), 12, mt + ph / 2, { font, size: fs - 1, align: 'center', baseline: 'middle', color: '#3C4046', rotate: -Math.PI / 2, dir: I.dir() });
+    // discreet scale bar outside the drawing (+ vertical bar showing the exaggeration)
+    { const len = [5, 10, 20, 25, 50, 100, 200, 500].find(v => v * xs >= 60) || 1000; const x0 = ml, y0 = mt + ph + 22; pt.rect(x0, y0, len * xs, 2.5, { fill: INK }); pt.text(`${len} m`, x0 + len * xs + 5, y0 + 2, { font, size: fs - 1, baseline: 'middle' });
+      if (ve !== 1) { const vl = [50, 20, 10, 5, 2, 1].find(v => v * ys <= 30) || 1; const vx = x0 + len * xs + 56; pt.rect(vx, y0 + 2.5 - vl * ys, 2.5, vl * ys, { fill: RED }); pt.text(`${vl} m ↕`, vx + 6, y0 + 2, { font, size: fs - 1, baseline: 'middle', color: RED }); } }
+    // vertex letters
     const Ls = LETTERS(prof.vertexD.length);
-    prof.vertexD.forEach((d, i) => { const x = X(d); pt.path([[x, mt], [x, mt + ph]], { stroke: RED, lw: 0.8, dash: [2, 2] }); pt.text(Ls[i], x + (i === 0 ? 3 : i === Ls.length - 1 ? -3 : 0), mt - 6, { font, size: 12, weight: 700, color: RED, align: i === 0 ? 'left' : i === Ls.length - 1 ? 'right' : 'center' }); });
-    // header line: name, VE, location reference
+    prof.vertexD.forEach((d, i) => { const x = X(d); pt.path([[x, mt], [x, mt + ph]], { stroke: RED, lw: 0.8, dash: [2, 2] }); pt.text(Ls[i], x + (i === 0 ? 3 : i === Ls.length - 1 ? -3 : 0), mt - 8, { font, size: fs + 2, weight: 700, color: RED, align: i === 0 ? 'left' : i === Ls.length - 1 ? 'right' : 'center' }); });
+    // title (with the vertical exaggeration stated) and one concise essential note; long methods live outside the drawing
     const veTxt = ve === 1 ? t('sec.ve1') : t('sec.ve', { v: ve }); const r = prof.ref;
-    const loc = r ? `A ${r.aLL[1].toFixed(5)}, ${r.aLL[0].toFixed(5)} → B ${r.bLL[1].toFixed(5)}, ${r.bLL[0].toFixed(5)} · ${t('sec.azimuth')} ${nf(r.azimuth)}° · ${t('sec.look_' + (prof.look || 'left'))}` : '';
     const tx = rtl ? W - 8 : 8; const al = rtl ? 'right' : 'left';
-    pt.text((prof.name || '') + ' · ' + veTxt, tx, H - 26 - 13 * accLines.length, { font, size: 11, weight: 600, align: al, dir: I.dir() });
-    pt.text(loc, tx, H - 13 - 13 * accLines.length, { font, size: 10, align: al, color: '#3C4046', dir: 'ltr' });
-    accLines.forEach((l, i) => pt.text(l, tx, H - 4 - 13 * (accLines.length - 1 - i), { font, size: 10, align: al, color: '#5E636A', dir: I.dir() }));
-    return { ve, X, Y };
+    pt.text((prof.name || '') + ' · ' + veTxt, tx, H - 30, { font, size: fs + 1, weight: 700, align: al, dir: I.dir(), color: ve === 1 ? INK : RED });
+    const ess = [t('v5.secEss', { c: nf(prof.corridor || 15) }), flags.roofSchematic ? t('v5.secRoofSch') : '', ill && flags.illustrative ? t('v5.secIll') : '', flags.documented ? t('v5.secDoc') : ''].filter(Boolean).join(' ');
+    pt.text(ess, tx, H - 16, { font, size: fs - 1, align: al, color: '#3C4046', dir: I.dir() });
+    const attrib = `IGN MDT25 · OpenStreetMap (ODbL)${(prof.trees || []).length ? ' · OSM trees ' + (prof.treeTs || '').slice(0, 10) : ''}` + (r ? ` · A ${r.aLL[1].toFixed(5)}, ${r.aLL[0].toFixed(5)} → B ${r.bLL[1].toFixed(5)}, ${r.bLL[0].toFixed(5)} · ${nf(r.azimuth)}°` : '');
+    pt.text(attrib, tx, H - 4, { font, size: fs - 2, align: al, color: '#6B7077', dir: 'ltr' });
+    return { ve, X, Y, hits, flags, xs, ys };
   }
+  function parseFloors(s, lv) { // "2-4", "1,3", "all" → floor indices (1 = first floor above ground)
+    const out = new Set(); const str = String(s || '').trim().toLowerCase();
+    if (!str || /all|todas|כל|جميع/.test(str)) { for (let k = 1; k < lv; k++) out.add(k); return [...out]; }
+    str.split(/[,;\s]+/).forEach(p => { const m = p.match(/^(\d+)(?:-(\d+))?$/); if (!m) return; const a = +m[1], b = m[2] ? +m[2] : a; for (let k = a; k <= b && k < lv; k++) if (k >= 1) out.add(k); });
+    return [...out];
+  }
+  const withNotes = (o) => Object.assign({ notes: (root.GA.store && root.GA.store.get && root.GA.store.get().buildingNotes) || {} }, o || {});
+  const optsFor = (s) => ({ ve: (s && s.ve) || 'auto', floors: !!(s && s.floors), illustrative: !!(s && s.ill) });
   function draw(canvas, prof, o) {
-    o = o || {}; const ratio = o.ratio || (root.devicePixelRatio || 1); const W = o.w || 600, H = o.h || 300;
+    o = withNotes(o); const ratio = o.ratio || (root.devicePixelRatio || 1); const W = o.w || 600, H = o.h || 300;
     canvas.style.width = o.fluid ? '100%' : W + 'px'; if (!o.fluid) canvas.style.height = H + 'px';
     const font = getComputedStyle(document.documentElement).getPropertyValue('--f-ui') || 'sans-serif';
     return paint(canvasPainter(canvas, W, H, ratio), prof, Object.assign({ font }, o));
   }
   function svg(prof, o) {
-    o = o || {}; const W = o.w || 1600, H = o.h || 720; const font = 'IBM Plex Sans, IBM Plex Sans Arabic, IBM Plex Sans Hebrew, Arial, sans-serif';
+    o = withNotes(o); const W = o.w || 1600, H = o.h || 720; const font = 'IBM Plex Sans, IBM Plex Sans Arabic, IBM Plex Sans Hebrew, Arial, sans-serif';
     const pt = svgPainter(W, H, font); paint(pt, prof, Object.assign({ font }, o)); return pt.svg();
   }
 
@@ -287,5 +371,5 @@
     return api;
   }
 
-  root.GA.section = { compute, draw, svg, tool, chooseVE, LETTERS, polyline };
+  root.GA.section = { compute, draw, svg, tool, chooseVE, LETTERS, polyline, optsFor, parseFloors, MAT };
 })(window);

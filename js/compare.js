@@ -46,7 +46,15 @@
     cache.set(key, p); p.catch(() => cache.delete(key)); return p;
   }
 
-  // ---------- indicators (null = no data) ----------
+  // ---------- indicators (null = no data; _why says why a value is missing) ----------
+  const fz = (X, k) => { const z = X.R.flood && X.R.flood.zones[k]; return z && z.status === 'ok' ? z.share : null; };
+  function whyOf(X) {
+    const w = {}; const st = X.results || {};
+    ['q10', 'q50', 'q100', 'q500'].forEach(k => { const key = 'flood_t' + k.slice(1) + '_share'; const z = X.R.flood && X.R.flood.zones[k]; w[key] = !X.R.flood ? (st.flood && st.flood.state === 'loading' ? 'loading' : 'unavailable') : z.status === 'not_modelled' ? 'not_modelled' : z.status === 'failed' ? 'unavailable' : null; });
+    if (!X.R.canopy) w.canopy_mean = st.tcd && st.tcd.state === 'loading' ? 'loading' : 'unavailable';
+    return w;
+  }
+  const whyLabel = (why) => why === 'not_modelled' ? t('v5.notModelled') : why === 'loading' ? t('v5.loading') : why === 'unavailable' ? t('v5.unavail') : t('nodata');
   function indicators(X) {
     const o = X.R.osm, B = o.buildings, aKm2 = X.R.area_m2 / 1e6, T = X.R.terrain;
     const lvs = o.geo.buildings.features.map(f => f.properties.levels).filter(v => v != null).sort((a, b) => a - b);
@@ -61,7 +69,7 @@
       places_n: X.R.places ? X.R.places.n : null, places_per_km2: X.R.places ? X.R.places.perKm2 : null, places_mix: X.R.places && X.R.places.n ? X.R.places.evenness : null, places_food_share: X.R.places && X.R.places.n ? (X.R.places.by.food_and_drink || 0) / X.R.places.n : null, places_closed_share: X.R.places && X.R.places.nAll ? X.R.places.closed / X.R.places.nAll : null,
       bus_mapped: X.R.bus ? X.R.bus.mapped : null, bus_sched: X.R.bus ? X.R.bus.withService : null, bus_sched_share: X.R.bus && X.R.bus.mapped ? X.R.bus.withService / X.R.bus.mapped : null, bus_max_trips: X.R.bus && X.R.bus.mapped ? X.R.bus.maxTrips : null, bus_routes: X.R.bus && X.R.bus.mapped ? X.R.bus.routes.length : null, bus_nearest_m: X.R.bus ? X.R.bus.nearestServed : null,
       canopy_mean: X.R.canopy ? X.R.canopy.mean / 100 : null, trees_mapped: X.R.trees ? X.R.trees.n : null, trees_per_ha: X.R.trees ? X.R.trees.n / (X.R.area_m2 / 1e4) : null,
-      flood_t10_share: X.R.flood ? X.R.flood.zones.q10.share : null, flood_t100_share: X.R.flood ? X.R.flood.zones.q100.share : null, flood_t500_share: X.R.flood ? X.R.flood.zones.q500.share : null,
+      flood_t10_share: fz(X, 'q10'), flood_t50_share: fz(X, 'q50'), flood_t100_share: fz(X, 'q100'), flood_t500_share: fz(X, 'q500'), _why: whyOf(X),
     };
   }
   const IND_ROWS = [
@@ -73,7 +81,7 @@
     ['places_n', 'cmp3.placesN', (v) => nf(v)], ['places_per_km2', 'cmp3.placesD', (v) => nf(v, 0)], ['places_mix', 'cmp3.mix', (v) => nf(v, 2)], ['places_food_share', 'cmp3.food', 'pct'], ['places_closed_share', 'cmp3.closed', 'pct'],
     ['bus_mapped', 'cmp3.busMapped', (v) => nf(v)], ['bus_sched', 'cmp3.busSched', (v) => nf(v)], ['bus_max_trips', 'cmp3.busMax', (v) => nf(v)], ['bus_routes', 'cmp3.busRoutes', (v) => nf(v)], ['bus_nearest_m', 'cmp3.busNear', (v) => nf(v) + ' m'],
     ['canopy_mean', 'cmp3.canopy', 'pct'], ['trees_mapped', 'cmp3.trees', (v) => nf(v)], ['trees_per_ha', 'cmp3.treesHa', (v) => nf(v, 1)],
-    ['flood_t10_share', 'cmp3.flood10', 'pct'], ['flood_t100_share', 'cmp3.flood100', 'pct'], ['flood_t500_share', 'cmp3.flood500', 'pct'],
+    ['flood_t10_share', 'cmp3.flood10', 'pct'], ['flood_t50_share', 'v5.floodT50', 'pct'], ['flood_t100_share', 'cmp3.flood100', 'pct'], ['flood_t500_share', 'cmp3.flood500', 'pct'],
     ['relief_m', 'g.relief', (v) => nf(v) + ' m'], ['steep_share_15deg', 'g.steepShare', 'pct'], ['slope_p90_deg', 'g.slopeP90', (v) => nf(v, 1) + '°'],
   ];
   const fmtInd = (row, v) => v == null || !isFinite(v) ? null : row[2] === 'pct' ? nf(v * 100, v < 0.1 ? 1 : 0) + I.pctSign() : row[2](v);
@@ -129,25 +137,27 @@
   // ---------- workspace ----------
   function create(opts) {
     const { store, toast, onClose, onExport, getSections } = opts;
-    let tab = 'compare'; let topics = ['fg', 'heights', 'streets', 'landuse']; let busy = false; let lastXs = null; let errors = {};
-    const el = document.getElementById('workspace');
-    const proj = () => { const p = store.get(); p.compare = p.compare || { ids: [] }; p.ex12 = p.ex12 || { ids: [], fabrics: {} }; return p; };
+    // One workspace: comparison of the selected fabrics + the Exercise 1.2 submission tools (an expandable section).
+    let topics = ['fg', 'heights', 'streets', 'landuse']; let busy = false; let lastXs = null; let errors = {}; let assignOpen = false;
+    const el = document.getElementById('workspace'); const MAX = 8;
+    const proj = () => { const p = store.get(); p.compare = p.compare || { ids: [] }; p.ex12 = p.ex12 || { ids: [], fabrics: {} };
+      if (!p.compare.unified) { p.compare.ids = [...new Set(p.compare.ids.concat(p.ex12.ids || []))]; p.compare.unified = true; } p.ex12.ids = p.compare.ids.slice(); return p; };
     const areasById = () => Object.fromEntries(store.get().areas.map(a => [a.id, a]));
-    const ids = () => (tab === 'compare' ? proj().compare.ids : proj().ex12.ids).filter(id => areasById()[id]);
+    const ids = () => proj().compare.ids.filter(id => areasById()[id]);
 
-    function open(which) { tab = which || tab; el.hidden = false; render(); }
+    function open(which) { if (which === 'ex12') assignOpen = true; el.hidden = false; render(); }
     onUpdate((Xu) => { if (!el.hidden && !busy && lastXs && lastXs.some(x => x._base === Xu)) render(); });
     function close() { el.hidden = true; onClose && onClose(); }
 
     function header() {
-      return `<div class="ws-h"><div><span class="plate">${t('ws.plate')}</span><h2>${t(tab === 'compare' ? 'ws.compareTitle' : 'ws.exTitle')}</h2>
-        <div class="tabs"><button class="${tab === 'compare' ? 'on' : ''}" data-ws-tab="compare">${t('ws.tabCompare')}</button><button class="${tab === 'ex12' ? 'on' : ''}" data-ws-tab="ex12">${t('ws.tabEx')}</button></div></div>
+      return `<div class="ws-h"><div><span class="plate">${t('ws.plate')}</span><h2>${t('v5.cmpTitle')}</h2><p class="fine">${t('v5.cmpLead')}</p></div>
         <div class="actions"><button class="btn btn-small" id="ws-close">${t('ws.backToMap')}</button></div></div>`;
     }
     function picker() {
-      const A = store.get().areas; const sel = ids(); const max = tab === 'compare' ? 4 : 8;
+      const A = store.get().areas; const sel = ids();
       if (!A.length) return `<p class="lead">${t('ws.noAreas')}</p>`;
-      return `<div class="ws-pick"><b>${t(tab === 'compare' ? 'ws.pickCompare' : 'ws.pickEx')}</b>${A.map(a => { const i = sel.indexOf(a.id); const st = i >= 0 ? styleOf(i) : null; return `<label><input type="checkbox" data-ws-pick="${a.id}" ${i >= 0 ? 'checked' : ''} ${i < 0 && sel.length >= max ? 'disabled' : ''}> ${st ? `<span class="area-tag" style="color:${st.color}"><i style="border-top-style:${st.dash.length ? 'dashed' : 'solid'};border-color:${st.color}"></i>${i + 1}</span>` : ''} <bdi>${esc(a.name)}</bdi> <small>${root.GA.report.fmtArea(a.measures.area)}</small></label>`; }).join('')}</div>`;
+      const n = sel.length; const status = n >= 4 ? `<span class="state st-ok">${t('v5.subComplete', { n })}</span>` : n >= 2 ? `<span class="state st-exp">${t('v5.subComparisonOnly', { n })}</span>` : `<span class="state st-bad">${t('v5.subNeed2')}</span>`;
+      return `<div class="ws-pick"><b>${t('v5.pickFabrics')}</b>${A.map(a => { const i = sel.indexOf(a.id); const st = i >= 0 ? styleOf(i) : null; return `<label><input type="checkbox" data-ws-pick="${a.id}" ${i >= 0 ? 'checked' : ''} ${i < 0 && sel.length >= MAX ? 'disabled' : ''}> ${st ? `<span class="area-tag" style="color:${st.color}"><i style="border-top-style:${st.dash.length ? 'dashed' : 'solid'};border-color:${st.color}"></i>${i + 1}</span>` : ''} <bdi>${esc(a.name)}</bdi> <small>${root.GA.report.fmtArea(a.measures.area)}</small></label>`; }).join('')}</div><p class="ws-status">${status}</p>`;
     }
     async function load() {
       const A = areasById(); errors = {};
@@ -157,42 +167,45 @@
     async function render() {
       el.innerHTML = header() + `<div class="ws-b">${picker()}<div id="ws-content"></div></div>`;
       const c = el.querySelector('#ws-content'); const n = ids().length;
-      if (tab === 'compare' && n < 2) { c.innerHTML = `<p class="note">${t('ws.need2')}</p>`; return; }
-      if (tab === 'ex12' && n < 1) { c.innerHTML = exStatusHTML(0) + `<p class="note">${t('ex.pickHint')}</p>`; return; }
+      if (n < 2) { c.innerHTML = `<p class="note">${t('ws.need2')}</p>` + (n ? `<details class="assign" ${assignOpen ? 'open' : ''}><summary>${t('v5.assignTitle')}</summary>${exStatusHTML(n)}</details>` : ''); return; }
       c.innerHTML = `<div class="loading"><span class="spin"></span>${t('ws.computing')}</div>`; busy = true;
       const Xs = await load(); busy = false; lastXs = Xs;
       if (Object.keys(errors).length) toast(t('ws.someFailed'), true);
-      if (tab === 'compare') renderCompare(c, Xs); else renderEx(c, Xs);
+      renderCompare(c, Xs);
     }
 
     // ----- comparison -----
     function sharedView(Xs, w, h) { const f = MC.fit(Xs.map(x => x.ring), w, h, 0.07); const per = Xs.map(x => MC.fit([x.ring], w, h, 0.07)); return { mpp: f.mpp && Math.max(...per.map(p => p.mpp)), centers: per.map(p => p.center) }; }
     function renderCompare(c, Xs) {
-      const inds = Xs.map(indicators); const notes = fairness(Xs);
-      const W = Math.max(220, Math.min(360, Math.floor((c.clientWidth - (Xs.length - 1) * 12) / Xs.length))); const H = Math.round(W * 0.8);
-      const view = sharedView(Xs, W, H);
+      const inds = Xs.map(indicators); const notes = fairness(Xs); const n = Xs.length;
+      const cw = Math.max(280, c.clientWidth || el.clientWidth - 40); const cols = cw >= 4 * 250 + 36 ? Math.min(n, 4) : cw >= 2 * 250 + 12 ? Math.min(n, 2) : 1;
+      const W = Math.floor((cw - (cols - 1) * 14) / cols); const H = Math.round(W * 0.8);
+      const view = sharedView(Xs, W, H); // one scale for every map, also when the grid stacks on a phone
       const elev = Xs.filter(x => x.R.terrain).map(x => x.R.terrain); const elevRange = elev.length ? [Math.min(...elev.map(e => e.min)), Math.max(...elev.map(e => e.max), Math.min(...elev.map(e => e.min)) + 10)] : null;
-      const cardsBy = Xs.map(x => GAL.cards({ ring: x.ring }, x.parsed, x.R, { dem: x.dem, slope: x.slope, contours: x.contours, elevRange, ext: x.ext }));
-      const ALL = ALL_TOPICS;
-      let h = `<div class="ok">${t('cmp.scaleNote', { s: nf(view.mpp, 2) })}</div>`;
-      if (notes.length) h += `<div class="warn"><div><b>${t('cmp.fairTitle')}</b><ul class="find">${notes.map(n => `<li>${n}</li>`).join('')}</ul></div></div>`;
-      h += `<div class="ws-pick"><b>${t('cmp.topics')}</b>${ALL.map(k => `<label><input type="checkbox" data-ws-topic="${k}" ${topics.includes(k) ? 'checked' : ''}> ${t('g.' + k)}</label>`).join('')}</div>`;
-      h += `<div class="cmp-grid" style="grid-template-columns:repeat(${Xs.length}, ${W}px)">`;
+      const cardsBy = Xs.map(x => GAL.cards({ ring: x.ring }, x.parsed, x.R, { dem: x.dem, slope: x.slope, contours: x.contours, elevRange, ext: x.ext })); c._cardsBy = cardsBy; c._view = { W, H, view };
+      const ALL = ALL_TOPICS; const ttl = (k) => t('g.' + k) !== 'g.' + k ? t('g.' + k) : t('g3.' + k);
+      let h = `<section class="cmp-top"><figure class="cmp-ov"><button type="button" class="ap-map" id="cmp-ov-btn" aria-label="${esc(t('v5.enlargeMap'))}"><canvas id="ex-overview"></canvas><span class="enl" aria-hidden="true">⤢ ${t('v5.enlargeMap')}</span></button><figcaption>${t('v5.cmpOverview')}</figcaption></figure>
+        <div class="cmp-key"><h3>${t('v5.keyFindings')}</h3><ul class="find">${topics.map(tp => `<li><b>${ttl(tp)}:</b> ${topicFinding(tp, Xs, inds)}</li>`).join('')}</ul><p class="fine">${t('cmp.noCause')}</p>
+          <ol class="cmp-legend">${Xs.map(x => `<li><span class="area-tag" style="color:${x.style.color}"><i style="border-color:${x.style.color};border-top-style:${x.style.dash.length ? 'dashed' : 'solid'}"></i>${x.no}</span> <bdi>${esc(x.area.name)}</bdi>${(proj().ex12.fabrics[x.area.id] || {}).just ? `<br><small dir="auto">${esc(String(proj().ex12.fabrics[x.area.id].just).slice(0, 160))}</small>` : ''}</li>`).join('')}</ol></div></section>`;
+      h += `<div class="ok">${t('cmp.scaleNote', { s: nf(view.mpp, 2) })}</div>`;
+      if (notes.length) h += `<details class="warn-d"><summary>${t('cmp.fairTitle')} (${notes.length})</summary><ul class="find">${notes.map(n2 => `<li>${n2}</li>`).join('')}</ul></details>`;
+      h += `<details class="ws-pick-d"><summary>${t('v5.chooseMaps')} (${topics.length})</summary><div class="ws-pick">${ALL.map(k => `<label><input type="checkbox" data-ws-topic="${k}" ${topics.includes(k) ? 'checked' : ''}> ${ttl(k)}</label>`).join('')}</div></details>`;
       topics.forEach(tp => {
         const cs = cardsBy.map(list => list.find(cd => cd.id === tp));
-        h += `<div class="cmp-topic"><h3>${t('g.' + tp)}</h3><small>${cs[0] && cs[0].src ? esc(cs[0].src.name) + ' · ' + esc(cs[0].src.license) : ''}</small></div>`;
-        cs.forEach((cd, i) => { const x = Xs[i]; h += `<div class="cmp-cell">${cd && !cd.gapOnly ? `<canvas data-cmp="${tp}" data-i="${i}"></canvas><dl class="kpi">${(cd.ind || []).slice(0, 3).map(r => `<div><dt>${r[0]}</dt><dd>${r[1]}</dd></div>`).join('')}</dl>` : `<p class="note" style="padding:8px">${cd ? cd.gapOnly : t('nodata')}</p>`}<div style="padding:0 8px 6px"><span class="area-tag" style="color:${x.style.color}">${x.no}</span> <bdi>${esc(x.area.name)}</bdi></div></div>`; });
-        const lg = cs.find(cd => cd && cd.legend); h += `<div class="cmp-lg">${lg ? GAL.legendHTML(lg.legend) : ''}</div>`;
-        h += `<p class="cmp-find">${topicFinding(tp, Xs, inds)} <small>${t('cmp.noCause')}</small></p>`;
+        h += `<section class="cmp-topic-s"><h3>${ttl(tp)}</h3><div class="cmp-grid2" style="grid-template-columns:repeat(${cols}, minmax(0, ${W}px))">`;
+        cs.forEach((cd, i) => { const x = Xs[i]; h += `<div class="cmp-cell">${cd && !cd.gapOnly ? `<button type="button" class="ap-map" data-cmp-open="${tp}" data-i="${i}" aria-label="${esc(t('v5.enlargeMap') + ': ' + ttl(tp) + ' — ' + x.area.name)}"><canvas data-cmp="${tp}" data-i="${i}"></canvas><span class="enl" aria-hidden="true">⤢</span></button><dl class="kpi">${(cd.ind || []).slice(0, 3).map(r => `<div><dt>${r[0]}</dt><dd>${r[1]}</dd></div>`).join('')}</dl>` : `<p class="note" style="padding:8px">${cd ? cd.gapOnly : t('nodata')}</p>`}<div class="cmp-name"><span class="area-tag" style="color:${x.style.color}">${x.no}</span> <bdi>${esc(x.area.name)}</bdi></div></div>`; });
+        const lg = cs.find(cd => cd && cd.legend);
+        h += `</div><div class="cmp-lg">${lg ? GAL.legendHTML(lg.legend) : ''}<small>${cs[0] && cs[0].src ? esc(cs[0].src.name) + ' · ' + esc(cs[0].src.license) : ''}</small></div><p class="cmp-find">${topicFinding(tp, Xs, inds)}</p></section>`;
       });
-      h += `</div>`;
-      // indicator table
       h += `<h3 class="sub">${t('cmp.tableTitle')}</h3><div class="tbl-wrap"><table class="tbl cmp"><thead><tr><th></th>${Xs.map(x => `<th><span class="area-tag" style="color:${x.style.color}"><i style="border-color:${x.style.color};border-top-style:${x.style.dash.length ? 'dashed' : 'solid'}"></i>${x.no}</span> <bdi>${esc(x.area.name)}</bdi></th>`).join('')}</tr></thead><tbody>`
-        + IND_ROWS.map(r => `<tr><th>${t(r[1])}</th>${inds.map(v => { const s = fmtInd(r, v[r[0]]); return s == null ? `<td class="missing">${t('nodata')}</td>` : `<td class="num">${s}</td>`; }).join('')}</tr>`).join('')
+        + IND_ROWS.map(r => `<tr><th>${t(r[1])}</th>${inds.map(v => { const s2 = fmtInd(r, v[r[0]]); return s2 == null ? `<td class="missing">${whyLabel((v._why || {})[r[0]])}</td>` : `<td class="num">${s2}</td>`; }).join('')}</tr>`).join('')
         + `</tbody></table></div><p class="fine">${t('cmp.tableNote')}</p>
-        <div class="actions"><button class="btn btn-gis" id="ws-gis">${t('cmp.exportGis')}</button><button class="btn" id="ws-csv">${t('cmp.exportCsv')}</button></div>`;
+        <div class="actions"><button class="btn btn-primary" id="ex-pdf">${t('v5.composedPDF')}</button><button class="btn" id="ws-csv">${t('cmp.exportCsv')}</button><button class="btn btn-gis" id="ws-gis">${t('cmp.exportGis')}</button></div>`;
+      h += `<details class="assign" id="ws-assign" ${assignOpen ? 'open' : ''}><summary>${t('v5.assignTitle')} — ${n >= 4 ? t('v5.subComplete', { n }) : t('v5.subIncomplete', { n })}</summary>${exHTML(Xs)}</details>`;
       c.innerHTML = h;
+      c.querySelector('#ws-assign').addEventListener('toggle', (e) => { assignOpen = e.target.open; });
       c.querySelectorAll('canvas[data-cmp]').forEach(cv => { const i = +cv.dataset.i; const cd = cardsBy[i].find(k => k.id === cv.dataset.cmp); GAL.drawCard(cv, { ring: Xs[i].ring, style: Xs[i].style }, cd, { center: view.centers[i], mpp: view.mpp, w: W, h: H }); });
+      const ov = c.querySelector('#ex-overview'); const ow = Math.min(820, c.querySelector('.cmp-ov').clientWidth || 600); drawOverview(ov, Xs, ow, Math.round(ow * 0.7), undefined);
       c._inds = inds;
     }
     function csv(Xs) {
@@ -218,12 +231,11 @@
       ];
     }
     const stBadge = (s) => `<span class="state ${s === 'ready' ? 'st-ok' : s === 'review' ? 'st-exp' : 'st-bad'}">${t('ex.s.' + s)}</span>`;
-    function renderEx(c, Xs) {
+    function exHTML(Xs) {
       const P2 = proj().ex12; const n = Xs.length;
       const ar = Xs.map(x => x.R.area_m2); const eq = n < 2 || (Math.max(...ar) / Math.min(...ar) <= 1.02 && new Set(Xs.map(x => x.area.spec.type)).size === 1);
       let h = exStatusHTML(n) + (eq ? `<div class="ok">${t('ex.equalOk')}</div>` : `<div class="warn">${t('ex.equalNo')}</div>`);
-      h += `<p class="fine">${t('ex.lead')}</p><div class="actions"><button class="btn btn-primary" id="ex-pdf" ${n ? '' : 'disabled'}>${t('ex.pdfAll')}</button><button class="btn btn-gis" id="ws-gis">${t('cmp.exportGis')}</button></div>`;
-      h += `<h3 class="sub">${t('ex.overview')}</h3><canvas id="ex-overview" style="max-width:100%;border:1px solid var(--line)"></canvas>`;
+      h += `<p class="fine">${t('ex.lead')}</p><p class="fine">${t('v5.assignNote')}</p>`;
       h += `<div class="ex-grid">` + Xs.map(x => {
         const a = x.area; const fb = P2.fabrics[a.id] || {}; const comps = components(x, a); const okText = fb.just && fb.just.trim() && fb.sentence && fb.sentence.trim();
         return `<div class="ex-card"><h3><span class="area-tag" style="color:${x.style.color}">${x.no}</span> <bdi>${esc(a.name)}</bdi></h3>
@@ -232,8 +244,7 @@
           <label class="name"><span>${t('ex.sentence')}</span><input type="text" dir="auto" data-ex-sent="${a.id}" maxlength="200" value="${esc(fb.sentence || '')}" placeholder="${esc(t('ex.sentencePh'))}"></label>
           <div class="actions"><button class="btn btn-small" data-ex-sheet="${a.id}">${t('ex.sheet')}</button></div></div>`;
       }).join('') + `</div>`;
-      c.innerHTML = h;
-      drawOverview(c.querySelector('#ex-overview'), Xs, Math.min(900, c.clientWidth), 520, 1);
+      return h;
     }
 
     // overview: city context with numbered samples
@@ -332,7 +343,8 @@
     el.addEventListener('click', async (e) => {
       const b = e.target.closest('button'); if (!b) return;
       if (b.id === 'ws-close') return close();
-      if (b.dataset.wsTab) { tab = b.dataset.wsTab; return render(); }
+      if (b.dataset.cmpOpen && lastXs) { const i = +b.dataset.i; const x = lastXs[i]; const cd = el.querySelector('#ws-content')._cardsBy[i].find(k => k.id === b.dataset.cmpOpen); return root.GA.viewer.map({ card: cd, X: x, ring: x.ring, style: x.style, title: cd.title, subtitle: `${x.no} · ${x.area.name}`, mpp: el.querySelector('#ws-content')._view.view.mpp, slug: cd.id + '_' + x.no }); }
+      if (b.id === 'cmp-ov-btn') { const cv = el.querySelector('#ex-overview'); return root.GA.viewer.image({ title: t('v5.cmpOverview'), src: cv.toDataURL('image/png'), notGIS: true }); }
       if (b.id === 'ws-csv' && lastXs) return download(new Blob([csv(lastXs)], { type: 'text/csv' }), 'granada_comparison_indicators.csv');
       if (b.id === 'ws-gis' && lastXs) { b.disabled = true; try { await onExport(lastXs.map(x => Object.assign({}, x, { indicators: indicators(x), notes: fairness(lastXs).join(' | ') }))); } finally { b.disabled = false; } return; }
       if (b.id === 'ex-pdf') { b.disabled = true; try { await exportSheets(); } catch (er) { toast(er.message, true); } b.disabled = false; return; }
@@ -340,7 +352,7 @@
     });
     el.addEventListener('change', (e) => {
       const x = e.target;
-      if (x.dataset.wsPick) { const L = tab === 'compare' ? proj().compare : proj().ex12; const i = L.ids.indexOf(x.dataset.wsPick); if (x.checked && i < 0) L.ids.push(x.dataset.wsPick); if (!x.checked && i >= 0) L.ids.splice(i, 1); store.save(); render(); }
+      if (x.dataset.wsPick) { const L = proj().compare; const i = L.ids.indexOf(x.dataset.wsPick); if (x.checked && i < 0 && L.ids.length < MAX) L.ids.push(x.dataset.wsPick); if (!x.checked && i >= 0) L.ids.splice(i, 1); proj(); store.save(); render(); }
       if (x.dataset.wsTopic) { topics = x.checked ? topics.concat([x.dataset.wsTopic]) : topics.filter(k => k !== x.dataset.wsTopic); const ALL = ALL_TOPICS; topics.sort((a, b) => ALL.indexOf(a) - ALL.indexOf(b)); renderCompare(el.querySelector('#ws-content'), lastXs); }
       if (x.dataset.exJust != null && x.matches('[data-ex-just]')) { const F = proj().ex12.fabrics; F[x.dataset.exJust] = Object.assign(F[x.dataset.exJust] || {}, { just: x.value }); store.save(); }
       if (x.dataset.exSent != null && x.matches('[data-ex-sent]')) { const F = proj().ex12.fabrics; F[x.dataset.exSent] = Object.assign(F[x.dataset.exSent] || {}, { sentence: x.value }); store.save(); }
@@ -349,5 +361,5 @@
     return { open, close, render, isOpen: () => !el.hidden, get lastXs() { return lastXs; }, exportSheets, indicators };
   }
 
-  root.GA.compare = { create, prepare, onUpdate, ringOf, indicators, styleOf, IND_ROWS, cache, wrap, legendCanvas, fmtInd, ALL_TOPICS, fairness, topicFinding };
+  root.GA.compare = { create, prepare, onUpdate, whyLabel, ringOf, indicators, styleOf, IND_ROWS, cache, wrap, legendCanvas, fmtInd, ALL_TOPICS, fairness, topicFinding };
 })(window);

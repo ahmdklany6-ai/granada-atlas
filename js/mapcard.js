@@ -85,6 +85,20 @@
       ctx.strokeStyle = o.color || P.red; ctx.lineWidth = o.width || 2; ctx.setLineDash(o.dash || [6, 3]); ctx.stroke(); ctx.setLineDash([]);
       if (o.labels) { ctx.font = `600 ${11}px ${font()}`; ctx.fillStyle = o.color || P.red; ctx.textBaseline = 'middle'; const a = px(c[0]), b = px(c[c.length - 1]); ctx.textAlign = 'center'; label(ctx, o.labels[0], a[0], a[1] - 10); label(ctx, o.labels[1], b[0], b[1] - 10); }
     });
+    // text labels (neighbourhoods, landmarks) with a white halo; a label overlapping an earlier one is skipped
+    if (spec.labels && spec.labels.length) {
+      const boxes = []; ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+      spec.labels.forEach(l => {
+        const q = px(U(l.ll)); if (q[0] < 0 || q[0] > W || q[1] < 0 || q[1] > H) return;
+        const area = l.kind === 'area'; const sz = l.size || (area ? 11 : 12); ctx.font = `${area ? '500' : '600'} ${sz}px ${font()}`;
+        const txt = area ? String(l.text).toUpperCase() : String(l.text); const tw = ctx.measureText(txt).width; const ty = area ? q[1] : q[1] - sz;
+        const bx = [q[0] - tw / 2 - 3, ty - sz / 2 - 2, q[0] + tw / 2 + 3, ty + sz / 2 + 2];
+        if (boxes.some(b => !(bx[2] < b[0] || bx[0] > b[2] || bx[3] < b[1] || bx[1] > b[3]))) return; boxes.push(bx);
+        if (!area) { ctx.beginPath(); ctx.arc(q[0], q[1], 3, 0, Math.PI * 2); ctx.fillStyle = l.color || '#1C1E21'; ctx.fill(); ctx.strokeStyle = '#FFF'; ctx.lineWidth = 1.2; ctx.stroke(); }
+        ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 3.5; ctx.strokeText(txt, q[0], ty); ctx.fillStyle = l.color || (area ? '#6B7077' : '#1C1E21'); ctx.fillText(txt, q[0], ty);
+      });
+      ctx.restore();
+    }
     if (spec.scaleBar !== false) scaleBar(ctx, W, H, mpp, spec.scaleBarAlign);
     if (spec.north !== false) north(ctx, W);
     if (spec.areaStyle && spec.areaStyle.label) { ctx.font = `700 13px ${font()}`; ctx.fillStyle = spec.areaStyle.color || P.red; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; const t = spec.areaStyle.label; const w = ctx.measureText(t).width + 10; ctx.fillStyle = '#FFFFFF'; ctx.fillRect(6, 6, w, 20); ctx.fillStyle = spec.areaStyle.color || P.red; ctx.fillText(t, 11, 9); }

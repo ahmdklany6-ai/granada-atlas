@@ -200,11 +200,11 @@
   function cardHTML(c, idx) {
     if (c.gapOnly) return `<article class="card gap-card" data-card="${c.id}"><h3>${c.title}</h3><p class="note">${c.gapOnly}</p></article>`;
     return `<article class="card" data-card="${c.id}">
-      <header><h3>${c.title}</h3><div class="card-tools"><button class="icon-btn" data-act="show" title="${esc(t('g.showOnMap'))}" aria-label="${esc(t('g.showOnMap'))}">◎</button><button class="icon-btn" data-act="enlarge" title="${esc(t('g.enlarge'))}" aria-label="${esc(t('g.enlarge'))}">⤢</button><button class="icon-btn" data-act="png" title="${esc(t('g.png'))}" aria-label="${esc(t('g.png'))}">↓</button></div></header>
-      <div class="card-map"><canvas data-canvas="${c.id}"></canvas></div>
+      <header><h3>${c.title}</h3><div class="card-tools"><button class="btn btn-tiny" data-act="show">${t('v5.onMap')}</button><button class="btn btn-tiny" data-act="png" title="${esc(t('g.png'))}">${t('v5.png')}</button></div></header>
+      <button type="button" class="card-map" data-act="enlarge" aria-label="${esc(t('v5.enlargeMap') + ': ' + String(c.title).replace(/<[^>]+>/g, ''))}"><canvas data-canvas="${c.id}"></canvas><span class="enl" aria-hidden="true">⤢ ${t('v5.enlargeMap')}</span></button>
       <div class="card-body">${legendHTML(c.legend || [])}
         <dl class="kpi">${(c.ind || []).map(i => `<div><dt>${i[0]}</dt><dd>${i[1]}${i[2] === 'est' ? ` <span class="badge badge-est">${t('st.est')}</span>` : ''}</dd></div>`).join('')}</dl>
-        ${chartSVG(c.chart)}
+        ${c.chart ? `<div class="ch-wrap">${chartSVG(c.chart)}<button type="button" class="link ch-enl" data-act="chart">⤢ ${t('v5.enlargeChart')}</button></div>` : ''}
         <ul class="find">${(c.find || []).map(f => `<li>${f}</li>`).join('')}</ul>
         <p class="src"><span>${t('src.label')}</span><bdi>${esc(c.src.name)}</bdi> · <span dir="ltr">${esc(c.src.detail)}</span> · ${esc(c.src.license)}</p>
         <details class="method"><summary>${t('g.method')}</summary><p>${c.method}</p></details>

@@ -41,7 +41,7 @@
   const sel = GA.selection.create(map, { onChange: (info) => { renderSelectPanel(info); updateMask(); }, intercept: mapClick });
   const IMP = GA.imports.create({ layers: L, store, loadSQL, toast: (m, e) => toast(m, e), onChange: renderLayersPanel });
   const CMP = GA.compare.create({ store, toast: (m, e) => toast(m, e), onClose: () => { $('#tb-compare').classList.remove('on'); map.resize(); }, onExport: exportMulti });
-  window.GA.app = { map, sel, store, L, IMP, CMP, getRun: () => run, secTool, secProfiles, openArea: (id) => openArea(id), openWorkspace: (tab) => openWorkspace(tab) }; // exposed for tests and pages
+  window.GA.app = { map, sel, store, L, IMP, CMP, getRun: () => run, secTool, secProfiles, refresh: () => renderLeft(), openArea: (id) => openArea(id), openWorkspace: (tab) => openWorkspace(tab) }; // exposed for tests and pages
   window.GA.toast = (m, e) => toast(m, e);
   const PG = GA.pages;
   PG.onChange((r) => { document.querySelectorAll('.tb-btn[data-page]').forEach(b => b.classList.toggle('on', !!r && b.dataset.page === r.name)); if (r) { closeDrawer(); if (CMP.isOpen()) CMP.close(); } else { map.resize(); renderLayersPanel(); } });
@@ -68,7 +68,13 @@
   function updateToggles() {
     const lc = document.body.classList.contains('left-collapsed'), rc = document.body.classList.contains('right-collapsed');
     $('#tog-left').textContent = lc ? '▶' : '◀'; $('#tog-right').textContent = rc ? '◀' : '▶';
+    const v = !lc ? 'analysis' : !rc ? 'study' : 'map'; document.querySelectorAll('#phone-bar [data-pv]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.pv === v)));
   }
+  // phones: the panels are full-screen views chosen from a bar at the bottom (never overlapping the map half-way)
+  function setPhoneView(v) { const B = document.body.classList; if (v === 'map') { B.add('left-collapsed', 'right-collapsed'); } else if (v === 'analysis') { B.remove('left-collapsed'); B.add('right-collapsed'); } else { B.remove('right-collapsed'); B.add('left-collapsed'); } ui.lc = B.contains('left-collapsed'); ui.rc = B.contains('right-collapsed'); saveUI(); updateToggles(); setTimeout(() => map.resize(), 0); }
+  $('#phone-bar').addEventListener('click', (e) => { const b = e.target.closest('[data-pv]'); if (b) setPhoneView(b.dataset.pv); });
+  $('#tb-menu').addEventListener('click', () => { const o = document.body.classList.toggle('menu-open'); $('#tb-menu').setAttribute('aria-expanded', String(o)); });
+  $('#tb-nav').addEventListener('click', (e) => { if (e.target.closest('.tb-btn')) { document.body.classList.remove('menu-open'); $('#tb-menu').setAttribute('aria-expanded', 'false'); } });
   updateToggles();
   const narrow = () => innerWidth < 1000;
   function onlyOne(side) { if (!narrow()) return; const other = side === 'left' ? 'right-collapsed' : 'left-collapsed'; if (!document.body.classList.contains(other)) { document.body.classList.add(other); ui[side === 'left' ? 'rc' : 'lc'] = true; } }
@@ -87,7 +93,14 @@
 
   // ---------- study-area panel (right, top) ----------
   const shapeLabel = (k) => ({ circle: t('shape.circle'), square: t('shape.square'), polygon: t('shape.polygonShort') }[k] || '');
+  // explicit on-map buttons while a polygon is being drawn (touch: no double-click or Enter needed)
+  function polyBanner(info) {
+    const mb = $('#mode-banner'); if (secTool && secTool.isDrawing && secTool.isDrawing()) return;
+    if (info && info.type === 'polygon' && !info.closed && info.phase !== 'idle') { mb.hidden = false; mb.dataset.mode = 'poly'; mb.innerHTML = `<span>${t('v5.polyBanner', { n: info.verts || 0 })}</span> <button class="btn btn-tiny" id="pb-undo" ${info.verts ? '' : 'disabled'}>${t('v5.undoPoint')}</button><button class="btn btn-tiny" id="pb-finish" ${info.verts >= 3 ? '' : 'disabled'}>${t('v5.finish')}</button><button class="btn btn-tiny" id="pb-cancel">${t('cancel')}</button>`; }
+    else if (mb.dataset.mode === 'poly') { mb.hidden = true; mb.dataset.mode = ''; }
+  }
   function renderSelectPanel(info) {
+    polyBanner(info);
     const p = $('#panel-select .block-b'); const area = currentAreaId && store.get().areas.find(a => a.id === currentAreaId);
     let h = '';
     if (info.phase === 'idle' && !info.ring) {
@@ -218,7 +231,12 @@
       case 'btn-analyze': return analyze();
       case 'btn-gis': return openDrawer('export');
       case 'btn-mclear': return sel.measureClear();
+      case 'btn-view-analysis': return currentAreaId && PG.go('fabric', currentAreaId);
+      case 'btn-to-compare': return currentAreaId && GA.fabric.compare(currentAreaId);
       case 'mb-finish': return secTool.finish();
+      case 'pb-undo': return sel.undo();
+      case 'pb-finish': return sel.closePolygon();
+      case 'pb-cancel': return sel.chooseTool('square');
       case 'mb-undo': return secTool.undoPoint();
       case 'mb-cancel': return secTool.cancel();
     }
@@ -359,7 +377,10 @@
   let cardsCache = null;
   function renderMaps(body, a) {
     if (!a || !run) { body.innerHTML = emptyState(); return; }
-    let h = statusChips();
+    const busyNow = Object.values(run.tasks).some(x => x.state === 'running');
+    let h = `<div class="next-step"><button class="btn btn-primary" id="btn-view-analysis" ${run.X ? '' : 'disabled'}>${t('v5.viewAnalysis')} →</button><button class="btn btn-small" id="btn-to-compare">${t('v5.compare')}</button>${busyNow ? `<span class="fine"><span class="spin"></span> ${t('rep.running')}</span>` : ''}</div>`;
+    const anyFail = Object.values(run.sources || {}).some(r => r.state === 'failed') || Object.values(run.tasks).some(x => x.state === 'error');
+    h += `<details class="status-d" ${anyFail ? 'open' : ''}><summary>${t('v5.sourcesStatus')}${anyFail ? ` <span class="chip failed">${t('v5.someUnavailable')}</span>` : ''}</summary>${statusChips()}</details>`;
     if (run.stale) h += `<div class="warn">${t('rep.stale')}</div>`;
     if (run.changes && run.changes.length) h += `<div class="changed"><b>${t('rep.changed', { n: run.changes.length })}</b> ${run.changes.slice(0, 6).map(c => `<span dir="ltr">${esc(c.key)}: ${c.from ?? '—'} → ${c.to ?? '—'}</span>`).join(', ')}</div>`;
     if (!run.X) { body.innerHTML = h + (run.tasks.data && run.tasks.data.state === 'running' ? `<div class="loading"><span class="spin"></span>${t('ui.loadingData')}</div>` : ''); return; }
@@ -397,15 +418,17 @@
     if (card && b.dataset.hl != null) { b.closest('.card').querySelectorAll('.hl').forEach(x => x.classList.remove('hl')); b.classList.add('hl'); L.highlight(cardFeatures(card, b.dataset.hl)); return; }
     if (card && b.dataset.act === 'show') { (CARD_LAYER[card.id] || []).forEach(id => L.setOn(id, true)); L.highlight(cardFeatures(card, null).slice(0, 4000)); sel.fitTo(); toast(t('ui.shownOnMap', { v: card.title })); return; }
     if (card && b.dataset.act === 'enlarge') return enlarge(card);
+    if (card && b.dataset.act === 'chart') return enlargeChart(card);
     if (card && b.dataset.act === 'png') return exportCardPNG(card);
     // sections tab
     if (b.id === 'sec-draw') { if (!areaObj()) return toast(t('sec.needArea'), true); secTool.start(); return; }
     if (b.dataset.secOpen) { activeSection = b.dataset.secOpen; secTool.setSections(areaObj().sections, activeSection); renderLeft(); fitSection(); return; }
     if (b.dataset.secDel) { const a = areaObj(); if (b.dataset.armed) { a.sections = a.sections.filter(s => s.id !== b.dataset.secDel); if (activeSection === b.dataset.secDel) activeSection = a.sections[0] ? a.sections[0].id : null; store.upsertArea(a); secProfiles.delete(b.dataset.secDel); secTool.setSections(a.sections, activeSection); return renderLeft(); } b.dataset.armed = '1'; b.textContent = t('ar.confirmDel'); return; }
+    if (b.id === 'sec-enlarge' || b.id === 'sec-prev') { const a = areaObj(); if (a && activeSection) GA.sectionView.open(a.id, activeSection); return; }
     if (b.id === 'sec-png') return exportSectionPNG();
     if (b.id === 'sec-svg') return exportSectionVector('svg');
     if (b.id === 'sec-pdf') return exportSectionVector('pdf');
-    if (b.id === 'sec-lib') { const a = areaObj(); const s = a && a.sections.find(x => x.id === activeSection); if (!s || !GA.library) return; const p = await profileOf(s); const cv = document.createElement('canvas'); SEC.draw(cv, p, { w: 1600, h: 860, ratio: 1, ve: s.ve || 'auto', floors: !!s.floors }); cv.toBlob(async bl => { await GA.library.addBlob(bl, { title: s.name + ' — ' + a.name, kind: 'image', source: t('lib.srcSection'), date: new Date().toISOString().slice(0, 10), loc: s.pts[0], links: { fabrics: [a.id] }, tags: ['section'] }); toast(t('lib.added')); }, 'image/png'); return; }
+    if (b.id === 'sec-lib') { const a = areaObj(); const s = a && a.sections.find(x => x.id === activeSection); if (!s || !GA.library) return; const p = await profileOf(s); const cv = document.createElement('canvas'); SEC.draw(cv, p, { w: 1600, h: 860, ratio: 1, ...SEC.optsFor(s) }); cv.toBlob(async bl => { await GA.library.addBlob(bl, { title: s.name + ' — ' + a.name, kind: 'image', source: t('lib.srcSection'), date: new Date().toISOString().slice(0, 10), loc: s.pts[0], links: { fabrics: [a.id] }, tags: ['section'] }); toast(t('lib.added')); }, 'image/png'); return; }
     if (b.id === 'obs-add' && run) { const txt = $('#obs-text').value.trim(); if (!txt) return; $('#obs-text').value = ''; store.addObservation({ areaId: run.areaId, text: txt, kind: $('#obs-kind').value, topic: $('#obs-topic').value }); return renderLeft(); }
     if (b.dataset.delobs) { store.removeObservation(b.dataset.delobs); return renderLeft(); }
     if (b.dataset.wall && run) { const p = (run.result.photos || []).find(x => x.id === b.dataset.wall); if (p) { const ok = store.addMaterial({ id: p.id, kind: 'photo', title: p.title, thumb: p.thumb, page: p.page, author: p.author, license: p.license, date: p.date, pt: p.pt, camera: p.camera, depicted: p.depicted, source: 'Wikimedia Commons', areaId: run.areaId }); toast(ok ? t('toast.wall') : t('toast.wallDup')); } }
@@ -416,11 +439,9 @@
   const modal = $('#modal');
   function closeModal() { modal.hidden = true; modal.innerHTML = ''; }
   modal.addEventListener('click', (e) => { if (e.target === modal || e.target.closest('[data-modal-close]')) closeModal(); if (e.target.closest('[data-modal-png]')) { const c = cardsCache.find(k => k.id === e.target.closest('[data-modal-png]').dataset.modalPng); exportCardPNG(c); } });
-  function enlarge(card) {
-    const X = run.X; const w = Math.min(980, innerWidth - 420), h = Math.round(Math.min(innerHeight * 0.8, w * 0.75));
-    modal.innerHTML = `<div class="modal-box" role="dialog" aria-label="${esc(card.title)}"><div class="modal-h"><h3>${card.title}</h3><div class="actions"><button class="btn btn-small" data-modal-png="${card.id}">${t('g.png')}</button><button class="btn btn-small" data-modal-close>✕</button></div></div><div class="modal-b"><canvas id="modal-cv"></canvas><div class="card-body">${GAL.legendHTML(card.legend || [])}<ul class="find">${(card.find || []).map(f => `<li>${f}</li>`).join('')}</ul><p class="fine">${esc(card.src.name)} · <span dir="ltr">${esc(card.src.detail)}</span> · ${esc(card.src.license)}</p><details class="method" open><summary>${t('g.method')}</summary><p>${card.method}</p></details></div></div></div>`;
-    modal.hidden = false; const f = MC.fit([X.ring], w, h, 0.06); GAL.drawCard($('#modal-cv'), { ring: X.ring }, card, { center: f.center, mpp: f.mpp, w, h });
-  }
+  function enlarge(card) { const X = run.X; GA.viewer.map({ card, X, ring: X.ring, title: card.title, subtitle: (areaObj() || {}).name, slug: card.id + '_' + slugify((areaObj() || {}).name || 'area') }); }
+  const slugify = (s) => String(s).normalize('NFKD').replace(/[^\w]+/g, '_').replace(/^_|_$/g, '').slice(0, 40) || 'area';
+  function enlargeChart(card) { GA.viewer.html({ title: card.title, subtitle: (areaObj() || {}).name, html: `<div class="ch-big">${GAL.chartSVG(card.chart)}</div><ul class="find">${(card.find || []).map(f => `<li>${f}</li>`).join('')}</ul>` }); }
   const NICE = [500, 1000, 1250, 1500, 2000, 2500, 3000, 4000, 5000, 7500, 10000, 12500, 15000, 20000, 25000, 50000];
   function exportCardPNG(card) {
     const X = run.X; const DPI = 200; const W = 1600, Hm = 1200; // 203 × 152 mm map at 200 dpi
@@ -443,7 +464,7 @@
   // ---------- sections ----------
   function sectionMode(mode, n) {
     const mb = $('#mode-banner');
-    if (mode === 'drawing') { mb.hidden = false; mb.innerHTML = `${t(n >= 2 ? 'sec.bannerMore' : n === 1 ? 'sec.bannerB' : 'sec.bannerA', { n: n || 0 })} <button class="btn btn-tiny" id="mb-undo" ${n ? '' : 'disabled'}>${t('undo')}</button><button class="btn btn-tiny" id="mb-finish" ${n >= 2 ? '' : 'disabled'}>${t('sec.finish')}</button><button class="btn btn-tiny" id="mb-cancel">${t('cancel')}</button>`; }
+    if (mode === 'drawing') { mb.hidden = false; mb.dataset.mode = 'sec'; mb.innerHTML = `${t(n >= 2 ? 'sec.bannerMore' : n === 1 ? 'sec.bannerB' : 'sec.bannerA', { n: n || 0 })} <button class="btn btn-tiny" id="mb-undo" ${n ? '' : 'disabled'}>${t('undo')}</button><button class="btn btn-tiny" id="mb-finish" ${n >= 2 ? '' : 'disabled'}>${t('sec.finish')}</button><button class="btn btn-tiny" id="mb-cancel">${t('cancel')}</button>`; }
     else mb.hidden = true;
   }
   function createSection(pts) {
@@ -470,13 +491,14 @@
     if (list.length) h += `<ul class="sec-list">${list.map((s, i) => `<li class="${s.id === activeSection ? 'on' : ''}"><button class="link" data-sec-open="${s.id}"><bdi>${esc(s.name)}</bdi> <small>${s.pts.length} ${t('sec.vertices')}</small></button><button class="btn btn-tiny danger" data-sec-del="${s.id}">${t('delete')}</button></li>`).join('')}</ul>`;
     const s = list.find(x => x.id === activeSection);
     if (s) {
-      h += `<div class="sec-opts"><label class="name"><span>${t('sec.name')}</span><input type="text" dir="auto" id="sec-name" value="${esc(s.name)}" maxlength="60"></label>
+      h += `<div class="actions"><button class="btn btn-primary" id="sec-enlarge">⤢ ${t('v5.enlargeSection')}</button></div><div id="sec-out"><div class="loading"><span class="spin"></span>${t('sec.computing')}</div></div>
+        <details class="sec-settings"><summary>${t('v5.secSettings')}</summary><div class="sec-opts"><label class="name"><span>${t('sec.name')}</span><input type="text" dir="auto" id="sec-name" value="${esc(s.name)}" maxlength="60"></label>
         <label class="row2">${t('sec.floorH')} <input type="number" id="sec-floor" min="2.4" max="6" step="0.1" value="${s.floorH || 3}" style="width:5em"> ${t('u.m')}</label>
         <label class="row2">${t('sec.veLabel')} <select id="sec-ve">${['auto', 1, 2, 3, 5, 10].map(v => `<option value="${v}" ${String(s.ve || 'auto') === String(v) ? 'selected' : ''}>${v === 'auto' ? t('sec.veAuto') : '×' + v}</option>`).join('')}</select></label>
         <label class="row2">${t('sec.look')} <select id="sec-look"><option value="left" ${s.look !== 'right' ? 'selected' : ''}>${t('sec.look_left')}</option><option value="right" ${s.look === 'right' ? 'selected' : ''}>${t('sec.look_right')}</option></select></label>
         <label class="row2" title="${esc(t('v4.corridorHint'))}">${t('v4.corridor')} <input type="number" id="sec-corr" min="2" max="60" step="1" value="${s.corridor || 15}" style="width:4.5em"> m</label>
-        <label class="chk"><input type="checkbox" id="sec-floors" ${s.floors ? 'checked' : ''}> ${t('sec.floors')}</label></div>
-        <div id="sec-out"><div class="loading"><span class="spin"></span>${t('sec.computing')}</div></div>`;
+        <label class="chk"><input type="checkbox" id="sec-floors" ${s.floors ? 'checked' : ''}> ${t('sec.floors')}</label>
+        <label class="chk"><input type="checkbox" id="sec-ill" ${s.ill ? 'checked' : ''}> ${t('v5.detailIll')}</label></div></details>`;
     } else if (!list.length) h += `<p class="note">${t('sec.none')}</p>`;
     body.innerHTML = h;
     if (s) profileOf(s).then(p => { if (activeSection !== s.id || !$('#sec-out')) return; drawSectionPanel(p, s); }, e => { const o = $('#sec-out'); if (o) o.innerHTML = `<div class="error">${esc(e.message)}</div>`; });
@@ -485,13 +507,13 @@
     const out = $('#sec-out'); const w = Math.max(280, $('#left-body').clientWidth - 34);
     const est = p.cuts.filter(c => c.src === 'levels').length, rep = p.cuts.filter(c => c.src === 'height').length, unk = p.cuts.filter(c => c.src === 'unknown').length;
     const dg = Math.atan(p.maxGrad) * 180 / Math.PI;
-    out.innerHTML = `<canvas class="sec-canvas" id="sec-cv"></canvas>
-      <ul class="lg"><li><i class="sw" style="background:#fff;border:2px solid ${PAL.red}"></i><span>${t('sec.lgReported3')}</span></li><li><i class="sw" style="background:#fff;border:2px dashed ${PAL.red}"></i><span>${t('sec.lgEstimated3', { f: nf(s.floorH || 3, 1) })}</span></li><li><i class="sw ln" style="border-top:3px solid ${PAL.red}"></i><span>${t('sec.lgUnknown')}</span></li><li><i class="sw" style="background:#fff;border:1px solid #B9BBBE"></i><span>${t('sec.lgBg3')}</span></li><li><i class="sw dot" style="background:#fff;border:1.5px dashed #4E6B45"></i><span>${t('v4.lgTreeNear')}</span></li><li><i class="sw dot" style="background:#fff;border:1px dashed #93A68B;opacity:.7"></i><span>${t('v4.lgTreeFar', { c: nf(p.corridor || 15) })}</span></li><li><i class="sw" style="background:#F3F3F1;border-top:2px solid #1C1E21"></i><span>${t('sec.lgGround')}</span></li></ul>
+    out.innerHTML = `<button type="button" class="sec-prev" id="sec-prev" aria-label="${esc(t('v5.enlargeSection'))}"><canvas class="sec-canvas" id="sec-cv"></canvas><span class="enl" aria-hidden="true">⤢ ${t('v5.enlargeSection')}</span></button>
+      <div class="actions"><button class="btn btn-small" id="sec-png">${t('sec.png')}</button><button class="btn btn-small" id="sec-svg">SVG</button><button class="btn btn-small" id="sec-pdf">PDF</button><button class="btn btn-small" id="sec-lib">${t('lib.addTo')}</button></div>
+      <details class="method"><summary>${t('v5.legendNotes')}</summary><ul class="lg"><li><i class="sw" style="background:#fff;border:2px solid ${PAL.red}"></i><span>${t('sec.lgReported3')}</span></li><li><i class="sw" style="background:#fff;border:2px dashed ${PAL.red}"></i><span>${t('sec.lgEstimated3', { f: nf(s.floorH || 3, 1) })}</span></li><li><i class="sw ln" style="border-top:3px solid ${PAL.red}"></i><span>${t('sec.lgUnknown')}</span></li><li><i class="sw" style="background:#fff;border:1px solid #B9BBBE"></i><span>${t('sec.lgBg3')}</span></li><li><i class="sw dot" style="background:#fff;border:1.5px dashed #4E6B45"></i><span>${t('v4.lgTreeNear')}</span></li><li><i class="sw dot" style="background:#fff;border:1px dashed #93A68B;opacity:.7"></i><span>${t('v4.lgTreeFar', { c: nf(p.corridor || 15) })}</span></li><li><i class="sw" style="background:#F3F3F1;border-top:2px solid #1C1E21"></i><span>${t('sec.lgGround')}</span></li></ul>
       <dl class="kpi"><div><dt>${t('sec.length')}</dt><dd>${fmtLen(p.L)}</dd></div><div><dt>${t('g.elevRange')}</dt><dd><span class="num">${nf(p.min)}–${nf(p.max)}</span> ${t('u.m')}</dd></div><div><dt>${t('sec.maxGrad', { b: nf(p.baseline) })}</dt><dd><span class="num">${nf(p.maxGrad * 100, 1)}${I.pctSign()}</span> <small>(${nf(dg, 1)}°)</small></dd></div></dl>
       <ul class="find"><li>${t('sec.cutsSummary', { n: p.cuts.length, r: rep, e: est, u: unk, b: p.bg.length, bu: p.bgUnknown })}</li><li>${p.tErr ? t('sec.treesFail', { e: esc(p.tErr) }) : t('v4.treesN', { n: (p.trees || []).filter(x => !x.row).length, near: (p.trees || []).filter(x => !x.row && x.near).length, h: (p.trees || []).filter(x => !x.row && x.h).length, c: nf(p.corridor || 15), r: p.rowsNear || 0 })}</li><li>${t('sec.material')}</li>${p.hornMax != null ? `<li>${t('sec.hornMax', { d: nf(p.hornMax, 1), p: nf(Math.tan(p.hornMax * Math.PI / 180) * 100) })}</li>` : ''}${p.missing ? `<li>${t('sec.partialOutside')}</li>` : ''}${p.bErr ? `<li class="error">${esc(p.bErr)}</li>` : ''}</ul>
-      <details class="method"><summary>${t('g.method')}</summary><p>${t('sec.method', { f: nf(s.floorH || 3, 1) })}</p><p>${t('sec.slopeFix')}</p></details>
-      <div class="actions"><button class="btn btn-small" id="sec-png">${t('sec.png')}</button><button class="btn btn-small" id="sec-svg">SVG</button><button class="btn btn-small" id="sec-pdf">PDF</button><button class="btn btn-small" id="sec-lib">${t('lib.addTo')}</button></div>`;
-    const r = SEC.draw($('#sec-cv'), p, { w, h: Math.max(300, Math.round(w * 0.85)), ve: s.ve || 'auto', floors: !!s.floors }); out.dataset.ve = r.ve;
+      </details><details class="method"><summary>${t('g.method')}</summary><p>${t('sec.method', { f: nf(s.floorH || 3, 1) })}</p><p>${t('sec.slopeFix')}</p></details>`;
+    const r = SEC.draw($('#sec-cv'), p, { w, h: Math.max(300, Math.round(w * 0.75)), ...SEC.optsFor(s) }); out.dataset.ve = r.ve;
   }
   $('#left-body').addEventListener('change', (e) => {
     const a = areaObj(); const s = a && (a.sections || []).find(x => x.id === activeSection); if (!s) return;
@@ -500,18 +522,19 @@
     if (e.target.id === 'sec-ve') { s.ve = e.target.value === 'auto' ? 'auto' : +e.target.value; store.upsertArea(a); renderLeft(); }
     if (e.target.id === 'sec-look') { s.look = e.target.value; store.upsertArea(a); secProfiles.delete(s.id); secTool.setSections(a.sections, s.id); renderLeft(); }
     if (e.target.id === 'sec-corr') { const v = Math.max(2, Math.min(60, +e.target.value || 15)); s.corridor = v; store.upsertArea(a); secProfiles.delete(s.id); renderLeft(); }
+    if (e.target.id === 'sec-ill') { s.ill = e.target.checked; store.upsertArea(a); renderLeft(); }
     if (e.target.id === 'sec-floors') { s.floors = e.target.checked; store.upsertArea(a); renderLeft(); }
   });
   async function exportSectionPNG() {
     const a = areaObj(); const s = a && a.sections.find(x => x.id === activeSection); if (!s) return; const p = await profileOf(s);
-    const cv = document.createElement('canvas'); SEC.draw(cv, p, { w: 2000, h: 1000, ratio: 2, ve: s.ve || 'auto', floors: !!s.floors });
+    const cv = document.createElement('canvas'); SEC.draw(cv, p, { w: 2000, h: 1000, ratio: 2, ...SEC.optsFor(s) });
     cv.toBlob(bl => download(bl, `granada_section_${(s.name || 'section').replace(/[^\p{L}\p{N}]+/gu, '_')}.png`), 'image/png');
   }
   async function exportSectionVector(kind) {
     const a = areaObj(); const s = a && a.sections.find(x => x.id === activeSection); if (!s) return; const p = await profileOf(s);
     const base = `granada_section_${(s.name || 'section').replace(/[^\p{L}\p{N}]+/gu, '_')}`;
-    if (kind === 'svg') return download(new Blob([SEC.svg(p, { w: 1800, h: 900, ve: s.ve || 'auto', floors: !!s.floors })], { type: 'image/svg+xml' }), base + '.svg');
-    const cv = document.createElement('canvas'); SEC.draw(cv, p, { w: 1684, h: 1050, ratio: 2, ve: s.ve || 'auto', floors: !!s.floors }); // A3 landscape, 300 dpi equivalent
+    if (kind === 'svg') return download(new Blob([SEC.svg(p, { w: 1800, h: 900, ...SEC.optsFor(s) })], { type: 'image/svg+xml' }), base + '.svg');
+    const cv = document.createElement('canvas'); SEC.draw(cv, p, { w: 1684, h: 1050, ratio: 2, ...SEC.optsFor(s) }); // A3 landscape, 300 dpi equivalent
     const bytes = GA.pdf.build([{ canvas: cv, paper: 'A3L' }], { title: 'Granada Atlas — ' + s.name }); download(new Blob([bytes], { type: 'application/pdf' }), base + '.pdf');
   }
 

@@ -76,7 +76,7 @@ def main():
 
             # fabric page opens while the services still hang
             pg.evaluate(f'GA.pages.go("fabric", "{aid}")'); t1 = time.time()
-            wait(pg, 'document.querySelectorAll(".fb-block").length >= 9', 30000)
+            wait(pg, 'document.querySelectorAll(".ap-sec").length >= 8', 30000)
             check('fabric page renders within 15 s while services hang', time.time() - t1 < 15, round(time.time() - t1, 1))
             check('fabric page says some sources are still loading', pg.evaluate('/still loading/.test(document.querySelector("#page").innerText)'))
             pg.evaluate('GA.pages.close()')
