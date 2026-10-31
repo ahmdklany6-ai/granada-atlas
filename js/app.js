@@ -30,6 +30,10 @@
   // physical corners: navigation top-right, scale bottom-left, attribution bottom-right — never mirrored
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
   map.addControl(new maplibregl.ScaleControl({ unit: 'metric', maxWidth: 140 }), 'bottom-left');
+  // standalone "Draw section" on the main map: no study area needed (see startSection)
+  const secCtl = { onAdd() { const d = document.createElement('div'); d.className = 'maplibregl-ctrl maplibregl-ctrl-group ga-secctl'; d.innerHTML = `<button type="button" id="map-draw-section" class="ga-secbtn"><span class="ic" aria-hidden="true">A–B</span><span class="tx"></span></button>`; d.querySelector('button').addEventListener('click', () => startSection()); this._d = d; this.label(); return d; },
+    onRemove() { this._d.remove(); }, label() { if (!this._d) return; const b = this._d.querySelector('button'); b.querySelector('.tx').textContent = GA.i18n.t('v6.drawSection'); b.title = GA.i18n.t('v6.drawSectionHint'); b.setAttribute('aria-label', GA.i18n.t('v6.drawSection')); } };
+  map.addControl(secCtl, 'top-right');
   map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: '© OpenStreetMap contributors (ODbL) · IGN MDT25 (CC BY 4.0) · JRC GHSL' }), 'bottom-right');
   try { maplibregl.setRTLTextPlugin('https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.min.js', true); } catch (e) { }
   let tileErrors = 0;
@@ -58,7 +62,7 @@
   }
   $('#lang').addEventListener('click', (e) => { const b = e.target.closest('[data-lang]'); if (b && b.dataset.lang !== I.lang) I.setLang(b.dataset.lang); });
   I.onChange(() => {
-    renderLangSwitch(); sel.redraw(); secTool.render();
+    renderLangSwitch(); sel.redraw(); secTool.render(); secCtl.label();
     renderSelectPanel(sel.info()); renderLeft(); renderLayersPanel(); renderLegend(); renderDrawerIfOpen(); if (CMP.isOpen()) CMP.render();
     updateToggles();
   });
@@ -104,7 +108,7 @@
     const p = $('#panel-select .block-b'); const area = currentAreaId && store.get().areas.find(a => a.id === currentAreaId);
     let h = '';
     if (info.phase === 'idle' && !info.ring) {
-      h = `<p class="lead">${t('sel.leadV2')}</p>`;
+      h = `<p class="lead">${t('sel.leadV2')}</p><p class="fine sp-sec">${t('v6.orSection')} <button class="btn btn-small" id="sp-draw-section">${t('v6.drawSection')}</button></p>`;
       const areas = store.get().areas;
       if (areas.length) h += `<div class="sub">${t('sel.saved')}</div><ul class="saved-mini">${areas.slice(-6).reverse().map(a => `<li><button class="link" data-open="${a.id}"><bdi>${esc(a.name)}</bdi></button><small>${shapeLabel(a.spec.type)} · ${fmtArea(a.measures.area)}</small></li>`).join('')}</ul>`;
     } else if (info.phase === 'idle') {
@@ -145,7 +149,9 @@
     const st = (id) => { const s = L.S[id]; if (!s || !s.on) return ''; const k = s.status || 'idle'; return `<span class="lyr-st ${k}">${t('ly.st.' + k, { n: s.statusExtra != null && isFinite(s.statusExtra) ? nf(s.statusExtra) : '' })}</span>`; };
     const all = L.order.map(id => L.byId[id] || L.userDefs.find(u => u.id === id)).filter(Boolean);
     let h = `<div class="scope" role="group"><button class="${L.scope === 'city' ? 'on' : ''}" data-scope="city">${t('ly.scopeCity')}</button><button class="${L.scope === 'areas' ? 'on' : ''}" data-scope="areas">${t('ly.scopeAreas')}</button></div><p class="fine">${t(L.scope === 'city' ? 'ly.scopeCityNote' : 'ly.scopeAreasNote')}</p>`;
-    GROUPS.forEach(g => {
+    // any layer whose group is not listed still gets a row (never silently dropped)
+    const groups = GROUPS.slice(0, -1).concat([...new Set(all.map(d => d.group))].filter(g => !GROUPS.includes(g)), ['user']);
+    groups.forEach(g => {
       const ds = all.filter(d => d.group === g); if (!ds.length && g !== 'user') return;
       h += `<div class="lyr-group">${t('ly.g.' + g)}</div>`;
       ds.forEach(d => {
@@ -421,14 +427,19 @@
     if (card && b.dataset.act === 'chart') return enlargeChart(card);
     if (card && b.dataset.act === 'png') return exportCardPNG(card);
     // sections tab
-    if (b.id === 'sec-draw') { if (!areaObj()) return toast(t('sec.needArea'), true); secTool.start(); return; }
-    if (b.dataset.secOpen) { activeSection = b.dataset.secOpen; secTool.setSections(areaObj().sections, activeSection); renderLeft(); fitSection(); return; }
-    if (b.dataset.secDel) { const a = areaObj(); if (b.dataset.armed) { a.sections = a.sections.filter(s => s.id !== b.dataset.secDel); if (activeSection === b.dataset.secDel) activeSection = a.sections[0] ? a.sections[0].id : null; store.upsertArea(a); secProfiles.delete(b.dataset.secDel); secTool.setSections(a.sections, activeSection); return renderLeft(); } b.dataset.armed = '1'; b.textContent = t('ar.confirmDel'); return; }
-    if (b.id === 'sec-enlarge' || b.id === 'sec-prev') { const a = areaObj(); if (a && activeSection) GA.sectionView.open(a.id, activeSection); return; }
+    if (b.id === 'sec-draw') { secTool.start(); return; }
+    if (b.dataset.secOpen) { activeSection = b.dataset.secOpen; secTool.setSections(secHost().list, activeSection); renderLeft(); fitSection(); return; }
+    if (b.dataset.secSolo) { currentAreaId = null; run = null; sel.reset(); activeSection = b.dataset.secSolo; leftTab = 'sections'; secTool.setSections(secHost().list, activeSection); updateMask(); renderLeft(); renderLegend(); fitSection(); return; }
+    if (b.id === 'sec-attach') return attachSection();
+    if (b.dataset.secDel) { const H = secHost(); if (b.dataset.armed) { const i = H.list.findIndex(s => s.id === b.dataset.secDel); if (i >= 0) H.list.splice(i, 1); if (activeSection === b.dataset.secDel) activeSection = H.list[0] ? H.list[0].id : null; H.save(); secProfiles.delete(b.dataset.secDel); secTool.setSections(H.list, activeSection); return renderLeft(); } b.dataset.armed = '1'; b.textContent = t('ar.confirmDel'); return; }
+    if (b.id === 'sec-enlarge' || b.id === 'sec-prev') { const H = secHost(); if (activeSection) GA.sectionView.open(H.area ? H.area.id : null, activeSection); return; }
     if (b.id === 'sec-png') return exportSectionPNG();
     if (b.id === 'sec-svg') return exportSectionVector('svg');
     if (b.id === 'sec-pdf') return exportSectionVector('pdf');
-    if (b.id === 'sec-lib') { const a = areaObj(); const s = a && a.sections.find(x => x.id === activeSection); if (!s || !GA.library) return; const p = await profileOf(s); const cv = document.createElement('canvas'); SEC.draw(cv, p, { w: 1600, h: 860, ratio: 1, ...SEC.optsFor(s) }); cv.toBlob(async bl => { await GA.library.addBlob(bl, { title: s.name + ' — ' + a.name, kind: 'image', source: t('lib.srcSection'), date: new Date().toISOString().slice(0, 10), loc: s.pts[0], links: { fabrics: [a.id] }, tags: ['section'] }); toast(t('lib.added')); }, 'image/png'); return; }
+    if (b.id === 'sec-geojson') { const s = curSection(); if (!s) return; const H = secHost(); const p = await profileOf(s).catch(() => null);
+      const fcx = { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { name: s.name, fabric: H.area ? H.area.name : null, vertices: s.pts.length, length_m: p ? Math.round(p.L) : null, look: s.look || 'left', tree_corridor_m: s.corridor || 15, floor_height_m: s.floorH || 3, created: s.created || null, crs_note: 'WGS84 lon/lat (EPSG:4326)' }, geometry: { type: 'LineString', coordinates: s.pts } }] };
+      return download(new Blob([JSON.stringify(fcx, null, 1)], { type: 'application/geo+json' }), `granada_section_${(s.name || 'section').replace(/[^\p{L}\p{N}]+/gu, '_')}.geojson`); }
+    if (b.id === 'sec-lib') { const H = secHost(); const a = H.area || { name: t('v6.standalone') }; const s = curSection(); if (!s || !GA.library) return; const p = await profileOf(s); const cv = document.createElement('canvas'); SEC.draw(cv, p, { w: 1600, h: 860, ratio: 1, ...SEC.optsFor(s) }); cv.toBlob(async bl => { await GA.library.addBlob(bl, { title: s.name + ' — ' + a.name, kind: 'image', source: t('lib.srcSection'), date: new Date().toISOString().slice(0, 10), loc: s.pts[0], links: { fabrics: [a.id] }, tags: ['section'] }); toast(t('lib.added')); }, 'image/png'); return; }
     if (b.id === 'obs-add' && run) { const txt = $('#obs-text').value.trim(); if (!txt) return; $('#obs-text').value = ''; store.addObservation({ areaId: run.areaId, text: txt, kind: $('#obs-kind').value, topic: $('#obs-topic').value }); return renderLeft(); }
     if (b.dataset.delobs) { store.removeObservation(b.dataset.delobs); return renderLeft(); }
     if (b.dataset.wall && run) { const p = (run.result.photos || []).find(x => x.id === b.dataset.wall); if (p) { const ok = store.addMaterial({ id: p.id, kind: 'photo', title: p.title, thumb: p.thumb, page: p.page, author: p.author, license: p.license, date: p.date, pt: p.pt, camera: p.camera, depicted: p.depicted, source: 'Wikimedia Commons', areaId: run.areaId }); toast(ok ? t('toast.wall') : t('toast.wallDup')); } }
@@ -461,37 +472,61 @@
   }
   function download(blob, name) { const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); }
 
+  document.addEventListener('click', (e) => { if (e.target.closest('#sp-draw-section')) startSection(); });
   // ---------- sections ----------
+  // A section lives in the open fabric (area.sections) or, with no fabric open, in the project's standalone list:
+  // a study area is never a prerequisite for drawing one.
+  function secHost() {
+    const a = areaObj(); if (a) { a.sections = a.sections || []; return { list: a.sections, save: () => store.upsertArea(a), area: a }; }
+    const p = store.get(); p.sections = p.sections || []; return { list: p.sections, save: () => store.save(), area: null };
+  }
+  const curSection = () => secHost().list.find(x => x.id === activeSection) || null;
+  const isPhone = () => window.matchMedia('(max-width: 720px)').matches;
+  // phones draw on a full-screen map and show the section afterwards; larger screens keep the analysis panel open beside the map
+  // tablets (narrow side-by-side layouts) also give the whole width to the map while drawing
+  const roomy = () => window.innerWidth >= 1100;
+  function startSection() { closeDrawer(); leftTab = 'sections'; const B = document.body.classList;
+    if (isPhone()) setPhoneView('map'); else if (!roomy()) { B.add('left-collapsed', 'right-collapsed'); updateToggles(); setTimeout(() => map.resize(), 50); }
+    else if (B.contains('left-collapsed')) { B.remove('left-collapsed'); updateToggles(); setTimeout(() => map.resize(), 50); }
+    renderLeft(); secTool.start(); }
   function sectionMode(mode, n) {
     const mb = $('#mode-banner');
     if (mode === 'drawing') { mb.hidden = false; mb.dataset.mode = 'sec'; mb.innerHTML = `${t(n >= 2 ? 'sec.bannerMore' : n === 1 ? 'sec.bannerB' : 'sec.bannerA', { n: n || 0 })} <button class="btn btn-tiny" id="mb-undo" ${n ? '' : 'disabled'}>${t('undo')}</button><button class="btn btn-tiny" id="mb-finish" ${n >= 2 ? '' : 'disabled'}>${t('sec.finish')}</button><button class="btn btn-tiny" id="mb-cancel">${t('cancel')}</button>`; }
     else mb.hidden = true;
   }
   function createSection(pts) {
-    const a = areaObj(); if (!a) return; a.sections = a.sections || [];
-    const s = { id: store.uid('sec'), name: t('sec.defaultName', { n: a.sections.length + 1 }), pts, floorH: 3.0, ve: 'auto', created: new Date().toISOString() };
-    a.sections.push(s); store.upsertArea(a); activeSection = s.id; leftTab = 'sections'; secTool.setSections(a.sections, s.id); renderLeft();
+    const H = secHost();
+    const s = { id: store.uid('sec'), name: t('sec.defaultName', { n: H.list.length + 1 }), pts, floorH: 3.0, ve: 'auto', created: new Date().toISOString() };
+    H.list.push(s); H.save(); activeSection = s.id; leftTab = 'sections'; secTool.setSections(H.list, s.id); if (isPhone()) setPhoneView('analysis'); else if (document.body.classList.contains('left-collapsed')) { document.body.classList.remove('left-collapsed'); updateToggles(); setTimeout(() => map.resize(), 50); } renderLeft();
   }
   function editSection(s) { // s is the stored object being edited: update exactly that section
-    const a = areaObj(); if (!a) return; const i = (a.sections || []).findIndex(x => x.id === s.id); if (i < 0) return;
-    a.sections[i] = Object.assign({}, a.sections[i], { pts: s.pts.map(p => p.slice()), edited: new Date().toISOString() }); store.upsertArea(a); secProfiles.delete(s.id);
-    secTool.setSections(a.sections, s.id); if (leftTab === 'sections') renderLeft();
+    const H = secHost(); const i = H.list.findIndex(x => x.id === s.id); if (i < 0) return;
+    H.list[i] = Object.assign({}, H.list[i], { pts: s.pts.map(p => p.slice()), edited: new Date().toISOString() }); H.save(); secProfiles.delete(s.id);
+    secTool.setSections(H.list, s.id); if (leftTab === 'sections') renderLeft();
   }
-  function fitSection() { const a = areaObj(); const s = a && (a.sections || []).find(x => x.id === activeSection); if (s) sel.fitTo([s.pts]); }
+  function fitSection() { const s = curSection(); if (s) sel.fitTo([s.pts]); }
+  // optional: move a standalone section into a saved fabric (it then appears in that fabric's analysis and exports)
+  function attachSection() {
+    const P0 = store.get(); const s = curSection(); if (!s || !P0.areas.length) return; const m = $('#modal');
+    m.innerHTML = `<div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="att-h"><div class="modal-h"><h3 id="att-h">${t('v6.attach')}</h3><button class="btn btn-small" data-modal-close aria-label="${esc(t('close'))}">✕</button></div><div class="modal-b" style="flex-direction:column;gap:6px"><p class="fine">${t('v6.attachNote', { n: `<bdi>${esc(s.name)}</bdi>` })}</p>${P0.areas.map(x => `<button class="btn btn-small" data-att="${x.id}"><bdi>${esc(x.name)}</bdi></button>`).join('')}</div></div>`;
+    m.hidden = false;
+    m.onclick = (e) => { const b = e.target.closest('[data-att]'); if (e.target.closest('[data-modal-close]') || e.target === m) { m.hidden = true; m.onclick = null; return; } if (!b) return;
+      const a = P0.areas.find(x => x.id === b.dataset.att); P0.sections = P0.sections.filter(x => x.id !== s.id); a.sections = (a.sections || []).concat([s]); store.upsertArea(a); m.hidden = true; m.onclick = null;
+      toast(t('v6.attached', { n: s.name, a: a.name })); openArea(a.id); activeSection = s.id; leftTab = 'sections'; secTool.setSections(a.sections, s.id); renderLeft(); };
+  }
   async function profileOf(s) {
     const key = s.id + JSON.stringify(s.pts) + s.floorH + (s.look || 'left'); const c = secProfiles.get(s.id); if (c && c.key === key) return c.p;
     const p = SEC.compute(s, { floorH: s.floorH || 3 }); secProfiles.set(s.id, { key, p }); p.catch(() => secProfiles.delete(s.id)); return p;
   }
   function renderSections(body, a) {
-    if (!a) { body.innerHTML = `<p class="lead">${t('sec.needArea')}</p>` + emptyState(); return; }
-    const list = a.sections || [];
+    const H = secHost(); const list = H.list;
     if (!list.find(s => s.id === activeSection)) activeSection = list[0] ? list[0].id : null;
     secTool.setSections(list, activeSection);
-    let h = `<p class="fine">${t('sec.lead')}</p><div class="actions"><button class="btn btn-primary" id="sec-draw">${t('sec.draw')}</button></div>`;
+    let h = `<p class="fine">${t('sec.lead')}</p><p class="fine sec-host">${a ? t('v6.secInFabric', { n: `<bdi>${esc(a.name)}</bdi>` }) : t('v6.secStandaloneNote')}</p><div class="actions"><button class="btn btn-primary" id="sec-draw">${t('sec.draw')}</button></div>`;
     if (list.length) h += `<ul class="sec-list">${list.map((s, i) => `<li class="${s.id === activeSection ? 'on' : ''}"><button class="link" data-sec-open="${s.id}"><bdi>${esc(s.name)}</bdi> <small>${s.pts.length} ${t('sec.vertices')}</small></button><button class="btn btn-tiny danger" data-sec-del="${s.id}">${t('delete')}</button></li>`).join('')}</ul>`;
     const s = list.find(x => x.id === activeSection);
     if (s) {
-      h += `<div class="actions"><button class="btn btn-primary" id="sec-enlarge">⤢ ${t('v5.enlargeSection')}</button></div><div id="sec-out"><div class="loading"><span class="spin"></span>${t('sec.computing')}</div></div>
+      h += `<div class="actions"><button class="btn btn-primary" id="sec-enlarge">⤢ ${t('v5.enlargeSection')}</button>${!H.area ? `<button class="btn btn-small" id="sec-attach" ${store.get().areas.length ? '' : `disabled title="${esc(t('v6.noFabrics'))}"`}>${t('v6.attach')}</button>` : ''}</div><div id="sec-out"><div class="loading"><span class="spin"></span>${t('sec.computing')}</div></div>
         <details class="sec-settings"><summary>${t('v5.secSettings')}</summary><div class="sec-opts"><label class="name"><span>${t('sec.name')}</span><input type="text" dir="auto" id="sec-name" value="${esc(s.name)}" maxlength="60"></label>
         <label class="row2">${t('sec.floorH')} <input type="number" id="sec-floor" min="2.4" max="6" step="0.1" value="${s.floorH || 3}" style="width:5em"> ${t('u.m')}</label>
         <label class="row2">${t('sec.veLabel')} <select id="sec-ve">${['auto', 1, 2, 3, 5, 10].map(v => `<option value="${v}" ${String(s.ve || 'auto') === String(v) ? 'selected' : ''}>${v === 'auto' ? t('sec.veAuto') : '×' + v}</option>`).join('')}</select></label>
@@ -499,7 +534,9 @@
         <label class="row2" title="${esc(t('v4.corridorHint'))}">${t('v4.corridor')} <input type="number" id="sec-corr" min="2" max="60" step="1" value="${s.corridor || 15}" style="width:4.5em"> m</label>
         <label class="chk"><input type="checkbox" id="sec-floors" ${s.floors ? 'checked' : ''}> ${t('sec.floors')}</label>
         <label class="chk"><input type="checkbox" id="sec-ill" ${s.ill ? 'checked' : ''}> ${t('v5.detailIll')}</label></div></details>`;
-    } else if (!list.length) h += `<p class="note">${t('sec.none')}</p>`;
+    } else if (!list.length) h += `<p class="note">${t(a ? 'sec.none' : 'v6.secNoneStandalone')}</p>`;
+    const solo = store.get().sections || [];
+    if (a && solo.length) h += `<details class="sec-solo"><summary>${t('v6.standaloneList', { n: solo.length })}</summary><ul class="sec-list">${solo.map(x => `<li><button class="link" data-sec-solo="${x.id}"><bdi>${esc(x.name)}</bdi> <small>${x.pts.length} ${t('sec.vertices')}</small></button></li>`).join('')}</ul></details>`;
     body.innerHTML = h;
     if (s) profileOf(s).then(p => { if (activeSection !== s.id || !$('#sec-out')) return; drawSectionPanel(p, s); }, e => { const o = $('#sec-out'); if (o) o.innerHTML = `<div class="error">${esc(e.message)}</div>`; });
   }
@@ -507,8 +544,9 @@
     const out = $('#sec-out'); const w = Math.max(280, $('#left-body').clientWidth - 34);
     const est = p.cuts.filter(c => c.src === 'levels').length, rep = p.cuts.filter(c => c.src === 'height').length, unk = p.cuts.filter(c => c.src === 'unknown').length;
     const dg = Math.atan(p.maxGrad) * 180 / Math.PI;
-    out.innerHTML = `<button type="button" class="sec-prev" id="sec-prev" aria-label="${esc(t('v5.enlargeSection'))}"><canvas class="sec-canvas" id="sec-cv"></canvas><span class="enl" aria-hidden="true">⤢ ${t('v5.enlargeSection')}</span></button>
-      <div class="actions"><button class="btn btn-small" id="sec-png">${t('sec.png')}</button><button class="btn btn-small" id="sec-svg">SVG</button><button class="btn btn-small" id="sec-pdf">PDF</button><button class="btn btn-small" id="sec-lib">${t('lib.addTo')}</button></div>
+    const cov = p.coverage || {}; const covNote = [cov.demMissing > 0 ? t('v6.covDem', { p: Math.round(cov.demMissing * 100) }) : '', cov.outsideRegion > 0 ? t('v6.covBld', { p: Math.round(cov.outsideRegion * 100) }) : ''].filter(Boolean);
+    out.innerHTML = `${covNote.length ? `<div class="note warn" role="note">${covNote.join('<br>')}</div>` : ''}<button type="button" class="sec-prev" id="sec-prev" aria-label="${esc(t('v5.enlargeSection'))}"><canvas class="sec-canvas" id="sec-cv"></canvas><span class="enl" aria-hidden="true">⤢ ${t('v5.enlargeSection')}</span></button>
+      <div class="actions"><button class="btn btn-small" id="sec-png">${t('sec.png')}</button><button class="btn btn-small" id="sec-svg">SVG</button><button class="btn btn-small" id="sec-pdf">PDF</button><button class="btn btn-small" id="sec-geojson">GeoJSON</button><button class="btn btn-small" id="sec-lib">${t('lib.addTo')}</button></div>
       <details class="method"><summary>${t('v5.legendNotes')}</summary><ul class="lg"><li><i class="sw" style="background:#fff;border:2px solid ${PAL.red}"></i><span>${t('sec.lgReported3')}</span></li><li><i class="sw" style="background:#fff;border:2px dashed ${PAL.red}"></i><span>${t('sec.lgEstimated3', { f: nf(s.floorH || 3, 1) })}</span></li><li><i class="sw ln" style="border-top:3px solid ${PAL.red}"></i><span>${t('sec.lgUnknown')}</span></li><li><i class="sw" style="background:#fff;border:1px solid #B9BBBE"></i><span>${t('sec.lgBg3')}</span></li><li><i class="sw dot" style="background:#fff;border:1.5px dashed #4E6B45"></i><span>${t('v4.lgTreeNear')}</span></li><li><i class="sw dot" style="background:#fff;border:1px dashed #93A68B;opacity:.7"></i><span>${t('v4.lgTreeFar', { c: nf(p.corridor || 15) })}</span></li><li><i class="sw" style="background:#F3F3F1;border-top:2px solid #1C1E21"></i><span>${t('sec.lgGround')}</span></li></ul>
       <dl class="kpi"><div><dt>${t('sec.length')}</dt><dd>${fmtLen(p.L)}</dd></div><div><dt>${t('g.elevRange')}</dt><dd><span class="num">${nf(p.min)}–${nf(p.max)}</span> ${t('u.m')}</dd></div><div><dt>${t('sec.maxGrad', { b: nf(p.baseline) })}</dt><dd><span class="num">${nf(p.maxGrad * 100, 1)}${I.pctSign()}</span> <small>(${nf(dg, 1)}°)</small></dd></div></dl>
       <ul class="find"><li>${t('sec.cutsSummary', { n: p.cuts.length, r: rep, e: est, u: unk, b: p.bg.length, bu: p.bgUnknown })}</li><li>${p.tErr ? t('sec.treesFail', { e: esc(p.tErr) }) : t('v4.treesN', { n: (p.trees || []).filter(x => !x.row).length, near: (p.trees || []).filter(x => !x.row && x.near).length, h: (p.trees || []).filter(x => !x.row && x.h).length, c: nf(p.corridor || 15), r: p.rowsNear || 0 })}</li><li>${t('sec.material')}</li>${p.hornMax != null ? `<li>${t('sec.hornMax', { d: nf(p.hornMax, 1), p: nf(Math.tan(p.hornMax * Math.PI / 180) * 100) })}</li>` : ''}${p.missing ? `<li>${t('sec.partialOutside')}</li>` : ''}${p.bErr ? `<li class="error">${esc(p.bErr)}</li>` : ''}</ul>
@@ -516,22 +554,22 @@
     const r = SEC.draw($('#sec-cv'), p, { w, h: Math.max(300, Math.round(w * 0.75)), ...SEC.optsFor(s) }); out.dataset.ve = r.ve;
   }
   $('#left-body').addEventListener('change', (e) => {
-    const a = areaObj(); const s = a && (a.sections || []).find(x => x.id === activeSection); if (!s) return;
-    if (e.target.id === 'sec-name') { s.name = e.target.value.trim() || s.name; store.upsertArea(a); secTool.setSections(a.sections, s.id); renderLeft(); }
-    if (e.target.id === 'sec-floor') { const v = parseFloat(e.target.value); if (isFinite(v) && v >= 2.4 && v <= 6) { s.floorH = v; store.upsertArea(a); secProfiles.delete(s.id); renderLeft(); } }
-    if (e.target.id === 'sec-ve') { s.ve = e.target.value === 'auto' ? 'auto' : +e.target.value; store.upsertArea(a); renderLeft(); }
-    if (e.target.id === 'sec-look') { s.look = e.target.value; store.upsertArea(a); secProfiles.delete(s.id); secTool.setSections(a.sections, s.id); renderLeft(); }
-    if (e.target.id === 'sec-corr') { const v = Math.max(2, Math.min(60, +e.target.value || 15)); s.corridor = v; store.upsertArea(a); secProfiles.delete(s.id); renderLeft(); }
-    if (e.target.id === 'sec-ill') { s.ill = e.target.checked; store.upsertArea(a); renderLeft(); }
-    if (e.target.id === 'sec-floors') { s.floors = e.target.checked; store.upsertArea(a); renderLeft(); }
+    const H = secHost(); const s = curSection(); if (!s) return; const sv = () => H.save();
+    if (e.target.id === 'sec-name') { s.name = e.target.value.trim() || s.name; sv(); secTool.setSections(H.list, s.id); renderLeft(); }
+    if (e.target.id === 'sec-floor') { const v = parseFloat(e.target.value); if (isFinite(v) && v >= 2.4 && v <= 6) { s.floorH = v; sv(); secProfiles.delete(s.id); renderLeft(); } }
+    if (e.target.id === 'sec-ve') { s.ve = e.target.value === 'auto' ? 'auto' : +e.target.value; sv(); renderLeft(); }
+    if (e.target.id === 'sec-look') { s.look = e.target.value; sv(); secProfiles.delete(s.id); secTool.setSections(H.list, s.id); renderLeft(); }
+    if (e.target.id === 'sec-corr') { const v = Math.max(2, Math.min(60, +e.target.value || 15)); s.corridor = v; sv(); secProfiles.delete(s.id); renderLeft(); }
+    if (e.target.id === 'sec-ill') { s.ill = e.target.checked; sv(); renderLeft(); }
+    if (e.target.id === 'sec-floors') { s.floors = e.target.checked; sv(); renderLeft(); }
   });
   async function exportSectionPNG() {
-    const a = areaObj(); const s = a && a.sections.find(x => x.id === activeSection); if (!s) return; const p = await profileOf(s);
+    const s = curSection(); if (!s) return; const p = await profileOf(s);
     const cv = document.createElement('canvas'); SEC.draw(cv, p, { w: 2000, h: 1000, ratio: 2, ...SEC.optsFor(s) });
     cv.toBlob(bl => download(bl, `granada_section_${(s.name || 'section').replace(/[^\p{L}\p{N}]+/gu, '_')}.png`), 'image/png');
   }
   async function exportSectionVector(kind) {
-    const a = areaObj(); const s = a && a.sections.find(x => x.id === activeSection); if (!s) return; const p = await profileOf(s);
+    const s = curSection(); if (!s) return; const p = await profileOf(s);
     const base = `granada_section_${(s.name || 'section').replace(/[^\p{L}\p{N}]+/gu, '_')}`;
     if (kind === 'svg') return download(new Blob([SEC.svg(p, { w: 1800, h: 900, ...SEC.optsFor(s) })], { type: 'image/svg+xml' }), base + '.svg');
     const cv = document.createElement('canvas'); SEC.draw(cv, p, { w: 1684, h: 1050, ratio: 2, ...SEC.optsFor(s) }); // A3 landscape, 300 dpi equivalent

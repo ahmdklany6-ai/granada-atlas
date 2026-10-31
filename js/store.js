@@ -3,13 +3,13 @@
    status panel offers a backup file. */
 (function (root) {
   const KEY = 'granada-atlas.project.v1';
-  const blank = () => ({ version: 1, name: 'Granada', created: new Date().toISOString(), areas: [], observations: [], materials: [], exercises: [] });
+  const blank = () => ({ version: 1, name: 'Granada', created: new Date().toISOString(), areas: [], observations: [], materials: [], exercises: [], sections: [] }) // sections: standalone sections (no study area);
   let project = null; let listeners = [];
 
   function load() {
     try { const raw = localStorage.getItem(KEY); project = raw ? JSON.parse(raw) : blank(); }
     catch (e) { project = blank(); project._loadError = String(e); }
-    ['areas', 'observations', 'materials', 'exercises'].forEach(k => project[k] = project[k] || []);
+    ['areas', 'observations', 'materials', 'exercises', 'sections'].forEach(k => project[k] = project[k] || []);
     return project;
   }
   function save() {
@@ -32,7 +32,7 @@
   function exportJSON() { return JSON.stringify(project, null, 1); }
   function importJSON(text) {
     const p = JSON.parse(text); if (!p || !Array.isArray(p.areas)) throw new Error(root.GA.i18n.t('err.backup'));
-    project = p; ['areas', 'observations', 'materials', 'exercises'].forEach(k => project[k] = project[k] || []); return save();
+    project = p; ['areas', 'observations', 'materials', 'exercises', 'sections'].forEach(k => project[k] = project[k] || []); return save();
   }
   root.GA = root.GA || {};
   root.GA.store = { load, save, get: () => project, uid, upsertArea, removeArea, addObservation, removeObservation, addMaterial, exportJSON, importJSON, onChange: f => listeners.push(f) };

@@ -15,7 +15,9 @@
   const notesAll = () => { const p = store.get(); p.buildingNotes = p.buildingNotes || {}; return p.buildingNotes; };
 
   function open(areaId, secId) {
-    const a = store.get().areas.find(x => x.id === areaId); if (!a) return; const s = (a.sections || []).find(x => x.id === secId) || (a.sections || [])[0]; if (!s) return;
+    // a section belongs to a fabric (areaId) or is standalone (areaId null: project.sections)
+    const P0 = store.get(); const a = areaId ? P0.areas.find(x => x.id === areaId) : { id: null, name: t('v6.standalone'), sections: P0.sections || (P0.sections = []) }; if (!a) return;
+    const s = (a.sections || []).find(x => x.id === secId) || (a.sections || [])[0]; if (!s) return;
     let prof = null, last = null, sel = null;
     const sh = root.GA.viewer.shell({ kind: 'vw-sec', title: esc(s.name), subtitle: esc(a.name) + ' · ' + t('v5.sectionView'),
       tools: `<button class="btn btn-small" data-sx="png">${t('v5.exportPNG')}</button><button class="btn btn-small" data-sx="svg">SVG</button><button class="btn btn-small" data-sx="pdf">${t('v5.exportPDF')}</button>`,
@@ -33,7 +35,7 @@
           <details class="method"><summary>${t('v5.secMethods')}</summary><div class="sv-methods"></div></details>
         </div></div>` });
     const el = sh.el; const cv = el.querySelector('.sv-cv'), mapCv = el.querySelector('.sv-map'), ann = el.querySelector('.sv-ann'), meth = el.querySelector('.sv-methods'), drawBox = el.querySelector('.sv-draw');
-    const save = () => { store.upsertArea(a); root.GA.app && root.GA.app.secProfiles && root.GA.app.secProfiles.delete(s.id); };
+    const save = () => { if (a.id) store.upsertArea(a); else store.save(); root.GA.app && root.GA.app.secProfiles && root.GA.app.secProfiles.delete(s.id); };
     const syncCtl = () => {
       el.querySelectorAll('[data-ve]').forEach(b => b.setAttribute('aria-pressed', String(String(s.ve || 'auto') === b.dataset.ve)));
       el.querySelectorAll('[data-ill]').forEach(b => b.setAttribute('aria-pressed', String((s.ill ? '1' : '0') === b.dataset.ill)));

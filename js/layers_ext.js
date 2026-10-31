@@ -16,6 +16,9 @@
     const { map, S, addSrc, addLyr, lid, status, fc, t, esc, nf, sw, swl, swd, iso } = H;
     const raster = (id, tiles, opacity, attribution, extra) => { addSrc(lid(id), Object.assign({ type: 'raster', tiles: [tiles], tileSize: 256, attribution }, extra || {})); addLyr({ id: lid(id), type: 'raster', source: lid(id), paint: { 'raster-opacity': opacity, 'raster-fade-duration': 0 } }); };
     const legImg = (url, alt) => `<img class="lg-img" src="${esc(url)}" alt="${esc(alt || '')}" loading="lazy" onerror="this.replaceWith(document.createTextNode(''))">`;
+    // classified rasters: tiles and legend come from the same class table (js/rasterclass.js)
+    const RC = root.GA.rasterClass; RC.register();
+    const rcLegend = (scheme, opts) => `<ul class="lg">${RC.legendItems(scheme, opts).map(i => i.hatch ? `<li><i class="sw hatch"></i><span>${i.label}</span></li>` : i.line ? swl(i.line, i.w || 2, i.label) : sw(i.sw, i.label)).join('')}</ul>`;
     const kv = (rows) => `<table>${rows.filter(r => r[1] != null && r[1] !== '').map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>`;
     const defs = [];
 
@@ -94,9 +97,9 @@
 
     // ---------- Trees: Copernicus tree-cover density (citywide) + OSM mapped trees (zoomed in) ----------
     defs.push({ id: 'canopy', group: 'env', title: () => t('ly3.canopy'), def: { on: false, opacity: 0.8 },
-      build() { raster('canopy', X.wmsTiles(X.SVC.tcdWms, 'HRL_TreeCoverDensity_2018'), 0.8, '© EEA / Copernicus Land Monitoring Service'); },
+      build() { raster('canopy', RC.tiles('canopy', `${X.SVC.tcdRest}/exportImage?f=image&format=tiff&pixelType=U8&noDataInterpretation=esriNoDataMatchAny&interpolation=RSP_NearestNeighbor&bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256`), 0.8, '© EEA / Copernicus Land Monitoring Service'); },
       layers: () => [lid('canopy')], opacityProp: { [lid('canopy')]: 'raster-opacity' },
-      legend: () => `${legImg(X.SVC.tcdWms + '?request=GetLegendGraphic&version=1.3.0&format=image/png&layer=HRL_TreeCoverDensity_2018', 'TCD legend')}<p class="lyr-src">${t('ly3.canopyNote')}</p>`,
+      legend: () => `${rcLegend('canopy')}<p class="lyr-src">${t('ly3.canopyNote')} ${t('rc.classified')}</p>`,
       src: () => 'Copernicus HRL Tree Cover Density 2018 · 10 m · EEA (free, full and open)' });
     defs.push({ id: 'trees', group: 'env', title: () => t('ly3.trees'), def: { on: false, opacity: 1 },
       build() {
@@ -113,32 +116,32 @@
 
     // ---------- Flood zones (SNCZI) ----------
     defs.push({ id: 'flood', group: 'env', title: () => t('ly3.flood'), def: { on: false, opacity: 0.7, opts: { periods: ['q10', 'q100', 'q500'], arpsi: true } },
-      build() { X.FLOOD.slice().reverse().forEach(z => raster('flood-' + z.k, X.wmsTiles(X.SVC.miteco, z.layer), 0.7, 'MITECO · SNCZI')); raster('flood-arpsi', X.wmsTiles(X.SVC.miteco, 'agua:Zi_arpsi'), 1, 'MITECO · SNCZI'); },
+      build() { X.FLOOD.slice().reverse().forEach(z => raster('flood-' + z.k, RC.tiles('flood', X.wmsTiles(X.SVC.miteco, z.layer)), 0.7, 'MITECO · SNCZI')); raster('flood-arpsi', RC.tiles('flood', X.wmsTiles(X.SVC.miteco, 'agua:Zi_arpsi')), 1, 'MITECO · SNCZI'); },
       layers: () => X.FLOOD.map(z => lid('flood-' + z.k)).concat([lid('flood-arpsi')]),
       visLayers() { const o = S.flood.opts; return X.FLOOD.filter(z => o.periods.includes(z.k)).map(z => lid('flood-' + z.k)).concat(o.arpsi ? [lid('flood-arpsi')] : []); },
       applyOpacity(o) { X.FLOOD.forEach(z => map.getLayer(lid('flood-' + z.k)) && map.setPaintProperty(lid('flood-' + z.k), 'raster-opacity', o)); },
       controls() { const o = S.flood.opts; return `<div class="ctl-grid">${X.FLOOD.map(z => `<label class="chk"><input type="checkbox" data-ly-ctl="flood" data-k="p:${z.k}" ${o.periods.includes(z.k) ? 'checked' : ''}>T = ${z.T} <small>(${z.p} ${t('ly3.perYear')})</small></label>`).join('')}<label class="chk"><input type="checkbox" data-ly-ctl="flood" data-k="arpsi" ${o.arpsi ? 'checked' : ''}>${t('ly3.arpsi')}</label></div>`; },
       onControl(el) { const o = S.flood.opts; const k = el.dataset.k; if (k === 'arpsi') o.arpsi = el.checked; else { const p = k.slice(2); o.periods = el.checked ? o.periods.concat([p]) : o.periods.filter(x => x !== p); } H.applyVis(this); },
-      legend() { const o = S.flood.opts; return `${X.FLOOD.filter(z => o.periods.includes(z.k)).map(z => `<div class="lg-row">${legImg(X.SVC.miteco + '?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&WIDTH=16&HEIGHT=12&LAYER=' + z.layer)}<span>T = ${z.T} · ${z.p} ${t('ly3.perYear')}</span></div>`).join('')}${o.arpsi ? `<div class="lg-row">${legImg(X.SVC.miteco + '?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&WIDTH=16&HEIGHT=12&LAYER=agua:Zi_arpsi')}<span>${t('ly3.arpsi')}</span></div>` : ''}<p class="lyr-src">${t('ly3.floodNote')}</p>`; },
+      legend() { const o = S.flood.opts; return `${rcLegend('flood', { periods: o.periods, arpsi: o.arpsi })}<p class="lyr-src">${t('ly3.floodNote')} ${t('rc.classified')}</p>`; },
       src: () => 'MITECO · SNCZI (Sistema Nacional de Cartografía de Zonas Inundables) · WMS/WFS',
       async infoAt(ll) { const o = S.flood.opts; const hits = []; for (const z of X.FLOOD.filter(z => o.periods.includes(z.k))) { const fs = await X.floodWFS(z.layer, [ll[0] - 0.0004, ll[1] - 0.0004, ll[0] + 0.0004, ll[1] + 0.0004]); const f = fs.find(f => { const g = f.geometry; const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates; return polys.some(pl => root.GA.geo.pointInRing(ll, pl[0])); }); if (f) hits.push(`T = ${z.T}: <bdi>${esc(f.properties.zona || '')}</bdi> <small>(${esc(f.properties.rio || '')})</small>`); } return hits.length ? hits.join('<br>') + `<br><small>${t('ly3.floodPop')}</small>` : null; },
     });
 
     // ---------- Strategic noise (SICA) ----------
     defs.push({ id: 'noise', group: 'env', title: () => t('ly3.noise'), def: { on: false, opacity: 0.85, opts: { ind: 'lden' } },
-      build() { ['lden', 'ln'].forEach(k => raster('noise-' + k, X.wmsTiles(X.SVC.noise, 'evaluacionambiental:mer_aglomeracion_' + k), 0.85, 'MITECO · SICA')); },
+      build() { ['lden', 'ln'].forEach(k => raster('noise-' + k, RC.tiles('noise', X.wmsTiles(X.SVC.noise, 'evaluacionambiental:mer_aglomeracion_' + k)), 0.85, 'MITECO · SICA')); },
       layers: () => ['lden', 'ln'].map(k => lid('noise-' + k)), visLayers: () => [lid('noise-' + S.noise.opts.ind)],
       applyOpacity(o) { ['lden', 'ln'].forEach(k => map.getLayer(lid('noise-' + k)) && map.setPaintProperty(lid('noise-' + k), 'raster-opacity', o)); },
       controls() { const o = S.noise.opts; return `<label class="row2">${t('ly3.noiseInd')} <select data-ly-ctl="noise" data-k="ind"><option value="lden" ${o.ind === 'lden' ? 'selected' : ''}>Lden — ${t('ly3.lden')}</option><option value="ln" ${o.ind === 'ln' ? 'selected' : ''}>Ln — ${t('ly3.ln')}</option></select></label>`; },
       onControl(el) { S.noise.opts.ind = el.value; H.applyVis(this); },
-      legend() { const k = S.noise.opts.ind; return `${legImg(X.SVC.noise + '?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=evaluacionambiental:mer_aglomeracion_' + k)}<p class="lyr-src">${t(k === 'lden' ? 'ly3.ldenNote' : 'ly3.lnNote')} ${t('ly3.noiseNote')}</p>`; },
+      legend() { const k = S.noise.opts.ind; return `${rcLegend('noise', { ind: k })}<p class="lyr-src">${t('rc.classified')} ${t(k === 'lden' ? 'ly3.ldenNote' : 'ly3.lnNote')} ${t('ly3.noiseNote')}</p>`; },
       src: () => 'MITECO · SICA — strategic noise maps, Granada agglomeration (3rd phase in this service)' });
 
     // ---------- Land-surface temperature (MODIS 8-day, 1 km) ----------
     defs.push({ id: 'lst', group: 'env', title: () => t('ly3.lst'), def: { on: false, opacity: 0.65 },
-      build() { raster('lst', X.wmsTiles(X.SVC.gibs, 'MODIS_Aqua_L3_Land_Surface_Temp_8Day_Day', '&TIME=' + X.LST_DATE), 0.65, 'NASA GIBS · MODIS'); },
+      build() { raster('lst', RC.tiles('lst', X.wmsTiles(X.SVC.gibs, 'MODIS_Aqua_L3_Land_Surface_Temp_8Day_Day', '&TIME=' + X.LST_DATE)), 0.65, 'NASA GIBS · MODIS'); RC.lstReady.then(() => H.emit()); },
       layers: () => [lid('lst')], opacityProp: { [lid('lst')]: 'raster-opacity' },
-      legend: () => `${legImg('https://gibs.earthdata.nasa.gov/legends/MODIS_Land_Surface_Temp_H.png', 'LST legend')}<p class="lyr-src">${t('ly3.lstNote', { d: X.LST_DATE })}</p>`,
+      legend: () => RC.state.lst === 'fallback' ? `${legImg('https://gibs.earthdata.nasa.gov/legends/MODIS_Land_Surface_Temp_H.png', 'LST legend')}<p class="lyr-src">${t('rc.lstFallback')} ${t('ly3.lstNote', { d: X.LST_DATE })}</p>` : `${rcLegend('lst')}<p class="lyr-src">${t('ly3.lstNote', { d: X.LST_DATE })} ${t('rc.lstMethod')}</p>`,
       src: () => 'NASA GIBS · MODIS Aqua L3 LST 8-day (MYD11A2) · 1 km · measured land-surface temperature' });
 
     // ---------- Historical maps and orthophotos (IGN) ----------

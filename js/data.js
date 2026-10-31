@@ -105,7 +105,21 @@
 
   // Buildings near a line (for sections) — loads cells around the line's bbox
   async function buildingsNear(coords, pad) { const bb = G.bbox(coords); return chunked('buildings', bb, (pad || 60) + 250, 40); }
+  // Only the 1 km cells crossed by a line's corridor (not its whole bounding box): a long or diagonal section loads a
+  // narrow strip of the city. Returns the features plus how many of those cells are inside the published extract.
+  async function alongLine(layer, coords, padM) {
+    await loadManifest(); const idx = await index(layer); const C = manifest.cellSize_m; const pad = (padM || 80) + 250;
+    const u = coords.map(p => PJ.EPSG25830.forward(p)); const want = new Set();
+    for (let i = 1; i < u.length; i++) { const a = u[i - 1], b = u[i]; const L = Math.hypot(b[0] - a[0], b[1] - a[1]); const n = Math.max(1, Math.ceil(L / 250));
+      for (let k = 0; k <= n; k++) { const x = a[0] + (b[0] - a[0]) * k / n, y = a[1] + (b[1] - a[1]) * k / n;
+        for (let cx = Math.floor((x - pad) / C); cx <= Math.floor((x + pad) / C); cx++) for (let cy = Math.floor((y - pad) / C); cy <= Math.floor((y + pad) / C); cy++) want.add(cx + '_' + cy); } }
+    const cs = [...want]; const have = cs.filter(c => idx[c]);
+    const inRegionCells = cs.filter(c => { const [cx, cy] = c.split('_').map(Number); return inRegion(PJ.EPSG25830.inverse([(cx + 0.5) * C, (cy + 0.5) * C])); });
+    const arrs = await Promise.all(have.map(c => cell(layer, c))); const seen = new Set(), out = [];
+    arrs.forEach(a => a.forEach(f => { const id = f.properties.id; if (id && seen.has(id)) return; if (id) seen.add(id); out.push(f); }));
+    return { features: out, cells: cs.length, cellsWithData: have.length, cellsInRegion: inRegionCells.length };
+  }
 
-  const api = { loadManifest, get manifest() { return manifest; }, chunked, single, grid, sampleGrid, gridValuesInRing, areaData, buildingsNear, cellsForBBox, inRegion, FAC_TAGS };
+  const api = { loadManifest, get manifest() { return manifest; }, chunked, single, grid, sampleGrid, gridValuesInRing, areaData, buildingsNear, alongLine, cellsForBBox, inRegion, FAC_TAGS };
   root.GA = root.GA || {}; root.GA.data = api;
 })(window);

@@ -116,7 +116,9 @@
     try { const fg = D.manifest.overview.figureGround; out.fg = { img: await X.loadImage('data/' + fg.file), x0: fg.ox, y1: fg.oy, x1: fg.ox + fg.width * fg.px_m, y0: fg.oy - fg.height * fg.px_m }; } catch (e) { }
     if (c.topic === 'heatveg' || c.topic === 'shade' || c.topic === 'lst') { try { out.tcd = await X.tcdGrid(ringFrame, 0); } catch (e) { out.errors.push('Copernicus TCD: ' + e.message); } }
     if (c.topic === 'lst' || c.topic === 'heatveg') { try { out.lst = await X.warp3857(X.SVC.gibs, 'MODIS_Aqua_L3_Land_Surface_Temp_8Day_Day', { x0: f.x0, y0: f.y0, x1: f.x1, y1: f.y1, w: 550, h: 550 }, '&TIME=' + X.LST_DATE); } catch (e) { out.errors.push('NASA GIBS LST: ' + e.message); } }
+    const RC = root.GA.rasterClass; if (out.lst) out.lst = await RC.recolourImage('lst', out.lst).catch(() => null);
     if (c.topic === 'flood') { try { out.flood = await X.loadImage(X.wmsURL(X.SVC.miteco, 'agua:Zi_laminas_q500,agua:Zi_laminas_q100,agua:Zi_laminas_q10,agua:Zi_arpsi', [f.x0, f.y0, f.x1, f.y1], W, W, 25830), 40000); } catch (e) { out.errors.push('SNCZI: ' + e.message); } }
+    if (out.flood) out.flood = await RC.recolourImage('flood', out.flood).catch(() => null);
     // supporting chart: by neighbourhood (barrio) inside the frame
     const bars = []; const barrios = adm ? adm.features.filter(x => x.properties.kind === 'barrio') : [];
     if (out.tcd) barrios.forEach(b => { const ring = b.geometry.type === 'Polygon' ? b.geometry.coordinates[0] : b.geometry.coordinates[0][0]; const st = X.tcdStats(out.tcd, ring); if (st && st.n > 50) bars.push({ label: b.properties.name, v: st.mean }); });
@@ -124,9 +126,10 @@
     out.bars = bars.sort((a, b) => b.v - a.v); out.mpp = mpp; clim.cache[key] = out; return out;
   }
   function climLegend(c) {
-    if (c.topic === 'flood') return X.FLOOD.map(q => ({ sw: q.color, label: `T = ${q.T} (${q.p} ${t('ly3.perYear')})` })).concat([{ line: '#0B2E4F', w: 2, label: t('ly3.arpsi') }]);
+    if (c.topic === 'flood') return X.FLOOD.map(q => ({ sw: q.color, alpha: 0.85, label: `T = ${q.T} (${q.p} ${t('ly3.perYear')})` })).concat([{ line: '#0B2E4F', w: 2, label: t('ly3.arpsi') }]);
     const tcd = X.TCD_CLASSES.slice(1).map(k => ({ sw: `rgb(${k.col.slice(0, 3).join(',')})`, label: `${k.k.replace('-', '–')} % ${t('g3.tcd')}` }));
-    return c.topic === 'lst' || c.topic === 'heatveg' ? [{ sw: 'rgba(230,120,40,.5)', label: t('clim.lstLg', { d: X.LST_DATE }) }].concat(tcd) : tcd;
+    const lst = root.GA.rasterClass.legendItems('lst').map(i => Object.assign(i, { alpha: c.topic === 'lst' ? 0.75 : 0.45 })).concat([{ label: t('clim.lstLg', { d: X.LST_DATE }) }]);
+    return c.topic === 'lst' || c.topic === 'heatveg' ? lst.concat(tcd) : tcd;
   }
   async function climateCanvas(Wpx) {
     const c = S().climate; const d = await climData(c); const f = d.f; const W = Wpx || 2000, H = Math.round(W * 1.0); const k = W / 2000; const F = PG.font(); const rtl = I.dir() === 'rtl';

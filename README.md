@@ -75,3 +75,12 @@ Layers: study_area, buildings, streets, landuse, parks_open_space, public_facili
 ## Licences
 
 MapLibre GL JS (BSD-3), sql.js 1.11.0 (MIT) vendored. IBM Plex (OFL 1.1) via Google Fonts. Map data © OpenStreetMap contributors (ODbL); IGN MDT25 © Instituto Geográfico Nacional (CC BY 4.0); GHSL © European Commission JRC.
+
+
+**Sections without a study area.** “Draw section” on the map (and in the study panel) draws an A–B or multi-segment section anywhere; with no fabric open it is saved as a standalone section (`project.sections`), with a fabric open it belongs to that fabric. Only the 1 km building cells along the section's corridor are fetched (`data.alongLine`); parts of the line outside the terrain model or the published building data are reported, not drawn as empty ground. Standalone sections can be renamed, edited, enlarged, exported (PNG, SVG, PDF, GeoJSON) and later attached to a fabric.
+
+**Classified external rasters** (`js/rasterclass.js`). Land-surface temperature (NASA GIBS), flood zones (MITECO SNCZI), strategic noise (MITECO SICA) and tree-cover density (EEA) offer no alternative styles, so tiles are read as data: each pixel colour is looked up in the service's published classification (the GIBS colormap XML, bundled in `data/ref/gibs_lst_colormap.json`; the GeoServer legend rules; the EEA raw 0–100 values) and redrawn in the atlas classes. Map tiles, analysis cards, Exercise 1.3 plates, studio plates and their legends all use the same class tables. If the LST colormap cannot load, the original tiles and the service legend are shown together.
+
+**Fabric marks** (`js/fabricmark.js`): every fabric boundary is dashed, without heavy fills; numbers are plain text with a light halo.
+
+**Historical explorer red dots**: present-day positions of the Spanish-Wikipedia articles listed under “Linked places” (coordinates from each article; two marked approximate). They are an overlay with its own toggle, legend and pop-up, not part of the historical scans.

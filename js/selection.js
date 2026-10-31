@@ -23,7 +23,7 @@
       map.addSource('sel-draft', { type: 'geojson', data: fc([]) });
       map.addSource('measure', { type: 'geojson', data: fc([]) });
       map.addLayer({ id: 'sel-fill', type: 'fill', source: 'sel', paint: { 'fill-color': '#992B2A', 'fill-opacity': 0.07 } });
-      map.addLayer({ id: 'sel-line', type: 'line', source: 'sel', paint: { 'line-color': '#992B2A', 'line-width': 1.8 } });
+      map.addLayer({ id: 'sel-line', type: 'line', source: 'sel', paint: { 'line-color': '#992B2A', 'line-width': 2, 'line-dasharray': [3.5, 2] } }); // fabric boundaries are dashed everywhere
       map.addLayer({ id: 'sel-draft', type: 'line', source: 'sel-draft', paint: { 'line-color': '#992B2A', 'line-width': 1.4, 'line-dasharray': [2, 2] } });
       map.addLayer({ id: 'measure-line', type: 'line', source: 'measure', paint: { 'line-color': '#1F1B17', 'line-width': 1.4, 'line-dasharray': [1, 1.5] } });
     }

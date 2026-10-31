@@ -77,7 +77,7 @@
     if (spec.ring) {
       const R = ringUTM(spec.ring);
       if (spec.fadeOutside) { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); path([R]); ctx.fillStyle = `rgba(255,255,255,${spec.fadeOutside})`; ctx.fill('evenodd'); ctx.restore(); }
-      const st = spec.areaStyle || {}; ctx.beginPath(); path([R]); ctx.strokeStyle = st.color || P.red; ctx.lineWidth = st.width || 1.8; ctx.setLineDash(st.dash || []); ctx.stroke(); ctx.setLineDash([]);
+      const st = spec.areaStyle || {}; ctx.beginPath(); path([R]); ctx.strokeStyle = st.color || P.red; ctx.lineWidth = st.width || 1.8; ctx.setLineDash(st.dash && st.dash.length ? st.dash : (root.GA && root.GA.fabricStyle ? root.GA.fabricStyle.DASH : [7, 4])); ctx.stroke(); // fabric boundaries are always dashed ctx.setLineDash([]);
     }
     // overlay lines (e.g. section line) drawn above the boundary
     (spec.overlays || []).forEach(o => {

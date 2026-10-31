@@ -19,7 +19,10 @@
   const fadeIn = (o) => ['interpolate', ['linear'], ['zoom'], FADE0, 0, FADE1, o];
   const fadeOut = (o) => ['interpolate', ['linear'], ['zoom'], FADE0, o, FADE1, 0];
   // street widths in px by tier, growing with scale (exponential, so close zooms read like the street's real width)
-  const SW = { primary: [1.6, 3.6, 7, 14], collector: [1, 2.4, 5, 10], local: [0.45, 1.4, 3.2, 6.5], pedestrian: [0.35, 1.1, 2.4, 4.5], other: [0.3, 0.8, 1.7, 3.2] };
+  const SW = { primary: [1.6, 3.6, 7, 14], collector: [0.7, 2.2, 5, 10], local: [0.45, 1.2, 3.2, 6.5], pedestrian: [0.3, 0.7, 2.2, 4.5], other: [0.3, 0.7, 1.7, 3.2] };
+  // progressive reveal: major roads carry the city scale; local streets, then paths, gain strength as you zoom in
+  const ST_FADE = [[11, { primary: 1, collector: 0.55, local: 0.4, pedestrian: 0, other: 0 }], [13.5, { primary: 1, collector: 0.85, local: 0.5, pedestrian: 0, other: 0 }], [14.5, { primary: 1, collector: 1, local: 0.6, pedestrian: 0.15, other: 0.3 }], [15.5, { primary: 1, collector: 1, local: 0.9, pedestrian: 0.5, other: 0.6 }], [16.5, { primary: 1, collector: 1, local: 1, pedestrian: 0.9, other: 0.9 }]];
+  const streetOpacity = (o) => ['interpolate', ['linear'], ['zoom'], ...ST_FADE.flatMap(([z, m]) => [z, ['*', o, ['match', ['get', 'tier'], 'primary', m.primary, 'collector', m.collector, 'local', m.local, 'pedestrian', m.pedestrian, m.other]]])];
   const streetWidth = () => ['interpolate', ['exponential', 1.5], ['zoom'], ...[12, 15, 17, 19].flatMap((z, i) => [z, ['match', ['get', 'tier'], 'primary', SW.primary[i], 'collector', SW.collector[i], 'local', SW.local[i], 'pedestrian', SW.pedestrian[i], SW.other[i]]])];
   const CHORO = ['#F8ECEC', '#EBC9C8', '#D98E8C', '#B04746', '#6E1C1B'];
   const FACC = { hospital: P.red, clinic: '#D9706E', doctors: P.ink, dentist: '#9A9EA4', pharmacy: P.blue, university: P.ink, college: '#6E737A', school: P.red, early_years: '#E4A8A6', hotel: P.red, hostel: P.ink, guest_house: P.blue, apartment: '#9A9EA4' };
@@ -84,10 +87,12 @@
         layers: () => [lid('landuse')], opacityProp: { [lid('landuse')]: 'fill-opacity' },
         legend: () => `<ul class="lg">${Object.keys(P.landuse).map(k => sw(P.landuse[k], t('lu.c.' + k))).join('')}${sw('#E6E6E4', t('ly.luOther'))}</ul>`, src: () => 'OSM landuse · ODbL', popup: { layers: () => [lid('landuse')], html: (p) => `<b>${t('lu.c.' + p.cat) || p.cat}</b><br><small dir="ltr">landuse=${esc(p.lu)}</small>` } },
       { id: 'parks', group: 'land', title: () => t('ly.parks'), def: { on: false, opacity: 0.85 }, minZ: 13,
-        build() { addSrc(lid('parks'), { type: 'geojson', data: fc() }); addLyr({ id: lid('parks'), type: 'fill', source: lid('parks'), paint: { 'fill-color': P.landuse.green, 'fill-opacity': ['match', ['get', 'le'], 'park', 0.85, 0.45], 'fill-outline-color': '#3F6E3C' } }); },
+        build() { addSrc(lid('parks'), { type: 'geojson', data: fc() }); addLyr({ id: lid('parks'), type: 'fill', source: lid('parks'), paint: { 'fill-color': P.landuse.green, 'fill-opacity': 0.85, 'fill-outline-color': '#3F6E3C' } }); },
+        // gardens are drawn at about half the park opacity; the layer slider scales both (and their legend swatches)
+        applyOpacity(o) { setOp(lid('parks'), 'fill-opacity', ['match', ['get', 'le'], 'park', o, o * 0.53]); },
         async update() { const r = await viewport('parks', (f) => f, 13, 60); if (r.zoom) return 'zoom'; map.getSource(lid('parks')).setData(fc(r.features)); return r.features.length; },
         layers: () => [lid('parks')], opacityProp: { [lid('parks')]: 'fill-opacity' },
-        legend: () => `<ul class="lg">${sw(P.landuse.green, 'leisure=park')}${sw('rgba(94,154,91,.45)', 'leisure=garden')}</ul><p class="lyr-src">${t('ly.gardenNote')}</p>`, src: () => 'OSM leisure · ODbL', popup: { layers: () => [lid('parks')], html: (p) => `<b dir="auto">${esc(p.nm || '—')}</b><br><small dir="ltr">leisure=${esc(p.le)}</small>` } },
+        legend: () => `<ul class="lg"><li><i class="sw" style="background:${P.landuse.green};border:1px solid #3F6E3C"></i><span>leisure=park</span></li><li><i class="sw" style="background:${P.landuse.green};opacity:calc(var(--lg-op,1) * .53);border:1px solid #3F6E3C"></i><span>leisure=garden</span></li></ul><p class="lyr-src">${t('ly.gardenNote')}</p>`, src: () => 'OSM leisure · ODbL', popup: { layers: () => [lid('parks')], html: (p) => `<b dir="auto">${esc(p.nm || '—')}</b><br><small dir="ltr">leisure=${esc(p.le)}</small>` } },
       { id: 'water', group: 'land', title: () => t('ly.water'), def: { on: false, opacity: 1 },
         build() { addSrc(lid('water'), { type: 'geojson', data: fc() }); addLyr({ id: lid('water'), type: 'line', source: lid('water'), paint: { 'line-color': '#4F86A6', 'line-width': ['match', ['get', 'ww'], 'river', 2.4, 1], 'line-opacity': 1 } }); },
         async load() { if (this._loaded) return; const j = await D.single('water'); map.getSource(lid('water')).setData(j); this._loaded = 1; return j.features.length; },
@@ -151,7 +156,7 @@
         update: () => bldUpdate(), layers: () => [lid('bld_period', 'lite'), lid('bld_period')], visLayers() { return bldVis(this); },
         applyOpacity(o) { setOp(lid('bld_period', 'lite'), 'fill-opacity', fadeIn(o)); setOp(lid('bld_period'), 'fill-opacity', o); },
         legend: () => `<ul class="lg">${A.PERIODS.map(k => sw(P.period[k], root.GA.report.periodLabel(k))).join('')}${sw('#F3F3F2', t('nodata'))}</ul><p class="lyr-src">${t('ly.periodNote')}</p>${bldScaleNote()}`, src: () => 'OSM start_date · ODbL', popup: { layers: () => [lid('bld_period')], html: (p) => bldPopup(p) } },
-      { id: 'streets', group: 'net', title: () => t('ly.streets'), def: { on: false, opacity: 1 },
+      { id: 'streets', group: 'streets', title: () => t('ly.streets'), def: { on: false, opacity: 1 },
         build() { addSrc(lid('streets', 'maj'), { type: 'geojson', data: fc() }); addSrc(lid('streets'), { type: 'geojson', data: fc() });
           // widths grow with scale so local streets and paths stay legible up close (line-dasharray cannot be data-driven,
           // so pedestrian ways get their own dashed layer)
@@ -167,8 +172,9 @@
           cover.streets = r.bb; syncCover(true); return r.features.length; },
         // the major-road overview stays drawn under the detail layers until the detail data for the view has arrived
         visLayers() { const hide = map.getZoom() >= DETAIL_Z && covers(cover.streets); return this.layers().filter(l => !(hide && l === lid('streets', 'maj'))); },
-        layers: () => [lid('streets', 'maj'), lid('streets'), lid('streets', 'ped')], opacityProp: { [lid('streets', 'maj')]: 'line-opacity', [lid('streets')]: 'line-opacity', [lid('streets', 'ped')]: 'line-opacity' },
-        legend: () => `<ul class="lg">${['primary', 'collector', 'local', 'pedestrian'].map(k => swl(P.tier[k], P.tierWidth[k] + 0.5, t('tier.' + k), k === 'pedestrian')).join('')}</ul><p class="lyr-src">${t(map.getZoom() < DETAIL_Z ? 'ly.streetsOverview' : 'ly.streetsDetail')}</p>`, src: () => 'OSM highway · ODbL',
+        layers: () => [lid('streets', 'maj'), lid('streets'), lid('streets', 'ped')],
+        applyOpacity(o) { [lid('streets', 'maj'), lid('streets'), lid('streets', 'ped')].forEach(l => setOp(l, 'line-opacity', streetOpacity(o))); },
+        legend: () => `<ul class="lg">${['primary', 'collector', 'local', 'pedestrian'].concat(map.getZoom() >= DETAIL_Z ? ['other'] : []).map(k => swl(P.tier[k], P.tierWidth[k] + 0.5, t('tier.' + k), k === 'pedestrian')).join('')}</ul><p class="lyr-src">${t(map.getZoom() < DETAIL_Z ? 'ly.streetsOverview' : 'ly.streetsDetail')} ${t('v6.streetsReveal')}</p>`, src: () => 'OSM highway · ODbL',
         popup: { layers: () => [lid('streets'), lid('streets', 'ped'), lid('streets', 'maj')], html: (p) => `<b dir="auto">${esc(p.nm || '—')}</b><br>${t('tier.' + p.tier) || ''} <small dir="ltr">highway=${esc(p.hw)}</small>` } },
       { id: 'contours', group: 'terrain', title: () => t('ly.contours'), def: { on: false, opacity: 0.8 },
         build() { addSrc(lid('contours', '10'), { type: 'geojson', data: fc() }); addSrc(lid('contours', '20'), { type: 'geojson', data: fc() });
@@ -314,7 +320,7 @@
     const api = {
       defs, S, byId, userDefs, get order() { return order; }, get scope() { return scope; }, onChange: (f) => listeners.push(f), ensureBuilt,
       setOn(id, on) { const d = byId[id] || userDefs.find(u => u.id === id); if (!d) return; S[id].on = on; if (built) { applyVis(d); if (on) runLoad(d); } persist(); emit(); },
-      setOpacity(id, o) { const d = byId[id] || userDefs.find(u => u.id === id); S[id].opacity = o; if (built) applyOpacity(d); persist(); },
+      setOpacity(id, o) { const d = byId[id] || userDefs.find(u => u.id === id); S[id].opacity = o; if (built) applyOpacity(d); persist(); if (typeof document !== 'undefined') document.querySelectorAll(`.lg-blk[data-ly="${id}"]`).forEach(el => el.style.setProperty('--lg-op', o)); },
       control(id, el) { const d = byId[id]; if (!d || !d.onControl) return; const r = d.onControl(el); persist(); if (r !== false) emit(); },
       setMetric(id, m) { S[id].metric = m; byId[id].restyle && byId[id].restyle(); persist(); emit(); },
       move(id, dir) { const i = order.indexOf(id), j = i + dir; if (i < 0 || j < 0 || j >= order.length) return; order.splice(i, 1); order.splice(j, 0, id); applyOrder(); persist(); emit(); },
@@ -322,7 +328,7 @@
       setMaskRings(rings) { maskRings = rings || []; applyMask(); },
       highlight(features) { if (built) map.getSource('ly-hl').setData(fc(features)); },
       legendHTML() {
-        return order.map(id => byId[id] || userDefs.find(u => u.id === id)).filter(d => d && S[d.id] && S[d.id].on).map(d => `<h4>${esc(d.title())}</h4>${d.legend ? d.legend() : ''}`).join('');
+        return order.map(id => byId[id] || userDefs.find(u => u.id === id)).filter(d => d && S[d.id] && S[d.id].on).map(d => `<div class="lg-blk" data-ly="${d.id}" style="--lg-op:${S[d.id].opacity == null ? 1 : S[d.id].opacity}"><h4>${esc(d.title())}</h4>${d.legend ? d.legend() : ''}</div>`).join(''); // swatches carry the layer's opacity, as drawn on the map
       },
       popupAt(point) {
         if (!built) return null;

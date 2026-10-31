@@ -678,3 +678,16 @@ details.assign[open] > summary { border-bottom: 1px solid var(--line); } details
 /* the map's scale bar is always bottom-left and the north arrow top-right (physical), so the enlarge label sits
    bottom-right in every language */
 .enl { inset-inline-end: auto; right: 8px; left: auto; }
+
+/* ---- v6: legends show swatches at the layer's displayed opacity; dashed fabric swatch ---- */
+.lg-blk .lg .sw:not(.hatch), .lg-blk .lg .sw.ln, .lg-blk .lg-img { opacity: var(--lg-op, 1); }
+.sw.dash { width: 18px; height: 0; border-top: 2px dashed #3C4046; display: inline-block; vertical-align: middle; }
+
+/* standalone section control on the map */
+.ga-secctl .ga-secbtn { width: auto !important; height: 30px; padding: 0 9px; display: inline-flex; align-items: center; gap: 6px; font: 600 12.5px var(--f-ui); color: var(--ink); white-space: nowrap; }
+.ga-secctl .ga-secbtn .ic { font: 700 11px var(--f-ui); color: var(--red); letter-spacing: .02em; direction: ltr; border-bottom: 1.5px solid var(--red); line-height: 1.1; }
+.ga-secctl .ga-secbtn:hover { background: var(--gray1, #F2F2F1); }
+.sec-host { color: var(--ink-2); }
+.note.warn { border-inline-start: 3px solid var(--red); padding: 6px 10px; background: var(--red-soft, #F7E8E8); font-size: 12.5px; margin: 0 0 8px; }
+.sec-solo { margin-top: 10px; }
+@media (max-width: 720px) { .ga-secctl .ga-secbtn .tx { display: none; } .ga-secctl .ga-secbtn { height: 32px; padding: 0 8px; } }

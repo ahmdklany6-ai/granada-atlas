@@ -26,8 +26,9 @@
       trees: () => X.trees([bb[0] - 0.0006, bb[1] - 0.0006, bb[2] + 0.0006, bb[3] + 0.0006]),
       tcd: () => X.tcdGrid(ring, 80),
       flood: () => X.floodExposure(ring),
-      floodImg: () => img(X.wmsURL(X.SVC.miteco, 'agua:Zi_laminas_q500,agua:Zi_laminas_q100,agua:Zi_laminas_q10', [x0, y0, x1, y1], w, h, 25830)),
-      noiseImg: () => img(X.wmsURL(X.SVC.noise, 'evaluacionambiental:mer_aglomeracion_lden', [x0, y0, x1, y1], w, h, 25830)),
+      // service images are re-drawn in the atlas classes (js/rasterclass.js) so the card legend matches them
+      floodImg: () => img(X.wmsURL(X.SVC.miteco, 'agua:Zi_laminas_q500,agua:Zi_laminas_q100,agua:Zi_laminas_q10', [x0, y0, x1, y1], w, h, 25830)).then(o => root.GA.rasterClass.recolourImage('flood', o.img).then(c => Object.assign(o, { img: c }))),
+      noiseImg: () => img(X.wmsURL(X.SVC.noise, 'evaluacionambiental:mer_aglomeracion_lden', [x0, y0, x1, y1], w, h, 25830)).then(o => root.GA.rasterClass.recolourImage('noise', o.img).then(c => Object.assign(o, { img: c }))),
     };
     const run = (k) => { out.status[k] = { state: 'loading' }; return withTimeout(makers[k](), LIMIT).then(v => { out[k] = v; out.status[k] = { state: 'ok' }; }, e => { out[k] = null; out.status[k] = { state: 'failed', error: (e && e.message) || String(e) }; }).then(() => { try { onJob && onJob(k); } catch (e) { console.warn(e); } }); };
     const done = Promise.all(Object.keys(makers).map(run)).then(() => out);
@@ -128,7 +129,7 @@
       const items = []; ['q500', 'q100', 'q50', 'q10'].forEach(k => (F.features[k] || []).forEach(p => items.push({ g: { type: 'Polygon', coordinates: p.coordinates }, fill: X.FLOOD.find(q => q.k === k).color, alpha: 0.75, p: Object.assign({ _kind: 'flood', T: X.FLOOD.find(q => q.k === k).T }, p.props || {}) })));
       insertAfter('trees', { id: 'flood', title: t('g3.flood'), mainLayer: 'flood', src: { name: 'MITECO — SNCZI', detail: t('g3.floodDetail'), license: t('g3.floodLic') },
         spec: { images: ext.floodImg ? [Object.assign({ alpha: 0.35 }, ext.floodImg)] : [], context: { buildings: ctxB, streets: ctxS }, layers: [{ type: 'fill', items }, { type: 'line', items: (F.reaches || []).filter(r => r.geometry).map(r => ({ g: r.geometry, stroke: '#0B2E4F', width: 2.4 })) }] },
-        legend: X.FLOOD.map(q => ({ sw: q.color, label: `T = ${q.T} (${q.p} ${t('ly3.perYear')})${z[q.k] && z[q.k].status !== 'ok' ? ' — ' + (z[q.k].status === 'not_modelled' ? t('v5.notModelled') : t('v5.unavail')) : ''}`, key: q.k })).concat([{ line: '#0B2E4F', w: 2.4, label: t('ly3.arpsi') }]),
+        legend: X.FLOOD.map(q => ({ sw: q.color, alpha: 0.75, label: `T = ${q.T} (${q.p} ${t('ly3.perYear')})${z[q.k] && z[q.k].status !== 'ok' ? ' — ' + (z[q.k].status === 'not_modelled' ? t('v5.notModelled') : t('v5.unavail')) : ''}`, key: q.k })).concat([{ line: '#0B2E4F', w: 2.4, label: t('ly3.arpsi') }]),
         ind: [[t('g3.floodT10'), sh('q10'), 'est'], [t('v5.floodT50'), sh('q50'), 'est'], [t('g3.floodT100'), sh('q100'), 'est'], [t('g3.floodT500'), sh('q500'), 'est']],
         chart: anyF ? { kind: 'hbars', unit: t('g3.shareUnit'), items: okP.map(q => ({ label: 'T' + q.T, v: z[q.k].share * 100, col: q.color })) } : null,
         find: [okP.length ? (anyF ? t('v5.fFlood', { list: okP.map(q => `T${q.T} ${pct(z[q.k].share, 1)}`).join(' · ') }) : t('v5.fFloodZero', { list: okP.map(q => 'T' + q.T).join(', ') })) : null,
@@ -142,7 +143,7 @@
     // noise (display only — values are drawn by the service, not computed here)
     insertAfter('flood', ext.noiseImg ? { id: 'noise', title: t('g3.noise'), mainLayer: 'noise', src: { name: 'MITECO — SICA', detail: t('g3.noiseDetail'), license: t('g3.noiseLic') },
       spec: { images: [Object.assign({ alpha: 0.95 }, ext.noiseImg)], context: { buildings: ctxB, buildingColor: 'rgba(34,36,40,.12)' } },
-      legend: [{ line: '#FFEE58', w: 2, label: '55 dB(A)' }, { line: '#FFCC80', w: 2, label: '60' }, { line: '#F0A050', w: 2, label: '65' }, { line: '#E05050', w: 2, label: '70' }, { line: '#E040E0', w: 2, label: '75 dB(A) Lden' }],
+      legend: root.GA.rasterClass.legendItems('noise', { ind: 'lden' }).map(i => Object.assign(i, { alpha: 0.95 })),
       ind: [], find: [t('g3.fNoise'), t('g3.noiseCaveat')], method: t('g3.mNoise') } : gap('noise', t('g3.noise'), 'noiseImg'));
     return list;
   };

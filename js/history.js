@@ -24,7 +24,29 @@
     { wiki: 'Alcaicería_de_Granada', ll: [-3.5989, 37.1757], approx: true }, { wiki: 'Embovedado_del_Darro', ll: [-3.5972, 37.1758], approx: true },
     { wiki: 'Plaza_Nueva_(Granada)' }, { wiki: 'Gran_Vía_de_Colón' }, { wiki: 'Realejo-San_Matías' }, { wiki: 'Cartuja_de_Granada' }, { wiki: 'Almanjáyar' },
   ];
-  let maps = null; let meta = {}; let wiki = {};
+  let maps = null; let meta = {}; let wiki = {}; let placesFC = null;
+  const PAL = root.GA.palette;
+  // Overlays drawn on top of the historical scan, each with its own toggle and legend entry:
+  //  - linked places: present-day positions of the Spanish-Wikipedia articles listed under "Linked places"
+  //    (coordinates from each article; two marked approximate). They are NOT features of the historical map.
+  //  - the user's saved fabrics: dashed outline, plain number.
+  function overlays(m) {
+    if (!m || !m.isStyleLoaded || !m.getStyle()) return; const S = H();
+    const F = root.GA.fabricStyle;
+    if (F && !m.getSource('hx-areas')) { m.addSource('hx-areas', { type: 'geojson', data: F.areasFC() }); F.addLayers(m, 'hx-areas'); }
+    if (F && m.getSource('hx-areas')) F.setVisible(m, 'hx-areas', S.areas !== false);
+    if (placesFC) {
+      if (!m.getSource('hx-pl')) { m.addSource('hx-pl', { type: 'geojson', data: placesFC });
+        m.addLayer({ id: 'hx-pl', type: 'circle', source: 'hx-pl', paint: { 'circle-radius': 6, 'circle-color': PAL.red, 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 2 } });
+        m.on('mouseenter', 'hx-pl', () => { m.getCanvas().style.cursor = 'pointer'; }); m.on('mouseleave', 'hx-pl', () => { m.getCanvas().style.cursor = ''; });
+      } else m.getSource('hx-pl').setData(placesFC);
+      m.setLayoutProperty('hx-pl', 'visibility', S.places === false ? 'none' : 'visible');
+    }
+  }
+  function placePopup(p) {
+    const d = p.rev ? new Date(p.rev) : null; const ds = d && !isNaN(d) ? d.toISOString().slice(0, 10) : '';
+    return `<b dir="auto">${esc(p.title)}</b>${p.desc ? `<br><small dir="auto">${esc(p.desc)}</small>` : ''}<p class="fine">${t('hx.placeMeaning')}${+p.approx ? ' ' + t('hx.approxPos') : ''}</p>${p.extract ? `<p dir="auto" class="fine">${esc(p.extract)}…</p>` : ''}<small>${t('src.label')} <a href="${esc(p.url)}" target="_blank" rel="noopener">Wikipedia (es) ↗</a> · CC BY-SA 4.0${ds ? ` · ${t('hx.placeRev', { d: ds })}` : ''}</small>`;
+  }
   const H = () => { const p = store.get(); p.history = p.history || { a: 'ams56', b: 'pnoa2024', opacity: 0.85, swipe: false, pos: 50, collage: [] }; return p.history; };
   const histTiles = (h) => `${h.url}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=${h.layer}&STYLES=&SRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=${encodeURIComponent(h.fmt)}`;
 
@@ -38,7 +60,7 @@
   }
   async function wikiSummary(title) {
     if (wiki[title]) return wiki[title];
-    const out = {}; for (const lang of [I.lang === 'en' ? 'en' : I.lang, 'es']) { try { const r = await fetch(`https://es.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`); if (!r.ok) continue; const j = await r.json(); Object.assign(out, { title: j.title, extract: j.extract, thumb: j.thumbnail && j.thumbnail.source, url: j.content_urls && j.content_urls.desktop.page, ll: j.coordinates ? [j.coordinates.lon, j.coordinates.lat] : null, lang: 'es' }); break; } catch (e) { } }
+    const out = {}; for (const lang of [I.lang === 'en' ? 'en' : I.lang, 'es']) { try { const r = await fetch(`https://es.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`); if (!r.ok) continue; const j = await r.json(); Object.assign(out, { title: j.title, extract: j.extract, thumb: j.thumbnail && j.thumbnail.source, url: j.content_urls && j.content_urls.desktop.page, ll: j.coordinates ? [j.coordinates.lon, j.coordinates.lat] : null, rev: j.timestamp || null, desc: j.description || '', lang: 'es' }); break; } catch (e) { } }
     wiki[title] = out; return out;
   }
 
@@ -51,6 +73,10 @@
         <label class="chk"><input type="checkbox" id="hx-vis" ${S.hidden ? '' : 'checked'}> ${t('hx.visible')}</label>
         <label class="row2">${t('ly.opacity')} <input type="range" id="hx-op" min="0" max="1" step="0.05" value="${S.opacity}"></label>
         <label class="chk"><input type="checkbox" id="hx-swipe" ${S.swipe ? 'checked' : ''}> ${t('hx.swipe')}</label>
+        <div class="sub">${t('hx.overlays')}</div>
+        <label class="chk"><input type="checkbox" id="hx-pl" ${S.places === false ? '' : 'checked'}> <i class="sw dot" style="background:${PAL.red};box-shadow:0 0 0 1px #fff inset"></i> ${t('hx.placesLayer')}</label>
+        <p class="fine">${t('hx.placesLegend')}</p>
+        <label class="chk"><input type="checkbox" id="hx-ar" ${S.areas === false ? '' : 'checked'}> <i class="sw dash"></i> ${t('hx.areasLayer')}</label>
         ${S.swipe ? `<label class="row2">${t('hx.right')} <select id="hx-b">${opt(S.b)}</select></label>` : ''}
         <div class="hx-info" id="hx-info"></div>
         <p class="fine">${t('hx.alignNote')}</p>
@@ -70,8 +96,10 @@
     maps = [a];
     if (S.swipe) { const b = mk('hx-map-b', S.b); maps.push(b); let lock = false; const sync = (src, dst) => src.on('move', () => { if (lock) return; lock = true; dst.jumpTo({ center: src.getCenter(), zoom: src.getZoom() }); lock = false; }); sync(a, b); sync(b, a); }
     a.on('moveend', () => { const S2 = H(); S2.center = a.getCenter().toArray(); S2.zoom = a.getZoom(); updateInfo(body); });
-    a.on('load', () => updateInfo(body));
-    a.on('click', async (e) => { const S2 = H(); const h = X.HIST.find(x => x.id === S2.a); const r = await X.histInfo(h, [e.lngLat.lng, e.lngLat.lat]).catch(() => null); if (r) new maplibregl.Popup({ className: 'atlas-popup' }).setLngLat(e.lngLat).setHTML(`<b>${esc(t('hist.' + h.id))}</b><br>${histLine(h, r)}`).addTo(a); });
+    a.on('load', () => { updateInfo(body); overlays(a); });
+    a.on('click', async (e) => { const pf = a.getLayer('hx-pl') && a.getLayoutProperty('hx-pl', 'visibility') !== 'none' ? a.queryRenderedFeatures(e.point, { layers: ['hx-pl'] }) : [];
+      if (pf.length) { new maplibregl.Popup({ className: 'atlas-popup', maxWidth: '300px' }).setLngLat(pf[0].geometry.coordinates).setHTML(placePopup(pf[0].properties)).addTo(a); return; }
+      const S2 = H(); const h = X.HIST.find(x => x.id === S2.a); const r = await X.histInfo(h, [e.lngLat.lng, e.lngLat.lat]).catch(() => null); if (r) new maplibregl.Popup({ className: 'atlas-popup' }).setLngLat(e.lngLat).setHTML(`<b>${esc(t('hist.' + h.id))}</b><br>${histLine(h, r)}`).addTo(a); });
   }
   function histLine(h, r) { return `${r.name ? `<bdi>${esc(r.name)}</bdi> · ` : ''}${r.sheet ? t('ly3.sheet') + ' ' + esc(r.sheet) + ' · ' : ''}${r.year ? `${t(h.id === 'minutas' ? 'hx.surveyed' : 'fb.edition')} <b class="num">${esc(r.year)}</b>` : ''}${r.flights && r.flights.length ? t('ly3.flights') + ' <span class="num">' + r.flights.join(', ') + '</span>' : ''}${r.editions ? `<br><small>${t('ly3.editions')} <span class="num">${r.editions.join(', ')}</span></small>` : ''}`; }
   async function updateInfo(body) {
@@ -84,7 +112,8 @@
     for (const p of PLACES) { const w = await wikiSummary(p.wiki); if (!w.title) continue; out.push(Object.assign({}, p, w, { ll: w.ll || p.ll })); }
     box.innerHTML = out.map((p, i) => `<article class="hx-place"><button class="link" data-hx-fly="${i}"><b dir="auto">${esc(p.title)}</b></button>${p.approx ? ` <small>${t('hx.approxPos')}</small>` : ''}<p dir="auto">${esc((p.extract || '').slice(0, 260))}${(p.extract || '').length > 260 ? '…' : ''}</p><small><a href="${esc(p.url)}" target="_blank" rel="noopener">Wikipedia (es) ↗</a> · CC BY-SA 4.0</small></article>`).join('') || `<p class="note">${t('hx.placesFail')}</p>`;
     box.onclick = (e) => { const b = e.target.closest('[data-hx-fly]'); if (!b || !maps) return; const p = out[+b.dataset.hxFly]; if (!p.ll) return; maps[0].flyTo({ center: p.ll, zoom: 17 }); new maplibregl.Popup({ className: 'atlas-popup' }).setLngLat(p.ll).setHTML(`<b dir="auto">${esc(p.title)}</b>${p.approx ? `<br><small>${t('hx.approxPos')}</small>` : ''}`).addTo(maps[0]); };
-    if (maps) out.forEach(p => { if (!p.ll) return; const el = document.createElement('div'); el.className = 'hx-pin'; el.title = p.title; new maplibregl.Marker({ element: el }).setLngLat(p.ll).addTo(maps[0]); });
+    placesFC = { type: 'FeatureCollection', features: out.filter(p => p.ll).map((p, i) => ({ type: 'Feature', properties: { i, title: p.title, desc: p.desc || '', url: p.url || '', rev: p.rev || '', approx: p.approx ? 1 : 0, extract: (p.extract || '').slice(0, 220) }, geometry: { type: 'Point', coordinates: p.ll } })) };
+    (maps || []).forEach(m => overlays(m));
   }
   async function renderArchive(body) {
     const box = body.querySelector('#hx-arch');
@@ -121,7 +150,7 @@
       if (b.id === 'hx-col-png') return collagePNG();
       if (b.id === 'hx-frag') { if (!maps || !root.GA.library) return; const h = X.HIST.find(x => x.id === S.a); try { const blob = await PG.toBlob(maps[0].getCanvas()); const c = maps[0].getCenter(); const it = await root.GA.library.addBlob(blob, { title: `${t('hist.' + h.id)} (${h.period}) — ${t('hx.fragment')}`, kind: 'image', source: 'IGN / CNIG — ' + h.layer + ' (CC BY 4.0) · © OpenStreetMap', date: h.period, loc: [c.lng, c.lat], tags: ['history', 'map fragment'], links: { themes: ['history'] } }); S.collage.push({ lib: it.id, caption: `${t('hist.' + h.id)} · ${h.period}` }); save(); renderCollage(body); root.GA.toast && root.GA.toast(t('lib.added')); } catch (er) { root.GA.toast && root.GA.toast(er.message, true); } }
     };
-    body.onchange = (e) => { const el = e.target; if (el.id === 'hx-vis') { S.hidden = !el.checked; save(); maps && maps.forEach(m => m.getLayer('hx') && m.setLayoutProperty('hx', 'visibility', S.hidden ? 'none' : 'visible')); } if (el.id === 'hx-swipe') { S.swipe = el.checked; save(); render(body); } if (el.id === 'hx-b') { S.b = el.value; save(); render(body); } if (el.dataset.hxCap != null) { S.collage[+el.dataset.hxCap].caption = el.value; save(); } };
+    body.onchange = (e) => { const el = e.target; if (el.id === 'hx-pl' || el.id === 'hx-ar') { S[el.id === 'hx-pl' ? 'places' : 'areas'] = el.checked; save(); (maps || []).forEach(m => overlays(m)); return; } if (el.id === 'hx-vis') { S.hidden = !el.checked; save(); maps && maps.forEach(m => m.getLayer('hx') && m.setLayoutProperty('hx', 'visibility', S.hidden ? 'none' : 'visible')); } if (el.id === 'hx-swipe') { S.swipe = el.checked; save(); render(body); } if (el.id === 'hx-b') { S.b = el.value; save(); render(body); } if (el.dataset.hxCap != null) { S.collage[+el.dataset.hxCap].caption = el.value; save(); } };
     body.oninput = (e) => { const el = e.target; if (el.id === 'hx-op') { S.opacity = +el.value; maps && maps.forEach(m => m.getLayer('hx') && m.setPaintProperty('hx', 'raster-opacity', S.opacity)); save(); } if (el.id === 'hx-pos') { S.pos = +el.value; const top = body.querySelector('#hx-map-b'); if (top) top.style.clipPath = `inset(0 0 0 ${S.pos}%)`; } };
   }
   async function toFabric(a) {

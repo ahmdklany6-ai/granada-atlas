@@ -50,8 +50,8 @@
     } else if (k === 'climate') {
       const cl = cache['clim' + f.km + e.style.climate + (e.centre || '')];
       if (cl && cl.tcd && e.style.climate === 'canopy') { const g = cl.tcd; const step = Math.max(1, Math.round(10 / mpp)); const img = ctx.createImageData(Math.ceil(px / step), Math.ceil(px / step)); for (let j = 0; j < img.height; j++) for (let i = 0; i < img.width; i++) { const v = D.sampleGrid(g, f.x0 + (i + 0.5) * step * mpp, f.y1 - (j + 0.5) * step * mpp, true); const col = X.tcdColour(v); if (!col) continue; const o = (j * img.width + i) * 4; img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = 255; } const tmp = document.createElement('canvas'); tmp.width = img.width; tmp.height = img.height; tmp.getContext('2d').putImageData(img, 0, 0); ctx.drawImage(tmp, 0, 0, px, px); X.TCD_CLASSES.slice(1).forEach(c => legend.push({ sw: `rgb(${c.col.slice(0, 3).join(',')})`, label: `${c.k.replace('-', '–')} % ${t('g3.tcd')}` })); }
-      if (cl && cl.lst && e.style.climate === 'lst') { ctx.globalAlpha = 0.8; ctx.imageSmoothingEnabled = false; ctx.drawImage(cl.lst, 0, 0, px, px); ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = true; legend.push({ sw: 'rgba(230,120,40,.7)', label: t('clim.lstLg', { d: X.LST_DATE }) }); }
-      if (cl && cl.flood) { ctx.globalAlpha = 0.9; ctx.drawImage(cl.flood, 0, 0, px, px); ctx.globalAlpha = 1; legend.push({ sw: '#78A9D6', label: t('e13.lg.flood') }); }
+      if (cl && cl.lst && e.style.climate === 'lst') { ctx.globalAlpha = 0.8; ctx.imageSmoothingEnabled = false; ctx.drawImage(cl.lst, 0, 0, px, px); ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = true; root.GA.rasterClass.legendItems('lst').forEach(i => legend.push(Object.assign(i, { alpha: 0.8 }))); legend.push({ label: t('clim.lstLg', { d: X.LST_DATE }) }); }
+      if (cl && cl.flood) { ctx.globalAlpha = 0.9; ctx.drawImage(cl.flood, 0, 0, px, px); ctx.globalAlpha = 1; legend.push({ sw: X.FLOOD.find(z => z.k === 'q100').color, alpha: 0.9, label: t('e13.lg.flood') }); }
       ctx.globalAlpha = 0.35; ctx.drawImage(B.fgImg, Xp(B.fg.ox), Yp(B.fg.oy), B.fg.width * B.fg.px_m / mpp, B.fg.height * B.fg.px_m / mpp); ctx.globalAlpha = 1; outline(B.muni, '#5E636A', 1.2, [8, 5]);
       legend.push({ sw: 'rgba(28,30,33,.35)', label: t('g.building') });
       if (!cl) legend.push({ label: t('e13.loadingClim') });
@@ -82,6 +82,8 @@
     if (e.style.climate === 'canopy') { try { out.tcd = await X.tcdGrid(ringF, 0); } catch (er) { out.err = er.message; } }
     else { try { out.lst = await X.warp3857(X.SVC.gibs, 'MODIS_Aqua_L3_Land_Surface_Temp_8Day_Day', { x0: f.x0, y0: f.y0, x1: f.x1, y1: f.y1, w: 600, h: 600 }, '&TIME=' + X.LST_DATE); } catch (er) { out.err = er.message; } }
     try { out.flood = await X.loadImage(X.wmsURL(X.SVC.miteco, 'agua:Zi_laminas_q100', [f.x0, f.y0, f.x1, f.y1], 1400, 1400, 25830), 40000); } catch (er) { }
+    // drawn in the atlas classes so the legend below matches (js/rasterclass.js)
+    const RC = root.GA.rasterClass; if (out.lst) out.lst = await RC.recolourImage('lst', out.lst).catch(() => null); if (out.flood) out.flood = await RC.recolourImage('flood', out.flood).catch(() => null);
     cache[key] = out; return out;
   }
   const SRC = { density: 'e13.src.density', morphology: 'e13.src.morph', centre: 'e13.src.centre', climate: 'e13.src.climate', human: 'e13.src.human' };
@@ -112,7 +114,7 @@
     ctx.font = `700 120px ${F}`; ctx.fillStyle = e.style.accent; ctx.textAlign = al; ctx.fillText(String(i).padStart(2, '0'), tx, y + 70); y += 110;
     y = text(t('e13.t.' + k), y, 46, 700); y = text(t('e13.q.' + k), y + 4, 20, 400, '#3C4046', 3);
     y = text(t('e13.form') + ': ' + t('e13.f.' + k + (k === 'climate' ? '.' + e.style.climate : k === 'human' ? '.' + e.style.human : '')), y + 8, 17, 600, '#5E636A', 2);
-    y = root.GA.compare.legendCanvas(ctx, m.legend.filter(l => l.sw || l.dot || l.line), sx, y + 30, sw, rtl, F) + 6; m.legend.filter(l => !l.sw && !l.dot && !l.line).forEach(l => { y = text(l.label, y + 4, 15, 400, '#5E636A', 3); });
+    y = root.GA.compare.legendCanvas(ctx, m.legend.filter(l => l.sw || l.dot || l.line || l.hatch), sx, y + 30, sw, rtl, F) + 6; m.legend.filter(l => !l.sw && !l.dot && !l.line && !l.hatch).forEach(l => { y = text(l.label, y + 4, 15, 400, '#5E636A', 3); });
     const mp = e.maps[k]; y = text(t('e13.sentence'), y + 30, 20, 700, e.style.accent); y = text([mp.finding, mp.surprise].filter(s => (s || '').trim()).join(' ') || t('e13.sentenceMissing'), y + 2, 22, 400, (mp.finding || '').trim() ? '#1C1E21' : '#992B2A', 7);
     text(t(SRC[k], { d: X.LST_DATE }) + ' · ' + t('e13.scaleLine', { s: '1:' + f.den.toLocaleString('en-US'), k: e.frameKm }), H - 120, 15, 400, '#3C4046', 4);
     PG.footer(ctx, W, H, `Granada Atlas · ${t('e13.footer')} · ${i}/5`);

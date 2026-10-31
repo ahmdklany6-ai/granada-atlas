@@ -8,7 +8,8 @@
   const t = (k, v) => I.t(k, v);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const nf = (n, d) => n == null || !isFinite(n) ? null : Number(n).toLocaleString('en-US', { maximumFractionDigits: d == null ? 0 : d, minimumFractionDigits: d ? Math.min(1, d) : 0 });
-  const STYLES = [{ color: '#992B2A', dash: [] }, { color: '#2F5F8A', dash: [7, 4] }, { color: '#1C1E21', dash: [2, 3] }, { color: '#7B5EA7', dash: [9, 3, 2, 3] }, { color: '#5E9A5B', dash: [] }, { color: '#D98A2B', dash: [7, 4] }, { color: '#6E737A', dash: [2, 3] }, { color: '#6E1C1B', dash: [9, 3, 2, 3] }];
+  // every fabric boundary is dashed (colour and dash pattern together keep the fabrics apart)
+  const STYLES = [{ color: '#992B2A', dash: [7, 4] }, { color: '#2F5F8A', dash: [3, 3] }, { color: '#1C1E21', dash: [10, 3, 2, 3] }, { color: '#7B5EA7', dash: [5, 2] }, { color: '#5E9A5B', dash: [7, 4] }, { color: '#D98A2B', dash: [3, 3] }, { color: '#6E737A', dash: [10, 3, 2, 3] }, { color: '#6E1C1B', dash: [5, 2] }];
   const styleOf = (i) => Object.assign({ label: String(i + 1), width: 2.2 }, STYLES[i % STYLES.length]);
 
   function ringOf(spec) {
@@ -118,7 +119,7 @@
       if (cx + w > maxW) { cx = 0; cy += rowH; }
       const sx = rtl ? x + maxW - cx - 18 : x + cx;
       if (it.hatch) { ctx.strokeStyle = '#8A8F96'; ctx.strokeRect(sx, cy - 6, 18, 12); for (let k = -12; k < 18; k += 4) { ctx.beginPath(); ctx.moveTo(sx + Math.max(0, k), cy + 6 - Math.max(0, -k)); ctx.lineTo(sx + Math.min(18, k + 12), cy - 6 + Math.max(0, k + 12 - 18)); ctx.stroke(); } }
-      else if (it.sw) { ctx.fillStyle = it.sw; ctx.fillRect(sx, cy - 6, 18, 12); ctx.strokeStyle = 'rgba(0,0,0,.3)'; ctx.strokeRect(sx, cy - 6, 18, 12); }
+      else if (it.sw) { ctx.fillStyle = it.sw; ctx.globalAlpha = it.alpha != null ? it.alpha : 1; ctx.fillRect(sx, cy - 6, 18, 12); ctx.globalAlpha = 1; ctx.strokeStyle = 'rgba(0,0,0,.3)'; ctx.strokeRect(sx, cy - 6, 18, 12); }
       else if (it.line) { ctx.strokeStyle = it.line; ctx.lineWidth = Math.max(1, it.w || 1); ctx.setLineDash(it.dash ? [4, 2] : []); ctx.beginPath(); ctx.moveTo(sx, cy); ctx.lineTo(sx + 18, cy); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1; }
       else if (it.dot) { ctx.fillStyle = it.dot; ctx.beginPath(); ctx.arc(sx + 9, cy, 5, 0, Math.PI * 2); ctx.fill(); }
       else if (it.ramp) { const g = ctx.createLinearGradient(sx, 0, sx + 18, 0); g.addColorStop(0, `rgb(${it.ramp[0].slice(0, 3)})`); g.addColorStop(1, `rgb(${it.ramp[1].slice(0, 3)})`); ctx.fillStyle = g; ctx.fillRect(sx, cy - 6, 18, 12); }
@@ -257,9 +258,9 @@
       const distr = adm ? adm.features.filter(x => x.properties.kind === 'distrito' || x.properties.kind === 'urban_centre').map(x => ({ g: x.geometry, stroke: x.properties.kind === 'urban_centre' ? P.red : '#9A9EA4', width: x.properties.kind === 'urban_centre' ? 1.2 : 0.7, dash: x.properties.kind === 'urban_centre' ? [4, 3] : null })) : [];
       const r = MC.render(cv, { center: f.center, mpp: f.mpp, w, h, ratio, context: { streets: ctxStreets, streetColor: '#B9BBBE' }, layers: [{ type: 'line', items: distr.map(d => ({ g: { type: d.g.type === 'Polygon' ? 'MultiLineString' : 'MultiLineString', coordinates: d.g.type === 'Polygon' ? d.g.coordinates : d.g.coordinates.flat() }, stroke: d.stroke, width: d.width, dash: d.dash })) }] });
       const ctx = cv.getContext('2d'); ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-      Xs.forEach(x => { const U = MC.ringUTM(x.ring); ctx.beginPath(); U.forEach((p, i) => { const q = [r.X(p[0]), r.Y(p[1])]; i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }); ctx.closePath(); ctx.fillStyle = x.style.color + '33'; ctx.fill(); ctx.strokeStyle = x.style.color; ctx.lineWidth = 2; ctx.stroke();
-        const cx = U.reduce((s, p) => s + r.X(p[0]), 0) / U.length, cy = Math.min(...U.map(p => r.Y(p[1]))) - 12;
-        ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(cx, cy, 10, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = x.style.color; ctx.lineWidth = 1.5; ctx.stroke(); ctx.fillStyle = x.style.color; ctx.font = `700 12px ${getComputedStyle(document.documentElement).getPropertyValue('--f-ui')}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.fillText(String(x.no), cx, cy + 0.5); });
+      const FM = root.GA.fabricStyle, placed = [];
+      Xs.forEach(x => { const U = MC.ringUTM(x.ring); const pts = U.map(p => [r.X(p[0]), r.Y(p[1])]); FM.strokeRing(ctx, pts, { color: x.style.color, width: 2, dash: x.style.dash });
+        const cx = pts.reduce((s, q) => s + q[0], 0) / pts.length, cy = Math.min(...pts.map(q => q[1])) - 11; FM.drawNumber(ctx, String(x.no), cx, cy, { color: x.style.color, size: 15, placed }); });
       return r;
     }
 
@@ -290,7 +291,7 @@
       const panel = async (id, titleKey, px, py, w) => {
         ctx.textAlign = rtl ? 'right' : 'left'; ctx.font = `700 22px ${font}`; ctx.fillStyle = '#1C1E21'; ctx.fillText(t(titleKey), rtl ? px + w : px, py - 10);
         const cd = cards.find(k => k.id === id); const off = document.createElement('canvas');
-        if (cd && !cd.gapOnly) { GAL.drawCard(off, { ring: X.ring, style: { color: P.red, width: 2.4 } }, cd, { center: MC.fit([X.ring], w, ph, 0.06).center, mpp: scale.mpp, w, h: ph, ratio: 1 }); ctx.drawImage(off, px, py); }
+        if (cd && !cd.gapOnly) { GAL.drawCard(off, { ring: X.ring, style: { color: X.style.color, width: 2.4, dash: X.style.dash } }, cd, { center: MC.fit([X.ring], w, ph, 0.06).center, mpp: scale.mpp, w, h: ph, ratio: 1 }); ctx.drawImage(off, px, py); }
         ctx.strokeStyle = '#C6C7C9'; ctx.strokeRect(px + 0.5, py + 0.5, w - 1, ph - 1);
         let ly = legendCanvas(ctx, (cd && cd.legend) || [], px, py + ph + 18, w, rtl, font);
         ctx.font = `14px ${font}`; ctx.fillStyle = '#3C4046'; ctx.textAlign = rtl ? 'right' : 'left';

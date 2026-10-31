@@ -140,7 +140,7 @@
   }
 
   // ---------- location map: the fabric within Granada, with neighbourhoods, landmarks and the other saved fabrics ----------
-  const locLegend = () => [{ line: P.red, w: 3, label: t('v5.locThis') }, { line: '#6B7077', w: 1.5, dash: true, label: t('v5.locOthers') }, { line: '#9A9EA4', w: 1, dash: true, label: t('v5.locMuni') }, { line: '#C9CBCE', w: 1, label: t('v5.locBarrios') }, { dot: '#1C1E21', label: t('v5.locLandmark') }, { line: '#4E7FA6', w: 2, label: t('v5.locRiver') }];
+  const locLegend = () => [{ line: P.red, w: 2.6, dash: true, label: t('v5.locThis') }, { line: '#6B7077', w: 1.5, dash: true, label: t('v5.locOthers') }, { line: '#9A9EA4', w: 1, dash: true, label: t('v5.locMuni') }, { line: '#C9CBCE', w: 1, label: t('v5.locBarrios') }, { dot: '#1C1E21', label: t('v5.locLandmark') }, { line: '#4E7FA6', w: 2, label: t('v5.locRiver') }];
   let locCache = null;
   async function locData() {
     if (!locCache) locCache = Promise.all([D.single('streets_major').catch(() => null), D.single('admin').catch(() => null), D.single('water').catch(() => null)]);
@@ -157,7 +157,7 @@
           { type: 'line', items: water ? water.features.filter(f => f.properties.ww === 'river').map(f => ({ g: f.geometry, stroke: '#4E7FA6', width: 1.8 })) : [] },
           { type: 'line', items: muni ? [{ g: { type: 'MultiLineString', coordinates: lines(muni.geometry) }, stroke: '#9A9EA4', width: 0.9, dash: [4, 3] }] : [] },
           { type: 'line', items: others.map(r => ({ g: { type: 'LineString', coordinates: r }, stroke: '#6B7077', width: 1.4, dash: [3, 2] })) },
-          { type: 'fill', items: [{ g: { type: 'Polygon', coordinates: [CMP.ringOf(a.spec)] }, fill: P.red, alpha: 0.22 }] }],
+          { type: 'fill', items: [{ g: { type: 'Polygon', coordinates: [CMP.ringOf(a.spec)] }, fill: P.red, alpha: 0.06 }] }],
         labels, fadeOutside: 0 } };
   }
   async function drawLoc(cv, a, w, h, ratio) {

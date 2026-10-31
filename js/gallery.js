@@ -178,7 +178,7 @@
   function legendHTML(items) {
     return `<ul class="lg">${items.map(i => {
       let sw = '';
-      if (i.hatch) sw = '<i class="sw hatch"></i>'; else if (i.sw) sw = `<i class="sw" style="background:${i.sw}"></i>`;
+      if (i.hatch) sw = '<i class="sw hatch"></i>'; else if (i.sw) sw = `<i class="sw" style="background:${i.sw}${i.alpha != null ? `;opacity:${i.alpha}` : ''}"></i>`; // swatch drawn at the map's opacity
       else if (i.line) sw = `<i class="sw ln" style="border-top:${Math.max(1, i.w || 1)}px ${i.dash ? 'dashed' : 'solid'} ${i.line}"></i>`;
       else if (i.dot) sw = `<i class="sw dot ${i.shape || ''}" style="background:${i.dot}"></i>`;
       else if (i.ramp) sw = `<i class="sw ramp" style="background:linear-gradient(90deg,rgb(${i.ramp[0].slice(0, 3)}),rgb(${i.ramp[1].slice(0, 3)}))"></i>`;

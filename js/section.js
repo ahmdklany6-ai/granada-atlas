@@ -61,7 +61,10 @@
 
     // buildings
     let feats = []; let bErr = null;
-    try { feats = await D.buildingsNear(sec.pts, 80); } catch (e) { bErr = e.message; }
+    // only the 1 km building cells along the line's corridor are fetched (works with or without a study area)
+    let bCells = null; try { const r = await D.alongLine('buildings', sec.pts, 80); feats = r.features; bCells = { n: r.cells, data: r.cellsWithData }; } catch (e) { bErr = e.message; }
+    // coverage of the published building extract along the line (sampled every step)
+    let outRegion = 0; for (let i = 0; i < n; i++) { const p = PJ.EPSG25830.inverse(at(pl, dist[i])); if (!D.inRegion(p)) outRegion++; }
     const cuts = [], bg = []; let bgUnknown = 0;
     feats.forEach(f => {
       const pr = f.properties; const hTag = pr.h != null && isFinite(+pr.h) && +pr.h > 0 ? +pr.h : null; const lv = pr.lv != null && isFinite(+pr.lv) && +pr.lv > 0 ? +pr.lv : null;
@@ -119,7 +122,7 @@
     const A0 = PJ.EPSG25830.inverse(pl.u[0]), B0 = PJ.EPSG25830.inverse(pl.u[pl.u.length - 1]);
     const az = (Math.atan2(pl.u[pl.u.length - 1][0] - pl.u[0][0], pl.u[pl.u.length - 1][1] - pl.u[0][1]) * 180 / Math.PI + 360) % 360;
     return { id: sec.id, name: sec.name, pts: sec.pts, L: pl.L, step, dist, elev, min: Math.min(...ev), max: Math.max(...ev), missing,
-      maxGrad: maxG, maxGradAt: maxAt, baseline: k * step, hornMax, cuts: cuts.sort((a, b) => a.d0 - b.d0), bg, bgUnknown, trees, tErr, treeTs, corridor, nearTrees: NEAR, rowsNear, surf, sErr, floorH, bErr, look,
+      maxGrad: maxG, maxGradAt: maxAt, baseline: k * step, hornMax, cuts: cuts.sort((a, b) => a.d0 - b.d0), bg, bgUnknown, trees, tErr, treeTs, corridor, nearTrees: NEAR, rowsNear, surf, sErr, floorH, bErr, look, coverage: { demMissing: missing / n, outsideRegion: outRegion / n, bCells },
       ref: { a: pl.u[0], b: pl.u[pl.u.length - 1], aLL: A0, bLL: B0, azimuth: az }, vertexD: pl.cum.slice(), computed: new Date().toISOString() };
   }
 
