@@ -168,9 +168,10 @@
       else { const r = tr.row ? 4 : 5; pt.path([[x, y0], [x, y0 - 9]], { stroke: col, lw, alpha }); pt.circle(x, y0 - 9 - r, r, { fill: '#FFFFFF', stroke: col, lw, alpha, dash: [2, 1.6] }); if (tr.row) pt.text('row', x, y0 - 9 - 2 * r - 3, { font, size: 8, align: 'center', color: col }); }
     };
     const trs = (prof.trees || []).slice().sort((a, b) => b.off - a.off);
-    trs.filter(tr => !tr.near).forEach(drawTree);
-    // depth: background buildings (behind the cut, viewing side), farther = paler
-    prof.bg.forEach(b => { const fade = Math.max(0.25, 1 - b.off / 70); const col = b.material ? '#8A8F96' : '#B9BBBE'; pt.rect(X(b.d0), Y(b.base + b.h), X(b.d1) - X(b.d0), Y(b.base) - Y(b.base + b.h), { fill: '#FFFFFF', stroke: col, lw: 0.7, alpha: fade }); });
+    // depth: background buildings and background trees painted together from far to near (painter's order), so a
+    // building in front of a tree hides it and a tree in front of a building is drawn over it; farther = paler
+    const drawBg = (b) => { const fade = Math.max(0.25, 1 - b.off / 70); const col = b.material ? '#8A8F96' : '#B9BBBE'; pt.rect(X(b.d0), Y(b.base + b.h), X(b.d1) - X(b.d0), Y(b.base) - Y(b.base + b.h), { fill: '#FFFFFF', stroke: col, lw: 0.7, alpha: fade }); };
+    prof.bg.map(b => ({ off: b.off, f: () => drawBg(b) })).concat(trs.filter(tr => !tr.near).map(tr => ({ off: tr.off, f: () => drawTree(tr) }))).sort((a, b) => b.off - a.off).forEach(x => x.f());
     trs.filter(tr => tr.near).forEach(drawTree);
     // ground
     const g = []; prof.dist.forEach((d, i) => { const e = prof.elev[i]; if (e != null) g.push([X(d), Y(e)]); });
