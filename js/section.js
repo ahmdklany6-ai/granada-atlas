@@ -83,14 +83,25 @@
       });
     });
     bg.sort((a, b) => b.off - a.off);
-    // mapped trees (OSM) on the viewing side within 25 m: position only — drawn as illustrative crowns
-    const trees = []; let tErr = null;
-    if (root.GA.ext) { try { const bb = G.bbox(sec.pts); const r = await root.GA.ext.trees([bb[0] - 0.0004, bb[1] - 0.0004, bb[2] + 0.0004, bb[3] + 0.0004], 16); r.pts.forEach(p => { const u = U(p.ll); const pj = project(pl, u); if (pj.off > 25 || pj.d <= 0 || pj.d >= pl.L) return; if (pj.off > 1.5 && sideOf(u) !== look) return; const ht = parseFloat(p.tags.height); trees.push({ id: p.id, d: pj.d, off: pj.off, base: ground(pj.d), h: isFinite(ht) && ht > 0 ? ht : null, species: p.tags.species || p.tags.genus || null }); }); } catch (e) { tErr = e.message; } }
+    // mapped trees: real positions (OSM snapshot) projected onto the line; only inside a disclosed corridor on the viewing
+    // side (plus trees standing on the line itself). Recorded height / crown diameter are used when tagged; otherwise the
+    // tree is drawn later as a fixed-size schematic symbol, never with an invented size.
+    const corridor = Math.max(2, Math.min(60, +sec.corridor || 15)), NEAR = 5;
+    const trees = []; let tErr = null, treeTs = null, rowsNear = 0;
+    if (root.GA.ext) { try {
+      const bb = G.bbox(sec.pts); const pad = corridor / 80000; const r = await root.GA.ext.trees([bb[0] - pad, bb[1] - pad, bb[2] + pad, bb[3] + pad]); treeTs = r.ts;
+      const num = (v) => { const x = parseFloat(String(v || '').replace(',', '.')); return isFinite(x) && x > 0 ? x : null; };
+      r.pts.forEach(p => { const u = U(p.ll); const pj = project(pl, u); if (pj.d <= 0 || pj.d >= pl.L || pj.off > corridor) return; if (pj.off > 1.5 && sideOf(u) !== look) return;
+        trees.push({ id: p.id, d: pj.d, off: pj.off, near: pj.off <= NEAR, base: ground(pj.d), h: num(p.tags.height), crown: num(p.tags.diameter_crown), species: p.tags.species || p.tags.genus || p.tags['species:es'] || null }); });
+      r.ways.forEach(w => { const C = w.coords.map(U); let crossed = false;
+        for (let i = 1; i < pl.u.length; i++) for (let j = 1; j < C.length; j++) { const tt = segX(pl.u[i - 1], pl.u[i], C[j - 1], C[j]); if (tt != null) { const d = pl.cum[i - 1] + tt * (pl.cum[i] - pl.cum[i - 1]); trees.push({ id: w.id, row: true, d, off: 0, near: true, base: ground(d), h: null, crown: null }); crossed = true; } }
+        if (!crossed && C.some(c => { const pj = project(pl, c); return pj.off <= corridor && pj.d > 0 && pj.d < pl.L && sideOf(c) === look; })) rowsNear++; });
+    } catch (e) { tErr = e.message; } }
     trees.sort((a, b) => b.off - a.off);
     const A0 = PJ.EPSG25830.inverse(pl.u[0]), B0 = PJ.EPSG25830.inverse(pl.u[pl.u.length - 1]);
     const az = (Math.atan2(pl.u[pl.u.length - 1][0] - pl.u[0][0], pl.u[pl.u.length - 1][1] - pl.u[0][1]) * 180 / Math.PI + 360) % 360;
     return { id: sec.id, name: sec.name, pts: sec.pts, L: pl.L, step, dist, elev, min: Math.min(...ev), max: Math.max(...ev), missing,
-      maxGrad: maxG, maxGradAt: maxAt, baseline: k * step, hornMax, cuts: cuts.sort((a, b) => a.d0 - b.d0), bg, bgUnknown, trees, tErr, floorH, bErr, look,
+      maxGrad: maxG, maxGradAt: maxAt, baseline: k * step, hornMax, cuts: cuts.sort((a, b) => a.d0 - b.d0), bg, bgUnknown, trees, tErr, treeTs, corridor, nearTrees: NEAR, rowsNear, floorH, bErr, look,
       ref: { a: pl.u[0], b: pl.u[pl.u.length - 1], aLL: A0, bLL: B0, azimuth: az }, vertexD: pl.cum.slice(), computed: new Date().toISOString() };
   }
 
@@ -135,11 +146,12 @@
   function paint(pt, prof, o) {
     const W = pt.W, H = pt.H; const font = o.font; const rtl = I.dir() === 'rtl';
     pt.rect(0, 0, W, H, { fill: '#FFFFFF' });
-    const acc = t('sec.accuracy3'); const accLines = []; { let line = ''; acc.split(' ').forEach(w => { const tt = line ? line + ' ' + w : w; if (pt.measure(tt, `10px ${font}`) > W - 16 && line) { accLines.push(line); line = w; } else line = tt; }); if (line) accLines.push(line); }
-    const ml = 50, mr = 18, mt = 30, mb = 112 + 13 * accLines.length; const pw = W - ml - mr, ph = H - mt - mb;
+    const treeN = (prof.trees || []).filter(x => !x.row).length, treeH_n = (prof.trees || []).filter(x => !x.row && x.h).length;
+    const acc = t('sec.accuracy3') + ' ' + t('v4.secTrees', { c: nf(prof.corridor || 15), n: nf(treeN), near: nf(prof.nearTrees || 5), h: nf(treeH_n), r: nf(prof.rowsNear || 0), date: (prof.treeTs || '').slice(0, 10) || '—' }); const accLines = []; { let line = ''; acc.split(' ').forEach(w => { const tt = line ? line + ' ' + w : w; if (pt.measure(tt, `10px ${font}`) > W - 16 && line) { accLines.push(line); line = w; } else line = tt; }); if (line) accLines.push(line); }
+    const ml = 50, mr = 18, mt = 30, mb = 84 + 13 * accLines.length; const pw = W - ml - mr, ph = H - mt - mb;
     const ve = o.ve === 'auto' || !o.ve ? chooseVE(prof, W, H) : +o.ve;
     const xs = pw / prof.L; const ys = xs * ve;
-    const treeH = (tr) => tr.h || 8;
+    const treeH = (tr) => tr.h || 0; // schematic symbols have no height in metres
     const tops = prof.cuts.concat(prof.bg).filter(c => c.h != null).map(c => c.base + c.h).concat((prof.trees || []).map(tr => tr.base + treeH(tr)));
     const top = Math.max(prof.max, ...tops); const mid = (prof.min + top) / 2;
     let lo = mid - ph / 2 / ys; if (lo > prof.min - 2) lo = prof.min - Math.max(2, (top - prof.min) * 0.08);
@@ -147,11 +159,19 @@
     const hiE = lo + ph / ys; const eStep = [1, 2, 5, 10, 20, 25, 50, 100].find(s => (hiE - lo) / s <= 7) || 200;
     pt.clip(ml, mt, pw, ph);
     for (let e = Math.ceil(lo / eStep) * eStep; e <= hiE; e += eStep) pt.path([[ml, Y(e)], [ml + pw, Y(e)]], { stroke: '#EFEFED', lw: 0.8 });
+    // trees: recorded size to scale; otherwise a fixed-size schematic symbol (dashed). Background = lighter and thinner.
+    const drawTree = (tr) => {
+      if (tr.base == null) return; const near = tr.near; const col = near ? '#4E6B45' : '#93A68B'; const lw = near ? 1.1 : 0.7; const alpha = near ? 1 : 0.55;
+      const x = X(tr.d), y0 = Y(tr.base);
+      if (tr.h) { const top = Y(tr.base + tr.h); const r = tr.crown ? Math.max(2, tr.crown / 2 * xs) : Math.max(3, Math.min((y0 - top) * 0.3, tr.h * 0.3 * xs)); const cy = top + Math.min(r, (y0 - top) * 0.45);
+        pt.path([[x, y0], [x, cy + r * 0.5]], { stroke: col, lw, alpha }); pt.circle(x, cy, r, { fill: '#FFFFFF', stroke: col, lw, alpha, dash: tr.crown ? null : [3, 2] }); }
+      else { const r = tr.row ? 4 : 5; pt.path([[x, y0], [x, y0 - 9]], { stroke: col, lw, alpha }); pt.circle(x, y0 - 9 - r, r, { fill: '#FFFFFF', stroke: col, lw, alpha, dash: [2, 1.6] }); if (tr.row) pt.text('row', x, y0 - 9 - 2 * r - 3, { font, size: 8, align: 'center', color: col }); }
+    };
+    const trs = (prof.trees || []).slice().sort((a, b) => b.off - a.off);
+    trs.filter(tr => !tr.near).forEach(drawTree);
     // depth: background buildings (behind the cut, viewing side), farther = paler
     prof.bg.forEach(b => { const fade = Math.max(0.25, 1 - b.off / 70); const col = b.material ? '#8A8F96' : '#B9BBBE'; pt.rect(X(b.d0), Y(b.base + b.h), X(b.d1) - X(b.d0), Y(b.base) - Y(b.base + b.h), { fill: '#FFFFFF', stroke: col, lw: 0.7, alpha: fade }); });
-    // trees: mapped positions, illustrative size
-    (prof.trees || []).forEach(tr => { if (tr.base == null) return; const h = treeH(tr); const x = X(tr.d), y0 = Y(tr.base); const crownR = Math.max(3, Math.min((h * 0.32) * xs, (h * 0.4) * ys)); const cy = Y(tr.base + h) + crownR; const fade = Math.max(0.35, 1 - tr.off / 30);
-      pt.path([[x, y0], [x, cy + crownR * 0.6]], { stroke: '#6B7A5E', lw: 1, alpha: fade }); pt.circle(x, cy, crownR, { fill: 'rgba(94,154,91,0.22)', stroke: '#7FA071', lw: 0.8, alpha: fade, dash: tr.h ? null : [2, 1.5] }); });
+    trs.filter(tr => tr.near).forEach(drawTree);
     // ground
     const g = []; prof.dist.forEach((d, i) => { const e = prof.elev[i]; if (e != null) g.push([X(d), Y(e)]); });
     if (g.length) { pt.path(g.concat([[g[g.length - 1][0], mt + ph + 2], [g[0][0], mt + ph + 2]]), { fill: '#F3F3F1', close: true }); pt.path(g, { stroke: INK, lw: 1.6 }); }
@@ -171,14 +191,11 @@
     // scale figure (1.75 m) near A
     { const d = Math.min(prof.L * 0.03 + 2 / xs, prof.L * 0.1); const i = Math.max(0, Math.min(prof.dist.length - 1, Math.round(d / prof.step))); const e = prof.elev[i]; if (e != null) { const x = X(prof.dist[i]), y = Y(e), hh = 1.75 * ys; if (hh > 4) { pt.path([[x, y], [x, y - hh * 0.82]], { stroke: '#5E636A', lw: Math.max(0.8, hh * 0.06) }); pt.circle(x, y - hh * 0.9, Math.max(1, hh * 0.09), { fill: '#5E636A' }); } } }
     // axes
-    pt.path([[ml, mt], [ml, mt + ph], [ml + pw, mt + ph]], { stroke: INK, lw: 1 });
+    pt.path([[ml, mt], [ml, mt + ph]], { stroke: INK, lw: 1 }); // elevation axis only: no distance axis (the scale bar gives distance)
     for (let e = Math.ceil(lo / eStep) * eStep; e <= hiE; e += eStep) pt.text(nf(e), ml - 5, Y(e), { font, size: 10, align: 'right', baseline: 'middle', color: '#3C4046' });
     pt.text(t('sec.elevAxis'), 12, mt + ph / 2, { font, size: 10, align: 'center', baseline: 'middle', color: '#3C4046', rotate: -Math.PI / 2, dir: I.dir() });
-    const dStep = [5, 10, 20, 25, 50, 100, 200, 250, 500, 1000].find(s => prof.L / s <= 8) || 2000;
-    for (let d = 0; d <= prof.L + 0.01; d += dStep) { pt.path([[X(d), mt + ph], [X(d), mt + ph + 4]], { stroke: INK, lw: 1 }); pt.text(nf(d), X(d), mt + ph + 7, { font, size: 10, align: 'center', baseline: 'top', color: '#3C4046' }); }
-    pt.text(t('sec.distAxis'), ml + pw / 2, mt + ph + 21, { font, size: 10, align: 'center', baseline: 'top', color: '#3C4046', dir: I.dir() });
     // graphic scale bars: horizontal and vertical (they differ when exaggerated)
-    { const len = [5, 10, 20, 25, 50, 100, 200, 500].find(v => v * xs >= 60) || 1000; const x0 = ml, y0 = mt + ph + 70; pt.rect(x0, y0, len * xs, 3, { fill: INK }); pt.text(`${len} m`, x0 + len * xs + 4, y0 + 2, { font, size: 10, baseline: 'middle' });
+    { const len = [5, 10, 20, 25, 50, 100, 200, 500].find(v => v * xs >= 60) || 1000; const x0 = ml, y0 = mt + ph + 32; pt.rect(x0, y0, len * xs, 3, { fill: INK }); pt.text(`${len} m`, x0 + len * xs + 4, y0 + 2, { font, size: 10, baseline: 'middle' });
       const vl = [50, 20, 10, 5, 2, 1].find(v => v * ys <= 30) || 1; const vx = x0 + len * xs + 52; pt.rect(vx, y0 + 3 - vl * ys, 3, vl * ys, { fill: RED }); pt.text(`${vl} m ↕`, vx + 6, y0 + 2, { font, size: 10, baseline: 'middle', color: RED }); }
     // vertex letters and look direction
     const Ls = LETTERS(prof.vertexD.length);
@@ -212,8 +229,9 @@
     function ensure() {
       if (map.getSource('sec-lines')) return;
       map.addSource('sec-lines', { type: 'geojson', data: fc([]) });
-      map.addLayer({ id: 'sec-lines-bg', type: 'line', source: 'sec-lines', filter: ['!=', ['get', 'active'], 1], paint: { 'line-color': '#5E636A', 'line-width': 1.4, 'line-dasharray': [3, 2] } });
-      map.addLayer({ id: 'sec-lines-on', type: 'line', source: 'sec-lines', filter: ['==', ['get', 'active'], 1], paint: { 'line-color': '#1C1E21', 'line-width': 2.4 } });
+      map.addLayer({ id: 'sec-corr', type: 'fill', source: 'sec-lines', filter: ['has', 'corr'], paint: { 'fill-color': '#4E6B45', 'fill-opacity': ['case', ['==', ['get', 'active'], 1], 0.14, 0.06], 'fill-outline-color': '#4E6B45' } });
+      map.addLayer({ id: 'sec-lines-bg', type: 'line', source: 'sec-lines', filter: ['all', ['!=', ['get', 'active'], 1], ['!', ['has', 'corr']]], paint: { 'line-color': '#5E636A', 'line-width': 1.4, 'line-dasharray': [3, 2] } });
+      map.addLayer({ id: 'sec-lines-on', type: 'line', source: 'sec-lines', filter: ['all', ['==', ['get', 'active'], 1], ['!', ['has', 'corr']]], paint: { 'line-color': '#1C1E21', 'line-width': 2.4 } });
     }
     let all = [];
     function render() {
@@ -224,6 +242,10 @@
       if (live && live.length > 1) feats.push({ type: 'Feature', properties: { active: 1 }, geometry: { type: 'LineString', coordinates: live } });
       // viewing-direction arrow at the middle of each section (perpendicular, towards the side looked at)
       all.filter(s => s.pts.length > 1).forEach(s => { const pts = editing && s.id === editing.id ? editing.pts : s.pts; const u = pts.map(U); const pl = polyline(pts); const m = at(pl, pl.L / 2); let i = 1; while (i < pl.cum.length - 1 && pl.cum[i] < pl.L / 2) i++; const a = u[i - 1], b = u[i]; const L0 = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; const sgn = s.look === 'right' ? -1 : 1; const n = [-(b[1] - a[1]) / L0 * sgn, (b[0] - a[0]) / L0 * sgn]; const len = Math.max(12, Math.min(40, pl.L * 0.12)); const tip = [m[0] + n[0] * len, m[1] + n[1] * len]; const back = [-n[0], -n[1]], side = [n[1], -n[0]]; const h1 = [tip[0] + (back[0] + side[0] * 0.6) * len * 0.35, tip[1] + (back[1] + side[1] * 0.6) * len * 0.35], h2 = [tip[0] + (back[0] - side[0] * 0.6) * len * 0.35, tip[1] + (back[1] - side[1] * 0.6) * len * 0.35]; const inv = (p) => PJ.EPSG25830.inverse(p); const act = editing && s.id === editing.id ? 1 : 0; feats.push({ type: 'Feature', properties: { active: act }, geometry: { type: 'MultiLineString', coordinates: [[inv(m), inv(tip)], [inv(h1), inv(tip), inv(h2)]] } }); });
+      // tree corridor on the viewing side (the band from which mapped trees are projected onto the section)
+      all.filter(s => s.pts.length > 1).forEach(s => { const pts = editing && s.id === editing.id ? editing.pts : s.pts; const u = pts.map(U); const c = Math.max(2, Math.min(60, +s.corridor || 15)); const sgn = s.look === 'right' ? -1 : 1;
+        const off = u.map((p, i) => { const a = u[Math.max(0, i - 1)], b = u[Math.min(u.length - 1, i + 1)]; const L0 = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; return [p[0] - (b[1] - a[1]) / L0 * sgn * c, p[1] + (b[0] - a[0]) / L0 * sgn * c]; });
+        const ring = u.concat(off.reverse()).concat([u[0]]).map(p => PJ.EPSG25830.inverse(p)); feats.unshift({ type: 'Feature', properties: { active: editing && s.id === editing.id ? 1 : 0, corr: 1 }, geometry: { type: 'Polygon', coordinates: [ring] } }); });
       map.getSource('sec-lines').setData(fc(feats));
       markers.forEach(m => m.remove()); markers.length = 0;
       const pts = drawing ? drawing.pts : editing ? editing.pts : [];

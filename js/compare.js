@@ -21,6 +21,8 @@
 
   // ---------- per-area data (cached by geometry) ----------
   const cache = new Map();
+  const listeners = []; // called with X whenever an external source of a prepared area arrives or fails
+  function onUpdate(f) { listeners.push(f); }
   async function prepare(area) {
     const ring = ringOf(area.spec); if (!ring) throw new Error('no geometry');
     const key = area.id + JSON.stringify(area.spec); if (cache.has(key)) return cache.get(key);
@@ -28,10 +30,18 @@
       const { parsed, results } = await D.areaData(ring);
       const [dem, slope, health, bus, contours] = await Promise.all([D.grid('dem').catch(() => null), D.grid('slope').catch(() => null), D.single('fac_health').catch(() => null), D.single('bus_stops').catch(() => null), D.single('contours_10m').catch(() => null)]);
       const [places, busSvc] = await Promise.all([D.single('places').catch(() => null), D.single('bus_service').catch(() => null)]);
-      const ext = root.GA.galleryExt ? await root.GA.galleryExt.load(ring) : {};
-      const R = await GAL.compute({ ring }, parsed, { health, bus, dem, slope, places, busSvc, ext });
-      Object.entries(ext.status || {}).forEach(([k, v]) => results[k] = v);
-      return { area, ring, parsed, results, R, dem, slope, contours: contours ? contours.features : [], ext };
+      let X = null, tm = null;
+      // external services: start them, wait briefly for fast ones, never block on slow or failed ones
+      const E = root.GA.galleryExt ? root.GA.galleryExt.start(ring, () => X && schedule()) : null;
+      if (E) await Promise.race([E.done, new Promise(r => setTimeout(r, 6000))]);
+      const extras = { health, bus, dem, slope, places, busSvc, ext: E ? E.out : {} };
+      const sync = () => Object.entries(extras.ext.status || {}).forEach(([k, v]) => results[k] = v);
+      const recompute = async () => { X.R = await GAL.compute({ ring }, parsed, extras); sync(); X.extPending = Object.values(extras.ext.status || {}).some(v => v.state === 'loading'); listeners.forEach(f => { try { f(X); } catch (e) { console.warn(e); } }); };
+      function schedule() { clearTimeout(tm); tm = setTimeout(recompute, 150); }
+      const R = await GAL.compute({ ring }, parsed, extras); sync();
+      X = { area, ring, parsed, results, R, dem, slope, contours: contours ? contours.features : [], ext: extras.ext, extPending: Object.values(extras.ext.status || {}).some(v => v.state === 'loading') };
+      X.retryExt = async (k) => { if (!E) return; const pr = E.retry(k); schedule(); await pr; };
+      return X;
     })();
     cache.set(key, p); p.catch(() => cache.delete(key)); return p;
   }
@@ -126,6 +136,7 @@
     const ids = () => (tab === 'compare' ? proj().compare.ids : proj().ex12.ids).filter(id => areasById()[id]);
 
     function open(which) { tab = which || tab; el.hidden = false; render(); }
+    onUpdate((Xu) => { if (!el.hidden && !busy && lastXs && lastXs.some(x => x._base === Xu)) render(); });
     function close() { el.hidden = true; onClose && onClose(); }
 
     function header() {
@@ -140,7 +151,7 @@
     }
     async function load() {
       const A = areasById(); errors = {};
-      const Xs = await Promise.all(ids().map((id, i) => prepare(A[id]).then(x => Object.assign({}, x, { no: i + 1, style: styleOf(i) })).catch(e => { errors[id] = e.message; return null; })));
+      const Xs = await Promise.all(ids().map((id, i) => prepare(A[id]).then(x => Object.assign({}, x, { no: i + 1, style: styleOf(i), _base: x })).catch(e => { errors[id] = e.message; return null; })));
       return Xs.filter(Boolean);
     }
     async function render() {
@@ -338,5 +349,5 @@
     return { open, close, render, isOpen: () => !el.hidden, get lastXs() { return lastXs; }, exportSheets, indicators };
   }
 
-  root.GA.compare = { create, prepare, ringOf, indicators, styleOf, IND_ROWS, cache, wrap, legendCanvas, fmtInd, ALL_TOPICS, fairness, topicFinding };
+  root.GA.compare = { create, prepare, onUpdate, ringOf, indicators, styleOf, IND_ROWS, cache, wrap, legendCanvas, fmtInd, ALL_TOPICS, fairness, topicFinding };
 })(window);

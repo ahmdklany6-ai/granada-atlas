@@ -15,14 +15,18 @@
   let state = null; // {id, X, cards, view, hist, lib}
 
   function nav(id) { const A = store.get().areas; return A.map(a => `<button class="${a.id === id ? 'on' : ''}" onclick="GA.pages.go('fabric','${a.id}')"><bdi>${esc(a.name)}</bdi></button>`).join(''); }
+  CMP.onUpdate((Xu) => { if (!state || state.X !== Xu || !state.body || !state.body.isConnected) return; const f = document.activeElement; if (f && state.body.contains(f) && /TEXTAREA|INPUT/.test(f.tagName)) { state.dirty = true; return; } render(state.body, state.id); });
   async function render(body, id) {
     const a = areaOf(id); if (!a) { body.innerHTML = `<p class="lead">${t('fb.noArea')}</p>`; return; }
-    const b = board(id); body.innerHTML = `<div class="loading"><span class="spin"></span>${t('ws.computing')}</div>`;
-    const X0 = await CMP.prepare(a); const cards = GAL.cards({ ring: X0.ring }, X0.parsed, X0.R, { dem: X0.dem, slope: X0.slope, contours: X0.contours, ext: X0.ext });
+    let h0 = ''; const b = board(id); body.innerHTML = `<div class="loading"><span class="spin"></span>${t('ws.computing')}</div>`;
+    let X0; try { X0 = await CMP.prepare(a); } catch (e) { body.innerHTML = `<div class="warn">${t('v4.fabricFailed', { e: esc(e.message || String(e)) })} <button class="btn btn-small" id="fb-retry">${t('retry')}</button></div>`; body.querySelector('#fb-retry').onclick = () => render(body, id); return; }
+    if (!PG.current || PG.current.name !== 'fabric' || PG.current.params[0] !== id) return; // user moved on
+    const cards = GAL.cards({ ring: X0.ring }, X0.parsed, X0.R, { dem: X0.dem, slope: X0.slope, contours: X0.contours, ext: X0.ext });
     const lib = root.GA.library ? await root.GA.library.byLink('fabrics', id) : [];
-    state = { id, X: X0, cards, lib, hist: state && state.id === id ? state.hist : null };
+    state = { id, X: X0, cards, lib, body, hist: state && state.id === id ? state.hist : null };
+    if (X0.extPending) h0 = `<p class="fine"><span class="spin"></span> ${t('v4.extPending')}</p>`; else h0 = '';
     const ind = CMP.indicators(X0);
-    let h = `<p class="fine">${t('fb.lead')}</p>`;
+    let h = `<p class="fine">${t('fb.lead')}</p>` + h0;
     b.order.forEach((k, i) => {
       const hid = b.hidden.includes(k);
       h += `<section class="fb-block ${hid ? 'is-hidden' : ''}" data-block="${k}"><header><h3>${t('fb.b.' + k)}</h3><div class="card-tools"><button class="icon-btn" data-fb="up" ${i === 0 ? 'disabled' : ''} title="${esc(t('ly.up'))}">↑</button><button class="icon-btn" data-fb="down" ${i === b.order.length - 1 ? 'disabled' : ''} title="${esc(t('ly.down'))}">↓</button><button class="icon-btn" data-fb="hide" title="${esc(t(hid ? 'fb.show' : 'fb.hide'))}">${hid ? '◌' : '◉'}</button><button class="icon-btn" data-fb="png" title="${esc(t('g.png'))}">↓</button></div></header>`;
@@ -124,6 +128,7 @@
 
   async function onClick(e, body, a, b) {
     const btn = e.target.closest('button, [data-lib-open]'); if (!btn) return; const sec = btn.closest('[data-block]'); const k = sec && sec.dataset.block;
+    if (btn.dataset.retryExt && state && state.X && state.X.retryExt) { btn.disabled = true; await state.X.retryExt(btn.dataset.retryExt); return; }
     if (btn.dataset.libOpen) return root.GA.library.openEditor(btn.dataset.libOpen);
     if (btn.dataset.ref) return root.GA.library.openRef(btn.dataset.ref);
     const act = btn.dataset.fb;

@@ -11,23 +11,29 @@
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   // ---------- external loads for one study area ----------
-  async function load(ring) {
+  // External sources start together and never block: each has its own time limit; results arrive progressively
+  // through onJob(); a failed source keeps its error and can be retried on its own.
+  const LIMIT = 45000;
+  const withTimeout = (p, ms) => new Promise((res, rej) => { const tm = setTimeout(() => rej(new Error(t('err.timeout'))), ms); p.then(v => { clearTimeout(tm); res(v); }, e => { clearTimeout(tm); rej(e); }); });
+  function start(ring, onJob) {
     const bb = G.bbox(ring); const U = ring.map(p => PJ.EPSG25830.forward(p));
     const pad = 80; const x0 = Math.min(...U.map(p => p[0])) - pad, x1 = Math.max(...U.map(p => p[0])) + pad, y0 = Math.min(...U.map(p => p[1])) - pad, y1 = Math.max(...U.map(p => p[1])) + pad;
     const px = Math.max(1, Math.max(x1 - x0, y1 - y0) / 1400); const w = Math.round((x1 - x0) / px), h = Math.round((y1 - y0) / px);
     const box = { x0, y0, x1, y1 };
     const out = { status: {} };
-    const job = (k, p) => p.then(v => { out[k] = v; out.status[k] = { state: 'ok' }; }, e => { out[k] = null; out.status[k] = { state: 'failed', error: e.message }; });
-    const img = (url) => X.loadImage(url, 40000).then(im => Object.assign({ img: im }, box));
-    await Promise.all([
-      job('trees', X.trees([bb[0] - 0.0006, bb[1] - 0.0006, bb[2] + 0.0006, bb[3] + 0.0006], 16)),
-      job('tcd', X.tcdGrid(ring, 80)),
-      job('flood', X.floodExposure(ring)),
-      job('floodImg', img(X.wmsURL(X.SVC.miteco, 'agua:Zi_laminas_q500,agua:Zi_laminas_q100,agua:Zi_laminas_q10', [x0, y0, x1, y1], w, h, 25830))),
-      job('noiseImg', img(X.wmsURL(X.SVC.noise, 'evaluacionambiental:mer_aglomeracion_lden', [x0, y0, x1, y1], w, h, 25830))),
-    ]);
-    return out;
+    const img = (url) => X.loadImage(url, LIMIT).then(im => Object.assign({ img: im }, box));
+    const makers = {
+      trees: () => X.trees([bb[0] - 0.0006, bb[1] - 0.0006, bb[2] + 0.0006, bb[3] + 0.0006]),
+      tcd: () => X.tcdGrid(ring, 80),
+      flood: () => X.floodExposure(ring),
+      floodImg: () => img(X.wmsURL(X.SVC.miteco, 'agua:Zi_laminas_q500,agua:Zi_laminas_q100,agua:Zi_laminas_q10', [x0, y0, x1, y1], w, h, 25830)),
+      noiseImg: () => img(X.wmsURL(X.SVC.noise, 'evaluacionambiental:mer_aglomeracion_lden', [x0, y0, x1, y1], w, h, 25830)),
+    };
+    const run = (k) => { out.status[k] = { state: 'loading' }; return withTimeout(makers[k](), LIMIT).then(v => { out[k] = v; out.status[k] = { state: 'ok' }; }, e => { out[k] = null; out.status[k] = { state: 'failed', error: (e && e.message) || String(e) }; }).then(() => { try { onJob && onJob(k); } catch (e) { console.warn(e); } }); };
+    const done = Promise.all(Object.keys(makers).map(run)).then(() => out);
+    return { out, done, retry: (k) => makers[k] ? run(k) : Promise.resolve(), keys: Object.keys(makers) };
   }
+  async function load(ring) { const s = start(ring); return s.done; }
 
   // ---------- indicators ----------
   const baseCompute = GAL.compute;
@@ -61,13 +67,22 @@
     return R;
   };
 
+  // ---------- source state shown in place of a card ----------
+  const SRC_NAME = { trees: 'OpenStreetMap trees (snapshot)', tcd: 'Copernicus HRL Tree Cover Density (EEA)', flood: 'MITECO SNCZI (WFS)', floodImg: 'MITECO SNCZI (WMS)', noiseImg: 'MITECO SICA (WMS)' };
+  function gapMsg(k, st) {
+    const s = st[k] || {}; const name = SRC_NAME[k] || k;
+    if (s.state === 'loading') return `<span class="spin"></span> ${t('v4.loadingSrc', { s: esc(name) })}`;
+    if (s.state === 'failed') return `${t('g3.failed', { s: esc(name), e: esc(s.error || '') })} <button class="btn btn-tiny" data-retry-ext="${k}">${t('v4.retry')}</button>`;
+    return t('nodata');
+  }
+
   // ---------- cards ----------
   const baseCards = GAL.cards;
   GAL.cards = function (area, parsed, R, opts) {
     const list = baseCards(area, parsed, R, opts); const ext = (opts && opts.ext) || {}; const st = ext.status || {};
     const ctxB = parsed.buildings.map(b => b._g || (b._g = { type: 'MultiPolygon', coordinates: b.outers.map((ou, i) => [ou].concat(i === 0 ? b.inners : [])) }));
     const ctxS = parsed.streets.map(s => s._g || (s._g = { type: 'LineString', coordinates: s.coords }));
-    const gap = (id, title, srcKey) => ({ id, title, gapOnly: t('g3.failed', { s: srcKey, e: esc((st[srcKey] && st[srcKey].error) || '') }) });
+    const gap = (id, title, srcKey) => ({ id, title, gapOnly: gapMsg(srcKey, st) });
     const insertAfter = (afterId, card) => { const i = list.findIndex(c => c.id === afterId); list.splice(i >= 0 ? i + 1 : list.length, 0, card); };
     const man = (D.manifest && D.manifest.layers) || {};
 
@@ -101,7 +116,7 @@
         legend: X.TCD_CLASSES.slice(1).map(c => ({ sw: `rgb(${c.col.slice(0, 3).join(',')})`, label: `${c.k.replace('-', '–')} % ${t('g3.tcd')}` })).concat([{ dot: '#1E5A28', label: t('ly3.treePt') }]),
         ind: [[t('g3.canopy'), C ? pct(C.mean / 100) : '—', 'est'], [t('g3.treesMapped'), T ? nf(T.n) : '—'], [t('g3.treesHa'), T ? u(nf(T.perHa, 1), 'perha') : '—', 'est']],
         chart: C ? { kind: 'stack', items: [{ label: t('g3.tcd0'), v: C.hist[0] / C.n, col: '#EFEFED' }].concat(X.TCD_CLASSES.slice(1).map((c, i) => ({ label: c.k + ' %', v: C.hist[i + 1] / C.n, col: `rgb(${c.col.slice(0, 3).join(',')})` }))) } : null,
-        find: [C ? t('g3.fCanopy', { m: pct(C.mean / 100), a: pct(C.any), d: pct(C.dense) }) : t('g3.failed', { s: 'Copernicus TCD', e: esc((st.tcd && st.tcd.error) || '') }), T ? t('g3.fTrees', { n: nf(T.n), s: nf(T.speciesTagged), r: nf(T.rowLen) }) : t('g3.failed', { s: 'Overpass', e: esc((st.trees && st.trees.error) || '') }), t('g3.treesCaveat')],
+        find: [C ? t('g3.fCanopy', { m: pct(C.mean / 100), a: pct(C.any), d: pct(C.dense) }) : gapMsg('tcd', st), T ? t('g3.fTrees', { n: nf(T.n), s: nf(T.speciesTagged), r: nf(T.rowLen) }) : t('g3.failed', { s: 'Overpass', e: esc((st.trees && st.trees.error) || '') }), t('g3.treesCaveat')],
         method: t('g3.mTrees') });
     } else insertAfter('places', gap('trees', t('g3.trees'), 'tcd'));
     // flood
@@ -124,5 +139,5 @@
     return list;
   };
 
-  root.GA.galleryExt = { load };
+  root.GA.galleryExt = { load, start, gapMsg, SRC_NAME };
 })(window);

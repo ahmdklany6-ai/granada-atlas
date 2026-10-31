@@ -7,12 +7,12 @@
   const { i18n: I, pages: PG, store } = root.GA;
   const t = (k, v) => I.t(k, v); const esc = PG.esc;
   const BUILTIN = {
-    ex11: { title: 'Exercise 1.1 — Cumulative image wall', req: [['r11.40', 'm', 'lib40'], ['r11.5data', 'm', 'surprise5'], ['r11.kinds', 'm', null], ['r11.attrib', 'm', null], ['r11.open', 'm', null], ['r11.users', 's', null]] },
-    ex12: { title: 'Exercise 1.2 — Urban fabrics', req: [['r12.four', 'm', 'four'], ['r12.equal', 'm', 'equal'], ['r12.five', 'm', 'five'], ['r12.secPlan', 'm', 'sections'], ['r12.public', 'm', null], ['r12.just', 'm', 'just'], ['r12.sentence', 'm', 'sentence'], ['r12.sheet', 'm', null]] },
-    ex13: { title: 'Exercise 1.3 — City identity card (free stage)', req: [['r13.frame', 'm', 'frame'], ['r13.page', 'm', 'pages'], ['r13.identity', 'm', 'identity'], ['r13.synth', 'm', 'synth'], ['r13.forms', 'm', null], ['r13.export', 'm', null], ['r13.miro', 'm', null], ['r13.ideas', 's', null]] },
+    ex11: { tkey: 'exn.11', req: [['r11.40', 'm', 'lib40'], ['r11.5data', 'm', 'surprise5'], ['r11.kinds', 'm', null], ['r11.attrib', 'm', null], ['r11.open', 'm', null], ['r11.users', 's', null]] },
+    ex12: { tkey: 'exn.12', req: [['r12.four', 'm', 'four'], ['r12.equal', 'm', 'equal'], ['r12.five', 'm', 'five'], ['r12.secPlan', 'm', 'sections'], ['r12.public', 'm', null], ['r12.just', 'm', 'just'], ['r12.sentence', 'm', 'sentence'], ['r12.sheet', 'm', null]] },
+    ex13: { tkey: 'exn.13', req: [['r13.frame', 'm', 'frame'], ['r13.page', 'm', 'pages'], ['r13.identity', 'm', 'identity'], ['r13.synth', 'm', 'synth'], ['r13.forms', 'm', null], ['r13.export', 'm', null], ['r13.miro', 'm', null], ['r13.ideas', 's', null]] },
   };
   function reg() { const p = store.get(); p.exreg = p.exreg || []; return p.exreg; }
-  function list() { return Object.entries(BUILTIN).map(([id, b]) => ({ id, title: b.title, builtin: true })).concat(reg().map(e => ({ id: e.id, title: e.title }))); }
+  function list() { return Object.entries(BUILTIN).map(([id, b]) => ({ id, title: t(b.tkey), builtin: true })).concat(reg().map(e => ({ id: e.id, title: e.title }))); }
   async function auto(key) {
     const p = store.get(); const ex12 = p.ex12 || { ids: [], fabrics: {} }; const A = p.areas.filter(a => ex12.ids.includes(a.id)); const e13 = p.ex13 || {};
     switch (key) {
@@ -37,7 +37,7 @@
     const p = store.get(); let h = `<p class="fine">${t('rx.lead')}</p>`;
     for (const [id, b] of Object.entries(BUILTIN)) {
       const rows = []; for (const [k, ty, a] of b.req) { const [st, note] = a ? await auto(a) : [p.exmanual && p.exmanual[id + k] || null, '']; rows.push(`<tr><td>${t(k)}${note ? `<br><small>${esc(note)}</small>` : ''}</td><td><span class="tag">${t('rx.t.' + ty)}</span></td><td>${a ? badge(st) : `<select data-man="${id}${k}">${['', 'ready', 'review', 'missing'].map(s => `<option value="${s}" ${st === s || (!st && !s) ? 'selected' : ''}>${s ? t('ex.s.' + s) : t('rx.manual')}</option>`).join('')}</select>`}</td></tr>`); }
-      h += `<section class="rx"><h3>${esc(b.title)}</h3>${id === 'ex13' ? `<p><button class="btn btn-small btn-primary" onclick="GA.pages.go('ex13')">${t('e13.open')}</button></p>` : id === 'ex12' ? `<p><button class="btn btn-small" onclick="GA.pages.close();GA.app.openWorkspace&&GA.app.openWorkspace('ex12')">${t('rx.open12')}</button></p>` : `<p><button class="btn btn-small" onclick="GA.pages.go('library')">${t('rx.open11')}</button></p>`}<table class="tbl small">${rows.join('')}</table></section>`;
+      h += `<section class="rx"><h3>${esc(t(b.tkey))}</h3>${id === 'ex13' ? `<p><button class="btn btn-small btn-primary" onclick="GA.pages.go('ex13')">${t('e13.open')}</button></p>` : id === 'ex12' ? `<p><button class="btn btn-small" onclick="GA.pages.close();GA.app.openWorkspace&&GA.app.openWorkspace('ex12')">${t('rx.open12')}</button></p>` : `<p><button class="btn btn-small" onclick="GA.pages.go('library')">${t('rx.open11')}</button></p>`}<table class="tbl small">${rows.join('')}</table></section>`;
     }
     reg().forEach((e, ei) => {
       h += `<section class="rx"><h3 dir="auto">${esc(e.title)} <small>${e.adopted ? t('rx.adopted', { v: e.versions.length }) : t('rx.draft')}</small></h3>${e.deadline ? `<p class="fine">${t('rx.deadline')}: <bdi>${esc(e.deadline)}</bdi></p>` : ''}

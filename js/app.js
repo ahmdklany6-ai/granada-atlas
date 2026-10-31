@@ -122,7 +122,7 @@
 
   // ---------- layers panel (right, below the study panel) ----------
   let lpTimer; function renderLayersPanelSoon() { clearTimeout(lpTimer); lpTimer = setTimeout(renderLayersPanel, 60); }
-  const GROUPS = ['bld', 'streets', 'land', 'fac', 'admin', 'terrain', 'user'];
+  const GROUPS = ['bld', 'streets', 'land', 'act', 'fac', 'env', 'hist', 'admin', 'terrain', 'user'];
   function renderLayersPanel() {
     const box = $('#panel-layers .block-b'); if (!box) return;
     const focus = document.activeElement && document.activeElement.closest && document.activeElement.closest('#panel-layers') && document.activeElement.matches('input[type=text], input[type=search]');
@@ -264,6 +264,7 @@
   }
 
   // ---------- analysis ----------
+  GA.compare.onUpdate((X) => { if (run && run.X === X) { run.sources = X.results; if (!document.activeElement || !document.activeElement.closest || !document.activeElement.closest('#left-body textarea, #left-body input')) renderLeft(); renderDrawerIfOpen(); } });
   async function loadGallery(a) {
     const myRun = run; const ring = GA.compare.ringOf(a.spec);
     run.tasks.data = { state: 'running' }; run.sources = {}; renderLeft();
@@ -346,8 +347,9 @@
     const srcs = run.sources || {}; let h = '<div class="status-row">';
     if (run.tasks.data && run.tasks.data.state === 'running') h += `<span class="chip loading"><span class="spin"></span> ${t('ui.loadingData')}</span>`;
     if (run.tasks.data && run.tasks.data.state === 'error') h += `<span class="chip failed">${t('ui.st.failed')}: ${esc(run.tasks.data.error)}</span> <button class="btn btn-tiny" data-retry="data">${t('retry')}</button>`;
-    Object.entries(srcs).forEach(([k, r]) => { h += chip(t('ui.src.' + k), r.state === 'ok' ? 'ok' : r.state === 'empty' ? 'empty' : 'failed'); });
-    [['photos', 'ph'], ['wiki', 'wiki'], ['research', 'research'], ['climate', 'climate']].forEach(([k]) => { const s = run.tasks[k]; if (!s) return; h += chip(t('ui.src.' + k), s.state === 'running' ? 'loading' : s.state === 'error' ? 'failed' : 'ok'); });
+    const EXT = (GA.galleryExt && GA.galleryExt.SRC_NAME) || {};
+    Object.entries(srcs).forEach(([k, r]) => { const st = r.state === 'ok' ? 'ok' : r.state === 'empty' ? 'empty' : r.state === 'loading' ? 'loading' : 'failed'; h += chip(t('ui.src.' + k), st) + (st === 'failed' && EXT[k] ? ` <button class="btn btn-tiny" data-retry-ext="${k}" title="${esc(r.error || '')}">${t('retry')}</button>` : ''); });
+    [['photos', 'ph'], ['wiki', 'wiki'], ['research', 'research'], ['climate', 'climate']].forEach(([k]) => { const s = run.tasks[k]; if (!s) return; h += `<span title="${esc(s.error || '')}">` + chip(t('ui.src.' + k), s.state === 'running' ? 'loading' : s.state === 'error' ? 'failed' : 'ok') + '</span>' + (s.state === 'error' ? ` <button class="btn btn-tiny" data-retry="${k}">${t('retry')}</button>` : ''); });
     h += chip(t('ui.src.population'), 'notconn');
     return h + '</div>';
   }
@@ -364,8 +366,12 @@
     body.innerHTML = h;
     const w = Math.max(240, body.clientWidth - 34), hh = Math.round(w * 0.72);
     const f = MC.fit([X.ring], w, hh, 0.07);
-    body.querySelectorAll('canvas[data-canvas]').forEach(cv => { const c = cards.find(k => k.id === cv.dataset.canvas); try { GAL.drawCard(cv, { ring: X.ring }, c, { center: f.center, mpp: f.mpp, w, h: hh }); } catch (e) { console.warn(c.id, e); } });
+    // draw the cards one at a time, yielding between them, so the page stays responsive; a newer render cancels this one
+    const tok = ++drawTok; const cvs = [...body.querySelectorAll('canvas[data-canvas]')];
+    const next = (i) => { if (tok !== drawTok || i >= cvs.length) return; const cv = cvs[i]; const c = cards.find(k => k.id === cv.dataset.canvas); try { GAL.drawCard(cv, { ring: X.ring }, c, { center: f.center, mpp: f.mpp, w, h: hh }); } catch (e) { console.warn(c && c.id, e); } setTimeout(() => next(i + 1), 0); };
+    next(0);
   }
+  let drawTok = 0;
   const CARD_LAYER = { fg: ['bld_fg'], heights: ['bld_floors'], periods: ['bld_period'], streets: ['streets'], landuse: ['landuse'], parks: ['parks'], health: ['fac_health'], education: ['fac_education'], stay: ['fac_stay'], transit: ['bus_stops'], elevation: ['elevation', 'contours'], slope: ['slope'], places: ['places'], bus: ['bus_service'], trees: ['canopy', 'trees'], flood: ['flood'], noise: ['noise'] };
   function cardFeatures(c, key) {
     const X = run && run.X; if (!X) return [];
@@ -384,6 +390,7 @@
     const b = e.target.closest('button, [data-hl]'); if (!b) return;
     const cardEl = b.closest('[data-card]'); const card = cardEl && cardsCache && cardsCache.find(c => c.id === cardEl.dataset.card);
     if (b.dataset.retry && run && run.retry) { await run.retry(b.dataset.retry); return renderLeft(); }
+    if (b.dataset.retryExt && run && run.X && run.X.retryExt) { b.disabled = true; await run.X.retryExt(b.dataset.retryExt); return renderLeft(); }
     if (card && b.dataset.hl != null) { b.closest('.card').querySelectorAll('.hl').forEach(x => x.classList.remove('hl')); b.classList.add('hl'); L.highlight(cardFeatures(card, b.dataset.hl)); return; }
     if (card && b.dataset.act === 'show') { (CARD_LAYER[card.id] || []).forEach(id => L.setOn(id, true)); L.highlight(cardFeatures(card, null).slice(0, 4000)); sel.fitTo(); toast(t('ui.shownOnMap', { v: card.title })); return; }
     if (card && b.dataset.act === 'enlarge') return enlarge(card);
@@ -464,6 +471,7 @@
         <label class="row2">${t('sec.floorH')} <input type="number" id="sec-floor" min="2.4" max="6" step="0.1" value="${s.floorH || 3}" style="width:5em"> ${t('u.m')}</label>
         <label class="row2">${t('sec.veLabel')} <select id="sec-ve">${['auto', 1, 2, 3, 5, 10].map(v => `<option value="${v}" ${String(s.ve || 'auto') === String(v) ? 'selected' : ''}>${v === 'auto' ? t('sec.veAuto') : '×' + v}</option>`).join('')}</select></label>
         <label class="row2">${t('sec.look')} <select id="sec-look"><option value="left" ${s.look !== 'right' ? 'selected' : ''}>${t('sec.look_left')}</option><option value="right" ${s.look === 'right' ? 'selected' : ''}>${t('sec.look_right')}</option></select></label>
+        <label class="row2" title="${esc(t('v4.corridorHint'))}">${t('v4.corridor')} <input type="number" id="sec-corr" min="2" max="60" step="1" value="${s.corridor || 15}" style="width:4.5em"> m</label>
         <label class="chk"><input type="checkbox" id="sec-floors" ${s.floors ? 'checked' : ''}> ${t('sec.floors')}</label></div>
         <div id="sec-out"><div class="loading"><span class="spin"></span>${t('sec.computing')}</div></div>`;
     } else if (!list.length) h += `<p class="note">${t('sec.none')}</p>`;
@@ -488,6 +496,7 @@
     if (e.target.id === 'sec-floor') { const v = parseFloat(e.target.value); if (isFinite(v) && v >= 2.4 && v <= 6) { s.floorH = v; store.upsertArea(a); secProfiles.delete(s.id); renderLeft(); } }
     if (e.target.id === 'sec-ve') { s.ve = e.target.value === 'auto' ? 'auto' : +e.target.value; store.upsertArea(a); renderLeft(); }
     if (e.target.id === 'sec-look') { s.look = e.target.value; store.upsertArea(a); secProfiles.delete(s.id); secTool.setSections(a.sections, s.id); renderLeft(); }
+    if (e.target.id === 'sec-corr') { const v = Math.max(2, Math.min(60, +e.target.value || 15)); s.corridor = v; store.upsertArea(a); secProfiles.delete(s.id); renderLeft(); }
     if (e.target.id === 'sec-floors') { s.floors = e.target.checked; store.upsertArea(a); renderLeft(); }
   });
   async function exportSectionPNG() {

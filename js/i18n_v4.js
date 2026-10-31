@@ -1,0 +1,20 @@
+/* v4 strings: non-blocking sources, tree corridor in sections, exercise names. [ar, he, en] */
+(function (root) {
+  root.GA.i18n.add({
+    'v4.loadingSrc': ['جارٍ التحميل من {s}… تظهر النتائج المتاحة الأخرى في الأثناء.', 'נטען מ-{s}… שאר התוצאות הזמינות מוצגות בינתיים.', 'Loading from {s}… other available results are shown meanwhile.'],
+    'v4.retry': ['أعد المحاولة', 'נסה שוב', 'Retry'],
+    'v4.extPending': ['بعض المصادر الخارجية ما زالت تُحمَّل؛ تتحدث الصفحة تلقائيًا عند وصولها.', 'חלק מהמקורות החיצוניים עדיין נטענים; הדף יתעדכן אוטומטית כשיגיעו.', 'Some external sources are still loading; the page updates itself when they arrive.'],
+    'v4.fabricFailed': ['تعذّر حساب هذا النسيج من البيانات المحلية: {e}', 'לא ניתן לחשב את המרקם מהנתונים המקומיים: {e}', 'This fabric could not be computed from the local data: {e}'],
+    'v4.corridor': ['ممر الأشجار', 'רצועת העצים', 'Tree corridor'],
+    'v4.corridorHint': ['تُسقَط على المقطع الأشجار المرسومة الواقعة ضمن هذه المسافة في جهة النظر فقط (تظهر على الخريطة كشريط أخضر).', 'רק עצים ממופים בטווח זה בצד המבט מוטלים על החתך (מוצג במפה כרצועה ירוקה).', 'Only mapped trees within this distance on the viewing side are projected onto the section (shown on the map as a green band).'],
+    'v4.secTrees': ['الأشجار: مواقع مرسومة في OSM (لقطة {date}) ضمن {c} م في جهة النظر: {n} شجرة؛ القريبة (≤ {near} م) بخط أغمق، والخلفية أفتح. ارتفاع مسجّل لـ {h} منها ويُرسم بالمقياس؛ البقية رمز تخطيطي ثابت الحجم (ليس قياسًا). صفوف أشجار في الممر دون مواقع فردية: {r} (غير مرسومة).', 'עצים: מיקומים ממופים ב-OSM (תמונת מצב {date}) בטווח {c} מ׳ בצד המבט: {n} עצים; קרובים (≤ {near} מ׳) בקו כהה יותר, רקע בהיר יותר. גובה רשום ל-{h} מהם, מצויר בקנה מידה; השאר סמל סכמטי בגודל קבוע (לא מדידה). שורות עצים ברצועה ללא מיקומים בודדים: {r} (לא מצוירות).', 'Trees: OSM-mapped positions (snapshot {date}) within {c} m on the viewing side: {n}; near (≤ {near} m) darker, background lighter. Recorded height for {h}, drawn to scale; the rest are fixed-size schematic symbols (not measured). Tree rows in the corridor without individual positions: {r} (not drawn).'],
+    'ly3.snapshot': ['لقطة', 'תמונת מצב', 'snapshot'],
+    'ly3.treesNote': ['مواقع الأشجار المرسومة في OSM داخل البلدية (لقطة مؤرخة 31/10/2026). غياب شجرة على الخريطة لا يعني غيابها في الواقع؛ لم يُعثر على جرد بلدي مفتوح للأشجار.', 'מיקומי עצים ממופים ב-OSM בתחום העירייה (תמונת מצב מ-31.10.2026). היעדר עץ במפה אינו אומר שאין עץ במציאות; לא נמצא סקר עצים עירוני פתוח.', 'OSM-mapped tree positions inside the municipality (snapshot of 31 October 2026). A tree missing from the map does not mean there is no tree; no open municipal tree inventory was found.'],
+    'r13.forms': ['أشكال تمثيل مختلفة لكل موضوع (لا خمس خرائط كوروبليث ملوّنة حسب المناطق)', 'צורות ייצוג שונות לכל נושא (לא חמש מפות כורופלת צבועות לפי אזורים)', 'A different form of representation per topic (not five choropleths)'],
+    'rx.surprise': ['{n} عنصرًا موسومًا «مفاجأة» بمصدر وتاريخ', '{n} פריטים מתויגים «הפתעה» עם מקור ותאריך', '{n} items tagged “surprise” with a source and date'],
+    'sec.accuracy3': ['الأرض: IGN MDT25 (خلية 25 م، لا يحدد هندسة الشارع بدقة). المباني: OSM؛ بلا أسقف أو واجهات أو مواد مُتخيّلة. الإنسان للمقياس 1.75 م. المسافات الأفقية بالمقياس الحقيقي (انظر شريط المقياس).', 'קרקע: IGN MDT25 (תא 25 מ׳, אינו קובע במדויק את גאומטריית הרחוב). מבנים: OSM; ללא גגות, חזיתות או חומרים מומצאים. דמות לקנה מידה 1.75 מ׳. מרחקים אופקיים בקנה מידה אמיתי (ראו סרגל קנה המידה).', 'Ground: IGN MDT25 (25 m cells; not precise street geometry). Buildings: OSM; no invented roofs, façades or materials. Scale figure 1.75 m. Horizontal distances are true to scale (see the scale bar).'],
+    'exn.11': ['التمرين 1.1 — جدار الصور التراكمي', 'תרגיל 1.1 — קיר דימויים מצטבר', 'Exercise 1.1 — Cumulative image wall'],
+    'exn.12': ['التمرين 1.2 — الأنسجة الحضرية', 'תרגיל 1.2 — מרקמים עירוניים', 'Exercise 1.2 — Urban fabrics'],
+    'exn.13': ['التمرين 1.3 — بطاقة هوية المدينة (مرحلة حرة)', 'תרגיל 1.3 — תעודת זהות לעיר (שלב חופשי)', 'Exercise 1.3 — City identity card (free stage)'],
+  });
+})(window);

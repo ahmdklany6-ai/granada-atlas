@@ -74,10 +74,16 @@ is_in(${center[1].toFixed(6)},${center[0].toFixed(6)})->.c;area.c["boundary"="ad
   // ({{Location}}) as the primary coordinate and an object location ({{Object location}}) as a
   // second coordinate when both exist. With a single coordinate of unstated type we do not
   // guess which one it is.
+  // MediaWiki APIs report overload (e.g. "cirrussearch-too-busy") with HTTP 200 and an error body: retry a few times.
+  async function mwJSON(url, timeout) {
+    let j; for (const wait of [0, 1500, 4000, 8000]) { if (wait) await new Promise(r => setTimeout(r, wait)); j = await fetchJSON(url, { timeout });
+      if (!(j && j.error && /busy|maxlag|ratelimit/i.test(j.error.code + ' ' + (j.error.info || '')))) return j; }
+    return j;
+  }
   async function commons(center, radius, ring) {
     const r = Math.min(10000, Math.max(50, Math.round(radius)));
     const url = `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=geosearch&ggsnamespace=6&ggscoord=${center[1]}|${center[0]}&ggsradius=${r}&ggslimit=80&prop=imageinfo|coordinates&coprimary=all&coprop=type|name|dim&colimit=max&iiprop=url|extmetadata|mime&iiurlwidth=480`;
-    const j = await fetchJSON(url, { timeout: 25000 });
+    const j = await mwJSON(url, 25000);
     if (j.error) throw new Error('Wikimedia Commons: ' + (j.error.info || j.error.code)); // API errors arrive with HTTP 200
     const pages = Object.values((j.query && j.query.pages) || {});
     return pages.map(p => {
@@ -105,7 +111,7 @@ is_in(${center[1].toFixed(6)},${center[0].toFixed(6)})->.c;area.c["boundary"="ad
     const errors = [];
     for (const lang of ['es', 'en', 'ar']) {
       try {
-        const j = await fetchJSON(`https://${lang}.wikipedia.org/w/api.php?action=query&format=json&origin=*&list=geosearch&gscoord=${center[1]}|${center[0]}&gsradius=${r}&gslimit=15`, { timeout: 15000 });
+        const j = await mwJSON(`https://${lang}.wikipedia.org/w/api.php?action=query&format=json&origin=*&list=geosearch&gscoord=${center[1]}|${center[0]}&gsradius=${r}&gslimit=15`, 15000);
         if (j.error) throw new Error(j.error.info || j.error.code); // the API reports errors (e.g. "too busy") with HTTP 200
         ((j.query && j.query.geosearch) || []).forEach(g => out.push({ lang, title: g.title, dist: g.dist, url: `https://${lang}.wikipedia.org/?curid=${g.pageid}`, pt: [g.lon, g.lat] }));
       } catch (e) { errors.push(lang + ': ' + e.message); } // one language failing does not block the others

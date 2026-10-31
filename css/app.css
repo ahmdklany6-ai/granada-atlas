@@ -474,3 +474,24 @@ input[type=checkbox], input[type=radio] { accent-color: var(--red); }
 .e13 { display: grid; grid-template-columns: 340px 1fr; gap: 20px; } .e13-form { display: flex; flex-direction: column; gap: 8px; } .e13-form textarea, .e13-form input:not([type=radio]):not([type=color]) { width: 100%; padding: 4px 6px; border: 1px solid var(--line-2); } .e13-t legend { font-weight: 600; }
 .e13-prev { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 14px; } .e13-prev figure { margin: 0; background: var(--white); border: 1px solid var(--line); padding: 6px; } .e13-img { min-height: 200px; display: flex; align-items: center; justify-content: center; } .e13-prev figcaption { font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
 @media (max-width: 1000px) { .st-grid, .cl-grid, .e13, .hx, .fb-id { grid-template-columns: 1fr; } .hx { height: auto; } .hx-mapwrap { height: 60vh; } }
+
+/* ---------- v4: narrow and medium screens ---------- */
+/* Two-row top bar below 1180 px: brand + languages on the first row, a horizontally scrollable nav on the second. */
+@media (max-width: 1180px) {
+  :root { --top: 94px; }
+  .topbar { flex-wrap: wrap; align-content: flex-start; row-gap: 0; column-gap: 12px; padding-top: 3px; }
+  .brand, .lang { height: 46px; }
+  .lang { margin-inline-start: auto; display: flex; align-items: center; }
+  .tb { order: 3; flex: 1 0 100%; margin-inline: -16px; padding-inline: 10px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; border-top: 1px solid var(--line); height: 44px; }
+  .tb::-webkit-scrollbar { display: none; }
+  .tb-btn { flex: none; white-space: nowrap; padding: 11px 8px 9px; }
+  .tb-btn[data-drawer="status"] { display: inline-block; }
+}
+@media (max-width: 860px) { .lang-btn { padding-inline: 6px; } }
+.legend { max-width: min(260px, calc(100vw - var(--rw-eff) - 24px)); }
+@media (max-width: 860px) { .legend { min-width: 0; } }
+.pg-h { flex-wrap: wrap; min-width: 0; }
+.pg-h > * { min-width: 0; max-width: 100%; }
+.pg-h h2 { overflow-wrap: anywhere; }
+.pg-h .tabs, .pg .tabs { display: flex; overflow-x: auto; scrollbar-width: thin; max-width: 100%; }
+.pg-h .tabs button { flex: none; white-space: nowrap; }

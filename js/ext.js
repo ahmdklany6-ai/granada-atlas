@@ -113,40 +113,22 @@
   const tcdColour = (v) => { if (v == null || v < 0) return null; const c = TCD_CLASSES.find(x => v <= x.max); return c && c.col[3] ? c.col : null; };
 
   // ---------- OpenStreetMap trees via Overpass (by 1 km EPSG:25830 cell) ----------
-  const OVP = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
-  const treeCells = new Map(); // cell → {pts:[], ways:[]}
-  let treesTs = null;
-  const cellOf = (ll) => { const u = PJ.EPSG25830.forward(ll); return Math.floor(u[0] / 1000) + '_' + Math.floor(u[1] / 1000); };
-  function cellsFor(bb) { const a = PJ.EPSG25830.forward([bb[0], bb[1]]), b = PJ.EPSG25830.forward([bb[2], bb[3]]), c = PJ.EPSG25830.forward([bb[0], bb[3]]), d = PJ.EPSG25830.forward([bb[2], bb[1]]); const xs = [a, b, c, d].map(p => p[0]), ys = [a, b, c, d].map(p => p[1]); const out = []; for (let x = Math.floor(Math.min(...xs) / 1000); x <= Math.floor(Math.max(...xs) / 1000); x++) for (let y = Math.floor(Math.min(...ys) / 1000); y <= Math.floor(Math.max(...ys) / 1000); y++) out.push([x, y]); return out; }
-  const pending = new Map();
-  async function trees(bb, maxCells) {
-    const cells = cellsFor(bb); if (cells.length > (maxCells || 16)) { const e = new Error('too large'); e.code = 'too_large'; throw e; }
-    const need = cells.filter(([x, y]) => !treeCells.has(x + '_' + y) && !pending.has(x + '_' + y));
-    if (need.length) {
-      const xs = need.map(c => c[0]), ys = need.map(c => c[1]);
-      const ll0 = PJ.EPSG25830.inverse([Math.min(...xs) * 1000, Math.min(...ys) * 1000]), ll1 = PJ.EPSG25830.inverse([(Math.max(...xs) + 1) * 1000, (Math.max(...ys) + 1) * 1000]);
-      const ll2 = PJ.EPSG25830.inverse([Math.min(...xs) * 1000, (Math.max(...ys) + 1) * 1000]), ll3 = PJ.EPSG25830.inverse([(Math.max(...xs) + 1) * 1000, Math.min(...ys) * 1000]);
-      const s = Math.min(ll0[1], ll3[1]), w = Math.min(ll0[0], ll2[0]), n = Math.max(ll1[1], ll2[1]), e = Math.max(ll1[0], ll3[0]);
-      const B = `${s.toFixed(5)},${w.toFixed(5)},${n.toFixed(5)},${e.toFixed(5)}`;
-      const q = `[out:json][timeout:60];(node["natural"="tree"](${B});way["natural"="tree_row"](${B});way["natural"="wood"](${B});way["landuse"="forest"](${B}););out tags geom qt;`;
-      const job = (async () => {
-        let last; for (const ep of OVP) { try { const r = await fetch(ep, { method: 'POST', body: 'data=' + encodeURIComponent(q), signal: AbortSignal.timeout(60000) }); const txt = await r.text(); if (txt[0] !== '{') throw new Error('Overpass ' + r.status); return JSON.parse(txt); } catch (err) { last = err; } }
-        throw last || new Error(t('err.network'));
-      })();
-      need.forEach(([x, y]) => pending.set(x + '_' + y, job));
-      try {
-        const j = await job; treesTs = (j.osm3s && j.osm3s.timestamp_osm_base) || treesTs;
-        need.forEach(([x, y]) => treeCells.set(x + '_' + y, { pts: [], ways: [] }));
-        (j.elements || []).forEach(el => {
-          if (el.type === 'node') { const c = cellOf([el.lon, el.lat]); const cell = treeCells.get(c); if (cell) cell.pts.push({ id: 'n' + el.id, ll: [el.lon, el.lat], tags: el.tags || {} }); }
-          else if (el.type === 'way' && el.geometry) { const g = el.geometry.map(p => [p.lon, p.lat]); const c = cellOf(g[0]); const cell = treeCells.get(c); if (cell) cell.ways.push({ id: 'w' + el.id, coords: g, tags: el.tags || {} }); }
-        });
-      } finally { need.forEach(([x, y]) => pending.delete(x + '_' + y)); }
-    }
-    await Promise.all(cells.map(([x, y]) => pending.get(x + '_' + y)).filter(Boolean));
-    const pts = [], ways = []; const seen = new Set();
-    cells.forEach(([x, y]) => { const c = treeCells.get(x + '_' + y); if (!c) return; c.pts.forEach(p => { if (G.inBBox(p.ll, bb)) pts.push(p); }); c.ways.forEach(w => { if (!seen.has(w.id)) { seen.add(w.id); ways.push(w); } }); });
-    return { pts, ways, ts: treesTs };
+  // Mapped trees: a dated static snapshot of OSM natural=tree / tree_row inside the municipality (data/vec/trees_osm.json,
+  // built by tools/build_trees.py). Static so analysis, sections and the map never wait on a busy Overpass server.
+  let treeSnap = null;
+  function treeData() {
+    if (!treeSnap) treeSnap = root.GA.data.single('trees_osm').then(j => ({
+      ts: j.osm_timestamp, count: j.count,
+      pts: j.pts.map(p => ({ id: 'n' + p[0], ll: [p[1], p[2]], tags: Object.assign({ natural: 'tree' }, p[3] || {}) })),
+      ways: j.rows_geom.map(w => ({ id: 'w' + w.id, coords: w.c, tags: Object.assign({ natural: 'tree_row' }, w.t || {}) })),
+    })).catch(e => { treeSnap = null; throw e; });
+    return treeSnap;
+  }
+  async function trees(bb) {
+    const d = await treeData();
+    const pts = d.pts.filter(p => G.inBBox(p.ll, bb));
+    const ways = d.ways.filter(w => (() => { const b = G.bbox(w.coords); return b[0] <= bb[2] && b[2] >= bb[0] && b[1] <= bb[3] && b[3] >= bb[1]; })());
+    return { pts, ways, ts: d.ts };
   }
   function treeFeatures(r) {
     const f = r.pts.map(p => ({ type: 'Feature', properties: { id: p.id, kind: 'tree', species: p.tags.species || p.tags['species:es'] || null, genus: p.tags.genus || null, leaf_type: p.tags.leaf_type || null, leaf_cycle: p.tags.leaf_cycle || null, height: p.tags.height || null, crown: p.tags.diameter_crown || null, denotation: p.tags.denotation || null }, geometry: { type: 'Point', coordinates: p.ll } }));

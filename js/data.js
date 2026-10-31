@@ -10,7 +10,11 @@
   const singleCache = new Map();
   const grids = {};
 
-  async function getJSON(url, cache) { const r = await fetch(url, { cache: cache || 'force-cache' }); if (!r.ok) throw new Error('HTTP ' + r.status + ' — ' + url); return r.json(); }
+  // Every data URL carries the manifest's data version, so a returning visitor's cached files are replaced when the
+  // published data change (the manifest itself is always revalidated).
+  const dataVer = () => (manifest && (manifest.dataVersion || manifest.generatedExtra || manifest.generated)) || '0';
+  const vURL = (url) => url + (url.includes('?') ? '&' : '?') + 'd=' + encodeURIComponent(dataVer());
+  async function getJSON(url, cache) { if (cache !== 'no-cache') { try { await loadManifest(); } catch (e) { } url = vURL(url); } const r = await fetch(url, { cache: cache || 'force-cache' }); if (!r.ok) throw new Error('HTTP ' + r.status + ' — ' + url); return r.json(); }
   function loadManifest() { if (!manifestP) manifestP = getJSON(BASE + 'manifest.json', 'no-cache') /* always revalidated: it describes every other file */.then(m => (manifest = m)).catch(e => { manifestP = null; throw e; }); return manifestP; }
 
   function cellsForBBox(bb, pad) { // bb in lon/lat, pad in metres
@@ -47,7 +51,7 @@
   async function grid(name) {
     await loadManifest();
     if (!grids[name]) grids[name] = (async () => {
-      const m = manifest.terrain[name]; const r = await fetch(BASE + m.file, { cache: 'force-cache' }); if (!r.ok) throw new Error('HTTP ' + r.status);
+      const m = manifest.terrain[name]; const r = await fetch(vURL(BASE + m.file), { cache: 'force-cache' }); if (!r.ok) throw new Error('HTTP ' + r.status);
       const buf = await r.arrayBuffer(); const arr = name === 'dem' ? new Int16Array(buf) : new Uint16Array(buf);
       return Object.assign({}, m, { arr, scale: name === 'slope' ? 0.01 : 1, nodata: m.nodata });
     })();

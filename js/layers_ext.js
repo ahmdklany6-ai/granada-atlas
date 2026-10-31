@@ -98,17 +98,16 @@
       layers: () => [lid('canopy')], opacityProp: { [lid('canopy')]: 'raster-opacity' },
       legend: () => `${legImg(X.SVC.tcdWms + '?request=GetLegendGraphic&version=1.3.0&format=image/png&layer=HRL_TreeCoverDensity_2018', 'TCD legend')}<p class="lyr-src">${t('ly3.canopyNote')}</p>`,
       src: () => 'Copernicus HRL Tree Cover Density 2018 · 10 m · EEA (free, full and open)' });
-    defs.push({ id: 'trees', group: 'env', title: () => t('ly3.trees'), def: { on: false, opacity: 1 }, minZ: 15,
+    defs.push({ id: 'trees', group: 'env', title: () => t('ly3.trees'), def: { on: false, opacity: 1 },
       build() {
         addSrc(lid('trees'), { type: 'geojson', data: fc() });
-        addLyr({ id: lid('trees', 'wood'), type: 'fill', source: lid('trees'), filter: ['==', ['get', 'kind'], 'wood'], paint: { 'fill-color': '#5E9A5B', 'fill-opacity': 0.35, 'fill-outline-color': '#3F6E3C' } });
         addLyr({ id: lid('trees', 'row'), type: 'line', source: lid('trees'), filter: ['==', ['get', 'kind'], 'tree_row'], paint: { 'line-color': '#3F6E3C', 'line-width': 3, 'line-dasharray': [0.6, 1.4], 'line-opacity': 1 } });
-        addLyr({ id: lid('trees'), type: 'circle', source: lid('trees'), filter: ['==', ['get', 'kind'], 'tree'], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 15, 2.2, 19, 6], 'circle-color': '#3F6E3C', 'circle-stroke-color': '#FFF', 'circle-stroke-width': 0.8, 'circle-opacity': 1 } });
+        addLyr({ id: lid('trees'), type: 'circle', source: lid('trees'), filter: ['==', ['get', 'kind'], 'tree'], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 0.9, 15, 2.4, 19, 6], 'circle-color': '#3F6E3C', 'circle-stroke-color': '#FFF', 'circle-stroke-width': 0.8, 'circle-opacity': 1 } });
       },
-      async update() { if (map.getZoom() < 15) return 'zoom'; const b = map.getBounds(); const r = await X.trees([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], 9); const f = X.treeFeatures(r); map.getSource(lid('trees')).setData(fc(f)); this._ts = r.ts; return r.pts.length; },
-      layers: () => [lid('trees', 'wood'), lid('trees', 'row'), lid('trees')], opacityProp: { [lid('trees')]: 'circle-opacity', [lid('trees', 'wood')]: 'fill-opacity', [lid('trees', 'row')]: 'line-opacity' },
-      legend() { return `<ul class="lg">${swd('#3F6E3C', t('ly3.treePt'))}${swl('#3F6E3C', 3, t('ly3.treeRow'), true)}${sw('rgba(94,154,91,.35)', t('ly3.wood'))}</ul><p class="lyr-src">${t('ly3.treesNote')}</p>`; },
-      src: () => 'OpenStreetMap natural=tree / tree_row / wood · Overpass live · ODbL',
+      async load() { const r = await X.trees([-180, -90, 180, 90]); map.getSource(lid('trees')).setData(fc(X.treeFeatures(r))); this._ts = r.ts; return r.pts.length; },
+      layers: () => [lid('trees', 'row'), lid('trees')], opacityProp: { [lid('trees')]: 'circle-opacity', [lid('trees', 'row')]: 'line-opacity' },
+      legend() { return `<ul class="lg">${swd('#3F6E3C', t('ly3.treePt'))}${swl('#3F6E3C', 3, t('ly3.treeRow'), true)}</ul><p class="lyr-src">${t('ly3.treesNote')}</p>`; },
+      src: () => `OpenStreetMap natural=tree / tree_row · ${t('ly3.snapshot')} 2026-10-31 · ODbL`,
       popup: { layers: () => [lid('trees'), lid('trees', 'row')], html: (p) => `<b>${t(p.kind === 'tree_row' ? 'ly3.treeRow' : 'ly3.treePt')}</b>${kv([[t('ly3.species'), p.species ? `<i dir="ltr">${esc(p.species)}</i>` : (p.genus ? `<i dir="ltr">${esc(p.genus)}</i>` : `<em>${t('nodata')}</em>`)], [t('ly3.leaf'), p.leaf_type ? esc(p.leaf_type) + (p.leaf_cycle ? ' · ' + esc(p.leaf_cycle) : '') : null], [t('ly3.height'), p.height ? esc(p.height) + ' m' : `<em>${t('nodata')}</em>`], [t('ly3.crown'), p.crown ? esc(p.crown) + ' m' : `<em>${t('nodata')}</em>`]])}<small dir="ltr">OSM ${esc(p.id)}</small>` },
     });
 
