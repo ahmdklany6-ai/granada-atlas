@@ -37,6 +37,10 @@ Fixed in every language: **analysis and results on the left**, **study-area cont
 | **v3** Studio (`#/studio`): editable schedule + checklist, five Miro squares per student (Draft → Ready → Exported → Uploaded only when confirmed by hand), climate-mapping board, exercise registry, resources; Exercise 1.3 (`#/ex13`): identity page + five maps at one frame, scale and north, PDF + PNGs | works |
 | Population grid, education / unemployment data, municipal 2022 noise data, municipal tree inventory, GTFS route geometry, accessibility (network analysis), Google Street View imagery inside the tool | not connected — shown as gaps |
 
+## Updates for returning visitors
+
+`version.json` holds the build number, which must match `GA_BUILD` and the `?v=` query on every asset in `index.html` (checked by `tests/ui_test_v4.py`). A page loaded from an older cached `index.html` reloads itself once onto the newest build. Data files carry the manifest's `dataVersion`. Saved projects (localStorage) and the library (IndexedDB) are never touched by an update.
+
 ## Published data (`data/`)
 
 Built by `tools/build_data.js` from the supplied open datasets (the originals are not in this repository):
