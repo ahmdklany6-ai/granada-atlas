@@ -40,7 +40,7 @@
       el.querySelector('[data-sv=look]').value = s.look === 'right' ? 'right' : 'left'; el.querySelector('[data-sv=corridor]').value = s.corridor || 15; el.querySelector('[data-sv=floors]').checked = !!s.floors;
     };
     async function recompute() { drawBox.classList.add('busy'); try { prof = await SEC.compute(s, { floorH: s.floorH || 3 }); } catch (e) { drawBox.innerHTML = `<p class="warn">${esc(e.message)}</p>`; return; } finally { drawBox.classList.remove('busy'); } paint(); minimap(); methods(); }
-    function paint() { if (!prof) return; const w = Math.max(320, drawBox.clientWidth - 4), h = Math.max(260, Math.min(drawBox.clientHeight - 30, Math.round(w * 0.5))); last = SEC.draw(cv, prof, Object.assign({ w, h }, SEC.optsFor(s))); if (sel) annotate(sel); }
+    function paint() { if (!prof) return; const w = Math.max(320, drawBox.clientWidth - 4), h = Math.max(260, Math.min(drawBox.clientHeight - 44, Math.round(w * 0.72))); last = SEC.draw(cv, prof, Object.assign({ w, h }, SEC.optsFor(s))); if (sel) annotate(sel); }
     async function minimap() {
       const w = Math.max(200, mapCv.parentElement.clientWidth - 2), h = Math.round(w * 0.75); const ring = root.GA.compare.ringOf(a.spec);
       const u = s.pts.map(p => PJ.EPSG25830.forward(p)); const c = s.look === 'right' ? -1 : 1; const cw = s.corridor || 15;
