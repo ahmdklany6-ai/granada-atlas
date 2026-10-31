@@ -38,7 +38,7 @@
 
   async function render(body, id, keepScroll) {
     const a = areaOf(id); if (!a) { body.innerHTML = `<p class="lead">${t('fb.noArea')}</p>`; return; }
-    const b = board(id); const sc = keepScroll ? body.closest('#page').scrollTop : 0;
+    const b = board(id); const sc = keepScroll && body.closest('#page') ? body.closest('#page').scrollTop : 0;
     if (!keepScroll) body.innerHTML = `<div class="loading"><span class="spin"></span>${t('ws.computing')}</div>`;
     let X0; try { X0 = await CMP.prepare(a); } catch (e) { body.innerHTML = `<div class="warn">${t('v4.fabricFailed', { e: esc(e.message || String(e)) })} <button class="btn btn-small" id="fb-retry">${t('retry')}</button></div>`; body.querySelector('#fb-retry').onclick = () => render(body, id); return; }
     if (!PG.current || !['fabric', 'analysis'].includes(PG.current.name) || PG.current.params[0] !== id) return;
@@ -77,7 +77,7 @@
     paintAll(body, a, b);
     body.onclick = (e) => onClick(e, body, a, b); body.onchange = (e) => onChange(e, body, a, b);
     if (!b.hidden.includes('history')) loadHistory(a, body);
-    if (keepScroll) body.closest('#page').scrollTop = sc;
+    const pgEl = body.closest('#page'); if (keepScroll && pgEl) pgEl.scrollTop = sc;
   }
   const shapeLabel = (a) => t('shape.' + (a.spec && a.spec.type)) !== 'shape.' + (a.spec && a.spec.type) ? t('shape.' + a.spec.type) : (a.spec && a.spec.type) || '';
   function figHTML(c) {

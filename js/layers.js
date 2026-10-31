@@ -12,6 +12,15 @@
   const fc = (f) => ({ type: 'FeatureCollection', features: f || [] });
   const BEFORE = 'label-water'; // thematic layers stay under the basemap labels
   const DETAIL_Z = 14.5;
+  // buildings: 50 m aggregation only for citywide views; simplified footprints from LITE_Z; full detail from DETAIL_Z.
+  // The aggregation fades out and the footprints fade in between FADE0 and FADE1.
+  const LITE_Z = 12.5, FADE0 = 12.5, FADE1 = 12.95;
+  const BLD = ['bld_floors', 'bld_fg', 'bld_period'];
+  const fadeIn = (o) => ['interpolate', ['linear'], ['zoom'], FADE0, 0, FADE1, o];
+  const fadeOut = (o) => ['interpolate', ['linear'], ['zoom'], FADE0, o, FADE1, 0];
+  // street widths in px by tier, growing with scale (exponential, so close zooms read like the street's real width)
+  const SW = { primary: [1.6, 3.6, 7, 14], collector: [1, 2.4, 5, 10], local: [0.45, 1.4, 3.2, 6.5], pedestrian: [0.35, 1.1, 2.4, 4.5], other: [0.3, 0.8, 1.7, 3.2] };
+  const streetWidth = () => ['interpolate', ['exponential', 1.5], ['zoom'], ...[12, 15, 17, 19].flatMap((z, i) => [z, ['match', ['get', 'tier'], 'primary', SW.primary[i], 'collector', SW.collector[i], 'local', SW.local[i], 'pedestrian', SW.pedestrian[i], SW.other[i]]])];
   const CHORO = ['#F8ECEC', '#EBC9C8', '#D98E8C', '#B04746', '#6E1C1B'];
   const FACC = { hospital: P.red, clinic: '#D9706E', doctors: P.ink, dentist: '#9A9EA4', pharmacy: P.blue, university: P.ink, college: '#6E737A', school: P.red, early_years: '#E4A8A6', hotel: P.red, hostel: P.ink, guest_house: P.blue, apartment: '#9A9EA4' };
   const SLOPE_K = [['0-2', '#F7F0F0'], ['2-5', '#F2D6D5'], ['5-10', '#E4A8A6'], ['10-15', '#D07674'], ['15-25', '#B2403E'], ['25-35', '#8C2120'], ['35+', '#5A1414']];
@@ -25,6 +34,8 @@
     const S = {}; // layer state by id
     let order = []; let scope = 'city'; let maskRings = []; let built = false; const listeners = [];
     const emit = () => listeners.forEach(f => f());
+    const setOp = (l, prop, v) => { if (map.getLayer(l)) map.setPaintProperty(l, prop, v); };
+    const periodColor = () => matchExpr('period', Object.assign({}, P.period, { no_data: '#F3F3F2' }), '#F3F3F2');
     const status = (id, st, extra) => { S[id].status = st; S[id].statusExtra = extra; emit(); };
     const lid = (id, k) => 'ly-' + id + (k ? '-' + k : '');
 
@@ -49,7 +60,7 @@
       const b = map.getBounds(); const bb = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
       const fs = await D.chunked(layer, bb, 50, maxCells || 36);
       fs.forEach(f => { if (!f._p) { proc(f); f._p = 1; } });
-      return { features: fs };
+      return { features: fs, bb };
     }
 
     // ---------- layer definitions ----------
@@ -116,28 +127,49 @@
           addLyr({ id: lid('bld_floors'), type: 'fill', source: lid('bld'), minzoom: DETAIL_Z, filter: ['!=', ['get', 'band'], 'no_data'], paint: { 'fill-color': matchExpr('band', P.band, '#FFF'), 'fill-opacity': 0.9, 'fill-outline-color': '#FFFFFF' } });
           addLyr({ id: lid('bld_floors', 'unk'), type: 'fill', source: lid('bld'), minzoom: DETAIL_Z, filter: ['==', ['get', 'band'], 'no_data'], paint: { 'fill-pattern': 'ga-hatch', 'fill-opacity': 0.9 } });
           addLyr({ id: lid('bld_floors', 'unkln'), type: 'line', source: lid('bld'), minzoom: DETAIL_Z, filter: ['==', ['get', 'band'], 'no_data'], paint: { 'line-color': '#8A8F96', 'line-width': 0.5, 'line-opacity': 0.9 } }); },
-        update: () => bldUpdate(), layers: () => [lid('bld_floors', 'ov'), lid('bld_floors'), lid('bld_floors', 'unk'), lid('bld_floors', 'unkln')],
-        opacityProp: { [lid('bld_floors', 'ov')]: 'raster-opacity', [lid('bld_floors')]: 'fill-opacity', [lid('bld_floors', 'unk')]: 'fill-opacity', [lid('bld_floors', 'unkln')]: 'line-opacity' },
-        legend: () => `<ul class="lg">${['1-2', '3-4', '5-8', '9+'].map(k => sw(P.band[k], t('b.floors', { v: iso(k.replace('-', '–')) }))).join('')}<li><i class="sw hatch"></i><span>${t('g.unknownHeight')}</span></li></ul><p class="lyr-src">${t(map.getZoom() < DETAIL_Z ? 'ly.floorsOverview' : 'ly.floorsDetail')}</p>`,
+        // simplified citywide footprints (added when first needed) sit between the 50 m raster and the full-detail tiles
+        liteLayers: () => [lid('bld_floors', 'lite'), lid('bld_floors', 'liteunk')],
+        buildLite() { addLyr({ id: lid('bld_floors', 'lite'), type: 'fill', source: lid('bldlite'), minzoom: LITE_Z, filter: ['!=', ['get', 'band'], 'no_data'], paint: { 'fill-color': matchExpr('band', P.band, '#FFF'), 'fill-opacity': 0.9, 'fill-antialias': true } });
+          addLyr({ id: lid('bld_floors', 'liteunk'), type: 'fill', source: lid('bldlite'), minzoom: LITE_Z, filter: ['==', ['get', 'band'], 'no_data'], paint: { 'fill-pattern': 'ga-hatch', 'fill-opacity': 0.9 } }); },
+        update: () => bldUpdate(), layers: () => [lid('bld_floors', 'ov'), lid('bld_floors', 'lite'), lid('bld_floors', 'liteunk'), lid('bld_floors'), lid('bld_floors', 'unk'), lid('bld_floors', 'unkln')],
+        visLayers() { return bldVis(this); },
+        applyOpacity(o) { setOp(lid('bld_floors', 'ov'), 'raster-opacity', lite.state === 2 ? fadeOut(o) : o); setOp(lid('bld_floors', 'lite'), 'fill-opacity', fadeIn(o)); setOp(lid('bld_floors', 'liteunk'), 'fill-opacity', fadeIn(o));
+          setOp(lid('bld_floors'), 'fill-opacity', o); setOp(lid('bld_floors', 'unk'), 'fill-opacity', o); setOp(lid('bld_floors', 'unkln'), 'line-opacity', o); },
+        legend: () => { const z = map.getZoom(); return `<ul class="lg">${['1-2', '3-4', '5-8', '9+'].map(k => sw(P.band[k], t('b.floors', { v: iso(k.replace('-', '–')) }))).join('')}<li><i class="sw hatch"></i><span>${t('g.unknownHeight')}</span></li></ul><p class="lyr-src">${t(z < LITE_Z ? 'ly.floorsOverview' : z < DETAIL_Z ? 'ly.floorsLite' : 'ly.floorsDetail')}</p>`; },
         src: () => 'OSM building:levels · ODbL', popup: { layers: () => [lid('bld_floors'), lid('bld_floors', 'unk')], html: (p) => bldPopup(p) } },
-      { id: 'bld_fg', group: 'bld', title: () => t('ly.bldFg'), def: { on: false, opacity: 1 }, minZ: DETAIL_Z,
+      { id: 'bld_fg', group: 'bld', title: () => t('ly.bldFg'), def: { on: false, opacity: 1 }, minZ: LITE_Z,
         build() { addSrc(lid('bld'), { type: 'geojson', data: fc() }); addLyr({ id: lid('bld_fg'), type: 'fill', source: lid('bld'), minzoom: DETAIL_Z, paint: { 'fill-color': P.ink, 'fill-opacity': 1 } }); },
-        update: () => bldUpdate(), layers: () => [lid('bld_fg')], opacityProp: { [lid('bld_fg')]: 'fill-opacity' },
-        legend: () => `<ul class="lg">${sw(P.ink, t('g.building'))}</ul>`, src: () => 'OSM building · ODbL', popup: { layers: () => [lid('bld_fg')], html: (p) => bldPopup(p) } },
-      { id: 'bld_period', group: 'bld', title: () => t('ly.bldPeriod'), def: { on: false, opacity: 1 }, minZ: DETAIL_Z,
-        build() { addSrc(lid('bld'), { type: 'geojson', data: fc() }); addLyr({ id: lid('bld_period'), type: 'fill', source: lid('bld'), minzoom: DETAIL_Z, paint: { 'fill-color': matchExpr('period', Object.assign({}, P.period, { no_data: '#F3F3F2' }), '#F3F3F2'), 'fill-opacity': 1, 'fill-outline-color': '#C6C7C9' } }); },
-        update: () => bldUpdate(), layers: () => [lid('bld_period')], opacityProp: { [lid('bld_period')]: 'fill-opacity' },
-        legend: () => `<ul class="lg">${A.PERIODS.map(k => sw(P.period[k], root.GA.report.periodLabel(k))).join('')}${sw('#F3F3F2', t('nodata'))}</ul><p class="lyr-src">${t('ly.periodNote')}</p>`, src: () => 'OSM start_date · ODbL', popup: { layers: () => [lid('bld_period')], html: (p) => bldPopup(p) } },
-      { id: 'streets', group: 'streets', title: () => t('ly.streets'), def: { on: false, opacity: 1 },
+        liteLayers: () => [lid('bld_fg', 'lite')],
+        buildLite() { addLyr({ id: lid('bld_fg', 'lite'), type: 'fill', source: lid('bldlite'), minzoom: LITE_Z, paint: { 'fill-color': P.ink, 'fill-opacity': 1 } }); },
+        update: () => bldUpdate(), layers: () => [lid('bld_fg', 'lite'), lid('bld_fg')], visLayers() { return bldVis(this); },
+        applyOpacity(o) { setOp(lid('bld_fg', 'lite'), 'fill-opacity', fadeIn(o)); setOp(lid('bld_fg'), 'fill-opacity', o); },
+        legend: () => `<ul class="lg">${sw(P.ink, t('g.building'))}</ul>${bldScaleNote()}`, src: () => 'OSM building · ODbL', popup: { layers: () => [lid('bld_fg')], html: (p) => bldPopup(p) } },
+      { id: 'bld_period', group: 'bld', title: () => t('ly.bldPeriod'), def: { on: false, opacity: 1 }, minZ: LITE_Z,
+        build() { addSrc(lid('bld'), { type: 'geojson', data: fc() }); addLyr({ id: lid('bld_period'), type: 'fill', source: lid('bld'), minzoom: DETAIL_Z, paint: { 'fill-color': periodColor(), 'fill-opacity': 1, 'fill-outline-color': '#C6C7C9' } }); },
+        liteLayers: () => [lid('bld_period', 'lite')],
+        buildLite() { addLyr({ id: lid('bld_period', 'lite'), type: 'fill', source: lid('bldlite'), minzoom: LITE_Z, paint: { 'fill-color': periodColor(), 'fill-opacity': 1 } }); },
+        update: () => bldUpdate(), layers: () => [lid('bld_period', 'lite'), lid('bld_period')], visLayers() { return bldVis(this); },
+        applyOpacity(o) { setOp(lid('bld_period', 'lite'), 'fill-opacity', fadeIn(o)); setOp(lid('bld_period'), 'fill-opacity', o); },
+        legend: () => `<ul class="lg">${A.PERIODS.map(k => sw(P.period[k], root.GA.report.periodLabel(k))).join('')}${sw('#F3F3F2', t('nodata'))}</ul><p class="lyr-src">${t('ly.periodNote')}</p>${bldScaleNote()}`, src: () => 'OSM start_date · ODbL', popup: { layers: () => [lid('bld_period')], html: (p) => bldPopup(p) } },
+      { id: 'streets', group: 'net', title: () => t('ly.streets'), def: { on: false, opacity: 1 },
         build() { addSrc(lid('streets', 'maj'), { type: 'geojson', data: fc() }); addSrc(lid('streets'), { type: 'geojson', data: fc() });
-          const paint = { 'line-color': matchExpr('tier', P.tier, '#C3C6CA'), 'line-width': ['interpolate', ['linear'], ['zoom'], 12, ['match', ['get', 'tier'], 'primary', 2, 'collector', 1.2, 0.5], 17, ['match', ['get', 'tier'], 'primary', 6, 'collector', 4, 'local', 2, 1.2]], 'line-opacity': 1 };
-          addLyr({ id: lid('streets', 'maj'), type: 'line', source: lid('streets', 'maj'), maxzoom: DETAIL_Z, layout: { 'line-cap': 'round' }, paint });
-          addLyr({ id: lid('streets'), type: 'line', source: lid('streets'), minzoom: DETAIL_Z, layout: { 'line-cap': 'round' }, paint: Object.assign({}, paint, { 'line-dasharray': ['match', ['get', 'tier'], 'pedestrian', ['literal', [2, 1]], ['literal', [1, 0]]] }) }); },
+          // widths grow with scale so local streets and paths stay legible up close (line-dasharray cannot be data-driven,
+          // so pedestrian ways get their own dashed layer)
+          const paint = { 'line-color': matchExpr('tier', P.tier, P.tier.other), 'line-width': streetWidth(), 'line-opacity': 1 };
+          addLyr({ id: lid('streets', 'maj'), type: 'line', source: lid('streets', 'maj'), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint });
+          addLyr({ id: lid('streets'), type: 'line', source: lid('streets'), minzoom: DETAIL_Z, filter: ['!=', ['get', 'tier'], 'pedestrian'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint });
+          addLyr({ id: lid('streets', 'ped'), type: 'line', source: lid('streets'), minzoom: DETAIL_Z, filter: ['==', ['get', 'tier'], 'pedestrian'], layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: Object.assign({}, paint, { 'line-dasharray': [2, 1.2] }) }); },
         async load() { if (this._majLoaded) return; const j = await D.single('streets_major'); j.features.forEach(procS); map.getSource(lid('streets', 'maj')).setData(j); this._majLoaded = 1; },
-        async update() { const r = await viewport('streets', procS, DETAIL_Z, 40); if (r.zoom) return 'overview'; map.getSource(lid('streets')).setData(fc(r.features)); return r.features.length; },
-        layers: () => [lid('streets', 'maj'), lid('streets')], opacityProp: { [lid('streets', 'maj')]: 'line-opacity', [lid('streets')]: 'line-opacity' },
+        async update() {
+          const my = {}; this._busy = my;
+          const r = await viewport('streets', procS, DETAIL_Z, 40); if (r.zoom) return 'overview'; if (this._busy !== my) return 'stale';
+          map.getSource(lid('streets')).setData(fc(r.features)); await waitLoaded(lid('streets')); if (this._busy !== my) return 'stale';
+          cover.streets = r.bb; syncCover(true); return r.features.length; },
+        // the major-road overview stays drawn under the detail layers until the detail data for the view has arrived
+        visLayers() { const hide = map.getZoom() >= DETAIL_Z && covers(cover.streets); return this.layers().filter(l => !(hide && l === lid('streets', 'maj'))); },
+        layers: () => [lid('streets', 'maj'), lid('streets'), lid('streets', 'ped')], opacityProp: { [lid('streets', 'maj')]: 'line-opacity', [lid('streets')]: 'line-opacity', [lid('streets', 'ped')]: 'line-opacity' },
         legend: () => `<ul class="lg">${['primary', 'collector', 'local', 'pedestrian'].map(k => swl(P.tier[k], P.tierWidth[k] + 0.5, t('tier.' + k), k === 'pedestrian')).join('')}</ul><p class="lyr-src">${t(map.getZoom() < DETAIL_Z ? 'ly.streetsOverview' : 'ly.streetsDetail')}</p>`, src: () => 'OSM highway · ODbL',
-        popup: { layers: () => [lid('streets'), lid('streets', 'maj')], html: (p) => `<b dir="auto">${esc(p.nm || '—')}</b><br>${t('tier.' + p.tier) || ''} <small dir="ltr">highway=${esc(p.hw)}</small>` } },
+        popup: { layers: () => [lid('streets'), lid('streets', 'ped'), lid('streets', 'maj')], html: (p) => `<b dir="auto">${esc(p.nm || '—')}</b><br>${t('tier.' + p.tier) || ''} <small dir="ltr">highway=${esc(p.hw)}</small>` } },
       { id: 'contours', group: 'terrain', title: () => t('ly.contours'), def: { on: false, opacity: 0.8 },
         build() { addSrc(lid('contours', '10'), { type: 'geojson', data: fc() }); addSrc(lid('contours', '20'), { type: 'geojson', data: fc() });
           addLyr({ id: lid('contours', '20'), type: 'line', source: lid('contours', '20'), maxzoom: 13.5, paint: { 'line-color': '#7A5A48', 'line-width': ['match', ['%', ['get', 'elev'], 100], 0, 1, 0.4], 'line-opacity': 0.8 } });
@@ -173,12 +205,57 @@
     }
     let bldBusy = null;
     async function bldUpdate() {
-      const any = ['bld_floors', 'bld_fg', 'bld_period'].some(k => S[k].on); if (!any) return;
-      if (map.getZoom() < DETAIL_Z) return 'zoom';
-      const my = {}; bldBusy = my;
-      const r = await viewport('buildings', procB, DETAIL_Z, 30); if (bldBusy !== my) return;
-      map.getSource(lid('bld')).setData(fc(r.features)); ['bld_floors', 'bld_fg', 'bld_period'].forEach(k => S[k].on && status(k, 'ok', r.features.length));
+      const any = BLD.some(k => S[k].on); if (!any) return;
+      const my = {}; bldBusy = my; // any earlier detail request still in flight is now stale
+      const z = map.getZoom(); if (z >= LITE_Z - 0.5) ensureLite().catch(() => { });
+      if (z < DETAIL_Z) return z < LITE_Z ? 'city' : 'lite';
+      const r = await viewport('buildings', procB, DETAIL_Z, 30); if (bldBusy !== my) return 'stale';
+      map.getSource(lid('bld')).setData(fc(r.features)); await waitLoaded(lid('bld')); if (bldBusy !== my) return 'stale';
+      cover.bld = r.bb; syncCover(true);
+      BLD.forEach(k => S[k].on && status(k, 'ok', r.features.length));
       return r.features.length;
+    }
+    // Simplified citywide footprints (data/vec/buildings_lite.json, Douglas–Peucker 1 m) for neighbourhood scales.
+    // The file is handed to the map's worker by URL, so parsing never blocks the page.
+    const lite = { state: 0, n: (M() && M().layers.buildings_lite && M().layers.buildings_lite.features) || null };
+    function ensureLite() {
+      if (lite.state === 1 || lite.state === 2) return lite.p;
+      lite.state = 1;
+      lite.p = (async () => {
+        await D.loadManifest(); const m = M(); lite.n = (m.layers.buildings_lite && m.layers.buildings_lite.features) || lite.n;
+        const url = new URL('data/vec/buildings_lite.json?d=' + encodeURIComponent(m.dataVersion || m.generated || '0'), location.href).href;
+        const id = lid('bldlite');
+        if (!map.getSource(id)) map.addSource(id, { type: 'geojson', data: url, maxzoom: 15, tolerance: 0.25, buffer: 16 });
+        BLD.forEach(k => byId[k].buildLite());
+        applyOrder(); BLD.forEach(k => applyVis(byId[k]));
+        await waitLoaded(id, 20000);
+        lite.state = 2; BLD.forEach(k => applyVis(byId[k])); emit();
+      })().catch(e => { lite.state = -1; console.warn('buildings_lite', e); throw e; });
+      return lite.p;
+    }
+    function bldVis(d) {
+      const z = map.getZoom(), hideLite = z >= DETAIL_Z && covers(cover.bld), lt = new Set(d.liteLayers());
+      return d.layers().filter(l => !(hideLite && lt.has(l)));
+    }
+    const bldScaleNote = () => { const z = map.getZoom(); return z < DETAIL_Z ? `<p class="lyr-src">${t(z < LITE_Z ? 'ly.bldZoomLite' : 'ly.bldLiteNote')}</p>` : ''; };
+    // resolves once a GeoJSON source has processed its latest data and loaded its tiles (or after a time-out)
+    function waitLoaded(id, ms) {
+      return new Promise((res) => {
+        let done = false; const fin = () => { if (done) return; done = true; map.off('sourcedata', on); map.off('error', onErr); clearTimeout(tm); res(); };
+        const on = (e) => { if (e.sourceId === id && e.isSourceLoaded && map.isSourceLoaded(id)) fin(); };
+        const onErr = (e) => { if (e.sourceId === id) fin(); };
+        const tm = setTimeout(fin, ms || 4000); map.on('sourcedata', on); map.on('error', onErr);
+      });
+    }
+    // which part of the map the detail sources currently hold; the overview stays visible outside it
+    const cover = { bld: null, streets: null };
+    function covers(bb) { if (!bb) return false; const b = map.getBounds(); return b.getWest() >= bb[0] - 1e-9 && b.getSouth() >= bb[1] - 1e-9 && b.getEast() <= bb[2] + 1e-9 && b.getNorth() <= bb[3] + 1e-9; }
+    let coverKey = '';
+    function syncCover(force) {
+      if (!built) return; const z = map.getZoom() >= DETAIL_Z;
+      const k = [z, covers(cover.bld), covers(cover.streets), lite.state].join();
+      if (k === coverKey && !force) return; coverKey = k;
+      BLD.concat(['streets']).forEach(id => S[id].on && applyVis(byId[id]));
     }
 
     // ---------- state / persistence ----------
@@ -200,11 +277,12 @@
       addLyr({ id: 'ly-hl-pt', type: 'circle', source: 'ly-hl', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 8, 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': P.red, 'circle-stroke-width': 2.5 } });
       built = true; applyOrder(); defs.forEach(d => applyVis(d)); applyMask();
       map.on('moveend', refreshViewport);
+      let mvT = 0; map.on('move', () => { const n = performance.now(); if (n - mvT > 80) { mvT = n; syncCover(); } });
       map.on('zoomend', () => emit());
       refreshAll();
     }
     function applyVis(d) { const on = S[d.id].on; const vis = d.visLayers ? new Set(d.visLayers()) : null; d.layers().forEach(l => map.getLayer(l) && map.setLayoutProperty(l, 'visibility', on && (!vis || vis.has(l)) ? 'visible' : 'none')); applyOpacity(d); }
-    function applyOpacity(d) { const o = S[d.id].opacity; if (d.applyOpacity) { d.applyOpacity(o); return; } Object.entries(d.opacityProp || {}).forEach(([l, prop]) => { if (map.getLayer(l)) map.setPaintProperty(l, prop, o); }); if (d.id === 'bld_floors' && map.getLayer(lid('bld_floors', 'ov'))) map.setPaintProperty(lid('bld_floors', 'ov'), 'raster-opacity', o); }
+    function applyOpacity(d) { const o = S[d.id].opacity; if (d.applyOpacity) { d.applyOpacity(o); return; } Object.entries(d.opacityProp || {}).forEach(([l, prop]) => { if (map.getLayer(l)) map.setPaintProperty(l, prop, o); });  }
     function applyOrder() {
       if (!built) return; const all = order.map(id => byId[id] || userDefs.find(u => u.id === id)).filter(Boolean);
       // order is top-first; move each to just under the labels from bottom to top
@@ -216,7 +294,13 @@
       if (!d.load && !d.update) { status(d.id, 'ok'); return; } // raster image layers
       try {
         if (d.load) { status(d.id, 'loading'); const n = await d.load(); status(d.id, n === 0 ? 'empty' : 'ok', n); }
-        if (d.update) { status(d.id, 'loading'); const n = await d.update(); status(d.id, n === 'zoom' ? (d.id === 'bld_floors' ? 'overview' : 'zoom') : n === 'overview' ? 'overview' : n === 0 ? 'empty' : 'ok', n); }
+        if (d.update) {
+          if (S[d.id].status !== 'ok' || !BLD.includes(d.id)) status(d.id, 'loading', S[d.id].statusExtra);
+          const n = await d.update(); if (n === 'stale') return;
+          if (n === 'city') status(d.id, d.id === 'bld_floors' ? 'city' : 'zoomLite');
+          else if (n === 'lite') status(d.id, 'lite', lite.n);
+          else status(d.id, n === 'zoom' ? 'zoom' : n === 'overview' ? 'overview' : n === 0 ? 'empty' : 'ok', n);
+        }
       } catch (e) { status(d.id, e.code === 'too_large' ? 'zoom' : 'failed', e.message); }
     }
     function refreshAll() { defs.forEach(d => runLoad(d)); }
