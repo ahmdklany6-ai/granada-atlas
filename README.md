@@ -47,7 +47,25 @@ All colours are defined once in `js/palette.js` and read by the interface (writt
 | **v5** Flood periods not modelled for a reach are shown as "Not modelled here" (never 0 %); places counted as "excluding those marked permanently closed" with known / unknown / closed counts; photo dates parsed reliably ("Date unknown" otherwise) | works |
 | **v5** Phones: one top row with a Menu, full-screen Analysis / Map / Area & layers views from a bottom bar; tablets: one side panel at a time; explicit Finish / Undo / Cancel for polygon and section drawing | works |
 | **5.8** Floating Analysis / Study area / Layers panels over a full-width map (all closed at start, independent, kept state); one shared palette for interface, maps, charts, sections, legends and exports; street sections grounded on sloping terrain (see below) | works |
+| **5.9** Colour hierarchy: red ramps (light → our red → oxblood) for heights, bus frequency, neighbourhood choropleth and noise; red stops, red-ring trees; distinct land-use hues; red neighbourhood lines | works |
+| **5.9** Independent boundary layers: municipality (outer boundary only), neighbourhoods (red), districts + GHSL urban centre | works |
+| **5.9** Construction period: undated buildings hatched as unknown; coverage stated (39 of 101,674 footprints dated in OSM — a source gap, not a rendering fault) | works |
+| **5.9** Water and runoff: terrain-derived flow paths (MDT25, approximation), mapped canals/ditches/drains (OSM), covered/culverted watercourses as mapped in OSM | works (culverts and rail come from the basemap's live OSM tiles) |
+| **5.9** Infrastructure: railways vs Granada Metro (tunnels dashed), stations/stops; water-supply/sewer/stormwater networks marked "not connected" | works; utility networks not available as open data here |
+| **5.9** Seasonal wind rose (winter/spring/summer/autumn) and rainfall means from ERA5 via Open-Meteo, with the 25 km grid cell drawn | works in visitors' browsers (live API); verified with synthetic data only |
+| **5.9** Historical view: landmarks drawn with present-day OSM footprints / neighbourhood polygons / street lines; points only where no reliable boundary | works |
+| **5.9** Print layout (`#/print`): A4–A1, portrait/landscape, margins, true map scale at 100 %, 150–300 dpi, legend from the live legend, optional section and image with source, preview, PDF and PNG | works |
 | Population grid, education / unemployment data, municipal 2022 noise data, municipal tree inventory, GTFS route geometry, accessibility (network analysis), Google Street View imagery inside the tool | not connected — shown as gaps |
+
+## New data in 5.9
+
+| Layer | Source · date · licence | Method · coverage · limitations |
+| --- | --- | --- |
+| Terrain-derived flow paths | computed here from IGN MDT25 (2008–2015, CC BY 4.0) by `tools/build_flow.js` | priority-flood fill, D8, accumulation; lines ≥ 10 ha upslope in 4 classes. Approximation: no kerbs, drains, culverts, buildings or sewers; upslope area only inside the 20 km square (Genil underestimated). Not a flood model. |
+| Canals, ditches, drains | OSM waterways in the supplied extract (2026-10-23, ODbL) | mostly irrigation acequias; not the municipal stormwater/sewer network. |
+| Covered / culverted watercourses, railways, metro, stations | OSM via OpenMapTiles (OpenFreeMap vector tiles, live, ODbL) | only what OSM tags as tunnel/culvert or railway; disused/proposed lines are not in this source. |
+| Wind rose, rainfall | ERA5 reanalysis (ECMWF/Copernicus) via Open-Meteo Historical Weather API (live, CC BY 4.0) | one grid cell ~25 km; wind hourly 2015–2024 at 10 m, rainfall daily 1991–2020; meteorological seasons; climatology, not forecast or street-level wind. |
+| Water-supply / wastewater / stormwater networks | — | no open dataset connected; shown as not connected (EMASAGRA operates them). |
 
 ## Updates for returning visitors
 
@@ -76,6 +94,7 @@ Layers: study_area, buildings, streets, landuse, parks_open_space, public_facili
 - `python3 tests/ui_test_v4.py <out>` — hanging/failing services (analysis and fabric page still complete, retry), Layers panel controls for the new layers, versioned data URLs, section corridor and no distance axis, exercise names in ar/he, no overflow at 390/820/1024 px in three languages.
 - `python3 tests/ui_test_v5.py <out>` — data findings (flood availability, place wording, transport, photo dates), analysis page, viewers (zoom/pan/inspect/export/Escape), unified comparison (2 vs 4 fabrics), section view (VE ×1, detail levels, annotations need a source), touch drawing buttons, phone/iPad portrait and landscape in ar/he/en; every download is opened (pdfinfo/pdftoppm, Pillow, XML parse, SQLite).
 - `python3 tests/ui_test_v6.py` / `ui_test_v7.py` / `ui_test_v8.py` — zoom cycles and building/street scales; street control, standalone sections, classified rasters and legends; section drawing language, viewer and exports.
+- `python3 tests/ui_test_v10.py` — build 5.9: colour hierarchy (paint = legend = palette), boundary layers, period coverage, flow paths / drains / culverts, rail and metro, wind and rainfall (stubbed series), historical landmark geometries, print layout (A3/A4/A2, measured scale within 0.5 %), iPad and phone.
 - `python3 tests/ui_test_v9.py` — build 5.8: panels start closed and open/close independently in ar/he/en, never overlap, keep map view, layers, selection and unsaved input; iPad one side at a time; phone bottom sheets; palette colours shared by CSS, map paint, legends and rasters; every cut building meets the terrain and every background building stands on its own ground on four test lines in both directions; viewer, PNG, SVG and PDF checked.
 - `node tests/dates.test.js` — date parsing.
 - `python3 tests/import_test.py <supplied_data_dir> <out>` — Shapefile, GeoJSON, GeoPackage layer choice, QML, GeoTIFF, QGZ, persistence.
