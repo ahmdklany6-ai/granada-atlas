@@ -138,18 +138,23 @@ street, level marks and a locator inset. **Do not copy its composition, colours 
 image is not committed because its redistribution rights are unknown and the repository is public; attach it to the
 Claude Code chat by hand if you want it in view.
 
-## 8. Test results (last full run, 1 Nov 2026, build 5.7)
+## 8. Test results (last full run, 1 Nov 2026, build 5.8)
 
 | Suite | Result |
 | --- | --- |
 | `tests/*.test.js` (geometry, clip, proj, export, dates) | pass |
-| `ui_test_v2.py` | pass |
-| `ui_test_v3.py` | pass except "no page errors": the map's RTL-text plugin (unpkg) could not be downloaded inside the sandboxed test container — environment only; it loads on the live site |
-| `ui_test_v4.py` | pass (incl. build-number consistency check) |
+| `ui_test_v2.py` | pass (0 failures) |
+| `ui_test_v3.py` | pass except "no page errors": the RTL-text plugin (unpkg) cannot be downloaded in the test container — environment only, as at 5.7 |
+| `ui_test_v4.py` | pass (incl. build check 5.8) |
 | `ui_test_v5.py` | pass |
-| `ui_test_v6.py` (zoom cycles, panning, streets/buildings) | pass |
-| `ui_test_v7.py` (street control, standalone sections, classified rasters, legends, fabric marks, history overlays) | pass |
-| `ui_test_v8.py` (narrow/wide/sloping sections, viewer controls, exports opened, phone/iPad, Ex 1.3 states and sheet viewer, climate board, legend colours in exports) | pass |
+| `ui_test_v6.py` | pass |
+| `ui_test_v7.py` | pass (LST check now reads the palette) |
+| `ui_test_v8.py` | pass |
+| `ui_test_v9.py` (new: panels, palette, grounding, exports, fabric numbers) | 91/91 |
+| `import_test.py` | pass |
+
+Map text (glyphs) is stubbed in the test container, so map labels — including the fabric-number layer — cannot be seen
+rendered there; the layer, its data, position and style are tested, and its appearance must be checked on the live site.
 
 Test lines used: narrow + sloping `[-3.5930,37.1752]→[-3.5930,37.1738]` (Calle Alamillos de San Cecilio, 5.8 m,
 52 m rise); wide + trees `[-3.6004,37.1727]→[-3.5980,37.1727]` (Acera del Darro, 48 m, trees on and off the cut);
@@ -198,3 +203,14 @@ sloping mixed `[-3.5990,37.1792]→[-3.5975,37.1792]` (Calle Elvira → Albaicí
   and the reference image — attach or copy them yourself when needed.
 - claude.ai Project memory and the in-app browser panel used for live checks.
 - GitHub push access on your machine (log in with `gh auth login` or your usual Git credentials).
+
+## 12. Build 5.8 deployment record
+
+- PR https://github.com/ahmdklany6-ai/granada-atlas/pull/1 merged into `main` as `7b6982c` (owner's authorisation, 1 Nov 2026).
+- "pages build and deployment" run 22 for `7b6982c`: **completed, success**.
+- `main` serves `version.json` = 5.8 and `GA_BUILD = '5.8'`.
+- NOT yet verified on the public URL from the Claude session: the cloud environment's network policy denies
+  `ahmdklany6-ai.github.io` (proxy 403 / DNS blocked). Next session: allow that host (environment → Network access →
+  Allowed domains) or have the owner hard-reload the site and check Status → build 5.8, the cream/red palette, the three
+  panel tabs, a sloping section and fabric numbers above saved fabrics.
+
