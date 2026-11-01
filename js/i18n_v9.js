@@ -57,5 +57,18 @@
     'v9.rainMonthly': ['متوسط الهطول الشهري (مم)', 'ממוצע משקעים חודשי (מ״מ)', 'Mean monthly precipitation (mm)'],
     'v9.rainStats': ['{s}: {mm} مم في المتوسط · المجموع السنوي {a} مم · {y0}–{y1}', '{s}: {mm} מ״מ בממוצע · סך שנתי {a} מ״מ · {y0}–{y1}', '{s}: {mm} mm on average · annual total {a} mm · {y0}–{y1}'],
     'v9.rainNote': ['معدلات 1991–2020 من إعادة التحليل ERA5 (خلية نحو 25 كم) عبر Open-Meteo، وليست قياسات محطة؛ قد تختلف عن محطة مطار غرناطة (AEMET). لا تكفي لتصميم التصريف.', 'ממוצעי 1991–2020 מניתוח-מחדש ERA5 (תא של כ-25 ק״מ) דרך Open-Meteo, לא מדידות תחנה; עשויים להיות שונים מתחנת שדה התעופה של גרנדה (AEMET). אינם מספיקים לתכנון ניקוז.', '1991–2020 means from the ERA5 reanalysis (a cell of about 25 km) via Open-Meteo, not station measurements; they may differ from the Granada airport station (AEMET). Not sufficient for drainage design.'],
+    // ----- historical view: landmark geometries -----
+    'v9.lgFootprint': ['مسقط المبنى الحالي (OSM)', 'טביעת המבנה העכשווית (OSM)', 'present-day building footprint (OSM)'],
+    'v9.lgBarrio': ['حدود الحي الحالية', 'גבול השכונה העכשווי', 'present-day neighbourhood boundary'],
+    'v9.lgStreet': ['الشارع الحالي', 'הרחוב העכשווי', 'present-day street'],
+    'v9.lgPointOnly': ['موقع فقط — لا حدود موثوقة', 'מיקום בלבד — אין גבול אמין', 'position only — no reliable boundary'],
+    'v9.presentDay': ['كل الأشكال حالية (OSM، 2026) ولا تمثّل حدودًا موثّقة لفترة تاريخية.', 'כל הצורות עכשוויות (OSM, 2026) ואינן גבולות מתועדים של תקופה היסטורית.', 'All shapes are present-day (OSM, 2026); none is a boundary documented for a historical period.'],
+    'v9.basis.bld': ['الشكل: مسقط المبنى الحالي في OSM.', 'הצורה: טביעת המבנה העכשווית ב-OSM.', 'Shape: present-day OSM building footprint.'],
+    'v9.basis.barrio': ['الشكل: حدود الحي الإدارية الحالية.', 'הצורה: גבול השכונה המנהלי העכשווי.', 'Shape: present-day administrative neighbourhood boundary.'],
+    'v9.basis.street': ['الشكل: محور الشارع الحالي في OSM.', 'הצורה: ציר הרחוב העכשווי ב-OSM.', 'Shape: present-day street centreline in OSM.'],
+    'v9.why.complex': ['نقطة فقط: حدود المجمّع غير موجودة في البيانات المنشورة هنا.', 'נקודה בלבד: גבול המתחם אינו בנתונים המפורסמים כאן.', 'Point only: the complex boundary is not in the data published here.'],
+    'v9.why.square': ['نقطة فقط: لا يوجد مضلع للساحة في البيانات المنشورة.', 'נקודה בלבד: אין פוליגון לכיכר בנתונים המפורסמים.', 'Point only: no polygon for the square in the published data.'],
+    'v9.why.covered': ['نقطة فقط: المقطع المغطّى يظهر في طبقة «مجارٍ مائية مغطّاة» حيث رسمه OSM.', 'נקודה בלבד: הקטע המכוסה מוצג בשכבת «אפיקים מכוסים» היכן ש-OSM מיפה אותו.', 'Point only: the covered section is shown in the "Covered / culverted watercourses" layer where OSM maps it.'],
+    'v9.why.none': ['نقطة فقط: لا توجد حدود موثوقة.', 'נקודה בלבד: אין גבול אמין.', 'Point only: no reliable boundary.'],
   });
 })(window);
