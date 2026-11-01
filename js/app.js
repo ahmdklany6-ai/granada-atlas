@@ -215,7 +215,7 @@
   // mask outside study areas when the scope is "study areas"
   function updateMask() { const rings = store.get().areas.map(a => GA.compare.ringOf(a.spec)).filter(Boolean); const r = sel.ring(); if (r) rings.push(r); L.setMaskRings(rings); drawSavedAreas(); }
   function drawSavedAreas() {
-    if (!map.getSource('saved-areas')) { if (!map.isStyleLoaded()) return; map.addSource('saved-areas', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    if (!map.getSource('saved-areas')) { if (!map.isStyleLoaded()) { if (!drawSavedAreas.waiting) { drawSavedAreas.waiting = true; map.once('idle', () => { drawSavedAreas.waiting = false; drawSavedAreas(); }); } return; } map.addSource('saved-areas', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({ id: 'saved-areas-line', type: 'line', source: 'saved-areas', paint: { 'line-color': GA.palette.ink3, 'line-width': 1.2, 'line-dasharray': [3, 2] } }, map.getLayer('sel-fill') ? 'sel-fill' : undefined);
       map.addLayer({ id: 'saved-areas-lbl', type: 'symbol', source: 'saved-areas', layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11, 'symbol-placement': 'line', 'text-offset': [0, -0.8] }, paint: { 'text-color': GA.palette.ink2, 'text-halo-color': '#FFF', 'text-halo-width': 1.4 } }); }
     const feats = store.get().areas.filter(a => a.id !== currentAreaId).map(a => { const r = GA.compare.ringOf(a.spec); return r ? { type: 'Feature', properties: { name: a.name }, geometry: { type: 'LineString', coordinates: r } } : null; }).filter(Boolean);
