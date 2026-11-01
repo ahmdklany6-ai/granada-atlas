@@ -70,12 +70,12 @@
   }
   async function squareCanvas(st, slot, i, px) {
     const c = document.createElement('canvas'); c.width = c.height = px; const ctx = c.getContext('2d'); const k = px / 1000; const F = PG.font(); const rtl = I.dir() === 'rtl';
-    ctx.fillStyle = '#FFF'; ctx.fillRect(0, 0, px, px); ctx.fillStyle = '#992B2A'; ctx.fillRect(0, 0, px, 8 * k);
-    ctx.direction = rtl ? 'rtl' : 'ltr'; ctx.textAlign = rtl ? 'right' : 'left'; ctx.fillStyle = '#1C1E21'; ctx.font = `700 ${34 * k}px ${F}`; ctx.fillText(slot.title || t('slot.untitled'), rtl ? px - 40 * k : 40 * k, 60 * k);
-    ctx.font = `${16 * k}px ${F}`; ctx.fillStyle = '#5E636A'; ctx.fillText(`${st.name || t('slot.student')} · ${t('slot.n', { n: i + 1 })} · ${dateOf(slot.date)}`, rtl ? px - 40 * k : 40 * k, 88 * k);
+    ctx.fillStyle = '#FFF'; ctx.fillRect(0, 0, px, px); ctx.fillStyle = GA.palette.red; ctx.fillRect(0, 0, px, 8 * k);
+    ctx.direction = rtl ? 'rtl' : 'ltr'; ctx.textAlign = rtl ? 'right' : 'left'; ctx.fillStyle = GA.palette.ink; ctx.font = `700 ${34 * k}px ${F}`; ctx.fillText(slot.title || t('slot.untitled'), rtl ? px - 40 * k : 40 * k, 60 * k);
+    ctx.font = `${16 * k}px ${F}`; ctx.fillStyle = GA.palette.ink3; ctx.fillText(`${st.name || t('slot.student')} · ${t('slot.n', { n: i + 1 })} · ${dateOf(slot.date)}`, rtl ? px - 40 * k : 40 * k, 88 * k);
     const cc = slot.assign ? await contentCanvas(slot.assign).catch(() => null) : null;
-    if (cc) PG.drawImageFit(ctx, cc, 40 * k, 110 * k, px - 80 * k, px - 170 * k, false); else { ctx.strokeStyle = '#C6C7C9'; ctx.setLineDash([8 * k, 6 * k]); ctx.strokeRect(40 * k, 110 * k, px - 80 * k, px - 170 * k); ctx.setLineDash([]); ctx.fillStyle = '#992B2A'; ctx.font = `${22 * k}px ${F}`; ctx.textAlign = 'center'; ctx.fillText(t('slot.noContent'), px / 2, px / 2); }
-    ctx.textAlign = rtl ? 'right' : 'left'; ctx.font = `${13 * k}px ${F}`; ctx.fillStyle = '#5E636A'; ctx.fillText(`Granada Atlas · ${new Date().toISOString().slice(0, 10)}${slot.note ? ' · ' + slot.note : ''}`, rtl ? px - 40 * k : 40 * k, px - 24 * k);
+    if (cc) PG.drawImageFit(ctx, cc, 40 * k, 110 * k, px - 80 * k, px - 170 * k, false); else { ctx.strokeStyle = GA.palette.line2; ctx.setLineDash([8 * k, 6 * k]); ctx.strokeRect(40 * k, 110 * k, px - 80 * k, px - 170 * k); ctx.setLineDash([]); ctx.fillStyle = GA.palette.red; ctx.font = `${22 * k}px ${F}`; ctx.textAlign = 'center'; ctx.fillText(t('slot.noContent'), px / 2, px / 2); }
+    ctx.textAlign = rtl ? 'right' : 'left'; ctx.font = `${13 * k}px ${F}`; ctx.fillStyle = GA.palette.ink3; ctx.fillText(`Granada Atlas · ${new Date().toISOString().slice(0, 10)}${slot.note ? ' · ' + slot.note : ''}`, rtl ? px - 40 * k : 40 * k, px - 24 * k);
     return c;
   }
   const missing = (sl) => { root.GA.submission.norm(sl); return [!sl.title && 'slot.m.title', !sl.assign && 'slot.m.content', !sl.miro && 'slot.m.miro', !sl.uploaded && 'slot.m.upload'].filter(Boolean); };
@@ -129,40 +129,40 @@
     out.bars = bars.sort((a, b) => b.v - a.v); out.mpp = mpp; clim.cache[key] = out; return out;
   }
   function climLegend(c) {
-    if (c.topic === 'flood') return X.FLOOD.map(q => ({ sw: q.color, alpha: 0.85, label: `T = ${q.T} (${q.p} ${t('ly3.perYear')})` })).concat([{ line: '#0B2E4F', w: 2, label: t('ly3.arpsi') }]);
+    if (c.topic === 'flood') return X.FLOOD.map(q => ({ sw: q.color, alpha: 0.85, label: `T = ${q.T} (${q.p} ${t('ly3.perYear')})` })).concat([{ line: GA.palette.arpsi, w: 2, label: t('ly3.arpsi') }]);
     const tcd = X.TCD_CLASSES.slice(1).map(k => ({ sw: `rgb(${k.col.slice(0, 3).join(',')})`, label: `${k.k.replace('-', '–')} % ${t('g3.tcd')}` }));
     const lst = root.GA.rasterClass.legendItems('lst').map(i => Object.assign(i, { alpha: c.topic === 'lst' ? 0.75 : 0.45 })).concat([{ label: t('clim.lstLg', { d: X.LST_DATE }) }]);
     return c.topic === 'lst' || c.topic === 'heatveg' ? lst.concat(tcd) : tcd;
   }
   async function climateCanvas(Wpx) {
     const c = S().climate; const d = await climData(c); const f = d.f; const W = Wpx || 2000, H = Math.round(W * 1.0); const k = W / 2000; const F = PG.font(); const rtl = I.dir() === 'rtl';
-    const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const ctx = cv.getContext('2d'); ctx.fillStyle = '#FFF'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = '#992B2A'; ctx.fillRect(0, 0, W, 10 * k);
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const ctx = cv.getContext('2d'); ctx.fillStyle = '#FFF'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = GA.palette.red; ctx.fillRect(0, 0, W, 10 * k);
     const M = 60 * k; ctx.direction = rtl ? 'rtl' : 'ltr'; ctx.textAlign = rtl ? 'right' : 'left'; const TX = rtl ? W - M : M;
-    ctx.fillStyle = '#1C1E21'; ctx.font = `700 ${46 * k}px ${F}`; ctx.fillText(c.title || t('clim.t.' + c.topic), TX, 76 * k);
-    ctx.font = `italic ${24 * k}px ${F}`; ctx.fillStyle = '#992B2A'; PG.wrap(ctx, c.question || t('clim.qPh'), TX, 116 * k, W - 2 * M, 30 * k, 2);
+    ctx.fillStyle = GA.palette.ink; ctx.font = `700 ${46 * k}px ${F}`; ctx.fillText(c.title || t('clim.t.' + c.topic), TX, 76 * k);
+    ctx.font = `italic ${24 * k}px ${F}`; ctx.fillStyle = GA.palette.red; PG.wrap(ctx, c.question || t('clim.qPh'), TX, 116 * k, W - 2 * M, 30 * k, 2);
     // map
     const ms = 1240 * k; const mx = rtl ? W - M - ms : M, my = 180 * k; const mpp = (f.x1 - f.x0) / ms; const Xp = (x) => mx + (x - f.x0) / mpp, Yp = (y) => my + (f.y1 - y) / mpp;
-    ctx.save(); ctx.beginPath(); ctx.rect(mx, my, ms, ms); ctx.clip(); ctx.fillStyle = '#F7F7F5'; ctx.fillRect(mx, my, ms, ms);
+    ctx.save(); ctx.beginPath(); ctx.rect(mx, my, ms, ms); ctx.clip(); ctx.fillStyle = GA.palette.paper; ctx.fillRect(mx, my, ms, ms);
     if (d.lst && (c.topic === 'lst' || c.topic === 'heatveg')) { ctx.globalAlpha = c.topic === 'lst' ? 0.75 : 0.45; ctx.imageSmoothingEnabled = false; ctx.drawImage(d.lst, mx, my, ms, ms); ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = true; }
     if (d.tcd && c.topic !== 'flood') { const g = d.tcd; const step = Math.max(1, Math.round(10 / mpp)); const img = ctx.createImageData(Math.ceil(ms / step), Math.ceil(ms / step)); for (let j = 0; j < img.height; j++) for (let i = 0; i < img.width; i++) { const x = f.x0 + (i + 0.5) * step * mpp, y = f.y1 - (j + 0.5) * step * mpp; const v = D.sampleGrid(g, x, y, true); const col = X.tcdColour(v); if (!col) continue; const o = (j * img.width + i) * 4; img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = c.topic === 'lst' ? 120 : 235; } const tmp = document.createElement('canvas'); tmp.width = img.width; tmp.height = img.height; tmp.getContext('2d').putImageData(img, 0, 0); ctx.drawImage(tmp, mx, my, ms, ms); }
     if (d.fg) { ctx.globalAlpha = 0.55; ctx.drawImage(d.fg.img, Xp(d.fg.x0), Yp(d.fg.y1), (d.fg.x1 - d.fg.x0) / mpp, (d.fg.y1 - d.fg.y0) / mpp); ctx.globalAlpha = 1; }
     if (d.flood) { ctx.globalAlpha = 0.85; ctx.drawImage(d.flood, mx, my, ms, ms); ctx.globalAlpha = 1; }
     if (d.maj) { ctx.strokeStyle = 'rgba(60,64,70,.45)'; ctx.lineWidth = 1.2 * k; ctx.beginPath(); d.maj.features.filter(x => /motorway|trunk|primary/.test(x.properties.hw)).forEach(x => { const ls = x.geometry.type === 'LineString' ? [x.geometry.coordinates] : x.geometry.coordinates; ls.forEach(l => l.forEach((p, i) => { const u = PJ.EPSG25830.forward(p); i ? ctx.lineTo(Xp(u[0]), Yp(u[1])) : ctx.moveTo(Xp(u[0]), Yp(u[1])); })); }); ctx.stroke(); }
-    if (d.adm) { const muni = d.adm.features.find(x => x.properties.kind === 'municipio'); const hc = d.adm.features.find(x => x.properties.kind === 'historic_core'); [[muni, '#5E636A', [10, 6]], [hc, '#992B2A', [6, 4]]].forEach(([g, col, dash]) => { if (!g) return; ctx.strokeStyle = col; ctx.lineWidth = 2 * k; ctx.setLineDash(dash.map(v => v * k)); ctx.beginPath(); (g.geometry.type === 'Polygon' ? [g.geometry.coordinates] : g.geometry.coordinates).forEach(pl => pl.forEach(r => r.forEach((p, i) => { const u = PJ.EPSG25830.forward(p); i ? ctx.lineTo(Xp(u[0]), Yp(u[1])) : ctx.moveTo(Xp(u[0]), Yp(u[1])); }))); ctx.stroke(); ctx.setLineDash([]); }); }
-    if (f.ring) { ctx.strokeStyle = '#992B2A'; ctx.lineWidth = 3 * k; ctx.beginPath(); f.ring.forEach((p, i) => { const u = PJ.EPSG25830.forward(p); i ? ctx.lineTo(Xp(u[0]), Yp(u[1])) : ctx.moveTo(Xp(u[0]), Yp(u[1])); }); ctx.stroke(); }
-    ctx.restore(); ctx.strokeStyle = '#C6C7C9'; ctx.lineWidth = 1; ctx.strokeRect(mx, my, ms, ms);
-    PG.northArrow(ctx, mx + ms - 30 * k, my + 20 * k, 1.4 * k); ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(mx + 14 * k, my + ms - 60 * k, 330 * k, 46 * k); ctx.fillStyle = '#222428'; PG.scaleBar(ctx, mx + 24 * k, my + ms - 30 * k, mpp, 260 * k, 1.2 * k);
+    if (d.adm) { const muni = d.adm.features.find(x => x.properties.kind === 'municipio'); const hc = d.adm.features.find(x => x.properties.kind === 'historic_core'); [[muni, GA.palette.ink3, [10, 6]], [hc, GA.palette.red, [6, 4]]].forEach(([g, col, dash]) => { if (!g) return; ctx.strokeStyle = col; ctx.lineWidth = 2 * k; ctx.setLineDash(dash.map(v => v * k)); ctx.beginPath(); (g.geometry.type === 'Polygon' ? [g.geometry.coordinates] : g.geometry.coordinates).forEach(pl => pl.forEach(r => r.forEach((p, i) => { const u = PJ.EPSG25830.forward(p); i ? ctx.lineTo(Xp(u[0]), Yp(u[1])) : ctx.moveTo(Xp(u[0]), Yp(u[1])); }))); ctx.stroke(); ctx.setLineDash([]); }); }
+    if (f.ring) { ctx.strokeStyle = GA.palette.red; ctx.lineWidth = 3 * k; ctx.beginPath(); f.ring.forEach((p, i) => { const u = PJ.EPSG25830.forward(p); i ? ctx.lineTo(Xp(u[0]), Yp(u[1])) : ctx.moveTo(Xp(u[0]), Yp(u[1])); }); ctx.stroke(); }
+    ctx.restore(); ctx.strokeStyle = GA.palette.line2; ctx.lineWidth = 1; ctx.strokeRect(mx, my, ms, ms);
+    PG.northArrow(ctx, mx + ms - 30 * k, my + 20 * k, 1.4 * k); ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(mx + 14 * k, my + ms - 60 * k, 330 * k, 46 * k); ctx.fillStyle = GA.palette.ink; PG.scaleBar(ctx, mx + 24 * k, my + ms - 30 * k, mpp, 260 * k, 1.2 * k);
     // side column: legend, chart, finding, implication, methods, sources
     const sx = rtl ? M : mx + ms + 50 * k, sw = W - 2 * M - ms - 50 * k; const al = rtl ? 'right' : 'left'; const tx = rtl ? sx + sw : sx; let y = my + 10 * k;
-    ctx.textAlign = al; ctx.fillStyle = '#1C1E21'; ctx.font = `700 ${22 * k}px ${F}`; ctx.fillText(t('lg.title'), tx, y); y += 20 * k;
-    y = root.GA.compare.legendCanvas(ctx, climLegend(c).concat([{ line: '#5E636A', w: 2, dash: true, label: t('clim.muni') }, { line: '#992B2A', w: 2, dash: true, label: t('ly.historicCore') }, { sw: 'rgba(28,30,33,.55)', label: t('g.building') }]), sx, y + 14 * k, sw, rtl, F) + 20 * k;
-    if (d.bars.length) { ctx.font = `700 ${20 * k}px ${F}`; ctx.fillStyle = '#1C1E21'; ctx.textAlign = al; ctx.fillText(t(c.topic === 'flood' ? 'clim.chartFlood' : 'clim.chartCanopy'), tx, y + 10 * k); y += 26 * k; const items = d.bars.slice(0, 6).concat(d.bars.length > 9 ? d.bars.slice(-3) : []); const mxv = Math.max(...items.map(b => b.v), 1); ctx.font = `${14 * k}px ${F}`; items.forEach(b => { const bw = (sw - 220 * k) * b.v / mxv; ctx.fillStyle = c.topic === 'flood' ? '#3C7DB8' : '#4C8C46'; if (rtl) ctx.fillRect(sx + sw - 200 * k - bw, y, bw, 14 * k); else ctx.fillRect(sx + 200 * k, y, bw, 14 * k); ctx.fillStyle = '#1C1E21'; ctx.textAlign = al; ctx.fillText(String(b.label).slice(0, 24), tx, y + 12 * k); ctx.textAlign = rtl ? 'left' : 'right'; ctx.fillText(nf(b.v, 1) + '%', rtl ? sx : sx + sw, y + 12 * k); y += 22 * k; }); ctx.textAlign = al; ctx.font = `${12 * k}px ${F}`; ctx.fillStyle = '#5E636A'; y = PG.wrap(ctx, t(c.topic === 'flood' ? 'clim.chartFloodNote' : 'clim.chartCanopyNote'), tx, y + 6 * k, sw, 16 * k, 3); }
-    y += 14 * k; ctx.fillStyle = '#1C1E21'; ctx.font = `700 ${20 * k}px ${F}`; ctx.fillText(t('clim.finding'), tx, y); ctx.font = `${17 * k}px ${F}`; y = PG.wrap(ctx, c.finding || '—', tx, y + 26 * k, sw, 23 * k, 6);
-    y += 8 * k; ctx.font = `700 ${20 * k}px ${F}`; ctx.fillStyle = '#992B2A'; ctx.fillText(t('clim.implication'), tx, y); ctx.font = `${17 * k}px ${F}`; ctx.fillStyle = '#1C1E21'; y = PG.wrap(ctx, c.implication || '—', tx, y + 26 * k, sw, 23 * k, 5);
+    ctx.textAlign = al; ctx.fillStyle = GA.palette.ink; ctx.font = `700 ${22 * k}px ${F}`; ctx.fillText(t('lg.title'), tx, y); y += 20 * k;
+    y = root.GA.compare.legendCanvas(ctx, climLegend(c).concat([{ line: GA.palette.ink3, w: 2, dash: true, label: t('clim.muni') }, { line: GA.palette.red, w: 2, dash: true, label: t('ly.historicCore') }, { sw: 'rgba(28,30,33,.55)', label: t('g.building') }]), sx, y + 14 * k, sw, rtl, F) + 20 * k;
+    if (d.bars.length) { ctx.font = `700 ${20 * k}px ${F}`; ctx.fillStyle = GA.palette.ink; ctx.textAlign = al; ctx.fillText(t(c.topic === 'flood' ? 'clim.chartFlood' : 'clim.chartCanopy'), tx, y + 10 * k); y += 26 * k; const items = d.bars.slice(0, 6).concat(d.bars.length > 9 ? d.bars.slice(-3) : []); const mxv = Math.max(...items.map(b => b.v), 1); ctx.font = `${14 * k}px ${F}`; items.forEach(b => { const bw = (sw - 220 * k) * b.v / mxv; ctx.fillStyle = c.topic === 'flood' ? GA.palette.blue : GA.palette.olive; if (rtl) ctx.fillRect(sx + sw - 200 * k - bw, y, bw, 14 * k); else ctx.fillRect(sx + 200 * k, y, bw, 14 * k); ctx.fillStyle = GA.palette.ink; ctx.textAlign = al; ctx.fillText(String(b.label).slice(0, 24), tx, y + 12 * k); ctx.textAlign = rtl ? 'left' : 'right'; ctx.fillText(nf(b.v, 1) + '%', rtl ? sx : sx + sw, y + 12 * k); y += 22 * k; }); ctx.textAlign = al; ctx.font = `${12 * k}px ${F}`; ctx.fillStyle = GA.palette.ink3; y = PG.wrap(ctx, t(c.topic === 'flood' ? 'clim.chartFloodNote' : 'clim.chartCanopyNote'), tx, y + 6 * k, sw, 16 * k, 3); }
+    y += 14 * k; ctx.fillStyle = GA.palette.ink; ctx.font = `700 ${20 * k}px ${F}`; ctx.fillText(t('clim.finding'), tx, y); ctx.font = `${17 * k}px ${F}`; y = PG.wrap(ctx, c.finding || '—', tx, y + 26 * k, sw, 23 * k, 6);
+    y += 8 * k; ctx.font = `700 ${20 * k}px ${F}`; ctx.fillStyle = GA.palette.red; ctx.fillText(t('clim.implication'), tx, y); ctx.font = `${17 * k}px ${F}`; ctx.fillStyle = GA.palette.ink; y = PG.wrap(ctx, c.implication || '—', tx, y + 26 * k, sw, 23 * k, 5);
     // methods + sources under the map
-    ctx.font = `${14 * k}px ${F}`; ctx.fillStyle = '#3C4046'; ctx.textAlign = rtl ? 'right' : 'left'; let yb = my + ms + 34 * k;
+    ctx.font = `${14 * k}px ${F}`; ctx.fillStyle = GA.palette.ink2; ctx.textAlign = rtl ? 'right' : 'left'; let yb = my + ms + 34 * k;
     yb = PG.wrap(ctx, t('clim.m.' + c.topic, { d: X.LST_DATE }), TX, yb, W - 2 * M, 19 * k, 4); yb = PG.wrap(ctx, t('clim.src.' + c.topic, { d: X.LST_DATE }), TX, yb + 6 * k, W - 2 * M, 19 * k, 4);
-    ctx.fillStyle = '#8A5A10'; PG.wrap(ctx, t('clim.noCause'), TX, yb + 6 * k, W - 2 * M, 19 * k, 2);
+    ctx.fillStyle = GA.palette.base.khaki; PG.wrap(ctx, t('clim.noCause'), TX, yb + 6 * k, W - 2 * M, 19 * k, 2);
     return cv;
   }
   async function renderClimate(body) {

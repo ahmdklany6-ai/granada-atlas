@@ -8,7 +8,7 @@
   const { proj: PJ, i18n: I, palette: P, tiffread: TR } = root.GA;
   const t = (k, v) => I.t(k, v);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const QUAL = ['#992B2A', '#2F5F8A', '#5E9A5B', '#D98A2B', '#7B5EA7', '#222428', '#8A8F96', '#C9C27A', '#8FB8CC', '#E4A8A6', '#6E1C1B', '#A6B39C'];
+  const QUAL = [GA.palette.red, GA.palette.blue, GA.palette.olive, GA.palette.base.khaki, GA.palette.base.burgundy, GA.palette.ink, GA.palette.grey, GA.palette.base.khaki, GA.palette.base.blueGrey, GA.palette.rose, GA.palette.redDark, GA.palette.olive];
 
   // ---------- IndexedDB ----------
   const DB = 'granada-atlas-imports';
@@ -214,7 +214,7 @@
   // ---------- user layer definition for layers.js ----------
   function styleExpr(cfg) {
     const st = cfg.style || { mode: 'single', color: P.red };
-    if (st.mode === 'categorized' && st.field && st.cats && st.cats.length) return ['match', ['to-string', ['get', st.field]]].concat(st.cats.flatMap(c => [String(c.value), c.color]), [st.other || '#C6C7C9']);
+    if (st.mode === 'categorized' && st.field && st.cats && st.cats.length) return ['match', ['to-string', ['get', st.field]]].concat(st.cats.flatMap(c => [String(c.value), c.color]), [st.other || GA.palette.line2]);
     if (st.mode === 'graduated' && st.field && st.ranges && st.ranges.length) { const e = ['step', ['to-number', ['get', st.field], -1e12], st.ranges[0].color]; st.ranges.slice(1).forEach(r => e.push(r.lo, r.color)); return e; }
     return st.color || P.red;
   }
@@ -237,7 +237,7 @@
       legend() {
         const st = cfg.style || {}; const sw = (c, l) => `<li><i class="sw" style="background:${c}"></i><span>${l}</span></li>`;
         let h = '<ul class="lg">';
-        if (rec.kind === 'raster') h += `<li><i class="sw ramp" style="background:linear-gradient(90deg,#F8F0F0,#6E1C1B)"></i><span class="num">${(+rec.image.meta.min).toFixed(1)} – ${(+rec.image.meta.max).toFixed(1)}</span></li>`;
+        if (rec.kind === 'raster') h += `<li><i class="sw ramp" style="background:linear-gradient(90deg,${P.redSoft},${P.redDark})"></i><span class="num">${(+rec.image.meta.min).toFixed(1)} – ${(+rec.image.meta.max).toFixed(1)}</span></li>`;
         else if (st.mode === 'categorized') h += st.cats.slice(0, 14).map(c => sw(c.color, esc(c.label || c.value))).join('') + (st.cats.length > 14 ? `<li><small>+${st.cats.length - 14}</small></li>` : '');
         else if (st.mode === 'graduated') h += st.ranges.map(r => sw(r.color, esc(r.label || `${r.lo}–${r.hi}`))).join('');
         else h += sw(st.color || P.red, esc(cfg.title || rec.name));
@@ -299,7 +299,7 @@
       const c = cfgOf(id); const r = recs.find(x => x.id === id); if (!c || !r) return;
       if (!field) { c.style = { mode: 'single', color: (c.style && c.style.color) || QUAL[0] }; }
       else { const counts = {}; r.geojson.features.forEach(f => { const v = String(f.properties[field]); counts[v] = (counts[v] || 0) + 1; }); const vals = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
-        c.style = { mode: 'categorized', field, cats: vals.slice(0, 12).map((v, i) => ({ value: v, label: `${v} (${counts[v]})`, color: QUAL[i % QUAL.length] })), other: '#C6C7C9' }; }
+        c.style = { mode: 'categorized', field, cats: vals.slice(0, 12).map((v, i) => ({ value: v, label: `${v} (${counts[v]})`, color: QUAL[i % QUAL.length] })), other: GA.palette.line2 }; }
       save(); layers.refreshUser(id); onChange();
     }
 
@@ -316,7 +316,7 @@
       let h = `<label class="row2">${t('imp.title')} <input type="text" dir="auto" data-imp-title="${id}" value="${esc(c.title || r.name)}"></label>`;
       if (r.kind === 'vector') {
         h += `<label class="row2">${t('imp.field')} <select data-imp-field="${id}">${r.fields.map(f => `<option ${c.field === f ? 'selected' : ''}>${esc(f)}</option>`).join('')}</select></label>`;
-        h += `<label class="row2">${t('imp.styleBy')} <select data-imp-cat="${id}"><option value="">${t('imp.single')}</option>${r.fields.map(f => `<option value="${esc(f)}" ${c.style && c.style.mode === 'categorized' && c.style.field === f ? 'selected' : ''}>${esc(f)}</option>`).join('')}</select>${c.style && c.style.mode === 'single' ? `<input type="color" data-imp-color="${id}" value="${/^#/.test(c.style.color) ? c.style.color : '#992b2a'}">` : ''}</label>`;
+        h += `<label class="row2">${t('imp.styleBy')} <select data-imp-cat="${id}"><option value="">${t('imp.single')}</option>${r.fields.map(f => `<option value="${esc(f)}" ${c.style && c.style.mode === 'categorized' && c.style.field === f ? 'selected' : ''}>${esc(f)}</option>`).join('')}</select>${c.style && c.style.mode === 'single' ? `<input type="color" data-imp-color="${id}" value="${/^#/.test(c.style.color) ? c.style.color : GA.palette.red}">` : ''}</label>`;
         h += `<p class="lyr-src">${t('imp.meta', { n: r.n, e: r.epsg })}${r.crsGuessed ? ' · ' + t('imp.crsGuessedShort') : ''}</p>`;
       } else h += `<p class="lyr-src">EPSG:${r.image.meta.epsg} · ${r.image.meta.width}×${r.image.meta.height} · ${(+r.image.meta.px).toFixed(2)} ${t('imp.units')}</p>`;
       h += `<button class="btn btn-tiny danger" data-imp-del="${id}">${t('imp.remove')}</button>`;

@@ -15,11 +15,11 @@
   const FLOOR = [{ k: '1-2', max: 2 }, { k: '3-4', max: 4 }, { k: '5-8', max: 8 }, { k: '9+', max: Infinity }];
   const floorClass = (lv) => lv == null ? 'no_data' : FLOOR.find(c => lv <= c.max).k;
   const SLOPE = [{ k: '0-2', max: 2 }, { k: '2-5', max: 5 }, { k: '5-10', max: 10 }, { k: '10-15', max: 15 }, { k: '15-25', max: 25 }, { k: '25-35', max: 35 }, { k: '35+', max: 90 }];
-  const SLOPE_COL = { '0-2': '#F7F2F2', '2-5': '#F2D6D5', '5-10': '#E4A8A6', '10-15': '#D07674', '15-25': '#B2403E', '25-35': '#8C2120', '35+': '#5A1414' };
+  const SLOPE_COL = { '0-2': GA.palette.redSoft, '2-5': GA.palette.redSoft, '5-10': GA.palette.rose, '10-15': GA.palette.rose, '15-25': GA.palette.red, '25-35': GA.palette.redDark, '35+': GA.palette.redDark };
   const FAC = {
-    health: { hospital: { c: P.red, s: 'square', r: 5 }, clinic: { c: '#D9706E', s: 'circle', r: 4 }, doctors: { c: P.ink, s: 'circle', r: 3.5 }, dentist: { c: '#9A9EA4', s: 'circle', r: 3 }, pharmacy: { c: P.blue, s: 'diamond', r: 3.5 }, other: { c: '#C3C6CA', s: 'circle', r: 3 } },
-    education: { university: { c: P.ink, s: 'square', r: 5 }, college: { c: '#6E737A', s: 'square', r: 4 }, school: { c: P.red, s: 'circle', r: 4 }, early_years: { c: '#E4A8A6', s: 'circle', r: 3.5 }, other: { c: '#C3C6CA', s: 'circle', r: 3 } },
-    stay: { hotel: { c: P.red, s: 'circle', r: 4 }, hostel: { c: P.ink, s: 'circle', r: 3.5 }, guest_house: { c: P.blue, s: 'circle', r: 3.5 }, apartment: { c: '#9A9EA4', s: 'diamond', r: 3.5 }, other: { c: '#C3C6CA', s: 'circle', r: 3 } },
+    health: { hospital: { c: P.red, s: 'square', r: 5 }, clinic: { c: P.fac.clinic, s: 'circle', r: 4 }, doctors: { c: P.fac.doctors, s: 'circle', r: 3.5 }, dentist: { c: P.fac.dentist, s: 'circle', r: 3 }, pharmacy: { c: P.blue, s: 'diamond', r: 3.5 }, other: { c: P.line2, s: 'circle', r: 3 } },
+    education: { university: { c: P.fac.university, s: 'square', r: 5 }, college: { c: P.fac.college, s: 'square', r: 4 }, school: { c: P.red, s: 'circle', r: 4 }, early_years: { c: P.fac.early_years, s: 'circle', r: 3.5 }, other: { c: P.line2, s: 'circle', r: 3 } },
+    stay: { hotel: { c: P.red, s: 'circle', r: 4 }, hostel: { c: P.fac.hostel, s: 'circle', r: 3.5 }, guest_house: { c: P.blue, s: 'circle', r: 3.5 }, apartment: { c: P.fac.apartment, s: 'diamond', r: 3.5 }, other: { c: P.line2, s: 'circle', r: 3 } },
   };
   const ELEV_COL = (v, lo, hi) => { const t2 = Math.max(0, Math.min(1, (v - lo) / Math.max(1, hi - lo))); const a = [247, 240, 232], b = [140, 60, 50]; return [0, 1, 2].map(i => Math.round(a[i] + t2 * (b[i] - a[i]))).concat([255]); };
 
@@ -87,7 +87,7 @@
     const sorted = o.geo.buildings.features.map(f => f.properties.levels).filter(v => v != null).sort((a, b) => a - b);
     const med = sorted.length ? sorted[sorted.length >> 1] : null; const share5 = sorted.length ? sorted.filter(v => v >= 5).length / sorted.length : null;
     list.push({ id: 'heights', title: t('g.heights'), mainLayer: 'buildings_floors', src: src.osm, highlightField: 'band',
-      spec: { context: { streets: ctxS }, layers: [{ type: 'fill', items: o.geo.buildings.features.map(f => { const k = floorClass(f.properties.levels); return k === 'no_data' ? { g: f.geometry, hatch: '#8A8F96', stroke: '#B8BBBF', width: 0.4 } : { g: f.geometry, fill: P.band[k], stroke: '#FFFFFF', width: 0.3 }; }) }] },
+      spec: { context: { streets: ctxS }, layers: [{ type: 'fill', items: o.geo.buildings.features.map(f => { const k = floorClass(f.properties.levels); return k === 'no_data' ? { g: f.geometry, hatch: GA.palette.grey, stroke: GA.palette.grey2, width: 0.4 } : { g: f.geometry, fill: P.band[k], stroke: '#FFFFFF', width: 0.3 }; }) }] },
       legend: FLOOR.map(c => ({ sw: P.band[c.k], label: t('b.floors', { v: iso(c.k.replace('-', '–')) }), key: c.k })).concat([{ hatch: true, label: t('g.unknownHeight'), key: 'no_data' }]),
       ind: [[t('g.levelsCov'), `${pct(cov)} <small>(${nf(tagged)}/${nf(B.count)})</small>`], [t('g.medianFloors'), med != null ? nf(med) : '—'], [t('g.share5'), pct(share5)]],
       chart: { kind: 'bars', unit: t('g.buildingsUnit'), items: Object.keys(floorsHist).map(k => ({ label: k === '12' ? '12+' : k, v: floorsHist[k], col: P.band[floorClass(+k)] })) , xLabel: t('g.floorsAxis') },
@@ -97,8 +97,8 @@
     // 3 construction periods
     const pK = A.PERIODS; const PERIOD_COL = P.period;
     list.push({ id: 'periods', title: t('g.periods'), mainLayer: 'buildings_period', src: src.osm,
-      spec: { context: { streets: ctxS }, layers: [{ type: 'fill', items: o.geo.buildings.features.map(f => f.properties.period && f.properties.period !== 'no_data' ? { g: f.geometry, fill: PERIOD_COL[f.properties.period] } : { g: f.geometry, fill: '#F1F1F0', stroke: '#D5D6D8', width: 0.3 }) }] },
-      legend: pK.map(k => ({ sw: PERIOD_COL[k], label: root.GA.report.periodLabel(k), key: k })).concat([{ sw: '#F1F1F0', label: t('nodata'), key: 'no_data' }]),
+      spec: { context: { streets: ctxS }, layers: [{ type: 'fill', items: o.geo.buildings.features.map(f => f.properties.period && f.properties.period !== 'no_data' ? { g: f.geometry, fill: PERIOD_COL[f.properties.period] } : { g: f.geometry, fill: GA.palette.paper, stroke: GA.palette.line, width: 0.3 }) }] },
+      legend: pK.map(k => ({ sw: PERIOD_COL[k], label: root.GA.report.periodLabel(k), key: k })).concat([{ sw: GA.palette.paper, label: t('nodata'), key: 'no_data' }]),
       ind: [[t('h.start'), `${nf(B.startTagged)} <small>(${pct(B.startCoverage, 1)})</small>`]],
       find: [B.startCoverage < 0.3 ? t('g.fPeriodsLow', { n: nf(B.startTagged), N: nf(B.count) }) : t('g.fPeriods')],
       gap: B.startCoverage < 0.3, method: t('g.mPeriods') });
@@ -119,14 +119,14 @@
       spec: { context: { streets: ctxS }, layers: [{ type: 'fill', items: o.geo.landuse.features.map(f => ({ g: f.geometry, fill: P.landuse[f.properties.cat], alpha: 0.8 })) }, { type: 'fill', items: o.geo.buildings.features.map(f => ({ g: f.geometry, fill: 'rgba(34,36,40,.18)' })) }, { type: 'point', items: parsed.pois.filter(p => p.tags._fac && G.pointInRing(p.pt, area.ring)).map(p => ({ g: { type: 'Point', coordinates: p.pt }, fill: P.poi.public, r: 3 })) }] },
       legend: luKeys.map(k => ({ sw: P.landuse[k], label: t('lu.c.' + k), key: k })).concat([{ dot: P.poi.public, label: t('g.publicPoints') }]),
       ind: [[t('g.topUse'), top ? `${t('lu.c.' + top)} ${pct(LU[top] / o.selArea)}` : '—', 'est'], [t('c.green'), pct((LU.green || 0) / o.selArea, 1), 'est'], [t('lu.unclassified'), pct(o.landuse.unclassified / o.selArea), 'est']],
-      chart: { kind: 'stack', items: luKeys.map(k => ({ label: t('lu.c.' + k), v: LU[k] / o.selArea, col: P.landuse[k], key: k })).concat([{ label: t('lu.unclassified'), v: o.landuse.unclassified / o.selArea, col: '#EDEDEC' }]) },
+      chart: { kind: 'stack', items: luKeys.map(k => ({ label: t('lu.c.' + k), v: LU[k] / o.selArea, col: P.landuse[k], key: k })).concat([{ label: t('lu.unclassified'), v: o.landuse.unclassified / o.selArea, col: GA.palette.paper }]) },
       find: top ? [t('g.fLanduse', { c: t('lu.c.' + top), p: pct(LU[top] / o.selArea), u: pct(o.landuse.unclassified / o.selArea) })] : [t('g.fLanduseNone')], method: t('g.mLanduse') });
 
     // 6 parks & open space
     const parksF = o.geo.landuse.features.filter(f => f.properties.cat === 'green');
     const named = o.pois.parks.filter(p => /park/.test(p.kind)).length; const gardens = o.pois.parks.filter(p => p.kind === 'garden').reduce((s, p) => s + p.area, 0);
     list.push({ id: 'parks', title: t('g.parks'), mainLayer: 'parks', src: src.osm,
-      spec: { context: { buildings: ctxB, streets: ctxS }, layers: [{ type: 'fill', items: parksF.map(f => ({ g: f.geometry, fill: P.landuse.green, stroke: '#3F6E3C', width: 0.6 })) }] },
+      spec: { context: { buildings: ctxB, streets: ctxS }, layers: [{ type: 'fill', items: parksF.map(f => ({ g: f.geometry, fill: P.landuse.green, stroke: GA.palette.trees, width: 0.6 })) }] },
       legend: [{ sw: P.landuse.green, label: t('lu.c.green') }],
       ind: [[t('c.green'), pct((LU.green || 0) / o.selArea, 1), 'est'], [t('g.namedParks'), nf(named)]],
       find: [(LU.green || 0) > 0 ? t('g.fParks', { p: pct((LU.green || 0) / o.selArea, 1) }) : t('g.fParksNone')], method: t('g.mParks') });

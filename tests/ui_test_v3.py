@@ -111,8 +111,8 @@ def main():
             wait(pg, 'GA.app.L.S.trees.status === "ok"', 30000); check('OSM trees load by viewport when zoomed in', pg.evaluate('GA.app.L.S.trees.statusExtra') > 0)
             for lang in ['ar', 'he', 'en']:
                 pg.evaluate(f'GA.i18n.setLang("{lang}")'); time.sleep(0.4)
-                r = pg.evaluate('() => { const g = (s) => document.querySelector(s).getBoundingClientRect(); return { l: g("#col-left"), r: g("#col-right"), m: g("#map"), W: innerWidth }; }')
-                check(f'fixed panels in {lang}', abs(r['l']['left']) < 1 and abs(r['r']['right'] - r['W']) < 1 and abs(r['m']['left'] - r['l']['right']) < 2)
+                r = pg.evaluate('() => { ["analysis", "study", "layers"].forEach(k => GA.panels.set(k, true)); const g = (s) => document.querySelector(s).getBoundingClientRect(); return { l: g("#col-left"), r: g("#col-right"), m: g("#map"), W: innerWidth }; }')
+                check(f'fixed panels in {lang} (analysis left, study/layers right, map full width beneath)', abs(r['l']['left'] - 12) < 1 and abs(r['r']['right'] - (r['W'] - 12)) < 1 and r['l']['right'] < r['r']['left'] and abs(r['m']['left']) < 1 and abs(r['m']['right'] - r['W']) < 1, r)
             pg.evaluate('GA.i18n.setLang("en")')
             for k in ['places', 'bus_service', 'canopy', 'flood', 'noise', 'lst', 'history', 'trees']: pg.evaluate(f'GA.app.L.setOn("{k}", false)')
 

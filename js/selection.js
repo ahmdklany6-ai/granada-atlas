@@ -22,10 +22,10 @@
       map.addSource('sel', { type: 'geojson', data: fc([]) });
       map.addSource('sel-draft', { type: 'geojson', data: fc([]) });
       map.addSource('measure', { type: 'geojson', data: fc([]) });
-      map.addLayer({ id: 'sel-fill', type: 'fill', source: 'sel', paint: { 'fill-color': '#992B2A', 'fill-opacity': 0.07 } });
-      map.addLayer({ id: 'sel-line', type: 'line', source: 'sel', paint: { 'line-color': '#992B2A', 'line-width': 2, 'line-dasharray': [3.5, 2] } }); // fabric boundaries are dashed everywhere
-      map.addLayer({ id: 'sel-draft', type: 'line', source: 'sel-draft', paint: { 'line-color': '#992B2A', 'line-width': 1.4, 'line-dasharray': [2, 2] } });
-      map.addLayer({ id: 'measure-line', type: 'line', source: 'measure', paint: { 'line-color': '#1F1B17', 'line-width': 1.4, 'line-dasharray': [1, 1.5] } });
+      map.addLayer({ id: 'sel-fill', type: 'fill', source: 'sel', paint: { 'fill-color': GA.palette.red, 'fill-opacity': 0.07 } });
+      map.addLayer({ id: 'sel-line', type: 'line', source: 'sel', paint: { 'line-color': GA.palette.red, 'line-width': 2, 'line-dasharray': [3.5, 2] } }); // fabric boundaries are dashed everywhere
+      map.addLayer({ id: 'sel-draft', type: 'line', source: 'sel-draft', paint: { 'line-color': GA.palette.red, 'line-width': 1.4, 'line-dasharray': [2, 2] } });
+      map.addLayer({ id: 'measure-line', type: 'line', source: 'measure', paint: { 'line-color': GA.palette.ink, 'line-width': 1.4, 'line-dasharray': [1, 1.5] } });
     }
     const fc = (features) => ({ type: 'FeatureCollection', features });
     function ring() {
@@ -143,7 +143,10 @@
       ring,
       spec() { return { type: s.type, center: s.center, radius: s.radius, side: s.side, verts: s.verts.slice(), closed: s.closed }; },
       loadSpec(sp) { commit(); s = Object.assign(blank(), sp, { phase: 'shape', pending: null }); draw(); emit(); },
-      fitTo(rings) { const all = (rings || [ring()]).filter(Boolean).flat(); if (!all.length) return; const b = G.bbox(all); map.resize(); const c = map.getContainer(); const pad = Math.max(24, Math.min(70, Math.min(c.clientWidth, c.clientHeight) * 0.1)); map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: pad, duration: 600, maxZoom: 17.5 }); }, // the map container already sits between the panels
+      fitTo(rings) { const all = (rings || [ring()]).filter(Boolean).flat(); if (!all.length) return; const b = G.bbox(all); map.resize(); const c = map.getContainer(); const pad = Math.max(24, Math.min(70, Math.min(c.clientWidth, c.clientHeight) * 0.1));
+        // the map fills the workspace under floating panels: fit into the part the open panels leave uncovered
+        const cs = getComputedStyle(document.documentElement); const px = (v) => parseFloat(cs.getPropertyValue(v)) || 0; let l = px('--lw-eff'), r = px('--rw-eff'); if (l + r + 2 * pad > c.clientWidth - 120) { l = 0; r = 0; }
+        map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: { top: pad + 44, bottom: pad, left: l + pad, right: r + pad }, duration: 600, maxZoom: 17.5 }); },
       setCenterDirect(ll) { commit(); const prev = s.center; s.center = ll; if (s.type === 'polygon' && prev && s.verts.length) s.verts = G.translate(s.verts, prev, ll); if (!s.type) s.type = 'square'; s.phase = 'shape'; draw(); emit(); },
       redraw() { draw(); },
       measureToggle(on) { measure.on = on == null ? !measure.on : on; if (!measure.on) cursor = null; draw(); emit(); return measure.on; },

@@ -9,7 +9,7 @@
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const nf = (n, d) => n == null || !isFinite(n) ? null : Number(n).toLocaleString('en-US', { maximumFractionDigits: d == null ? 0 : d, minimumFractionDigits: d ? Math.min(1, d) : 0 });
   // every fabric boundary is dashed (colour and dash pattern together keep the fabrics apart)
-  const STYLES = [{ color: '#992B2A', dash: [7, 4] }, { color: '#2F5F8A', dash: [3, 3] }, { color: '#1C1E21', dash: [10, 3, 2, 3] }, { color: '#7B5EA7', dash: [5, 2] }, { color: '#5E9A5B', dash: [7, 4] }, { color: '#D98A2B', dash: [3, 3] }, { color: '#6E737A', dash: [10, 3, 2, 3] }, { color: '#6E1C1B', dash: [5, 2] }];
+  const STYLES = [{ color: GA.palette.red, dash: [7, 4] }, { color: GA.palette.blue, dash: [3, 3] }, { color: GA.palette.ink, dash: [10, 3, 2, 3] }, { color: GA.palette.base.burgundy, dash: [5, 2] }, { color: GA.palette.olive, dash: [7, 4] }, { color: GA.palette.base.khaki, dash: [3, 3] }, { color: GA.palette.ink3, dash: [10, 3, 2, 3] }, { color: GA.palette.redDark, dash: [5, 2] }];
   const styleOf = (i) => Object.assign({ label: String(i + 1), width: 2.2 }, STYLES[i % STYLES.length]);
 
   function ringOf(spec) {
@@ -118,12 +118,12 @@
       const label = String(it.label || '').replace(/<[^>]+>/g, '').replace(/[⁦⁩]/g, ''); const w = 26 + ctx.measureText(label).width + 14;
       if (cx + w > maxW) { cx = 0; cy += rowH; }
       const sx = rtl ? x + maxW - cx - 18 : x + cx;
-      if (it.hatch) { ctx.strokeStyle = '#8A8F96'; ctx.strokeRect(sx, cy - 6, 18, 12); for (let k = -12; k < 18; k += 4) { ctx.beginPath(); ctx.moveTo(sx + Math.max(0, k), cy + 6 - Math.max(0, -k)); ctx.lineTo(sx + Math.min(18, k + 12), cy - 6 + Math.max(0, k + 12 - 18)); ctx.stroke(); } }
+      if (it.hatch) { ctx.strokeStyle = GA.palette.grey; ctx.strokeRect(sx, cy - 6, 18, 12); for (let k = -12; k < 18; k += 4) { ctx.beginPath(); ctx.moveTo(sx + Math.max(0, k), cy + 6 - Math.max(0, -k)); ctx.lineTo(sx + Math.min(18, k + 12), cy - 6 + Math.max(0, k + 12 - 18)); ctx.stroke(); } }
       else if (it.sw) { ctx.fillStyle = it.sw; ctx.globalAlpha = it.alpha != null ? it.alpha : 1; ctx.fillRect(sx, cy - 6, 18, 12); ctx.globalAlpha = 1; ctx.strokeStyle = 'rgba(0,0,0,.3)'; ctx.strokeRect(sx, cy - 6, 18, 12); }
       else if (it.line) { ctx.strokeStyle = it.line; ctx.lineWidth = Math.max(1, it.w || 1); ctx.setLineDash(it.dash ? [4, 2] : []); ctx.beginPath(); ctx.moveTo(sx, cy); ctx.lineTo(sx + 18, cy); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1; }
       else if (it.dot) { ctx.fillStyle = it.dot; ctx.beginPath(); ctx.arc(sx + 9, cy, 5, 0, Math.PI * 2); ctx.fill(); }
       else if (it.ramp) { const g = ctx.createLinearGradient(sx, 0, sx + 18, 0); g.addColorStop(0, `rgb(${it.ramp[0].slice(0, 3)})`); g.addColorStop(1, `rgb(${it.ramp[1].slice(0, 3)})`); ctx.fillStyle = g; ctx.fillRect(sx, cy - 6, 18, 12); }
-      ctx.fillStyle = '#1C1E21'; ctx.textAlign = rtl ? 'right' : 'left';
+      ctx.fillStyle = GA.palette.ink; ctx.textAlign = rtl ? 'right' : 'left';
       if (w > maxW) { // long label: wrap onto its own lines
         const lines = []; let ln = ''; label.split(' ').forEach(wd => { const tt = ln ? ln + ' ' + wd : wd; if (ctx.measureText(tt).width > maxW - 30 && ln) { lines.push(ln); ln = wd; } else ln = tt; }); if (ln) lines.push(ln);
         lines.forEach((l, k) => ctx.fillText(l, rtl ? sx - 6 : sx + 24, cy + k * (rowH - 4)));
@@ -162,8 +162,8 @@
     }
     async function load() {
       const A = areasById(); errors = {};
-      const Xs = await Promise.all(ids().map((id, i) => prepare(A[id]).then(x => Object.assign({}, x, { no: i + 1, style: styleOf(i), _base: x })).catch(e => { errors[id] = e.message; return null; })));
-      return Xs.filter(Boolean);
+      const Xs = await Promise.all(ids().map((id, i) => prepare(A[id]).then(x => Object.assign({}, x, { no: root.GA.fabricStyle.numberOf(id) || i + 1, style: styleOf(i), _base: x })) /* the fabric's own number, same as on every map */.catch(e => { errors[id] = e.message; return null; })));
+      return Xs.filter(Boolean).sort((p, q) => p.no - q.no); // listed in fabric-number order
     }
     async function render() {
       el.innerHTML = header() + `<div class="ws-b">${picker()}<div id="ws-content"></div></div>`;
@@ -255,12 +255,12 @@
       const rings = Xs.map(x => x.ring).concat(uc ? [uc.geometry.type === 'Polygon' ? uc.geometry.coordinates[0] : uc.geometry.coordinates[0][0]] : []);
       const f = MC.fit(rings, w, h, 0.04);
       const ctxStreets = maj ? maj.features.filter(x => /motorway|trunk|primary|secondary/.test(x.properties.hw)).map(x => x.geometry) : [];
-      const distr = adm ? adm.features.filter(x => x.properties.kind === 'distrito' || x.properties.kind === 'urban_centre').map(x => ({ g: x.geometry, stroke: x.properties.kind === 'urban_centre' ? P.red : '#9A9EA4', width: x.properties.kind === 'urban_centre' ? 1.2 : 0.7, dash: x.properties.kind === 'urban_centre' ? [4, 3] : null })) : [];
-      const r = MC.render(cv, { center: f.center, mpp: f.mpp, w, h, ratio, context: { streets: ctxStreets, streetColor: '#B9BBBE' }, layers: [{ type: 'line', items: distr.map(d => ({ g: { type: d.g.type === 'Polygon' ? 'MultiLineString' : 'MultiLineString', coordinates: d.g.type === 'Polygon' ? d.g.coordinates : d.g.coordinates.flat() }, stroke: d.stroke, width: d.width, dash: d.dash })) }] });
+      const distr = adm ? adm.features.filter(x => x.properties.kind === 'distrito' || x.properties.kind === 'urban_centre').map(x => ({ g: x.geometry, stroke: x.properties.kind === 'urban_centre' ? P.red : GA.palette.grey, width: x.properties.kind === 'urban_centre' ? 1.2 : 0.7, dash: x.properties.kind === 'urban_centre' ? [4, 3] : null })) : [];
+      const r = MC.render(cv, { center: f.center, mpp: f.mpp, w, h, ratio, context: { streets: ctxStreets, streetColor: GA.palette.grey2 }, layers: [{ type: 'line', items: distr.map(d => ({ g: { type: d.g.type === 'Polygon' ? 'MultiLineString' : 'MultiLineString', coordinates: d.g.type === 'Polygon' ? d.g.coordinates : d.g.coordinates.flat() }, stroke: d.stroke, width: d.width, dash: d.dash })) }] });
       const ctx = cv.getContext('2d'); ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       const FM = root.GA.fabricStyle, placed = [];
       Xs.forEach(x => { const U = MC.ringUTM(x.ring); const pts = U.map(p => [r.X(p[0]), r.Y(p[1])]); FM.strokeRing(ctx, pts, { color: x.style.color, width: 2, dash: x.style.dash });
-        const cx = pts.reduce((s, q) => s + q[0], 0) / pts.length, cy = Math.min(...pts.map(q => q[1])) - 11; FM.drawNumber(ctx, String(x.no), cx, cy, { color: x.style.color, size: 15, placed }); });
+        FM.numberAbove(ctx, pts, x.no, { size: 15, placed }); });
       return r;
     }
 
@@ -273,15 +273,15 @@
       const a = X.area; const fb = proj().ex12.fabrics[a.id] || {}; const M = 60;
       ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, Wp, Hp); ctx.fillStyle = P.red; ctx.fillRect(0, 0, Wp, 8);
       const TX = (x) => rtl ? Wp - x : x; ctx.textAlign = rtl ? 'right' : 'left'; ctx.textBaseline = 'alphabetic';
-      ctx.fillStyle = '#1C1E21'; ctx.font = `700 40px ${font}`; ctx.fillText(t('ex.sheetTitle', { n: X.no }) + ' — ' + a.name, TX(M), 70);
-      ctx.font = `20px ${font}`; ctx.fillStyle = '#3C4046'; ctx.fillText(t('ex.sheetSub', { s: '1:' + scale.den.toLocaleString('en-US'), d: new Date().toISOString().slice(0, 10), a: root.GA.report.fmtArea(X.R.area_m2).replace(/<[^>]+>/g, '') }), TX(M), 104);
+      ctx.fillStyle = GA.palette.ink; ctx.font = `700 40px ${font}`; ctx.fillText(t('ex.sheetTitle', { n: X.no }) + ' — ' + a.name, TX(M), 70);
+      ctx.font = `20px ${font}`; ctx.fillStyle = GA.palette.ink2; ctx.fillText(t('ex.sheetSub', { s: '1:' + scale.den.toLocaleString('en-US'), d: new Date().toISOString().slice(0, 10), a: root.GA.report.fmtArea(X.R.area_m2).replace(/<[^>]+>/g, '') }), TX(M), 104);
       if (fb.sentence) { ctx.font = `italic 600 24px ${font}`; ctx.fillStyle = P.red; ctx.fillText('“' + fb.sentence + '”', TX(M), 142); }
       // left column: locator + justification + indicators
       const LW = 560; const LX = rtl ? Wp - M - LW : M;
       if (overviewImg) { ctx.drawImage(overviewImg, LX, 170, LW, LW * overviewImg.height / overviewImg.width); }
       let y = 170 + (overviewImg ? LW * overviewImg.height / overviewImg.width : 0) + 36;
-      ctx.font = `700 22px ${font}`; ctx.fillStyle = '#1C1E21'; ctx.textAlign = rtl ? 'right' : 'left'; const lx = rtl ? LX + LW : LX;
-      ctx.fillText(t('ex.just'), lx, y); y += 30; ctx.font = `18px ${font}`; ctx.fillStyle = '#1C1E21';
+      ctx.font = `700 22px ${font}`; ctx.fillStyle = GA.palette.ink; ctx.textAlign = rtl ? 'right' : 'left'; const lx = rtl ? LX + LW : LX;
+      ctx.fillText(t('ex.just'), lx, y); y += 30; ctx.font = `18px ${font}`; ctx.fillStyle = GA.palette.ink;
       y = wrap(ctx, fb.just || t('ex.notWritten'), lx, y, LW, 26, 12) + 10;
       ctx.font = `700 20px ${font}`; ctx.fillText(t('ex.keyFigures'), lx, y); y += 28; ctx.font = `16px ${font}`;
       const iv = indicators(X); [['buildings', 'b.count'], ['gsi', 'b.gsi'], ['levels_coverage', 'cmp.levelsCov'], ['median_floors', 'g.medianFloors'], ['street_km_per_km2', 'cmp.density'], ['green_share', 'cmp.green'], ['relief_m', 'g.relief']].forEach(([k, lab]) => { const row = IND_ROWS.find(r => r[0] === k); const v = fmtInd(row, iv[k]); ctx.fillText(`${t(lab).replace(/<[^>]+>/g, '')}: ${v == null ? t('nodata') : v}`, lx, y); y += 23; });
@@ -289,12 +289,12 @@
       const PX0 = rtl ? M : M + LW + 40, PW = Wp - 2 * M - LW - 40; const gap = 26; const pw = Math.floor((PW - 2 * gap) / 3), ph = 470;
       const cards = GAL.cards({ ring: X.ring }, X.parsed, X.R, { dem: X.dem, slope: X.slope, contours: X.contours, ext: X.ext });
       const panel = async (id, titleKey, px, py, w) => {
-        ctx.textAlign = rtl ? 'right' : 'left'; ctx.font = `700 22px ${font}`; ctx.fillStyle = '#1C1E21'; ctx.fillText(t(titleKey), rtl ? px + w : px, py - 10);
+        ctx.textAlign = rtl ? 'right' : 'left'; ctx.font = `700 22px ${font}`; ctx.fillStyle = GA.palette.ink; ctx.fillText(t(titleKey), rtl ? px + w : px, py - 10);
         const cd = cards.find(k => k.id === id); const off = document.createElement('canvas');
         if (cd && !cd.gapOnly) { GAL.drawCard(off, { ring: X.ring, style: { color: X.style.color, width: 2.4, dash: X.style.dash } }, cd, { center: MC.fit([X.ring], w, ph, 0.06).center, mpp: scale.mpp, w, h: ph, ratio: 1 }); ctx.drawImage(off, px, py); }
-        ctx.strokeStyle = '#C6C7C9'; ctx.strokeRect(px + 0.5, py + 0.5, w - 1, ph - 1);
+        ctx.strokeStyle = GA.palette.line2; ctx.strokeRect(px + 0.5, py + 0.5, w - 1, ph - 1);
         let ly = legendCanvas(ctx, (cd && cd.legend) || [], px, py + ph + 18, w, rtl, font);
-        ctx.font = `14px ${font}`; ctx.fillStyle = '#3C4046'; ctx.textAlign = rtl ? 'right' : 'left';
+        ctx.font = `14px ${font}`; ctx.fillStyle = GA.palette.ink2; ctx.textAlign = rtl ? 'right' : 'left';
         (cd && cd.find || []).slice(0, 2).forEach(f => { ly = wrap(ctx, String(f).replace(/<[^>]+>/g, '').replace(/[⁦⁩]/g, ''), rtl ? px + w : px, ly + 4, w, 19, 2); });
         if (id === 'periods' && X.R.osm.buildings.startCoverage < 0.3) { ctx.fillStyle = P.red; wrap(ctx, t('ex.c.histReview'), rtl ? px + w : px, ly + 4, w, 19, 3); }
       };
@@ -306,12 +306,12 @@
       await panel('periods', 'ex.c.history', c0(0), row2, pw);
       // street section spanning two columns
       const sx = rtl ? PX0 : c0(1), sw = 2 * pw + gap; const sec = (a.sections || [])[0];
-      ctx.font = `700 22px ${font}`; ctx.fillStyle = '#1C1E21'; ctx.textAlign = rtl ? 'right' : 'left'; ctx.fillText(t('ex.c.section') + (sec ? ' — ' + sec.name : ''), rtl ? sx + sw : sx, row2 - 10);
+      ctx.font = `700 22px ${font}`; ctx.fillStyle = GA.palette.ink; ctx.textAlign = rtl ? 'right' : 'left'; ctx.fillText(t('ex.c.section') + (sec ? ' — ' + sec.name : ''), rtl ? sx + sw : sx, row2 - 10);
       if (sec) { try { const prof = await SEC.compute(sec, { floorH: sec.floorH || 3 }); const off = document.createElement('canvas'); SEC.draw(off, prof, Object.assign({ w: sw, h: ph, ratio: 1 }, SEC.optsFor(sec))); ctx.drawImage(off, sx, row2); } catch (e) { ctx.font = `16px ${font}`; ctx.fillText(e.message, rtl ? sx + sw : sx, row2 + 30); } }
       else { ctx.font = `18px ${font}`; ctx.fillStyle = P.red; ctx.fillText(t('ex.c.sectionMissing'), rtl ? sx + sw : sx, row2 + 40); }
-      ctx.strokeStyle = '#C6C7C9'; ctx.strokeRect(sx + 0.5, row2 + 0.5, sw - 1, ph - 1);
+      ctx.strokeStyle = GA.palette.line2; ctx.strokeRect(sx + 0.5, row2 + 0.5, sw - 1, ph - 1);
       // footer
-      ctx.font = `13px ${font}`; ctx.fillStyle = '#5E636A'; ctx.textAlign = rtl ? 'right' : 'left';
+      ctx.font = `13px ${font}`; ctx.fillStyle = GA.palette.ink3; ctx.textAlign = rtl ? 'right' : 'left';
       ctx.fillText(t('ex.footer', { s: '1:' + scale.den.toLocaleString('en-US') }), TX(M), Hp - 30);
       return cv;
     }
@@ -325,11 +325,11 @@
         const Wp = Math.round(420 / 25.4 * DPI), Hp = Math.round(297 / 25.4 * DPI); const cv = document.createElement('canvas'); cv.width = Wp; cv.height = Hp; const ctx = cv.getContext('2d'); const font = getComputedStyle(document.documentElement).getPropertyValue('--f-ui'); const rtl = I.dir() === 'rtl'; ctx.direction = rtl ? 'rtl' : 'ltr';
         ctx.fillStyle = '#FFF'; ctx.fillRect(0, 0, Wp, Hp); ctx.fillStyle = P.red; ctx.fillRect(0, 0, Wp, 8);
         const big = document.createElement('canvas'); await drawOverview(big, Xs, 1500, 1350, 1); ctx.drawImage(big, rtl ? Wp - 60 - 1500 : 60, 140);
-        ctx.textAlign = rtl ? 'right' : 'left'; ctx.fillStyle = '#1C1E21'; ctx.font = `700 44px ${font}`; ctx.fillText(t('ex.coverTitle'), rtl ? Wp - 60 : 60, 90);
+        ctx.textAlign = rtl ? 'right' : 'left'; ctx.fillStyle = GA.palette.ink; ctx.font = `700 44px ${font}`; ctx.fillText(t('ex.coverTitle'), rtl ? Wp - 60 : 60, 90);
         let y = 180; const lx = rtl ? 60 + 760 : 1600; ctx.font = `20px ${font}`;
         if (Xs.length < 4) { ctx.fillStyle = P.red; y = wrap(ctx, t('ex.need4', { n: Xs.length }).replace(/<[^>]+>/g, ''), lx, y, 760, 28) + 10; }
-        Xs.forEach(x => { const fb = proj().ex12.fabrics[x.area.id] || {}; ctx.fillStyle = x.style.color; ctx.font = `700 24px ${font}`; ctx.fillText(`${x.no}. ${x.area.name}`, lx, y); y += 32; ctx.fillStyle = '#1C1E21'; ctx.font = `italic 19px ${font}`; y = wrap(ctx, fb.sentence ? '“' + fb.sentence + '”' : t('ex.notWritten'), lx, y, 760, 26, 3) + 14; });
-        ctx.font = `14px ${font}`; ctx.fillStyle = '#5E636A'; ctx.fillText(t('ex.footer', { s: '1:' + scale.den.toLocaleString('en-US') }), rtl ? Wp - 60 : 60, Hp - 30);
+        Xs.forEach(x => { const fb = proj().ex12.fabrics[x.area.id] || {}; ctx.fillStyle = x.style.color; ctx.font = `700 24px ${font}`; ctx.fillText(`${x.no}. ${x.area.name}`, lx, y); y += 32; ctx.fillStyle = GA.palette.ink; ctx.font = `italic 19px ${font}`; y = wrap(ctx, fb.sentence ? '“' + fb.sentence + '”' : t('ex.notWritten'), lx, y, 760, 26, 3) + 14; });
+        ctx.font = `14px ${font}`; ctx.fillStyle = GA.palette.ink3; ctx.fillText(t('ex.footer', { s: '1:' + scale.den.toLocaleString('en-US') }), rtl ? Wp - 60 : 60, Hp - 30);
         pages.push({ canvas: cv, paper: 'A3L' });
       }
       for (const x of Xs) if (!onlyId || x.area.id === onlyId) pages.push({ canvas: await sheetCanvas(x, Xs, scale, ov), paper: 'A3L' });

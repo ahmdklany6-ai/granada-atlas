@@ -23,10 +23,10 @@
     ignPnoa: 'https://www.ign.es/wms-inspire/pnoa-ma',
   };
   const FLOOD = [ // return period → SNCZI layer
-    { k: 'q10', layer: 'agua:Zi_laminas_q10', T: 10, p: '10%', color: '#1F4E79' },
-    { k: 'q50', layer: 'agua:Zi_laminas_q50', T: 50, p: '2%', color: '#3C7DB8' },
-    { k: 'q100', layer: 'agua:Zi_laminas_q100', T: 100, p: '1%', color: '#78A9D6' },
-    { k: 'q500', layer: 'agua:Zi_laminas_q500', T: 500, p: '0.2%', color: '#B9D3EA' },
+    { k: 'q10', layer: 'agua:Zi_laminas_q10', T: 10, p: '10%', color: root.GA.palette.flood.q10 },
+    { k: 'q50', layer: 'agua:Zi_laminas_q50', T: 50, p: '2%', color: root.GA.palette.flood.q50 },
+    { k: 'q100', layer: 'agua:Zi_laminas_q100', T: 100, p: '1%', color: root.GA.palette.flood.q100 },
+    { k: 'q500', layer: 'agua:Zi_laminas_q500', T: 500, p: '0.2%', color: root.GA.palette.flood.q500 },
   ];
   const LST_DATE = '2025-07-28'; // an 8-day MODIS composite in high summer (day-of-year 209)
 

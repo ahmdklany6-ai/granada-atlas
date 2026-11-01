@@ -58,12 +58,12 @@
         const yb = bl === 'middle' ? y + size * 0.35 : bl === 'top' ? y + size * 0.8 : y;
         if (latin(s) && o.dir !== 'rtl') { const w = this.measure(s, fontCss(o)); const xa = al === 'center' ? x - w / 2 : (al === 'right' || al === 'end') ? x - w : x; const F = (o.weight || 400) >= 600 ? 'F2' : 'F1';
           if (o.halo) ops.push(`q ${rgb(o.halo)} RG ${n(o.haloW || 3)} w 1 j BT /${F} ${n(size)} Tf 1 Tr 1 0 0 -1 ${n(xa)} ${n(yb)} Tm ${hexWin(s)} Tj ET Q`);
-          ops.push(`q ${rgb(o.color || '#1C1E21')} rg BT /${F} ${n(size)} Tf 1 0 0 -1 ${n(xa)} ${n(yb)} Tm ${hexWin(s)} Tj ET Q`); return; }
+          ops.push(`q ${rgb(o.color || GA.palette.ink)} rg BT /${F} ${n(size)} Tf 1 0 0 -1 ${n(xa)} ${n(yb)} Tm ${hexWin(s)} Tj ET Q`); return; }
         // non-Latin: browser-shaped text as a transparent image, 4× resolution
         const S = 4; meas.font = fontCss(o); meas.direction = o.dir === 'rtl' ? 'rtl' : 'ltr'; const w = Math.ceil(meas.measureText(s).width) + 8, h = Math.ceil(size * 1.5);
         const c = document.createElement('canvas'); c.width = w * S; c.height = h * S; const g = c.getContext('2d'); g.scale(S, S); g.font = fontCss(o); g.direction = o.dir === 'rtl' ? 'rtl' : (o.dir === 'auto' ? 'inherit' : 'ltr'); g.textBaseline = 'alphabetic'; g.textAlign = 'left';
         const tx = o.dir === 'rtl' ? w - 4 : 4; if (o.dir === 'rtl') g.textAlign = 'right';
-        if (o.halo) { g.strokeStyle = o.halo; g.lineWidth = o.haloW || 3; g.lineJoin = 'round'; g.strokeText(s, tx, size * 1.1); } g.fillStyle = o.color || '#1C1E21'; g.fillText(s, tx, size * 1.1);
+        if (o.halo) { g.strokeStyle = o.halo; g.lineWidth = o.haloW || 3; g.lineJoin = 'round'; g.strokeText(s, tx, size * 1.1); } g.fillStyle = o.color || GA.palette.ink; g.fillText(s, tx, size * 1.1);
         const xa = al === 'center' ? x - w / 2 : (al === 'right' || al === 'end') ? x - w + 4 : x - 4; const ytop = yb - size * 1.1;
         const id = 'I' + imgs.length; imgs.push({ id, canvas: c }); ops.push(`q ${n(w)} 0 0 ${n(-h)} ${n(xa)} ${n(ytop + h)} cm /${id} Do Q`);
       },

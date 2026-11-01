@@ -10,17 +10,17 @@
   const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 
   // ---------- class tables (the single definition used by map tiles, legends, cards and exports) ----------
-  // Land-surface temperature (°C), restrained cool→warm ramp with a neutral middle; no yellow.
+  // Land-surface temperature (°C): diverging blue-grey → cream → burgundy/wine (palette.lst); no yellow.
   const LST = [
-    { max: 30, col: '#3F6E8C', label: '< 30' }, { max: 35, col: '#93B3C6', label: '30–35' }, { max: 40, col: '#DAD9D3', label: '35–40' },
-    { max: 45, col: '#E9BFAD', label: '40–45' }, { max: 50, col: '#CF7F69', label: '45–50' }, { max: 55, col: '#A63F38', label: '50–55' }, { max: Infinity, col: '#5E1A19', label: '≥ 55' }];
-  // Strategic noise (dB(A), 5 dB bands as published by SICA), sequential purple; no yellow.
+    { max: 30, col: P.lst[0], label: '< 30' }, { max: 35, col: P.lst[1], label: '30–35' }, { max: 40, col: P.lst[2], label: '35–40' },
+    { max: 45, col: P.lst[3], label: '40–45' }, { max: 50, col: P.lst[4], label: '45–50' }, { max: 55, col: P.lst[5], label: '50–55' }, { max: Infinity, col: P.lst[6], label: '≥ 55' }];
+  // Strategic noise (dB(A), 5 dB bands as published by SICA): sequential cream → khaki → wine (palette.noise), one muted yellow step.
   const NOISE = [
-    { v: 50, col: '#E9E3F0', src: '#64C800' }, { v: 55, col: '#CDBFE0', src: '#FFFF00' }, { v: 60, col: '#AA93CB', src: '#FFCD69' },
-    { v: 65, col: '#8463AE', src: '#FF8000' }, { v: 70, col: '#5A3D84', src: '#FF0000' }, { v: 75, col: '#331F52', src: '#FF00FF' }];
+    { v: 50, col: P.noise[0], src: '#64C800' }, { v: 55, col: P.noise[1], src: '#FFFF00' }, { v: 60, col: P.noise[2], src: '#FFCD69' },
+    { v: 65, col: P.noise[3], src: '#FF8000' }, { v: 70, col: P.noise[4], src: '#FF0000' }, { v: 75, col: P.noise[5], src: '#FF00FF' }];
   // Flood zones: return-period classes from ext.js (X.FLOOD colours); source colours from the SNCZI WMS styles.
   const FLOOD_SRC = { q10: ['#FF0000', '#A80000'], q50: ['#DF73FF', '#E472FA'], q100: ['#E8BEFF', '#BF94FE'], q500: ['#FF73DF', '#FA3FDB'], arpsi: ['#FA3411'] };
-  const ARPSI_COL = '#0B2E4F'; // same as the ARPSI reaches drawn from WFS on the analysis cards
+  const ARPSI_COL = P.arpsi; // same as the ARPSI reaches drawn from WFS on the analysis cards
 
   // ---------- GIBS LST colormap (bundled copy of the official XML) ----------
   let lstMap = null; let lstEntries = null;

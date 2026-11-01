@@ -167,9 +167,9 @@ try:
             const nh = (i) => '#' + [nz[i * 4], nz[i * 4 + 1], nz[i * 4 + 2]].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
             return { lst: [hex(0), hex(1), hex(2)], nodataA: d[15], flood: [fh(0), fh(1), fh(2)], noise: [nh(0), nh(1), nh(2)],
               lstLeg: RC.legendItems('lst').map(i => i.sw), floodCols: GA.ext.FLOOD.map(z => z.color.toUpperCase()), noiseLeg: RC.legendItems('noise', { ind: 'lden' }).map(i => i.sw.toUpperCase()) }; })()''')
-        check(res['lst'] == ['#3F6E8C', '#E9BFAD', '#CF7F69'], f'LST 27 °C → 35–40, 43 °C → 45–50 hmm: {res["lst"]}' if False else f'LST pixels reclassified by value: 27 °C, 43 °C, 48 °C → {res["lst"]}')
+        PAL = pg.evaluate('JSON.parse(JSON.stringify(GA.palette))'); check(res['lst'] == [PAL['lst'][0], PAL['lst'][3], PAL['lst'][4]], f'LST 27 °C → 35–40, 43 °C → 45–50 hmm: {res["lst"]}' if False else f'LST pixels reclassified by value: 27 °C, 43 °C, 48 °C → {res["lst"]}')
         check(all(c in res['lstLeg'] for c in res['lst']), 'every LST map colour appears in the LST legend')
-        check(res['flood'][0] == res['floodCols'][0] and res['flood'][1] == res['floodCols'][2] and res['flood'][2] == '#0B2E4F', f'flood WMS classes → atlas colours (T10, T100, ARPSI) {res["flood"]}')
+        check(res['flood'][0] == res['floodCols'][0] and res['flood'][1] == res['floodCols'][2] and res['flood'][2] == PAL['arpsi'], f'flood WMS classes → atlas colours (T10, T100, ARPSI) {res["flood"]}')
         check(res['noise'] == [res['noiseLeg'][0], res['noiseLeg'][2], res['noiseLeg'][4]], f'noise 55/65/75 dB → legend colours {res["noise"]}')
         yellowish = lambda h: (lambda r, g, b: r > 200 and g > 180 and b < 120)(int(h[1:3], 16), int(h[3:5], 16), int(h[5:7], 16))
         check(not any(yellowish(c) for c in res['lstLeg'] + res['noiseLeg'] if c), 'no saturated yellow in the climate/noise palettes')
@@ -178,7 +178,7 @@ try:
             const cv = document.createElement('canvas'); cv.width = cv.height = 8; const g = cv.getContext('2d'); g.fillStyle = `rgb(${c.join(',')})`; g.fillRect(0, 0, 8, 8);
             const url = cv.toDataURL('image/png'); const tiles = RC.tiles('lst', url);
             const r = await RC._tile({ url: tiles.replace('{bbox-epsg-3857}', '0,0,1,1') }); const bm = await createImageBitmap(new Blob([r.data])); const c2 = document.createElement('canvas'); c2.width = c2.height = 8; const g2 = c2.getContext('2d'); g2.drawImage(bm, 0, 0); const d = g2.getImageData(4, 4, 1, 1).data; return [d[0], d[1], d[2]]; })()''')
-        check(tilechk == [207, 127, 105], f'LST tile protocol: 47 °C pixel drawn in class 45–50 {tilechk}')
+        check(tilechk == [int(PAL['lst'][4][i:i + 2], 16) for i in (1, 3, 5)], f'LST tile protocol: 47 °C pixel drawn in class 45–50 {tilechk}')
         # legends from the same definitions; vector layers: every legend colour is drawn on the map
         aud = pg.evaluate(r'''(() => { const L = GA.app.L, m = GA.app.map; const norm = (c) => { c = String(c).trim().toLowerCase(); let r; if ((r = /^#([0-9a-f]{6})$/.exec(c))) return c; if ((r = /^#([0-9a-f]{3})$/.exec(c))) return '#' + r[1].split('').map(x => x + x).join(''); if ((r = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c))) return '#' + [r[1], r[2], r[3]].map(v => (+v).toString(16).padStart(2, '0')).join(''); return null; };
             const walk = (v, out) => { if (typeof v === 'string') { const n = norm(v); if (n) out.add(n); } else if (Array.isArray(v)) v.forEach(x => walk(x, out)); else if (v && typeof v === 'object') Object.values(v).forEach(x => walk(x, out)); };

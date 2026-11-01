@@ -165,8 +165,9 @@ function writeSingle(name, feats, meta) {
     vertical: 'metres above mean sea level (Alicante); integer values', note: 'Bare-earth terrain: buildings and bridges are not part of the model.',
   };
   // display rasters in Web Mercator
-  const elevRamp = [[560, [233, 239, 226]], [650, [215, 225, 205]], [700, [228, 222, 196]], [800, [214, 196, 166]], [950, [190, 160, 130]], [1200, [160, 130, 110]], [1600, [140, 120, 112]], [1860, [240, 240, 240]]];
-  const slopeCls = [[2, [247, 240, 240, 0]], [5, [242, 214, 213, 150]], [10, [228, 168, 166, 175]], [15, [208, 118, 116, 195]], [25, [178, 64, 62, 210]], [35, [140, 33, 32, 225]], [90, [90, 20, 20, 235]]];
+  const PAL = require('../js/palette.js'); // display colours come from the shared palette (see also tools/build_terrain_display.js)
+  const elevRamp = PAL.elevRamp.map(([v, c]) => [v, PAL.rgb(c)]);
+  const slopeCls = [2, 5, 10, 15, 25, 35, 90].map((m, i) => [m, PAL.rgb(PAL.slope[i][1]).concat([PAL.slopeAlpha[i]])]);
   manifest.terrain.slopeClasses = slopeCls.map((c, i) => ({ min: i ? slopeCls[i - 1][0] : 0, max: c[0] === 90 ? null : c[0], rgba: c[1] }));
   manifest.terrain.elevRamp = elevRamp;
   manifest.terrain.display = {};
@@ -237,7 +238,7 @@ function writeSingle(name, feats, meta) {
   function rasterOverview(cells) {
     const keys = Object.keys(cells).map(k => k.split('_').map(Number)); const xs = keys.map(k => k[0]), ys = keys.map(k => k[1]);
     const gx0 = Math.min(...xs), gy0 = Math.min(...ys), gx1 = Math.max(...xs), gy1 = Math.max(...ys);
-    const colours = { '1-2': [242, 214, 213], '3-4': [217, 142, 140], '5-8': [176, 71, 70], '9+': [110, 28, 27] }; // classes from Exercise 1.2
+    const PB = require('../js/palette.js'); const colours = Object.fromEntries(['1-2', '3-4', '5-8', '9+'].map(k => [k, PB.rgb(PB.band[k])])); // classes from Exercise 1.2, palette colours
     const band = (m) => m <= 2 ? '1-2' : m <= 4 ? '3-4' : m <= 8 ? '5-8' : '9+';
     const sw = L.PJ.EPSG25830.inverse([gx0 * 50, gy0 * 50]), ne = L.PJ.EPSG25830.inverse([(gx1 + 1) * 50, (gy1 + 1) * 50]);
     const nw = L.PJ.EPSG25830.inverse([gx0 * 50, (gy1 + 1) * 50]), se = L.PJ.EPSG25830.inverse([(gx1 + 1) * 50, gy0 * 50]);
@@ -250,7 +251,7 @@ function writeSingle(name, feats, meta) {
       const ll = L.imerc(x0 + (i + 0.5) * pm, y1 - (j + 0.5) * pm); const u = L.PJ.EPSG25830.forward(ll);
       const c = cells[Math.floor(u[0] / 50) + '_' + Math.floor(u[1] / 50)]; if (!c) continue; const o = (j * W + i) * 4;
       if (c.lv.length) { const s = c.lv.slice().sort((a, b) => a - b); const m = s[s.length >> 1]; const col = colours[band(m)]; rgba[o] = col[0]; rgba[o + 1] = col[1]; rgba[o + 2] = col[2]; rgba[o + 3] = 235; }
-      else { const hatch = ((i + j) % 6) < 2; rgba[o] = hatch ? 120 : 236; rgba[o + 1] = hatch ? 124 : 236; rgba[o + 2] = hatch ? 130 : 236; rgba[o + 3] = 220; }
+      else { const hatch = ((i + j) % 6) < 2; const hc = PB.rgb(hatch ? PB.grey : PB.base.cream); rgba[o] = hc[0]; rgba[o + 1] = hc[1]; rgba[o + 2] = hc[2]; rgba[o + 3] = 220; }
     }
     const file = 'overview/building_floors_50m_3857.png'; fs.mkdirSync(path.join(OUT, 'overview'), { recursive: true }); fs.writeFileSync(path.join(OUT, file), L.png(W, H, rgba));
     const [w2, n2] = L.imerc(x0, y1), [e2, s2] = L.imerc(x0 + W * pm, y1 - H * pm);

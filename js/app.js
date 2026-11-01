@@ -10,19 +10,18 @@
   const ANALYSIS_MAX_AREA = 12e6; // m² — local tiled data; larger areas would load too many tiles
 
   store.load(); I.apply();
-  let currentAreaId = null; let run = null; let leftTab = 'maps'; let activeSection = null; const secProfiles = new Map();
+  let leftStale = true; let currentAreaId = null; let run = null; let leftTab = 'maps'; let activeSection = null; const secProfiles = new Map();
 
-  // ---------- layout state (panel widths, collapsed panels) ----------
+  // ---------- layout state: three independent floating panels over a full-size map ----------
+  // body classes: left-collapsed = Analysis closed, right-collapsed = Study area closed, layers-collapsed = Layers closed.
+  // Every visit starts with all three closed (only the widths the visitor chose are remembered).
   const UIK = 'granada-atlas.ui';
   let ui = {}; try { ui = JSON.parse(localStorage.getItem(UIK) || '{}'); } catch (e) { }
-  const saveUI = () => { try { localStorage.setItem(UIK, JSON.stringify(ui)); } catch (e) { } };
+  const saveUI = () => { try { localStorage.setItem(UIK, JSON.stringify({ lw: ui.lw, rw: ui.rw })); } catch (e) { } };
   const rootEl = document.documentElement;
-  if (ui.lw) rootEl.style.setProperty('--lw', ui.lw + 'px');
-  if (ui.rw) rootEl.style.setProperty('--rw', ui.rw + 'px');
-  if (ui.lc || (ui.lc == null && innerWidth < 1000)) document.body.classList.add('left-collapsed');
-  if (ui.rc) document.body.classList.add('right-collapsed');
-  if (innerWidth < 1000 && !document.body.classList.contains('left-collapsed') && !document.body.classList.contains('right-collapsed')) document.body.classList.add('left-collapsed'); // narrow: keep the map visible
-  Object.entries(ui.blocks || {}).forEach(([k, v]) => { const b = document.querySelector(`[data-collapse="${k}"]`); if (b && v) b.parentElement.classList.add('collapsed'); });
+  if (ui.lw) rootEl.style.setProperty('--lw', Math.min(760, Math.max(300, ui.lw)) + 'px');
+  if (ui.rw) rootEl.style.setProperty('--rw', Math.min(560, Math.max(260, ui.rw)) + 'px');
+  document.body.classList.add('left-collapsed', 'right-collapsed', 'layers-collapsed');
 
   // ---------- map ----------
   const map = new maplibregl.Map({ container: 'map', style: basemap.style(), center: [-3.5986, 37.1773], zoom: 13.2, minZoom: 10, maxZoom: 19, attributionControl: false, dragRotate: false, pitchWithRotate: false, preserveDrawingBuffer: false });
@@ -35,6 +34,9 @@
     onRemove() { this._d.remove(); }, label() { if (!this._d) return; const b = this._d.querySelector('button'); b.querySelector('.tx').textContent = GA.i18n.t('v6.drawSection'); b.title = GA.i18n.t('v6.drawSectionHint'); b.setAttribute('aria-label', GA.i18n.t('v6.drawSection')); } };
   map.addControl(secCtl, 'top-right');
   map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: '© OpenStreetMap contributors (ODbL) · IGN MDT25 (CC BY 4.0) · JRC GHSL' }), 'bottom-right');
+  // the map is full width under the floating panels, so MapLibre would show the long attribution expanded on tablets, where it
+  // would run under the legend: start it collapsed (ⓘ, one tap to open) below 1000 px
+  map.once('load', () => { if (innerWidth < 1000) { const el = document.querySelector('.maplibregl-ctrl-attrib.maplibregl-compact-show'); if (el) el.classList.remove('maplibregl-compact-show'); } });
   try { maplibregl.setRTLTextPlugin('https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.min.js', true); } catch (e) { }
   let tileErrors = 0;
   map.on('error', (e) => { if ((e && e.sourceId === 'omt') || /tiles\.openfreemap/.test(String(e && e.error && e.error.message))) { tileErrors++; if (tileErrors === 3) toast(t('toast.tiles'), true); } });
@@ -68,32 +70,52 @@
   });
   renderLangSwitch();
 
-  // ---------- panels: collapse, resize ----------
-  function updateToggles() {
-    const lc = document.body.classList.contains('left-collapsed'), rc = document.body.classList.contains('right-collapsed');
-    $('#tog-left').textContent = lc ? '▶' : '◀'; $('#tog-right').textContent = rc ? '◀' : '▶';
-    const v = !lc ? 'analysis' : !rc ? 'study' : 'map'; document.querySelectorAll('#phone-bar [data-pv]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.pv === v)));
+  // ---------- panels: three independent floating panels (Analysis LEFT; Study area and Layers RIGHT) ----------
+  // The map never changes size when a panel opens or closes, so its centre, zoom, selection and layers stay exactly as
+  // they were; panels only cover part of it. --lw-eff / --rw-eff tell the map overlays (legend, north arrow, drawer,
+  // banners, map controls) and fitTo how much of each side is covered.
+  const PN = { analysis: 'left-collapsed', study: 'right-collapsed', layers: 'layers-collapsed' };
+  const isOpen = (k) => !document.body.classList.contains(PN[k]);
+  const phone = () => innerWidth < 700, narrow = () => innerWidth < 1000;
+  function layout() {
+    const B = document.body.classList; const dock = isOpen('study') || isOpen('layers'); B.toggle('dock-closed', !dock); B.toggle('dock-both', isOpen('study') && isOpen('layers'));
+    const gut = 12; const lw = phone() || !isOpen('analysis') ? 0 : $('#col-left').offsetWidth + gut; const rw = phone() || !dock ? 0 : $('#col-right').offsetWidth + gut;
+    rootEl.style.setProperty('--lw-eff', lw + 'px'); rootEl.style.setProperty('--rw-eff', rw + 'px');
   }
-  // phones: the panels are full-screen views chosen from a bar at the bottom (never overlapping the map half-way)
-  function setPhoneView(v) { const B = document.body.classList; if (v === 'map') { B.add('left-collapsed', 'right-collapsed'); } else if (v === 'analysis') { B.remove('left-collapsed'); B.add('right-collapsed'); } else { B.remove('right-collapsed'); B.add('left-collapsed'); } ui.lc = B.contains('left-collapsed'); ui.rc = B.contains('right-collapsed'); saveUI(); updateToggles(); setTimeout(() => map.resize(), 0); }
+  function updateToggles() {
+    Object.keys(PN).forEach(k => { const b = document.querySelector(`.pn-tab[data-pn="${k}"]`); if (b) { b.setAttribute('aria-expanded', String(isOpen(k))); b.classList.toggle('on', isOpen(k)); } });
+    const v = isOpen('analysis') ? 'analysis' : isOpen('study') ? 'study' : isOpen('layers') ? 'layers' : 'map'; document.querySelectorAll('#phone-bar [data-pv]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.pv === v)));
+    layout();
+  }
+  // open/close one panel; phones show one sheet at a time, tablets one side at a time, desktops any combination
+  function setPanel(k, open) {
+    const B = document.body.classList; if (open === isOpen(k)) return;
+    if (open) { if (phone()) Object.keys(PN).forEach(o => o !== k && B.add(PN[o])); else if (narrow()) { if (k === 'analysis') { B.add(PN.study, PN.layers); } else B.add(PN.analysis); } }
+    B.toggle(PN[k], !open); updateToggles();
+    if (k === 'analysis' && open && leftStale) renderLeft(); // only if something changed while closed; the Study area and Layers panels stay rendered while hidden (unsaved input is kept)
+    if (open) { const el = k === 'analysis' ? $('#col-left') : $('#pn-' + k); const f = el && el.querySelector('.pn-x'); if (f && document.activeElement && document.activeElement.closest && document.activeElement.closest('.pn-tab, #phone-bar')) f.focus({ preventScroll: true }); }
+  }
+  // legacy helpers used by the analysis flows (open the Analysis panel when results arrive)
+  function onlyOne(side) { /* kept for older call sites: tablets show one side at a time (handled by setPanel) */ }
+  function setPhoneView(v) { if (v === 'map') Object.keys(PN).forEach(k => setPanel(k, false)); else setPanel(v === 'study' ? 'study' : v === 'layers' ? 'layers' : 'analysis', true); }
+  function openLeft() { setPanel('analysis', true); }
+  window.GA.panels = { set: setPanel, isOpen, toggle: (k) => setPanel(k, !isOpen(k)) };
+  document.querySelectorAll('.pn-tab').forEach(b => b.addEventListener('click', () => setPanel(b.dataset.pn, !isOpen(b.dataset.pn))));
+  document.addEventListener('click', (e) => { const x = e.target.closest('[data-pn-close]'); if (!x) return; const k = x.dataset.pnClose; setPanel(k, false); const tab = document.querySelector(`.pn-tab[data-pn="${k}"]`); if (tab && !phone()) tab.focus({ preventScroll: true }); });
+  document.addEventListener('keydown', (e) => { if (e.key !== 'Escape' || !phone()) return; if (document.querySelector('.vw, .modal:not([hidden])')) return; const k = Object.keys(PN).find(isOpen); if (k) setPanel(k, false); });
   $('#phone-bar').addEventListener('click', (e) => { const b = e.target.closest('[data-pv]'); if (b) setPhoneView(b.dataset.pv); });
   $('#tb-menu').addEventListener('click', () => { const o = document.body.classList.toggle('menu-open'); $('#tb-menu').setAttribute('aria-expanded', String(o)); });
   $('#tb-nav').addEventListener('click', (e) => { if (e.target.closest('.tb-btn')) { document.body.classList.remove('menu-open'); $('#tb-menu').setAttribute('aria-expanded', 'false'); } });
   updateToggles();
-  const narrow = () => innerWidth < 1000;
-  function onlyOne(side) { if (!narrow()) return; const other = side === 'left' ? 'right-collapsed' : 'left-collapsed'; if (!document.body.classList.contains(other)) { document.body.classList.add(other); ui[side === 'left' ? 'rc' : 'lc'] = true; } }
-  // narrow screens never show both side panels: when the window becomes narrow (rotation, resize), keep one
-  addEventListener('resize', () => { if (narrow() && !document.body.classList.contains('left-collapsed') && !document.body.classList.contains('right-collapsed')) { onlyOne(run ? 'left' : 'right'); updateToggles(); map.resize(); } });
-  $('#tog-left').addEventListener('click', () => { if (document.body.classList.contains('left-collapsed')) onlyOne('left'); document.body.classList.toggle('left-collapsed'); ui.lc = document.body.classList.contains('left-collapsed'); saveUI(); updateToggles(); map.resize(); if (!ui.lc) renderLeft(); });
-  $('#tog-right').addEventListener('click', () => { if (document.body.classList.contains('right-collapsed')) onlyOne('right'); document.body.classList.toggle('right-collapsed'); ui.rc = document.body.classList.contains('right-collapsed'); saveUI(); updateToggles(); map.resize(); });
-  document.querySelectorAll('[data-collapse]').forEach(h => h.addEventListener('click', () => { const b = h.parentElement; b.classList.toggle('collapsed'); ui.blocks = ui.blocks || {}; ui.blocks[h.dataset.collapse] = b.classList.contains('collapsed'); saveUI(); }));
+  // narrow screens: never both sides at once (rotation, resize)
+  addEventListener('resize', () => { if (narrow() && isOpen('analysis') && (isOpen('study') || isOpen('layers'))) { document.body.classList.add(PN.study, PN.layers); } if (phone()) { const open = Object.keys(PN).filter(isOpen); open.slice(1).forEach(k => document.body.classList.add(PN[k])); } updateToggles(); });
   document.querySelectorAll('.resizer').forEach(r => r.addEventListener('mousedown', (e) => {
     e.preventDefault(); const side = r.dataset.resize; r.classList.add('drag');
-    const move = (ev) => { const w = side === 'left' ? Math.min(760, Math.max(300, ev.clientX)) : Math.min(560, Math.max(260, innerWidth - ev.clientX)); rootEl.style.setProperty(side === 'left' ? '--lw' : '--rw', w + 'px'); ui[side === 'left' ? 'lw' : 'rw'] = w; map.resize(); };
-    const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); r.classList.remove('drag'); saveUI(); map.resize(); if (side === 'left') renderLeft(); };
+    const move = (ev) => { const w = side === 'left' ? Math.min(760, Math.max(300, ev.clientX - 12)) : Math.min(560, Math.max(260, innerWidth - ev.clientX - 12)); rootEl.style.setProperty(side === 'left' ? '--lw' : '--rw', w + 'px'); ui[side === 'left' ? 'lw' : 'rw'] = w; layout(); };
+    const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); r.classList.remove('drag'); saveUI(); layout(); if (side === 'left') renderLeft(); };
     document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
   }));
-  window.addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz = setTimeout(() => { map.resize(); if (leftTab === 'maps') renderLeft(); }, 200); });
+  window.addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz = setTimeout(() => { map.resize(); layout(); if (leftTab === 'maps') renderLeft(); }, 200); });
 
   // ---------- study-area panel (right, top) ----------
   const shapeLabel = (k) => ({ circle: t('shape.circle'), square: t('shape.square'), polygon: t('shape.polygonShort') }[k] || '');
@@ -193,11 +215,15 @@
   // mask outside study areas when the scope is "study areas"
   function updateMask() { const rings = store.get().areas.map(a => GA.compare.ringOf(a.spec)).filter(Boolean); const r = sel.ring(); if (r) rings.push(r); L.setMaskRings(rings); drawSavedAreas(); }
   function drawSavedAreas() {
-    if (!map.getSource('saved-areas')) { if (!map.isStyleLoaded()) return; map.addSource('saved-areas', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-      map.addLayer({ id: 'saved-areas-line', type: 'line', source: 'saved-areas', paint: { 'line-color': '#5E636A', 'line-width': 1.2, 'line-dasharray': [3, 2] } }, map.getLayer('sel-fill') ? 'sel-fill' : undefined);
-      map.addLayer({ id: 'saved-areas-lbl', type: 'symbol', source: 'saved-areas', layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11, 'symbol-placement': 'line', 'text-offset': [0, -0.8] }, paint: { 'text-color': '#3C4046', 'text-halo-color': '#FFF', 'text-halo-width': 1.4 } }); }
+    if (!map.getSource('saved-areas')) { if (!map.isStyleLoaded()) { if (!drawSavedAreas.waiting) { drawSavedAreas.waiting = true; map.once('idle', () => { drawSavedAreas.waiting = false; drawSavedAreas(); }); } return; } map.addSource('saved-areas', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      map.addLayer({ id: 'saved-areas-line', type: 'line', source: 'saved-areas', paint: { 'line-color': GA.palette.ink3, 'line-width': 1.2, 'line-dasharray': [3, 2] } }, map.getLayer('sel-fill') ? 'sel-fill' : undefined);
+      map.addLayer({ id: 'saved-areas-lbl', type: 'symbol', source: 'saved-areas', layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11, 'symbol-placement': 'line', 'text-offset': [0, -0.8] }, paint: { 'text-color': GA.palette.ink2, 'text-halo-color': '#FFF', 'text-halo-width': 1.4 } }); }
     const feats = store.get().areas.filter(a => a.id !== currentAreaId).map(a => { const r = GA.compare.ringOf(a.spec); return r ? { type: 'Feature', properties: { name: a.name }, geometry: { type: 'LineString', coordinates: r } } : null; }).filter(Boolean);
     map.getSource('saved-areas').setData({ type: 'FeatureCollection', features: feats });
+    // fabric numbers: plain red number centred above each saved boundary (the open one included), same numbers everywhere;
+    // placed before the name labels so a number wins a collision, and numbers never overlap each other
+    const FM = GA.fabricStyle; if (!map.getSource('fabric-no')) { map.addSource('fabric-no', { type: 'geojson', data: FM.numbersFC() }); map.addLayer(FM.numberLayer('fabric-no', 'fabric-no'), 'saved-areas-lbl'); }
+    map.getSource('fabric-no').setData(FM.numbersFC());
   }
 
   // ---------- map clicks: section drawing, feature popups ----------
@@ -284,7 +310,7 @@
     const a = store.get().areas.find(x => x.id === id); if (!a) return;
     currentAreaId = id; sel.loadSpec(a.spec); sel.fitTo(); closeDrawer(); activeSection = (a.sections && a.sections[0] && a.sections[0].id) || null;
     if (a.analysis && a.analysis.result) { run = restoreRun(a); loadGallery(a); } else { run = null; }
-    if (run && document.body.classList.contains('left-collapsed')) { onlyOne('left'); document.body.classList.remove('left-collapsed'); ui.lc = false; saveUI(); updateToggles(); map.resize(); } // show its analysis
+    if (run) openLeft(); // show its analysis
     secTool.setSections(a.sections || [], null); renderLeft(); updateMask(); renderLegend();
   }
   function restoreRun(a) {
@@ -312,7 +338,7 @@
     const prevSnap = a.analysis && a.analysis.snapshot;
     run = { areaId: a.id, runAt: new Date().toISOString(), result: {}, tasks: {}, ring: info.ring, center: info.center, prevSnap };
     if (leftTab !== 'sections') leftTab = 'maps';
-    onlyOne('left'); if (document.body.classList.contains('left-collapsed')) { document.body.classList.remove('left-collapsed'); ui.lc = false; saveUI(); updateToggles(); map.resize(); }
+    openLeft();
     renderLeft(); sel.fitTo(); updateMask();
     const center = info.center; const radius = Math.max(...G.openRing(info.ring).map(p => G.haversine(center, p)));
     const myRun = run;
@@ -358,7 +384,7 @@
       $('#rep-meta').innerHTML = `${shapeLabel(a.spec.type)} · ${fmtArea(a.measures.area)}${run ? ' · ' + (busy ? t('rep.running') : t('rep.lastUpdate', { v: '<span dir="ltr" class="nowrap">' + esc(run.runAt.replace('T', ' ').slice(0, 16)) + '</span>' })) : ''}`;
       $('#btn-refresh').disabled = !!busy;
     }
-    if (document.body.classList.contains('left-collapsed')) return;
+    if (document.body.classList.contains('left-collapsed')) { leftStale = true; return; } leftStale = false;
     if (leftTab === 'maps') return renderMaps(body, a);
     if (leftTab === 'sections') return renderSections(body, a);
     return renderNotes(body, a);
@@ -464,13 +490,13 @@
     const map0 = document.createElement('canvas'); GAL.drawCard(map0, { ring: X.ring }, card, { center: MC.fit([X.ring], W, Hm, 0.06).center, mpp, w: W, h: Hm, ratio: 1 });
     const out = document.createElement('canvas'); out.width = W; out.height = Hm + 330; const ctx = out.getContext('2d'); ctx.direction = rtl ? 'rtl' : 'ltr';
     ctx.fillStyle = '#FFF'; ctx.fillRect(0, 0, out.width, out.height); ctx.fillStyle = PAL.red; ctx.fillRect(0, 0, W, 6);
-    ctx.textAlign = rtl ? 'right' : 'left'; const x0 = rtl ? W - 30 : 30; ctx.fillStyle = '#1C1E21'; ctx.font = `700 34px ${font}`; ctx.fillText(card.title + ' — ' + (areaObj() || {}).name, x0, 54);
-    ctx.font = `20px ${font}`; ctx.fillStyle = '#3C4046'; ctx.fillText(t('ui.pngScale', { s: '1:' + den.toLocaleString('en-US'), d: DPI, w: Math.round(W / DPI * 25.4), h: Math.round(Hm / DPI * 25.4) }), x0, 86);
+    ctx.textAlign = rtl ? 'right' : 'left'; const x0 = rtl ? W - 30 : 30; ctx.fillStyle = GA.palette.ink; ctx.font = `700 34px ${font}`; ctx.fillText(card.title + ' — ' + (areaObj() || {}).name, x0, 54);
+    ctx.font = `20px ${font}`; ctx.fillStyle = GA.palette.ink2; ctx.fillText(t('ui.pngScale', { s: '1:' + den.toLocaleString('en-US'), d: DPI, w: Math.round(W / DPI * 25.4), h: Math.round(Hm / DPI * 25.4) }), x0, 86);
     ctx.drawImage(map0, 0, 100);
     let y = GA.compare.legendCanvas(ctx, card.legend || [], 30, Hm + 130, W - 60, rtl, font);
-    ctx.font = `17px ${font}`; ctx.fillStyle = '#1C1E21'; ctx.textAlign = rtl ? 'right' : 'left';
+    ctx.font = `17px ${font}`; ctx.fillStyle = GA.palette.ink; ctx.textAlign = rtl ? 'right' : 'left';
     (card.find || []).forEach(f => { y = GA.compare.wrap(ctx, String(f).replace(/<[^>]+>/g, '').replace(/[⁦⁩]/g, ''), x0, y + 6, W - 60, 24, 2); });
-    ctx.font = `15px ${font}`; ctx.fillStyle = '#5E636A'; ctx.fillText(`${card.src.name} · ${card.src.detail} · ${card.src.license} · EPSG:25830 · ${new Date().toISOString().slice(0, 10)}`, x0, out.height - 18);
+    ctx.font = `15px ${font}`; ctx.fillStyle = GA.palette.ink3; ctx.fillText(`${card.src.name} · ${card.src.detail} · ${card.src.license} · EPSG:25830 · ${new Date().toISOString().slice(0, 10)}`, x0, out.height - 18);
     out.toBlob(bl => download(bl, `granada_${card.id}_1-${den}.png`), 'image/png');
   }
   function download(blob, name) { const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); }
@@ -489,8 +515,7 @@
   // tablets (narrow side-by-side layouts) also give the whole width to the map while drawing
   const roomy = () => window.innerWidth >= 1100;
   function startSection() { closeDrawer(); leftTab = 'sections'; const B = document.body.classList;
-    if (isPhone()) setPhoneView('map'); else if (!roomy()) { B.add('left-collapsed', 'right-collapsed'); updateToggles(); setTimeout(() => map.resize(), 50); }
-    else if (B.contains('left-collapsed')) { B.remove('left-collapsed'); updateToggles(); setTimeout(() => map.resize(), 50); }
+    if (isPhone() || !roomy()) setPhoneView('map'); else openLeft(); void B;
     renderLeft(); secTool.start(); }
   function sectionMode(mode, n) {
     const mb = $('#mode-banner');
@@ -500,7 +525,7 @@
   function createSection(pts) {
     const H = secHost();
     const s = { id: store.uid('sec'), name: t('sec.defaultName', { n: H.list.length + 1 }), pts, floorH: 3.0, ve: 'auto', created: new Date().toISOString() };
-    H.list.push(s); H.save(); activeSection = s.id; leftTab = 'sections'; secTool.setSections(H.list, s.id); if (isPhone()) setPhoneView('analysis'); else if (document.body.classList.contains('left-collapsed')) { document.body.classList.remove('left-collapsed'); updateToggles(); setTimeout(() => map.resize(), 50); } renderLeft();
+    H.list.push(s); H.save(); activeSection = s.id; leftTab = 'sections'; secTool.setSections(H.list, s.id); openLeft(); renderLeft();
   }
   function editSection(s) { // s is the stored object being edited: update exactly that section
     const H = secHost(); const i = H.list.findIndex(x => x.id === s.id); if (i < 0) return;
@@ -551,7 +576,7 @@
     const cov = p.coverage || {}; const covNote = [cov.demMissing > 0 ? t('v6.covDem', { p: Math.round(cov.demMissing * 100) }) : '', cov.outsideRegion > 0 ? t('v6.covBld', { p: Math.round(cov.outsideRegion * 100) }) : ''].filter(Boolean);
     out.innerHTML = `${covNote.length ? `<div class="note warn" role="note">${covNote.join('<br>')}</div>` : ''}<button type="button" class="sec-prev" id="sec-prev" aria-label="${esc(t('v5.enlargeSection'))}"><canvas class="sec-canvas" id="sec-cv"></canvas><span class="enl" aria-hidden="true">⤢ ${t('v5.enlargeSection')}</span></button>
       <div class="actions"><button class="btn btn-small" id="sec-png">${t('sec.png')}</button><button class="btn btn-small" id="sec-svg">SVG</button><button class="btn btn-small" id="sec-pdf">PDF</button><button class="btn btn-small" id="sec-geojson">GeoJSON</button><button class="btn btn-small" id="sec-lib">${t('lib.addTo')}</button></div>
-      <details class="method"><summary>${t('v5.legendNotes')}</summary><ul class="lg"><li><i class="sw" style="background:#fff;border:2px solid ${PAL.red}"></i><span>${t('sec.lgReported3')}</span></li><li><i class="sw" style="background:#fff;border:2px dashed ${PAL.red}"></i><span>${t('sec.lgEstimated3', { f: nf(s.floorH || 3, 1) })}</span></li><li><i class="sw ln" style="border-top:3px solid ${PAL.red}"></i><span>${t('sec.lgUnknown')}</span></li><li><i class="sw" style="background:#fff;border:1px solid #B9BBBE"></i><span>${t('sec.lgBg3')}</span></li><li><i class="sw dot" style="background:#fff;border:1.5px dashed #4E6B45"></i><span>${t('v4.lgTreeNear')}</span></li><li><i class="sw dot" style="background:#fff;border:1px dashed #93A68B;opacity:.7"></i><span>${t('v4.lgTreeFar', { c: nf(p.corridor || 15) })}</span></li><li><i class="sw" style="background:#F3F3F1;border-top:2px solid #1C1E21"></i><span>${t('sec.lgGround')}</span></li></ul>
+      <details class="method"><summary>${t('v5.legendNotes')}</summary><ul class="lg"><li><i class="sw" style="background:#fff;border:2px solid ${PAL.red}"></i><span>${t('sec.lgReported3')}</span></li><li><i class="sw" style="background:#fff;border:2px dashed ${PAL.red}"></i><span>${t('sec.lgEstimated3', { f: nf(s.floorH || 3, 1) })}</span></li><li><i class="sw ln" style="border-top:3px solid ${PAL.red}"></i><span>${t('sec.lgUnknown')}</span></li><li><i class="sw" style="background:${PAL.section.bgFill};border:1px solid ${PAL.section.bgLine}"></i><span>${t('sec.lgBg3')}</span></li><li><i class="sw dot" style="background:#fff;border:1.5px dashed ${PAL.section.treeOn}"></i><span>${t('v4.lgTreeNear')}</span></li><li><i class="sw dot" style="background:#fff;border:1px dashed ${PAL.section.treeBg};opacity:.7"></i><span>${t('v4.lgTreeFar', { c: nf(p.corridor || 15) })}</span></li><li><i class="sw" style="background:${PAL.section.soil};border-top:2px solid ${PAL.section.ink}"></i><span>${t('sec.lgGround')}</span></li></ul>
       <dl class="kpi"><div><dt>${t('sec.length')}</dt><dd>${fmtLen(p.L)}</dd></div><div><dt>${t('g.elevRange')}</dt><dd><span class="num">${nf(p.min)}–${nf(p.max)}</span> ${t('u.m')}</dd></div><div><dt>${t('sec.maxGrad', { b: nf(p.baseline) })}</dt><dd><span class="num">${nf(p.maxGrad * 100, 1)}${I.pctSign()}</span> <small>(${nf(dg, 1)}°)</small></dd></div></dl>
       <ul class="find"><li>${t('sec.cutsSummary', { n: p.cuts.length, r: rep, e: est, u: unk, b: p.bg.length, bu: p.bgUnknown })}</li><li>${p.tErr ? t('sec.treesFail', { e: esc(p.tErr) }) : t('v4.treesN', { n: (p.trees || []).filter(x => !x.row).length, near: (p.trees || []).filter(x => !x.row && x.near).length, h: (p.trees || []).filter(x => !x.row && x.h).length, c: nf(p.corridor || 15), r: p.rowsNear || 0 })}</li><li>${t('sec.material')}</li>${p.hornMax != null ? `<li>${t('sec.hornMax', { d: nf(p.hornMax, 1), p: nf(Math.tan(p.hornMax * Math.PI / 180) * 100) })}</li>` : ''}${p.missing ? `<li>${t('sec.partialOutside')}</li>` : ''}${p.bErr ? `<li class="error">${esc(p.bErr)}</li>` : ''}</ul>
       </details><details class="method"><summary>${t('g.method')}</summary><p>${t('sec.method', { f: nf(s.floorH || 3, 1) })}</p><p>${t('sec.slopeFix')}</p></details>`;
@@ -648,8 +673,8 @@
     exportBusy = true; exportMsg = `<span class="spin"></span> ${t('x.building')}`; renderDrawer();
     const setMsg = (m) => { exportMsg = `<span class="spin"></span> ${esc(m)}`; const el = $('.x-msg'); if (el) el.innerHTML = exportMsg; };
     try {
-      ctx.sections = ctx.area.sections && ctx.area.sections.length ? await sectionsForExport([{ area: ctx.area }]) : [];
-      if (ctx.run && run && run.X) { const iv = GA.compare.indicators(run.X); ctx.indicators = [{ no: 1, name: ctx.area.name, ring: ctx.ring, values: iv }]; ctx.v3 = v3Of(run.X); }
+      ctx.sections = ctx.area.sections && ctx.area.sections.length ? await sectionsForExport([{ area: ctx.area, no: GA.fabricStyle.numberOf(ctx.area.id) }]) : [];
+      if (ctx.run && run && run.X) { const iv = GA.compare.indicators(run.X); ctx.indicators = [{ no: GA.fabricStyle.numberOf(ctx.area.id) || 1, name: ctx.area.name, ring: ctx.ring, values: iv }]; ctx.v3 = v3Of(run.X); }
       const demGrid = exportOpts.dem && D.inRegion(G.centroidLL(ctx.ring)) ? await D.grid('dem').catch(() => null) : null;
       const r = await GA.gisexport.build(ctx, exportOpts, { loadSQL, elevation: S.elevation, progress: setMsg, demGrid });
       download(new Blob([r.zipBytes], { type: 'application/zip' }), r.filename);

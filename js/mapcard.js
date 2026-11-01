@@ -17,7 +17,7 @@
   let hatchPat = null;
   function hatch(ctx, col) {
     const c = document.createElement('canvas'); c.width = c.height = 8; const x = c.getContext('2d');
-    x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, 8, 8); x.strokeStyle = col || '#8A8F96'; x.lineWidth = 1.1; x.beginPath(); x.moveTo(0, 8); x.lineTo(8, 0); x.stroke();
+    x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, 8, 8); x.strokeStyle = col || GA.palette.grey; x.lineWidth = 1.1; x.beginPath(); x.moveTo(0, 8); x.lineTo(8, 0); x.stroke();
     return ctx.createPattern(c, 'repeat');
   }
 
@@ -52,8 +52,8 @@
     (spec.images || []).forEach(im => { if (!im.img) return; ctx.save(); ctx.globalAlpha = im.alpha == null ? 1 : im.alpha; ctx.imageSmoothingEnabled = true; ctx.drawImage(im.img, X(im.x0), Y(im.y1), (im.x1 - im.x0) / mpp, (im.y1 - im.y0) / mpp); ctx.restore(); });
     // context
     if (spec.context) {
-      if (spec.context.streets) { ctx.strokeStyle = spec.context.streetColor || '#D3D5D8'; ctx.lineWidth = 0.8; ctx.beginPath(); spec.context.streets.forEach(g => lines(utm(g), g.type).forEach(l => l.forEach((p, i) => { const q = px(p); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }))); ctx.stroke(); }
-      if (spec.context.buildings) { ctx.fillStyle = spec.context.buildingColor || '#E3E4E6'; ctx.beginPath(); spec.context.buildings.forEach(g => polys(utm(g), g.type).forEach(pl => path(pl))); ctx.fill('evenodd'); }
+      if (spec.context.streets) { ctx.strokeStyle = spec.context.streetColor || GA.palette.line; ctx.lineWidth = 0.8; ctx.beginPath(); spec.context.streets.forEach(g => lines(utm(g), g.type).forEach(l => l.forEach((p, i) => { const q = px(p); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }))); ctx.stroke(); }
+      if (spec.context.buildings) { ctx.fillStyle = spec.context.buildingColor || GA.palette.line; ctx.beginPath(); spec.context.buildings.forEach(g => polys(utm(g), g.type).forEach(pl => path(pl))); ctx.fill('evenodd'); }
     }
     // thematic layers
     (spec.layers || []).forEach(L => {
@@ -94,15 +94,22 @@
         const txt = area ? String(l.text).toUpperCase() : String(l.text); const tw = ctx.measureText(txt).width; const ty = area ? q[1] : q[1] - sz;
         const bx = [q[0] - tw / 2 - 3, ty - sz / 2 - 2, q[0] + tw / 2 + 3, ty + sz / 2 + 2];
         if (boxes.some(b => !(bx[2] < b[0] || bx[0] > b[2] || bx[3] < b[1] || bx[1] > b[3]))) return; boxes.push(bx);
-        if (!area) { ctx.beginPath(); ctx.arc(q[0], q[1], 3, 0, Math.PI * 2); ctx.fillStyle = l.color || '#1C1E21'; ctx.fill(); ctx.strokeStyle = '#FFF'; ctx.lineWidth = 1.2; ctx.stroke(); }
-        ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 3.5; ctx.strokeText(txt, q[0], ty); ctx.fillStyle = l.color || (area ? '#6B7077' : '#1C1E21'); ctx.fillText(txt, q[0], ty);
+        if (!area) { ctx.beginPath(); ctx.arc(q[0], q[1], 3, 0, Math.PI * 2); ctx.fillStyle = l.color || GA.palette.ink; ctx.fill(); ctx.strokeStyle = '#FFF'; ctx.lineWidth = 1.2; ctx.stroke(); }
+        ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 3.5; ctx.strokeText(txt, q[0], ty); ctx.fillStyle = l.color || (area ? GA.palette.ink3 : GA.palette.ink); ctx.fillText(txt, q[0], ty);
       });
       ctx.restore();
     }
+    // fabric numbers: plain red number centred above each fabric's top edge (one numbering for every map and export)
+    // a card of one saved fabric (analysis cards, viewers, comparison cells, exports) carries that fabric's number too
+    let nums = spec.fabricNumbers;
+    if (!nums && spec.ring && spec.ownNumber !== false && root.GA.fabricStyle) { const key = (r) => r.length + ':' + r[0][0].toFixed(7) + ',' + r[0][1].toFixed(7); const k = key(spec.ring);
+      const m = root.GA.fabricStyle.numbered().find(f => f.ring.length && key(f.ring) === k); if (m) nums = [m]; }
+    if (nums && nums.length && root.GA.fabricStyle) { const placed = [];
+      nums.forEach(f => { if (f.no == null || !f.ring) return; const pts = ringUTM(f.ring).map(px); if (pts.every(q => q[0] < 0 || q[0] > W || q[1] < 0 || q[1] > H)) return; root.GA.fabricStyle.numberAbove(ctx, pts, f.no, { size: f.size || 14, placed }); }); }
     if (spec.scaleBar !== false) scaleBar(ctx, W, H, mpp, spec.scaleBarAlign);
     if (spec.north !== false) north(ctx, W);
     if (spec.areaStyle && spec.areaStyle.label) { ctx.font = `700 13px ${font()}`; ctx.fillStyle = spec.areaStyle.color || P.red; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; const t = spec.areaStyle.label; const w = ctx.measureText(t).width + 10; ctx.fillStyle = '#FFFFFF'; ctx.fillRect(6, 6, w, 20); ctx.fillStyle = spec.areaStyle.color || P.red; ctx.fillText(t, 11, 9); }
-    if (spec.frame !== false) { ctx.strokeStyle = '#C9CACC'; ctx.lineWidth = 1; ctx.strokeRect(0.5, 0.5, W - 1, H - 1); }
+    if (spec.frame !== false) { ctx.strokeStyle = GA.palette.line2; ctx.lineWidth = 1; ctx.strokeRect(0.5, 0.5, W - 1, H - 1); }
     return { X, Y };
   }
   function label(ctx, t, x, y) { const w = ctx.measureText(t).width + 6; ctx.save(); ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(x - w / 2, y - 8, w, 16); ctx.restore(); ctx.fillText(t, x, y); }
@@ -111,12 +118,12 @@
   function scaleBar(ctx, W, H, mpp, align) {
     const len = niceLen(W * 0.22 * mpp); const px = len / mpp; const x0 = 10, y0 = H - 16;
     ctx.fillStyle = 'rgba(255,255,255,.88)'; ctx.fillRect(x0 - 4, y0 - 15, px + 54, 26);
-    ctx.fillStyle = '#222428'; ctx.fillRect(x0, y0, px / 2, 4); ctx.strokeStyle = '#222428'; ctx.lineWidth = 1; ctx.strokeRect(x0 + 0.5, y0 + 0.5, px - 1, 3);
+    ctx.fillStyle = GA.palette.ink; ctx.fillRect(x0, y0, px / 2, 4); ctx.strokeStyle = GA.palette.ink; ctx.lineWidth = 1; ctx.strokeRect(x0 + 0.5, y0 + 0.5, px - 1, 3);
     ctx.font = `10px ${font()}`; ctx.textBaseline = 'bottom'; ctx.textAlign = 'left'; ctx.direction = 'ltr';
     ctx.fillText('0', x0, y0 - 2); ctx.textAlign = 'center'; ctx.fillText(len >= 1000 ? (len / 1000) + ' km' : len + ' m', x0 + px, y0 - 2);
   }
   function north(ctx, W) {
-    const x = W - 18, y = 12; ctx.fillStyle = '#222428'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 6, y + 18); ctx.lineTo(x, y + 14); ctx.lineTo(x - 6, y + 18); ctx.closePath(); ctx.fill();
+    const x = W - 18, y = 12; ctx.fillStyle = GA.palette.ink; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 6, y + 18); ctx.lineTo(x, y + 14); ctx.lineTo(x - 6, y + 18); ctx.closePath(); ctx.fill();
     ctx.font = `700 10px ${font()}`; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.direction = 'ltr'; ctx.fillText('N', x, y + 20);
   }
 
