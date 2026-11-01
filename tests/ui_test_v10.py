@@ -31,7 +31,8 @@ def open_meteo(route):
 LL = {'Alhambra': [-3.5881, 37.1761], 'Albaicín': [-3.5925, 37.1810], 'Sacromonte': [-3.5850, 37.1815], 'Catedral_de_Granada': [-3.5992, 37.1763], 'Plaza_de_Bib-Rambla': [-3.5996, 37.1749], 'Plaza_Nueva_(Granada)': [-3.5960, 37.1765], 'Gran_Vía_de_Colón': [-3.5990, 37.1780], 'Realejo-San_Matías': [-3.5935, 37.1725], 'Cartuja_de_Granada': [-3.5995, 37.1940], 'Almanjáyar': [-3.6080, 37.1990], 'Generalife': [-3.5845, 37.1772]}
 def wiki(route):
     u = urllib.parse.unquote(route.request.url); ks = [k for k in LL if u.endswith('/' + k)]; k = ks[0] if ks else None
-    route.fulfill(json={'title': (k or 'Test').replace('_', ' '), 'extract': 'Test extract.', 'content_urls': {'desktop': {'page': 'https://es.wikipedia.org/wiki/' + (k or 'Test')}}, 'coordinates': {'lat': LL[k][1], 'lon': LL[k][0]} if k else None, 'timestamp': '2026-01-01T00:00:00Z'})
+    th = {'thumbnail': {'source': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Catedral_test.jpg/320px-Catedral_test.jpg'}} if k == 'Catedral_de_Granada' else {}
+    route.fulfill(json={**th, 'title': (k or 'Test').replace('_', ' '), 'extract': 'Test extract.', 'content_urls': {'desktop': {'page': 'https://es.wikipedia.org/wiki/' + (k or 'Test')}}, 'coordinates': {'lat': LL[k][1], 'lon': LL[k][0]} if k else None, 'timestamp': '2026-01-01T00:00:00Z'})
 
 def boot(b, vp, lang='en', mobile=False):
     ctx = b.new_context(viewport=vp, is_mobile=mobile, has_touch=mobile, accept_downloads=True); pg = ctx.new_page(); V3.stub3(pg)
@@ -104,27 +105,40 @@ try:
         pg.evaluate('GA.pages.go("history")')
         pg.wait_for_function('document.querySelectorAll("#hx-places .hx-place").length >= 10', timeout=120000); time.sleep(20)
         txt = pg.evaluate('document.querySelector("#page").innerText'); check('present-day' in txt and 'position only' in txt, 'historical view legend: present-day shapes, points only where no boundary')
+        figs = pg.evaluate('[...document.querySelectorAll("#hx-places .hx-fig")].map(f => [f.dataset.file, f.innerText])'); noimg = pg.evaluate('document.querySelectorAll("#hx-places .hx-noimg").length')
+        check(len(figs) == 1 and figs[0][0] == 'Catedral_test.jpg' and 'Wikimedia Commons' in figs[0][1], f'image under the paragraph: the article\'s own Commons lead image with attribution {figs}')
+        check(noimg >= 10, f'places without an image say so instead of showing a filler ({noimg})')
         pg.evaluate('document.querySelector("[data-hx-fly=\'3\']").click()'); time.sleep(5); pg.screenshot(path=f'{OUT}/history_cathedral.png')
         pg.evaluate('GA.pages.close()'); time.sleep(0.5)
-        # ---------- 8. print layout ----------
+        # ---------- 8. print layout: arrange map, legend, section and image on one page ----------
         pg.evaluate('GA.app.map.jumpTo({ center: [-3.5960, 37.1765], zoom: 15 })'); on('neighbourhoods'); time.sleep(2)
+        pg.evaluate('''() => { const p = GA.app.store.get(); p.sections = [{ id: GA.app.store.uid('sec'), name: 'Print section', pts: [[-3.5930, 37.1752], [-3.5930, 37.1738]], floorH: 3, created: new Date().toISOString() }]; GA.app.store.save(); }''')
         pg.evaluate('GA.pages.go("print")'); time.sleep(1); pg.fill('[data-pl=title]', 'Print test')
-        pg.click('[data-pl-act=preview]'); pg.wait_for_function('document.querySelector("#pl-sheet canvas")', timeout=120000)
+        opts = pg.evaluate('[...document.querySelectorAll("select[data-slot=\'2\'] option")].map(o => o.value)'); check(any(o.startswith('section:') for o in opts) and 'legend' in opts and 'map' in opts, 'slot choices: map, legend, saved sections', opts)
+        sec = [o for o in opts if o.startswith('section:')][0]; pg.select_option('select[data-slot="2"][data-sk=item]', sec); time.sleep(0.5)
+        pg.set_input_files('[data-pl=image]', os.path.join(ROOT, 'tests', 'px.png')); time.sleep(1)
+        check(pg.evaluate('GA.printLayout.st.slots[3].type') == 'image', 'an added image goes into the next free slot')
+        pg.fill('[data-img="0"][data-ik=source]', 'Test photo, CC BY 4.0'); pg.press('[data-img="0"][data-ik=source]', 'Tab')
+        pg.fill('[data-slot="0"][data-sk=caption]', 'Centro at 1:5,000'); pg.press('[data-slot="0"][data-sk=caption]', 'Tab')
+        pg.click('[data-mv="2:1"]'); time.sleep(0.3); order = pg.evaluate('GA.printLayout.st.slots.slice(0, 4).map(s => s.type)'); check(order == ['map', 'legend', 'image', 'section'], f'slots can be reordered {order}')
+        pg.click('[data-pl-act=preview]'); pg.wait_for_function('document.querySelector("#pl-sheet canvas")', timeout=180000); time.sleep(1); pg.screenshot(path=f'{OUT}/print_arranged_preview.png')
         check('1:5,0' in pg.evaluate('document.querySelector("#pl-msg").innerText'), 'preview reports the measured scale')
         pg.select_option('[data-pl=dpi]', '150')
-        with pg.expect_download(timeout=240000) as dl: pg.click('[data-pl-act=pdf]')
+        with pg.expect_download(timeout=300000) as dl: pg.click('[data-pl-act=pdf]')
         pdf = os.path.join(OUT, 'print_A3L.pdf'); dl.value.save_as(pdf); info = subprocess.run(['pdfinfo', pdf], capture_output=True, text=True).stdout
-        check('1190.55 x 841.89' in info, 'PDF page is A3 landscape (420 × 297 mm)', info)
-        msr = int(pg.evaluate('document.querySelector("#pl-msg").innerText').split('1:')[-1].replace(',', '').strip('. '))
-        check(abs(msr - 5000) / 5000 < 0.005, f'map scale correct at 100 %: measured 1:{msr} for 1:5,000')
-        for paper, orient, denom in [('A4', 'portrait', '2000'), ('A2', 'landscape', '10000')]:
-            pg.select_option('[data-pl=paper]', paper); pg.select_option('[data-pl=orient]', orient); pg.select_option('[data-pl=denom]', denom)
+        check('1190.55 x 841.89' in info, 'PDF page is A3 landscape (420 × 297 mm) with map, legend, image and section', info)
+        subprocess.run(['pdftoppm', '-r', '40', '-png', pdf, os.path.join(OUT, 'print_A3L')])
+        lp = pg.evaluate('GA.lastPrint.maps'); check(len(lp) == 1 and abs(lp[0]['measured'] - 5000) / 5000 < 0.005, f'map scale correct at 100 %: measured 1:{round(lp[0]["measured"])} for 1:5,000')
+        # two maps at different scales on a 2 × 2 grid, A2 landscape and A4 portrait
+        pg.select_option('[data-pl=template]', 'grid'); time.sleep(0.4)
+        pg.select_option('select[data-slot="1"][data-sk=item]', 'map'); time.sleep(0.4); pg.select_option('select[data-slot="1"][data-sk=denom]', '10000')
+        for paper, orient in [('A2', 'landscape'), ('A4', 'portrait')]:
+            pg.select_option('[data-pl=paper]', paper); pg.select_option('[data-pl=orient]', orient)
             with pg.expect_download(timeout=300000) as dl: pg.click('[data-pl-act=png]')
             png = os.path.join(OUT, f'print_{paper}.png'); dl.value.save_as(png); im = Image.open(png)
             mm = {'A4': (210, 297), 'A2': (594, 420)}[paper]; exp = (round(mm[0] / 25.4 * 150), round(mm[1] / 25.4 * 150))
             check(abs(im.size[0] - exp[0]) <= 1 and abs(im.size[1] - exp[1]) <= 1, f'{paper} {orient}: PNG {im.size} = paper size at 150 dpi {exp}')
-            msr = int(pg.evaluate('document.querySelector("#pl-msg").innerText').split('1:')[-1].replace(',', '').strip('. '))
-            check(abs(msr - int(denom)) / int(denom) < 0.005, f'{paper}: measured 1:{msr} for 1:{denom}')
+            lp = pg.evaluate('GA.lastPrint.maps.map(m => [m.denom, Math.round(m.measured)])'); check(len(lp) == 2 and all(abs(b - a) / a < 0.005 for a, b in lp), f'{paper}: two maps, each at its own scale {lp}')
         pg.evaluate('GA.pages.close()')
         check(not errs, 'desktop: no page errors', errs[:3])
         ctx.close()
