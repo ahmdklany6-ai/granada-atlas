@@ -751,3 +751,7 @@ details.assign[open] > summary { border-bottom: 1px solid var(--line); } details
 .cl-open { display: block; width: 100%; padding: 0; border: 1px solid var(--line); background: #FFF; cursor: zoom-in; }
 @media (max-width: 720px) { .sub-states { grid-template-columns: 1fr 1fr; } }
 @media (pointer: coarse) { .vw-tools .btn, .vw-zoom .btn { min-height: 40px; min-width: 40px; } .sv-grid input, .sv-grid select, .sv-w input { min-height: 38px; } }
+
+/* ---- 5.9: wind rose and rainfall chart in legends ---- */
+.lg-rose { display: block; margin: 4px auto 6px; }
+.lg-chart { display: block; max-width: 100%; height: auto; margin: 4px 0; }

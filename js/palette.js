@@ -66,7 +66,11 @@
     slope: [['0-2', '#F4F1EA'], ['2-5', '#E8E1C8'], ['5-10', D.khakiPale], ['10-15', '#BFA97A'], ['15-25', '#9C7A55'], ['25-35', BASE.burgundy], ['35+', BASE.wine]],
     slopeAlpha: [0, 150, 175, 195, 210, 225, 235],
     elevRamp: [[560, '#EEEEE6'], [650, '#E2E3D3'], [700, '#E2DCC0'], [800, '#D3C6A0'], [950, '#BBA67F'], [1200, '#A08066'], [1600, '#83655A'], [1860, '#F2F1EC']],
-    contour: '#8C7A55', trees: RED, waterLine: D.blueDeep,
+    contour: '#8C7A55', trees: RED, waterLine: D.blueDeep, blueDark: D.blueDark,
+    // water and runoff (water keeps the blue family): terrain flow paths by upslope area, small → large; mapped ditches
+    flow: [D.bluePale, BASE.blueGrey, D.blueDeep, D.blueDark], drain: D.blueMid,
+    // seasonal wind rose speed classes (0.5–2, 2–4, 4–6, ≥ 6 m/s): light → dark red
+    wind: ['#E8C9C1', D.rose, RED, BASE.oxblood],
     // boundaries: neighbourhoods in our red; districts darker; the municipality's outer line in dark ink (not red, so it
     // never reads as a neighbourhood line); the GHSL urban centre stays a separate dashed line
     admin: { distrito: BASE.oxblood, barrio: RED, municipio: D.ink, urban: D.ink3 },
