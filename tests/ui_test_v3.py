@@ -120,6 +120,9 @@ def main():
             pg.evaluate('GA.app.sel.reset()'); pg.evaluate('GA.app.sel.setCenterDirect([-3.5995, 37.1766])'); time.sleep(0.3)
             pg.fill('#in-name', 'Centro v3'); pg.click('#btn-analyze')
             wait(pg, 'GA.app.getRun() && GA.app.getRun().X && document.querySelector("[data-card=flood]") && document.querySelector("[data-card=trees]")', 90000); time.sleep(1)
+            # external sources arrive progressively: wait until the flood exposure has been computed
+            try: wait(pg, 'GA.compare.indicators(GA.app.getRun().X).flood_t100_share != null', 60000)
+            except Exception: pass
             cards = pg.evaluate('[...document.querySelectorAll("#left-body [data-card]")].map(c => c.dataset.card).join(",")')
             check('gallery adds places, bus, trees, flood, noise cards', all(k in cards.split(',') for k in ['places', 'bus', 'trees', 'flood', 'noise']), cards)
             iv = pg.evaluate('JSON.stringify(GA.compare.indicators(GA.app.getRun().X))'); iv = json.loads(iv)
@@ -193,8 +196,8 @@ def main():
             pg.select_option('.slot [data-sf=assign]', 'climate'); time.sleep(0.5)
             wait(pg, 'document.querySelector(".slot")', 10000)
             with pg.expect_download(timeout=120000) as dl: pg.click('.slot [data-sx=png]')
-            time.sleep(0.5); st = pg.evaluate('GA.studio.S().slots.st1[0].status')
-            check('studio: exporting a square marks it Exported, never Uploaded', st == 'exported', st)
+            time.sleep(0.5); st = pg.evaluate('(() => { const sl = GA.studio.S().slots.st1[0]; return { exp: (sl.exports || []).length, up: !!sl.uploaded }; })()')
+            check('studio: exporting a square records an export, never an upload', st['exp'] >= 1 and not st['up'], st)
             pg.evaluate('GA.pages.go("studio", "climate")'); wait(pg, 'document.querySelector(".cl-prev canvas")', 90000)
             with pg.expect_download(timeout=120000) as dl: pg.click('#cl-pdf')
             check('studio: climate board exports (PDF)', open(dl.value.path(), 'rb').read().startswith(b'%PDF'))

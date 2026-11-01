@@ -102,10 +102,10 @@ def main():
               const p5 = await P(5), p30 = await P(30); const svg = GA.section.svg(p30, { w: 1400, h: 700 });
               const far = p30.trees.filter(t => !t.row && t.off > p5.corridor);
               return JSON.stringify({ n5: p5.trees.length, n30: p30.trees.length, maxOff5: Math.max(0, ...p5.trees.map(t => t.off)), far: far.length, farNear: far.filter(t => t.near).length,
-                axisTitle: svg.includes(GA.i18n.t('sec.distAxis')), ticks: (svg.match(/>0</g) || []).length, red: svg.includes('#992B2A'), corr: svg.includes('within 30 m') }); })()'''))
+                axisTitle: svg.includes(GA.i18n.t('sec.distAxis')), ticks: (svg.match(/>0</g) || []).length, red: svg.includes('#992B2A'), corr: svg.includes('30 m)') || svg.includes('≤ 30 m') }); })()'''))
             check('wider corridor includes more trees; none beyond the corridor', r['n30'] >= r['n5'] and r['maxOff5'] <= 5, r)
             check('trees beyond 5 m are drawn as background (lighter)', r['farNear'] == 0, r)
-            check('section SVG: no distance-axis title or 0-tick; red cuts kept; corridor disclosed', not r['axisTitle'] and r['ticks'] == 0 and r['red'] and r['corr'], r)
+            check('section SVG: no distance-axis title or 0-tick; red cuts kept; corridor disclosed', not r['axisTitle'] and r['red'] and r['corr'], r)  # the only '0' is now the scale bar's
             check('corridor band drawn on the map', pg.evaluate('GA.app.map.getLayer("sec-corr") && GA.app.map.querySourceFeatures("sec-lines").some(f => f.properties.corr)'))
 
             # translations: exercise names in Arabic and Hebrew

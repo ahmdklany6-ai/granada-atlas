@@ -149,25 +149,33 @@
   function dl(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); }
 
   // ---------- image viewer (photos, scans, image-only reference maps) ----------
-  function image(o) {
-    const sh = shell({ kind: 'vw-img', title: esc(o.title || ''), subtitle: o.subtitle ? esc(o.subtitle) : '',
-      tools: `<div class="vw-zoom" role="group"><button class="btn btn-small" data-z="in">＋<span class="lbl">${t('v5.zoomIn')}</span></button><button class="btn btn-small" data-z="out">－<span class="lbl">${t('v5.zoomOut')}</span></button><button class="btn btn-small" data-z="reset">${t('v5.resetView')}</button></div>${o.link ? `<a class="btn btn-small" href="${esc(o.link)}" target="_blank" rel="noopener">${t('v5.openSource')} ↗</a>` : ''}`,
-      body: `<div class="vw-stage vw-imgstage" tabindex="0"><img alt="${esc(o.alt || o.title || '')}" draggable="false" src="${esc(o.src)}"><p class="vw-hint">${t(o.notGIS ? 'v5.imgHintNoGIS' : 'v5.imgHint')}</p></div>${o.meta ? `<aside class="vw-side"><section>${o.meta}</section></aside>` : ''}`,
-      onKey: (e) => { if (e.key === '+' || e.key === '=') zoom(1.4); if (e.key === '-') zoom(1 / 1.4); if (e.key === '0') reset(); },
-    });
-    const stage = sh.el.querySelector('.vw-stage'), img = stage.querySelector('img'); let s = 1, x = 0, y = 0;
-    const apply = () => { img.style.transform = `translate(${x}px, ${y}px) scale(${s})`; };
-    const reset = () => { s = 1; x = 0; y = 0; apply(); }; const zoom = (f, cx, cy) => { const r = stage.getBoundingClientRect(); cx = cx == null ? r.width / 2 : cx; cy = cy == null ? r.height / 2 : cy; const s2 = Math.max(1, Math.min(12, s * f)); const k = s2 / s; x = cx - (cx - x) * k; y = cy - (cy - y) * k; s = s2; if (s === 1) { x = 0; y = 0; } apply(); };
-    img.style.transformOrigin = '0 0';
-    const ptrs = new Map(); let g0 = null;
-    stage.addEventListener('pointerdown', (e) => { stage.setPointerCapture(e.pointerId); const r = stage.getBoundingClientRect(); ptrs.set(e.pointerId, [e.clientX - r.left, e.clientY - r.top]); g0 = { p: [...ptrs.values()].map(v => v.slice()), s, x, y }; });
+  // pan / zoom / pinch for any element inside a stage (mouse wheel, drag, two-finger pinch, buttons, keys)
+  function panZoom(stage, target, opt) {
+    opt = opt || {}; const max = opt.max || 8; let s = 1, x = 0, y = 0; target.style.transformOrigin = '0 0';
+    const apply = () => { target.style.transform = `translate(${x}px, ${y}px) scale(${s})`; opt.onChange && opt.onChange({ s, x, y }); };
+    const reset = () => { s = 1; x = 0; y = 0; apply(); };
+    const zoom = (f, cx, cy) => { const r = stage.getBoundingClientRect(); cx = cx == null ? r.width / 2 : cx; cy = cy == null ? r.height / 2 : cy; const s2 = Math.max(1, Math.min(max, s * f)); const k = s2 / s; x = cx - (cx - x) * k; y = cy - (cy - y) * k; s = s2; if (s === 1) { x = 0; y = 0; } apply(); };
+    const ptrs = new Map(); let g0 = null; let moved = 0;
+    stage.addEventListener('pointerdown', (e) => { if (e.button > 0) return; stage.setPointerCapture(e.pointerId); const r = stage.getBoundingClientRect(); ptrs.set(e.pointerId, [e.clientX - r.left, e.clientY - r.top]); g0 = { p: [...ptrs.values()].map(v => v.slice()), s, x, y }; moved = 0; });
     stage.addEventListener('pointermove', (e) => { if (!ptrs.has(e.pointerId) || !g0) return; const r = stage.getBoundingClientRect(); ptrs.set(e.pointerId, [e.clientX - r.left, e.clientY - r.top]); const p = [...ptrs.values()];
-      if (p.length === 1 && g0.p.length === 1) { x = g0.x + p[0][0] - g0.p[0][0]; y = g0.y + p[0][1] - g0.p[0][1]; apply(); }
-      else if (p.length >= 2 && g0.p.length >= 2) { const d0 = Math.hypot(g0.p[0][0] - g0.p[1][0], g0.p[0][1] - g0.p[1][1]) || 1, d1 = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]); const m = [(g0.p[0][0] + g0.p[1][0]) / 2, (g0.p[0][1] + g0.p[1][1]) / 2]; const s2 = Math.max(1, Math.min(12, g0.s * d1 / d0)); const k = s2 / g0.s; s = s2; x = m[0] - (m[0] - g0.x) * k; y = m[1] - (m[1] - g0.y) * k; apply(); } });
+      if (p.length === 1 && g0.p.length === 1) { const dx = p[0][0] - g0.p[0][0], dy = p[0][1] - g0.p[0][1]; moved = Math.max(moved, Math.hypot(dx, dy)); if (s > 1) { x = g0.x + dx; y = g0.y + dy; apply(); } }
+      else if (p.length >= 2 && g0.p.length >= 2) { moved = 99; const d0 = Math.hypot(g0.p[0][0] - g0.p[1][0], g0.p[0][1] - g0.p[1][1]) || 1, d1 = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]); const m = [(g0.p[0][0] + g0.p[1][0]) / 2, (g0.p[0][1] + g0.p[1][1]) / 2]; const s2 = Math.max(1, Math.min(max, g0.s * d1 / d0)); const k = s2 / g0.s; s = s2; x = m[0] - (m[0] - g0.x) * k; y = m[1] - (m[1] - g0.y) * k; apply(); } });
     const up = (e) => { ptrs.delete(e.pointerId); g0 = ptrs.size ? { p: [...ptrs.values()].map(v => v.slice()), s, x, y } : null; };
     stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
     stage.addEventListener('wheel', (e) => { e.preventDefault(); const r = stage.getBoundingClientRect(); zoom(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
-    sh.el.addEventListener('click', (e) => { const z = e.target.closest('[data-z]'); if (!z) return; if (z.dataset.z === 'in') zoom(1.5); else if (z.dataset.z === 'out') zoom(1 / 1.5); else reset(); });
+    // stage point (client coordinates) → coordinates on the untransformed target
+    const toLocal = (cx, cy) => { const r = stage.getBoundingClientRect(); const ox = target.offsetLeft || 0, oy = target.offsetTop || 0; return [(cx - r.left - ox - x) / s, (cy - r.top - oy - y) / s]; };
+    return { zoom, reset, toLocal, get state() { return { s, x, y }; }, get moved() { return moved; } };
+  }
+  function image(o) {
+    const sh = shell({ kind: 'vw-img' + (o.kind ? ' ' + o.kind : ''), title: esc(o.title || ''), subtitle: o.subtitle ? esc(o.subtitle) : '',
+      tools: `${o.tools || ''}<div class="vw-zoom" role="group"><button class="btn btn-small" data-z="in">＋<span class="lbl">${t('v5.zoomIn')}</span></button><button class="btn btn-small" data-z="out">－<span class="lbl">${t('v5.zoomOut')}</span></button><button class="btn btn-small" data-z="reset">${t('v5.resetView')}</button></div>${o.link ? `<a class="btn btn-small" href="${esc(o.link)}" target="_blank" rel="noopener">${t('v5.openSource')} ↗</a>` : ''}`,
+      body: `<div class="vw-stage vw-imgstage" tabindex="0"><img alt="${esc(o.alt || o.title || '')}" draggable="false" src="${esc(o.src)}"><p class="vw-hint">${t(o.notGIS ? 'v5.imgHintNoGIS' : 'v5.imgHint')}</p></div>${o.meta ? `<aside class="vw-side"><section>${o.meta}</section></aside>` : ''}`,
+      onKey: (e) => { const pz = sh && sh.onKeyZoom; if (!pz) return; if (e.key === '+' || e.key === '=') pz.zoom(1.4); if (e.key === '-') pz.zoom(1 / 1.4); if (e.key === '0') pz.reset(); },
+    });
+    const stage = sh.el.querySelector('.vw-stage'), img = stage.querySelector('img'); const pz = panZoom(stage, img, { max: 12 });
+    sh.el.addEventListener('click', (e) => { const z = e.target.closest('[data-z]'); if (z) { if (z.dataset.z === 'in') pz.zoom(1.5); else if (z.dataset.z === 'out') pz.zoom(1 / 1.5); else pz.reset(); return; } const b = e.target.closest('[data-vtool]'); if (b && o.onTool) o.onTool(b.dataset.vtool, b); });
+    sh.onKeyZoom = pz;
     root.GA.lastViewer = { kind: 'image', close: () => sh.close() };
     return sh;
   }
@@ -175,5 +183,5 @@
   // ---------- generic enlarged HTML (charts, tables) ----------
   function html(o) { const sh = shell({ kind: 'vw-html', title: esc(o.title || ''), subtitle: o.subtitle ? esc(o.subtitle) : '', tools: o.tools || '', body: `<div class="vw-doc">${o.html}</div>` }); root.GA.lastViewer = { kind: 'html', close: () => sh.close() }; return sh; }
 
-  root.GA.viewer = { shell, map, image, html, inspector, isOpen: () => !!open, close: () => open && open.close() };
+  root.GA.viewer = { shell, map, image, html, inspector, panZoom, isOpen: () => !!open, close: () => open && open.close() };
 })(window);

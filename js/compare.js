@@ -307,7 +307,7 @@
       // street section spanning two columns
       const sx = rtl ? PX0 : c0(1), sw = 2 * pw + gap; const sec = (a.sections || [])[0];
       ctx.font = `700 22px ${font}`; ctx.fillStyle = '#1C1E21'; ctx.textAlign = rtl ? 'right' : 'left'; ctx.fillText(t('ex.c.section') + (sec ? ' — ' + sec.name : ''), rtl ? sx + sw : sx, row2 - 10);
-      if (sec) { try { const prof = await SEC.compute(sec, { floorH: sec.floorH || 3 }); const off = document.createElement('canvas'); SEC.draw(off, prof, { w: sw, h: ph, ratio: 1, ve: sec.ve || 'auto' }); ctx.drawImage(off, sx, row2); } catch (e) { ctx.font = `16px ${font}`; ctx.fillText(e.message, rtl ? sx + sw : sx, row2 + 30); } }
+      if (sec) { try { const prof = await SEC.compute(sec, { floorH: sec.floorH || 3 }); const off = document.createElement('canvas'); SEC.draw(off, prof, Object.assign({ w: sw, h: ph, ratio: 1 }, SEC.optsFor(sec))); ctx.drawImage(off, sx, row2); } catch (e) { ctx.font = `16px ${font}`; ctx.fillText(e.message, rtl ? sx + sw : sx, row2 + 30); } }
       else { ctx.font = `18px ${font}`; ctx.fillStyle = P.red; ctx.fillText(t('ex.c.sectionMissing'), rtl ? sx + sw : sx, row2 + 40); }
       ctx.strokeStyle = '#C6C7C9'; ctx.strokeRect(sx + 0.5, row2 + 0.5, sw - 1, ph - 1);
       // footer

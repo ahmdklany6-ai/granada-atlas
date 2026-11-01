@@ -84,3 +84,15 @@ MapLibre GL JS (BSD-3), sql.js 1.11.0 (MIT) vendored. IBM Plex (OFL 1.1) via Goo
 **Fabric marks** (`js/fabricmark.js`): every fabric boundary is dashed, without heavy fills; numbers are plain text with a light halo.
 
 **Historical explorer red dots**: present-day positions of the Spanish-Wikipedia articles listed under “Linked places” (coordinates from each article; two marked approximate). They are an overlay with its own toggle, legend and pop-up, not part of the historical scans.
+
+**Street sections (build 5.7).** One drawing routine (`js/section.js`, `paint`) with three back-ends: canvas (screen, PNG at 3×), SVG and vector PDF (`js/pdf.js`, `vectorPainter`: paths and Helvetica text; Arabic/Hebrew labels as browser-shaped transparent images). Rules:
+- horizontal and vertical scales equal by default; any exaggeration is chosen by the user, stated in the title and given its own vertical scale bar; no distance axis or grid — a scale bar, A–B marks, ground levels (MDT25) and a dimension chain instead;
+- cut buildings: red outline, white interior; heights from OSM `height`, else floors × floor height (dashed top, noted); slabs at equal intervals from the floor count; roof shape only when tagged (height schematic unless roof levels are tagged); balconies, materials and openings only from user annotations with a source;
+- background: buildings on the viewing side up to the chosen projection depth, warm beige and brown, paler with distance;
+- street width = distance between the building faces on the cut, measured from the footprints; sidewalk widths only when the user enters them (marked *, with a source);
+- trees at mapped positions: on the cut line (≤ 1.5 m) vs projected (≤ the chosen distance); size schematic unless height/crown is tagged;
+- figures (1.75 m) are decorative and labelled as such;
+- footer: title and scale statement, legend of what is present, estimation notes, sources and dates; locator plan (north up) with the line, A/B, viewing direction, projection band and saved fabrics (dashed, plain numbers);
+- looking to the right of A→B mirrors the drawing (B on the left), as seen from that side.
+
+**Submission states** (`js/submission.js`): tools available · content completed · exported · uploaded to Miro, kept separately for Exercise 1.3, the climate board and each Miro square. Exports are logged automatically; "uploaded" is only set by the user after a confirmation.

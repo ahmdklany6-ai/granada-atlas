@@ -9,7 +9,7 @@
   const BUILTIN = {
     ex11: { tkey: 'exn.11', req: [['r11.40', 'm', 'lib40'], ['r11.5data', 'm', 'surprise5'], ['r11.kinds', 'm', null], ['r11.attrib', 'm', null], ['r11.open', 'm', null], ['r11.users', 's', null]] },
     ex12: { tkey: 'exn.12', req: [['r12.four', 'm', 'four'], ['r12.equal', 'm', 'equal'], ['r12.five', 'm', 'five'], ['r12.secPlan', 'm', 'sections'], ['r12.public', 'm', null], ['r12.just', 'm', 'just'], ['r12.sentence', 'm', 'sentence'], ['r12.sheet', 'm', null]] },
-    ex13: { tkey: 'exn.13', req: [['r13.frame', 'm', 'frame'], ['r13.page', 'm', 'pages'], ['r13.identity', 'm', 'identity'], ['r13.synth', 'm', 'synth'], ['r13.forms', 'm', null], ['r13.export', 'm', null], ['r13.miro', 'm', null], ['r13.ideas', 's', null]] },
+    ex13: { tkey: 'exn.13', req: [['r13.frame', 'm', 'frame'], ['r13.page', 'm', 'pages'], ['r13.identity', 'm', 'identity'], ['r13.synth', 'm', 'synth'], ['r13.forms', 'm', null], ['r13.export', 'm', 'e13export'], ['r13.miro', 'm', 'e13miro'], ['r13.ideas', 's', null]] },
   };
   function reg() { const p = store.get(); p.exreg = p.exreg || []; return p.exreg; }
   function list() { return Object.entries(BUILTIN).map(([id, b]) => ({ id, title: t(b.tkey), builtin: true })).concat(reg().map(e => ({ id: e.id, title: e.title }))); }
@@ -27,6 +27,9 @@
       case 'pages': { const n = ['density', 'morphology', 'centre', 'climate', 'human'].filter(k => e13.maps && e13.maps[k] && (e13.maps[k].finding || '').trim()).length; return [n === 5 ? 'ready' : n ? 'review' : 'missing', `${n}/5`]; }
       case 'identity': { const ok = (e13.students || '').trim(); return [ok ? 'ready' : 'review', ok ? '' : t('rx.names')]; }
       case 'synth': return [(e13.synthesis || '').trim() ? 'ready' : 'missing', ''];
+      // exported and uploaded are separate: exporting never marks the work as uploaded
+      case 'e13export': { const le = root.GA.submission.lastExport(root.GA.submission.norm(e13)); return [le ? 'ready' : 'missing', le && le.at ? le.at.slice(0, 10) + ' · ' + le.kind : '']; }
+      case 'e13miro': { root.GA.submission.norm(e13); return [e13.uploaded ? 'ready' : 'missing', e13.uploaded ? t('v7.state.uploaded') : t('v7.notYet') + ' — ' + t('v7.confirmUpload')]; }
     }
     return [null, ''];
   }

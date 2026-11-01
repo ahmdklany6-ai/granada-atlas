@@ -1,67 +1,87 @@
-/* Enlarged section view: a wide drawing with its location in a small linked map, visible vertical-exaggeration
-   choice (true scale ×1 included), evidence-only or labelled illustrative detail, viewing direction and tree
-   corridor, exports, and building annotations. An annotation records what the user documented about a building
-   (roof shape and finish, wall material, balconies, openings) together with its source; it is drawn as documented
-   detail and listed with that source. Nothing is added to a building without such evidence unless the
-   illustrative level is switched on, and that level is drawn lighter and labelled. */
+/* Large section viewer: the street-section drawing at full size with zoom and pan (wheel, drag, pinch, buttons),
+   its controls (scale, detail level, viewing direction, background projection depth, tree projection distance, floor
+   height, slabs, scale figures), user-entered street dimensions, building annotations and exports (high-resolution
+   PNG, vector SVG, vector PDF). An annotation records what the user documented about a building (roof shape and
+   finish, wall material, balconies, openings) together with its source; it is drawn as documented detail. Street
+   dimensions typed here are drawn and labelled as user input, separate from the widths measured from footprints. */
 (function (root) {
-  const { i18n: I, section: SEC, mapcard: MC, store, geo: G, proj: PJ, data: D } = root.GA;
+  const { i18n: I, section: SEC, store } = root.GA;
   const t = (k, v) => I.t(k, v);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const VES = ['auto', 1, 2, 3, 5, 10];
+  const nf = (v, d) => v == null || !isFinite(v) ? '—' : Number(v).toLocaleString('en-US', { maximumFractionDigits: d == null ? 1 : d });
+  const VES = [1, 2, 3, 5];
   const ROOFS = ['flat', 'gabled', 'hipped', 'side_hipped', 'pyramidal', 'skillion', 'dome', 'round', 'mansard', 'many'];
   const ROOF_MATS = ['tiles', 'slate', 'metal', 'membrane', 'green'];
   const WALLS = ['render', 'brick', 'stone', 'concrete', 'glass', 'timber'];
   const notesAll = () => { const p = store.get(); p.buildingNotes = p.buildingNotes || {}; return p.buildingNotes; };
+  const EXPORT = { w: 1684, h: 1190 }; // A3 landscape proportions; PNG at 3× (5052 × 3570 px)
 
   function open(areaId, secId) {
     // a section belongs to a fabric (areaId) or is standalone (areaId null: project.sections)
     const P0 = store.get(); const a = areaId ? P0.areas.find(x => x.id === areaId) : { id: null, name: t('v6.standalone'), sections: P0.sections || (P0.sections = []) }; if (!a) return;
     const s = (a.sections || []).find(x => x.id === secId) || (a.sections || [])[0]; if (!s) return;
-    let prof = null, last = null, sel = null;
+    let prof = null, last = null, sel = null, logical = { w: 1200, h: 800, css: 1 };
     const sh = root.GA.viewer.shell({ kind: 'vw-sec', title: esc(s.name), subtitle: esc(a.name) + ' · ' + t('v5.sectionView'),
-      tools: `<button class="btn btn-small" data-sx="png">${t('v5.exportPNG')}</button><button class="btn btn-small" data-sx="svg">SVG</button><button class="btn btn-small" data-sx="pdf">${t('v5.exportPDF')}</button>`,
-      body: `<div class="sv"><div class="sv-draw"><canvas class="sv-cv" aria-label="${esc(t('v5.sectionDrawing'))}"></canvas><p class="vw-hint">${t('v5.secClickHint')}</p></div>
+      tools: `<button class="btn btn-small" data-sv-act="rev" title="${esc(t('v7.reverseHint'))}">⇄ <span class="lbl">${t('v7.reverse')}</span></button>
+        <div class="vw-zoom" role="group" aria-label="${esc(t('v5.zoom'))}"><button class="btn btn-small" data-z="in" aria-label="${esc(t('v5.zoomIn'))}">＋</button><button class="btn btn-small" data-z="out" aria-label="${esc(t('v5.zoomOut'))}">－</button><button class="btn btn-small" data-z="reset">${t('v5.resetView')}</button></div>
+        <button class="btn btn-small" data-sx="png">PNG</button><button class="btn btn-small" data-sx="svg">SVG</button><button class="btn btn-small" data-sx="pdf">PDF</button>`,
+      body: `<div class="sv"><div class="sv-main"><div class="sv-stage" tabindex="0" aria-label="${esc(t('v5.sectionDrawing'))}"><canvas class="sv-cv"></canvas></div><p class="vw-hint">${t('v7.viewerHint')}</p></div>
         <div class="sv-side">
-          <figure class="sv-loc"><canvas class="sv-map"></canvas><figcaption>${t('v5.secLocation')}</figcaption></figure>
           <div class="sv-ctl">
-            <fieldset><legend>${t('v5.ve')}</legend><div class="seg" role="group">${VES.map(v => `<button type="button" data-ve="${v}" aria-pressed="false">${v === 'auto' ? t('v5.veAuto') : v === 1 ? t('v5.veTrue') : '×' + v}</button>`).join('')}</div></fieldset>
+            <fieldset><legend>${t('v7.scale')}</legend><div class="seg" role="group">${VES.map(v => `<button type="button" data-ve="${v}" aria-pressed="false">${v === 1 ? t('v7.trueScale') : '×' + v}</button>`).join('')}</div><p class="fine">${t('v7.scaleNote')}</p></fieldset>
             <fieldset><legend>${t('v5.detail')}</legend><div class="seg" role="group"><button type="button" data-ill="0" aria-pressed="false">${t('v5.detailEvidence')}</button><button type="button" data-ill="1" aria-pressed="false">${t('v5.detailIll')}</button></div></fieldset>
-            <div class="sv-row"><label>${t('sec.look')} <select data-sv="look"><option value="left">${t('sec.look_left')}</option><option value="right">${t('sec.look_right')}</option></select></label>
-              <label>${t('v4.corridor')} <input type="number" min="2" max="60" step="1" data-sv="corridor" style="width:4.5em"> m</label>
-              <label class="chk"><input type="checkbox" data-sv="floors"> ${t('sec.floors')}</label></div>
+            <div class="sv-grid">
+              <label>${t('sec.look')} <select data-sv="look"><option value="left">${t('sec.look_left')}</option><option value="right">${t('sec.look_right')}</option></select></label>
+              <label title="${esc(t('v7.depthHint'))}">${t('v7.depth')} <span class="u"><input type="number" min="10" max="150" step="5" data-sv="depth"> m</span></label>
+              <label title="${esc(t('v4.corridorHint'))}">${t('v7.treeDist')} <span class="u"><input type="number" min="2" max="60" step="1" data-sv="corridor"> m</span></label>
+              <label>${t('sec.floorH')} <span class="u"><input type="number" min="2.4" max="6" step="0.1" data-sv="floorH"> m</span></label>
+              <label class="chk"><input type="checkbox" data-sv="floors"> ${t('v7.slabs')}</label>
+              <label class="chk"><input type="checkbox" data-sv="figures"> ${t('v7.figures')}</label>
+            </div>
+            <p class="fine">${t('v7.endpointsHint')}</p>
           </div>
+          <section class="sv-widths"></section>
           <section class="sv-ann" aria-live="polite"></section>
           <details class="method"><summary>${t('v5.secMethods')}</summary><div class="sv-methods"></div></details>
         </div></div>` });
-    const el = sh.el; const cv = el.querySelector('.sv-cv'), mapCv = el.querySelector('.sv-map'), ann = el.querySelector('.sv-ann'), meth = el.querySelector('.sv-methods'), drawBox = el.querySelector('.sv-draw');
+    const el = sh.el; const stage = el.querySelector('.sv-stage'), cv = el.querySelector('.sv-cv'), ann = el.querySelector('.sv-ann'), meth = el.querySelector('.sv-methods'), wbox = el.querySelector('.sv-widths');
+    const pz = root.GA.viewer.panZoom(stage, cv, { max: 10 });
     const save = () => { if (a.id) store.upsertArea(a); else store.save(); root.GA.app && root.GA.app.secProfiles && root.GA.app.secProfiles.delete(s.id); };
     const syncCtl = () => {
-      el.querySelectorAll('[data-ve]').forEach(b => b.setAttribute('aria-pressed', String(String(s.ve || 'auto') === b.dataset.ve)));
+      const ve = s.veUser ? s.ve : 1; el.querySelectorAll('[data-ve]').forEach(b => b.setAttribute('aria-pressed', String(String(ve) === b.dataset.ve)));
       el.querySelectorAll('[data-ill]').forEach(b => b.setAttribute('aria-pressed', String((s.ill ? '1' : '0') === b.dataset.ill)));
-      el.querySelector('[data-sv=look]').value = s.look === 'right' ? 'right' : 'left'; el.querySelector('[data-sv=corridor]').value = s.corridor || 15; el.querySelector('[data-sv=floors]').checked = !!s.floors;
+      const v = (k, x) => { el.querySelector(`[data-sv=${k}]`).value = x; };
+      v('look', s.look === 'right' ? 'right' : 'left'); v('depth', s.depth || 40); v('corridor', s.corridor || 15); v('floorH', s.floorH || 3);
+      el.querySelector('[data-sv=floors]').checked = s.floors !== false; el.querySelector('[data-sv=figures]').checked = s.figures !== false;
     };
-    async function recompute() { drawBox.classList.add('busy'); try { prof = await SEC.compute(s, { floorH: s.floorH || 3 }); } catch (e) { drawBox.innerHTML = `<p class="warn">${esc(e.message)}</p>`; return; } finally { drawBox.classList.remove('busy'); } paint(); minimap(); methods(); }
-    function paint() { if (!prof) return; const w = Math.max(320, drawBox.clientWidth - 4), h = Math.max(260, Math.min(drawBox.clientHeight - 44, Math.round(w * 0.72))); last = SEC.draw(cv, prof, Object.assign({ w, h }, SEC.optsFor(s))); if (sel) annotate(sel); }
-    async function minimap() {
-      const w = Math.max(200, mapCv.parentElement.clientWidth - 2), h = Math.round(w * 0.75); const ring = root.GA.compare.ringOf(a.spec);
-      const u = s.pts.map(p => PJ.EPSG25830.forward(p)); const c = s.look === 'right' ? -1 : 1; const cw = s.corridor || 15;
-      const off = u.map((p, i) => { const A = u[Math.max(0, i - 1)], B = u[Math.min(u.length - 1, i + 1)]; const L = Math.hypot(B[0] - A[0], B[1] - A[1]) || 1; return [p[0] - (B[1] - A[1]) / L * c * cw, p[1] + (B[0] - A[0]) / L * c * cw]; });
-      const corr = u.concat(off.reverse()).concat([u[0]]).map(p => PJ.EPSG25830.inverse(p));
-      let bld = []; try { bld = (await D.buildingsNear(s.pts, 120)).map(f => f.geometry); } catch (e) { }
-      const f = MC.fit([s.pts, ring].filter(Boolean), w, h, 0.12);
-      MC.render(mapCv, { center: f.center, mpp: f.mpp, w, h, ring, fadeOutside: 0, areaStyle: { color: '#992B2A', width: 1.2, dash: [4, 3] }, context: { buildings: bld, buildingColor: '#E3E4E6' },
-        layers: [{ type: 'fill', items: [{ g: { type: 'Polygon', coordinates: [corr] }, fill: '#4E6B45', alpha: 0.15 }] }], overlays: [{ coords: s.pts, color: '#1C1E21', width: 2.2, dash: [], labels: ['A', 'B'] }] });
+    async function recompute() { stage.classList.add('busy'); try { prof = await SEC.compute(s, { floorH: s.floorH || 3 }); } catch (e) { stage.innerHTML = `<p class="warn">${esc(e.message)}</p>`; return; } finally { stage.classList.remove('busy'); } paint(); widths(); methods(); }
+    function paint() {
+      if (!prof) return; const sw = Math.max(280, stage.clientWidth), shh = Math.max(220, stage.clientHeight);
+      // logical drawing size: never narrower than 1100 px so labels keep their size; the canvas is fitted to the stage and zoomed by the user
+      // phones: a narrower logical page (larger relative text) and an initial zoom onto the drawing; the user can zoom out to see the footer
+      const narrow = sw < 700; const aspect = narrow ? 0.9 : Math.max(0.56, Math.min(0.78, shh / sw)); const W = narrow ? 780 : Math.max(1100, sw), H = Math.round(W * aspect);
+      const cssW = Math.min(sw, shh / aspect), cssH = cssW * aspect; const dpr = root.devicePixelRatio || 1; const ratio = Math.min(6000 / W, cssW * dpr * 2.5 / W);
+      last = SEC.draw(cv, prof, Object.assign({ w: W, h: H, ratio }, SEC.optsFor(s))); cv.style.width = cssW + 'px'; cv.style.height = cssH + 'px'; cv.style.marginLeft = Math.max(0, (sw - cssW) / 2) + 'px';
+      logical = { w: W, h: H, css: cssW / W }; if (sel) annotate(sel);
+      if (narrow && !paint._zoomed && last) { paint._zoomed = true; const top = Math.max(0, Math.min(...last.hits.map(h => h.y0).concat([H * 0.3]))); const f = Math.min(2.2, shh / (cssH * 0.72)); pz.reset(); pz.zoom(f, sw / 2, (top + (H * 0.72 - top) / 2) * logical.css); }
+    }
+    function widths() {
+      const zs = (prof.surf ? prof.surf.streets : []).filter(z => z.faceA != null); s.widths = s.widths || {};
+      wbox.innerHTML = `<h3>${t('v7.widthsTitle')}</h3><p class="fine">${t('v7.widthsLead')}</p>` + (zs.length ? zs.map(z => { const u = s.widths[z.key] || {};
+        return `<fieldset class="sv-w" data-wk="${esc(z.key)}"><legend><bdi>${esc(z.name || z.hw || '—')}</bdi> · ${t('v7.measured')} <b class="num">${nf(z.gap)} m</b></legend>
+          <label>${t('v7.swA')} <span class="u"><input type="number" min="0" max="${Math.floor(z.gap)}" step="0.1" data-w="sa" value="${u.sa != null ? u.sa : ''}"> m</span></label>
+          <label>${t('v7.swB')} <span class="u"><input type="number" min="0" max="${Math.floor(z.gap)}" step="0.1" data-w="sb" value="${u.sb != null ? u.sb : ''}"> m</span></label>
+          <label class="wide">${t('v5.source')} <input data-w="src" value="${esc(u.src || '')}" placeholder="${esc(t('v7.widthSrcPh'))}"></label></fieldset>`; }).join('') : `<p class="note">${t('v7.noWidths')}</p>`);
     }
     function methods() {
-      const p = prof; const sf = p.surf || { green: [], streets: [], water: [] }; const cutsRs = p.cuts.filter(c => c.rs).length; const lvT = p.cuts.filter(c => c.lv).length;
-      meth.innerHTML = `<ul class="find"><li>${t('sec.accuracy3')}</li><li>${t('v5.mRoof', { n: cutsRs, c: p.cuts.length })}</li><li>${t('v5.mFloors', { n: lvT, c: p.cuts.length })}</li>
-        <li>${t('v5.mGround', { s: sf.streets.length, e: sf.streets.filter(z => z.span).length, g: sf.green.length, w: sf.water.length })}</li>
+      const p = prof; const sf = p.surf || { green: [], streets: [], water: [] }; const cutsRs = p.cuts.filter(c => c.rs).length; const lvT = p.cuts.filter(c => c.lv).length; const hT = p.cuts.filter(c => c.src === 'height').length;
+      meth.innerHTML = `<ul class="find"><li>${t('v7.mScale')}</li><li>${t('v7.mHeights', { h: hT, l: lvT - hT < 0 ? 0 : lvT, c: p.cuts.length, f: nf(p.floorH || 3) })}</li><li>${t('v5.mRoof', { n: cutsRs, c: p.cuts.length })}</li>
+        <li>${t('v7.mWidths', { n: sf.streets.filter(z => z.faceA != null).length, s: sf.streets.length })}</li>
         <li>${t('v4.secTrees', { c: p.corridor, n: p.trees.filter(x => !x.row).length, near: p.nearTrees, h: p.trees.filter(x => !x.row && x.h).length, r: p.rowsNear, date: (p.treeTs || '').slice(0, 10) })}</li>
-        <li>${t('v5.mIll')}</li><li>${t('v5.mDoc')}</li></ul>`;
+        <li>${t('v7.mBg', { d: p.depth, n: p.bg.length, u: p.bgUnknown })}</li><li>${t('v7.mFig')}</li><li>${t('v5.mDoc')}</li></ul>`;
     }
     // ---- annotations ----
-    function hitAt(x, y) { if (!last) return null; const hs = last.hits; for (let i = hs.length - 1; i >= 0; i--) { const h = hs[i]; if (x >= h.x0 - 2 && x <= h.x1 + 2 && y >= h.y0 - 10 && y <= h.y1 + 4 && h.kind === 'cut') return h; } for (let i = hs.length - 1; i >= 0; i--) { const h = hs[i]; if (x >= h.x0 && x <= h.x1 && y >= h.y0 && y <= h.y1) return h; } return null; }
+    function hitAt(lx, ly) { if (!last) return null; const hs = last.hits; for (let i = hs.length - 1; i >= 0; i--) { const h = hs[i]; if (h.kind === 'cut' && lx >= h.x0 - 2 && lx <= h.x1 + 2 && ly >= h.y0 - 10 && ly <= h.y1 + 4) return h; } for (let i = hs.length - 1; i >= 0; i--) { const h = hs[i]; if (lx >= h.x0 && lx <= h.x1 && ly >= h.y0 && ly <= h.y1) return h; } return null; }
     function annotate(h) {
       sel = h; const b = h.c || h.b; const n = notesAll()[h.id] || {}; const lib = root.GA.library;
       const opt = (list, v, pre) => `<option value="">${t('v5.unknown')}</option>` + list.map(k => `<option value="${k}" ${v === k ? 'selected' : ''}>${t(pre + k)}</option>`).join('');
@@ -86,26 +106,41 @@
         rec.updated = new Date().toISOString(); notesAll()[h.id] = rec; store.save(); root.GA.toast && root.GA.toast(t('v5.annSaved')); paint(); listDocs(); };
       f.querySelector('[data-ann=close]').onclick = () => { sel = null; listDocs(); };
       const del = f.querySelector('[data-ann=del]'); if (del) del.onclick = () => { delete notesAll()[h.id]; store.save(); sel = null; paint(); listDocs(); };
+      if (root.matchMedia && root.matchMedia('(max-width: 900px)').matches) ann.scrollIntoView({ block: 'start', behavior: 'smooth' });
     }
     function listDocs() {
       if (sel) return; const ids = new Set((prof ? prof.cuts.concat(prof.bg) : []).map(b => b.id)); const N = notesAll(); const docs = Object.entries(N).filter(([id]) => ids.has(id));
-      ann.innerHTML = `<h3>${t('v5.documented')}</h3>${docs.length ? `<ul class="docs">${docs.map(([id, n]) => `<li><b dir="ltr">${esc(id)}</b> — ${[n.roof && t('roof.' + n.roof), n.roofMat && t('mat.' + n.roofMat), n.wall && t('mat.' + n.wall), n.balconies === 'yes' && t('v5.balconies')].filter(Boolean).map(esc).join(', ')}<br><small>${t('v5.source')}: ${n.url ? `<a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.source)}</a>` : esc(n.source)}</small></li>`).join('')}</ul>` : `<p class="fine">${t('v5.noDocs')}</p>`}`;
+      ann.innerHTML = `<h3>${t('v5.documented')}</h3><p class="fine">${t('v7.annHint')}</p>${docs.length ? `<ul class="docs">${docs.map(([id, n]) => `<li><b dir="ltr">${esc(id)}</b> — ${[n.roof && t('roof.' + n.roof), n.roofMat && t('mat.' + n.roofMat), n.wall && t('mat.' + n.wall), n.balconies === 'yes' && t('v5.balconies')].filter(Boolean).map(esc).join(', ')}<br><small>${t('v5.source')}: ${n.url ? `<a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.source)}</a>` : esc(n.source)}</small></li>`).join('')}</ul>` : `<p class="fine">${t('v5.noDocs')}</p>`}`;
+    }
+    // ---- exports ----
+    const base = () => `granada_section_${String(s.name).replace(/[^\p{L}\p{N}]+/gu, '_')}`;
+    async function exportAs(kind) {
+      const o = Object.assign({}, EXPORT, SEC.optsFor(s));
+      if (kind === 'svg') return dl(new Blob([SEC.svg(prof, o)], { type: 'image/svg+xml' }), base() + '.svg');
+      if (kind === 'pdf') return dl(new Blob([await SEC.pdf(prof, o)], { type: 'application/pdf' }), base() + '.pdf');
+      const big = document.createElement('canvas'); SEC.draw(big, prof, Object.assign(o, { ratio: 3 })); big.toBlob(bl => dl(bl, base() + '.png'), 'image/png');
     }
     // ---- events ----
-    cv.addEventListener('click', (e) => { const r = cv.getBoundingClientRect(); const h = hitAt(e.clientX - r.left, e.clientY - r.top); if (h) annotate(h); });
-    el.addEventListener('click', (e) => {
-      const v = e.target.closest('[data-ve]'); if (v) { s.ve = v.dataset.ve === 'auto' ? 'auto' : +v.dataset.ve; save(); syncCtl(); paint(); return; }
+    stage.addEventListener('click', (e) => { if (pz.moved > 6) return; const [lx, ly] = pz.toLocal(e.clientX, e.clientY); const h = hitAt(lx / logical.css, ly / logical.css); if (h) annotate(h); });
+    el.addEventListener('click', async (e) => {
+      const z = e.target.closest('[data-z]'); if (z) { if (z.dataset.z === 'in') pz.zoom(1.5); else if (z.dataset.z === 'out') pz.zoom(1 / 1.5); else pz.reset(); return; }
+      const v = e.target.closest('[data-ve]'); if (v) { s.ve = +v.dataset.ve; s.veUser = s.ve !== 1; save(); syncCtl(); paint(); return; }
       const il = e.target.closest('[data-ill]'); if (il) { s.ill = il.dataset.ill === '1'; save(); syncCtl(); paint(); return; }
-      const x = e.target.closest('[data-sx]'); if (!x || !prof) return; const base = `granada_section_${String(s.name).replace(/[^\w]+/g, '_')}`;
-      if (x.dataset.sx === 'svg') dl(new Blob([SEC.svg(prof, Object.assign({ w: 1800, h: 900 }, SEC.optsFor(s)))], { type: 'image/svg+xml' }), base + '.svg');
-      else { const big = document.createElement('canvas'); SEC.draw(big, prof, Object.assign({ w: 1684, h: 1050, ratio: 2 }, SEC.optsFor(s)));
-        if (x.dataset.sx === 'png') big.toBlob(bl => dl(bl, base + '.png'), 'image/png'); else dl(new Blob([root.GA.pdf.build([{ canvas: big, paper: 'A3L' }], { title: 'Granada Atlas — ' + s.name })], { type: 'application/pdf' }), base + '.pdf'); }
+      if (e.target.closest('[data-sv-act=rev]')) { s.look = s.look === 'right' ? 'left' : 'right'; save(); syncCtl(); recompute(); return; }
+      const x = e.target.closest('[data-sx]'); if (!x || !prof) return; x.disabled = true; try { await exportAs(x.dataset.sx); } finally { x.disabled = false; }
     });
-    el.addEventListener('change', (e) => { const k = e.target.dataset.sv; if (!k) return; if (k === 'look') s.look = e.target.value; if (k === 'corridor') s.corridor = Math.max(2, Math.min(60, +e.target.value || 15)); if (k === 'floors') s.floors = e.target.checked; save(); if (k === 'floors') paint(); else recompute(); });
-    const ro = new ResizeObserver(() => paint()); ro.observe(drawBox);
+    el.addEventListener('change', (e) => {
+      const w = e.target.closest('[data-wk]'); if (w && e.target.dataset.w) { const k = w.dataset.wk; const u = Object.assign({}, (s.widths || {})[k] || {}); const f = e.target.dataset.w; const val = e.target.value.trim();
+        if (f === 'src') { if (val) u.src = val; else delete u.src; } else { const n2 = parseFloat(val); if (val === '' || !isFinite(n2) || n2 < 0) delete u[f]; else u[f] = Math.round(n2 * 10) / 10; }
+        s.widths = Object.assign({}, s.widths || {}); if (u.sa == null && u.sb == null) delete s.widths[k]; else s.widths[k] = u; save(); paint(); return; }
+      const k = e.target.dataset.sv; if (!k) return; const num = (lo, hi, d) => { const n2 = parseFloat(e.target.value); return isFinite(n2) ? Math.max(lo, Math.min(hi, n2)) : d; };
+      if (k === 'look') s.look = e.target.value; if (k === 'depth') s.depth = num(10, 150, 40); if (k === 'corridor') s.corridor = num(2, 60, 15); if (k === 'floorH') s.floorH = num(2.4, 6, 3);
+      if (k === 'floors') s.floors = e.target.checked; if (k === 'figures') s.figures = e.target.checked; save(); syncCtl(); if (k === 'floors' || k === 'figures') paint(); else recompute();
+    });
+    const ro = new ResizeObserver(() => paint()); ro.observe(stage);
     const c0 = sh.close; sh.close = (q) => { ro.disconnect(); c0(q); root.GA.app && root.GA.app.refresh && root.GA.app.refresh(); };
     syncCtl(); listDocs(); recompute();
-    root.GA.lastViewer = { kind: 'section', get prof() { return prof; }, get last() { return last; }, annotate: (id) => { const h = last && last.hits.find(x => x.id === id); if (h) annotate(h); }, close: () => sh.close() };
+    root.GA.lastViewer = { kind: 'section', get prof() { return prof; }, get last() { return last; }, pz, logical: () => logical, exportAs, annotate: (id) => { const h = last && last.hits.find(x => x.id === id); if (h) annotate(h); }, close: () => sh.close() };
     return sh;
   }
   function dl(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); }
