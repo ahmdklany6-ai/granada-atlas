@@ -3,6 +3,7 @@
 Research tool for the studio *Urban Transformation as a Regional Laboratory* (SCE, 2026–27).
 Interface in Arabic (RTL), Hebrew (RTL) and English (LTR); the choice is remembered per browser.
 Live: https://ahmdklany6-ai.github.io/granada-atlas/
+Continuing development: see `HANDOFF.md` (state, requirements, open work) and `CLAUDE.md` (working rules).
 
 ## Run it
 
