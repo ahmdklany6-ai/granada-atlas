@@ -9,7 +9,7 @@
   // s: {kind:'fill'|'line'|'marker', color, alpha, outline, outlineWidth, width, dash, size, noFill}
   function symbol(name, s) {
     if (s.kind === 'fill') {
-      const layer = opt({ color: P.rgba(s.color, s.noFill ? 0 : (s.alpha == null ? 1 : s.alpha)), style: s.noFill ? 'no' : 'solid', outline_color: P.rgba(s.outline || '#7A7F86'), outline_style: 'solid', outline_width: String(s.outlineWidth == null ? 0.15 : s.outlineWidth), outline_width_unit: 'MM', joinstyle: 'miter', offset: '0,0', offset_unit: 'MM' });
+      const layer = opt({ color: P.rgba(s.color, s.noFill ? 0 : (s.alpha == null ? 1 : s.alpha)), style: s.noFill ? 'no' : 'solid', outline_color: P.rgba(s.outline || P.ink3), outline_style: 'solid', outline_width: String(s.outlineWidth == null ? 0.15 : s.outlineWidth), outline_width_unit: 'MM', joinstyle: 'miter', offset: '0,0', offset_unit: 'MM' });
       return `<symbol type="fill" name="${name}" alpha="1" clip_to_extent="1" force_rhr="0">${DDP}<layer class="SimpleFill" enabled="1" locked="0" pass="0">${layer}${DDP}</layer></symbol>`;
     }
     if (s.kind === 'line') {

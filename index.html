@@ -7,7 +7,7 @@
 /* Build check: GitHub Pages lets browsers reuse a cached index.html for up to 10 minutes. If the published build is newer
    than this page, reload once at a URL the cache has not seen, so code and data always come from one build.
    Saved projects (localStorage / IndexedDB) are untouched by the reload. */
-window.GA_BUILD = '5.7';
+window.GA_BUILD = '5.8';
 (function () { try {
   fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (v) {
     if (!v || !v.build || v.build === window.GA_BUILD) return;
@@ -20,16 +20,18 @@ window.GA_BUILD = '5.7';
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Sans+Hebrew:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css">
-<link rel="stylesheet" href="css/app.css?v=5.7">
-<script src="js/i18n.js?v=5.7"></script>
-<script src="js/i18n_gallery.js?v=5.7"></script>
-<script src="js/i18n_ui.js?v=5.7"></script>
-<script src="js/i18n_v3.js?v=5.7"></script>
-<script src="js/i18n_v3b.js?v=5.7"></script>
-<script src="js/i18n_v4.js?v=5.7"></script>
-<script src="js/i18n_v5.js?v=5.7"></script>
-<script src="js/i18n_v6.js?v=5.7"></script>
-<script src="js/i18n_v7.js?v=5.7"></script>
+<link rel="stylesheet" href="css/app.css?v=5.8">
+<script src="js/i18n.js?v=5.8"></script>
+<script src="js/i18n_gallery.js?v=5.8"></script>
+<script src="js/i18n_ui.js?v=5.8"></script>
+<script src="js/i18n_v3.js?v=5.8"></script>
+<script src="js/i18n_v3b.js?v=5.8"></script>
+<script src="js/i18n_v4.js?v=5.8"></script>
+<script src="js/i18n_v5.js?v=5.8"></script>
+<script src="js/i18n_v6.js?v=5.8"></script>
+<script src="js/i18n_v7.js?v=5.8"></script>
+<script src="js/i18n_v8.js?v=5.8"></script>
+<script src="js/palette.js?v=5.8"></script>
 <script>GA.i18n.apply();</script>
 </head>
 <body>
@@ -50,45 +52,57 @@ window.GA_BUILD = '5.7';
 </header>
 
 <main class="stage">
-  <!-- LEFT: analysis and results (fixed in every language) -->
-  <aside id="col-left" class="col col-left" data-i18n-aria="ui.analysisPanel">
-    <div class="col-h">
-      <div class="col-h-row">
-        <div><span class="plate" data-i18n="ui.analysisPlate">ANALYSIS</span><h2 id="rep-title"></h2><div id="rep-meta" class="meta"></div></div>
-        <div class="tools"><button class="btn btn-small btn-primary" id="btn-fabric" data-i18n="v5.viewAnalysis" hidden>عرض التحليل</button><button class="btn btn-small" id="btn-refresh" data-i18n="rep.refresh" hidden>تحديث</button><button class="icon-btn" id="btn-close-report" data-i18n-title="close" hidden>✕</button></div>
-      </div>
-      <div class="tabs" id="left-tabs" role="tablist"></div>
-    </div>
-    <div id="left-body" class="col-b"></div>
-    <div class="resizer" data-resize="left" data-i18n-title="ui.resize"></div>
-  </aside>
-  <button class="col-toggle" id="tog-left" data-i18n-title="ui.toggleLeft">◀</button>
-
+  <!-- The map fills the whole workspace. Three independent floating panels sit over it (same physical places in every
+       language): Analysis on the LEFT; Study area and Layers on the RIGHT, each with its own tab and open/closed state. -->
   <div id="map" data-i18n-aria="map.aria"></div>
   <div class="north" data-i18n-aria="north"><svg viewBox="0 0 24 40" width="16" height="27" aria-hidden="true"><path d="M12 2 L20 30 L12 24 L4 30 Z" fill="currentColor"/><text x="12" y="39" text-anchor="middle" font-size="9" font-family="IBM Plex Mono, monospace" fill="currentColor">N</text></svg></div>
   <div id="measure-out" class="measure-out" hidden></div>
   <div id="mode-banner" class="mode-banner" hidden></div>
   <div id="legend" class="legend" hidden></div>
 
-  <!-- RIGHT: study area controls, then layers -->
-  <button class="col-toggle" id="tog-right" data-i18n-title="ui.toggleRight">▶</button>
-  <aside id="col-right" class="col col-right" data-i18n-aria="ui.studyPanel">
-    <div class="resizer" data-resize="right" data-i18n-title="ui.resize"></div>
-    <section id="panel-select" class="block">
-      <header data-collapse="select"><h2 data-i18n="sel.title">منطقة الدراسة</h2><span class="chev">▾</span></header>
-      <div class="block-b"></div>
-    </section>
-    <section id="panel-layers" class="block">
-      <header data-collapse="layers"><h2 data-i18n="nav.layers">الطبقات</h2><span class="chev">▾</span></header>
-      <div class="block-b"></div>
-    </section>
+  <div class="pn-tabs pn-tabs-l" role="group" data-i18n-aria="v8.panelsLeft">
+    <button type="button" class="pn-tab" id="tog-left" data-pn="analysis" aria-expanded="false" aria-controls="col-left"><span class="pn-ic" aria-hidden="true">▤</span><span data-i18n="v8.tabAnalysis">التحليل</span></button>
+  </div>
+  <div class="pn-tabs pn-tabs-r" role="group" data-i18n-aria="v8.panelsRight">
+    <button type="button" class="pn-tab" id="tog-right" data-pn="study" aria-expanded="false" aria-controls="pn-study"><span class="pn-ic" aria-hidden="true">◎</span><span data-i18n="v8.tabStudy">منطقة الدراسة</span></button>
+    <button type="button" class="pn-tab" id="tog-layers" data-pn="layers" aria-expanded="false" aria-controls="pn-layers"><span class="pn-ic" aria-hidden="true">≡</span><span data-i18n="v8.tabLayers">الطبقات</span></button>
+  </div>
+
+  <!-- LEFT: analysis and results -->
+  <aside id="col-left" class="col col-left pn" data-i18n-aria="ui.analysisPanel">
+    <div class="col-h">
+      <div class="col-h-row">
+        <div><span class="plate" data-i18n="ui.analysisPlate">ANALYSIS</span><h2 id="rep-title"></h2><div id="rep-meta" class="meta"></div></div>
+        <div class="tools"><button class="btn btn-small btn-primary" id="btn-fabric" data-i18n="v5.viewAnalysis" hidden>عرض التحليل</button><button class="btn btn-small" id="btn-refresh" data-i18n="rep.refresh" hidden>تحديث</button><button class="icon-btn" id="btn-close-report" data-i18n-title="close" hidden>✕</button><button type="button" class="icon-btn pn-x" data-pn-close="analysis" data-i18n-title="v8.closePanel" data-i18n-aria="v8.closePanel">✕</button></div>
+      </div>
+      <div class="tabs" id="left-tabs" role="tablist"></div>
+    </div>
+    <div id="left-body" class="col-b"></div>
+    <div class="resizer" data-resize="left" data-i18n-title="ui.resize"></div>
   </aside>
+
+  <!-- RIGHT: two independent panels, Study area above Layers when both are open -->
+  <div id="col-right" class="dock-r" data-i18n-aria="ui.studyPanel">
+    <div class="resizer" data-resize="right" data-i18n-title="ui.resize"></div>
+    <aside id="pn-study" class="pn pn-r" data-i18n-aria="v8.tabStudy">
+      <section id="panel-select" class="block">
+        <header class="pn-h"><h2 data-i18n="sel.title">منطقة الدراسة</h2><button type="button" class="icon-btn pn-x" data-pn-close="study" data-i18n-title="v8.closePanel" data-i18n-aria="v8.closePanel">✕</button></header>
+        <div class="block-b"></div>
+      </section>
+    </aside>
+    <aside id="pn-layers" class="pn pn-r" data-i18n-aria="v8.tabLayers">
+      <section id="panel-layers" class="block">
+        <header class="pn-h"><h2 data-i18n="nav.layers">الطبقات</h2><button type="button" class="icon-btn pn-x" data-pn-close="layers" data-i18n-title="v8.closePanel" data-i18n-aria="v8.closePanel">✕</button></header>
+        <div class="block-b"></div>
+      </section>
+    </aside>
+  </div>
 
   <section id="drawer" class="drawer" hidden>
     <div class="drawer-h"><h3 id="drawer-title"></h3><button class="btn btn-small" id="btn-close-drawer" data-i18n-title="close">✕</button></div>
     <div id="drawer-body" class="drawer-b"></div>
   </section>
-  <nav class="phone-bar" id="phone-bar" aria-label="views"><button data-pv="analysis" data-i18n="v5.pvAnalysis">التحليل</button><button data-pv="map" data-i18n="v5.pvMap">الخريطة</button><button data-pv="study" data-i18n="v5.pvStudy">منطقة الدراسة والطبقات</button></nav>
+  <nav class="phone-bar" id="phone-bar" aria-label="views"><button data-pv="analysis" data-i18n="v8.tabAnalysis">التحليل</button><button data-pv="map" data-i18n="v5.pvMap">الخريطة</button><button data-pv="study" data-i18n="v8.tabStudy">منطقة الدراسة</button><button data-pv="layers" data-i18n="v8.tabLayers">الطبقات</button></nav>
   <section id="workspace" class="workspace" hidden></section>
   <section id="page" class="page" hidden></section>
 </main>
@@ -97,46 +111,45 @@ window.GA_BUILD = '5.7';
 
 <noscript>This tool needs JavaScript · تحتاج الأداة إلى JavaScript · הכלי דורש JavaScript</noscript>
 <script src="vendor/maplibre/maplibre-gl.js"></script>
-<script src="js/palette.js?v=5.7"></script>
-<script src="js/geo.js?v=5.7"></script>
-<script src="js/proj.js?v=5.7"></script>
-<script src="js/analysis.js?v=5.7"></script>
-<script src="js/clip.js?v=5.7"></script>
-<script src="js/style.js?v=5.7"></script>
-<script src="js/store.js?v=5.7"></script>
-<script src="js/sources.js?v=5.7"></script>
-<script src="js/dates.js?v=5.7"></script>
-<script src="js/report.js?v=5.7"></script>
-<script src="js/selection.js?v=5.7"></script>
-<script src="js/data.js?v=5.7"></script>
-<script src="js/ext.js?v=5.7"></script>
-<script src="js/rasterclass.js?v=5.7"></script>
-<script src="js/io/tiffread.js?v=5.7"></script>
-<script src="js/mapcard.js?v=5.7"></script>
-<script src="js/gallery.js?v=5.7"></script>
-<script src="js/section.js?v=5.7"></script>
-<script src="js/pdf.js?v=5.7"></script>
-<script src="js/layers_ext.js?v=5.7"></script>
-<script src="js/layers.js?v=5.7"></script>
-<script src="js/import.js?v=5.7"></script>
-<script src="js/gallery_ext.js?v=5.7"></script>
-<script src="js/fabricmark.js?v=5.7"></script>
-<script src="js/compare.js?v=5.7"></script>
-<script src="js/viewer.js?v=5.7"></script>
-<script src="js/section_view.js?v=5.7"></script>
-<script src="js/pages.js?v=5.7"></script>
-<script src="js/library.js?v=5.7"></script>
-<script src="js/fabric.js?v=5.7"></script>
-<script src="js/history.js?v=5.7"></script>
-<script src="js/exercises.js?v=5.7"></script>
-<script src="js/submission.js?v=5.7"></script>
-<script src="js/studio.js?v=5.7"></script>
-<script src="js/ex13.js?v=5.7"></script>
-<script src="js/export/zip.js?v=5.7"></script>
-<script src="js/export/gpkg.js?v=5.7"></script>
-<script src="js/export/geotiff.js?v=5.7"></script>
-<script src="js/export/qml.js?v=5.7"></script>
-<script src="js/export/gisexport.js?v=5.7"></script>
-<script src="js/app.js?v=5.7"></script>
+<script src="js/geo.js?v=5.8"></script>
+<script src="js/proj.js?v=5.8"></script>
+<script src="js/analysis.js?v=5.8"></script>
+<script src="js/clip.js?v=5.8"></script>
+<script src="js/style.js?v=5.8"></script>
+<script src="js/store.js?v=5.8"></script>
+<script src="js/sources.js?v=5.8"></script>
+<script src="js/dates.js?v=5.8"></script>
+<script src="js/report.js?v=5.8"></script>
+<script src="js/selection.js?v=5.8"></script>
+<script src="js/data.js?v=5.8"></script>
+<script src="js/ext.js?v=5.8"></script>
+<script src="js/rasterclass.js?v=5.8"></script>
+<script src="js/io/tiffread.js?v=5.8"></script>
+<script src="js/mapcard.js?v=5.8"></script>
+<script src="js/gallery.js?v=5.8"></script>
+<script src="js/section.js?v=5.8"></script>
+<script src="js/pdf.js?v=5.8"></script>
+<script src="js/layers_ext.js?v=5.8"></script>
+<script src="js/layers.js?v=5.8"></script>
+<script src="js/import.js?v=5.8"></script>
+<script src="js/gallery_ext.js?v=5.8"></script>
+<script src="js/fabricmark.js?v=5.8"></script>
+<script src="js/compare.js?v=5.8"></script>
+<script src="js/viewer.js?v=5.8"></script>
+<script src="js/section_view.js?v=5.8"></script>
+<script src="js/pages.js?v=5.8"></script>
+<script src="js/library.js?v=5.8"></script>
+<script src="js/fabric.js?v=5.8"></script>
+<script src="js/history.js?v=5.8"></script>
+<script src="js/exercises.js?v=5.8"></script>
+<script src="js/submission.js?v=5.8"></script>
+<script src="js/studio.js?v=5.8"></script>
+<script src="js/ex13.js?v=5.8"></script>
+<script src="js/export/zip.js?v=5.8"></script>
+<script src="js/export/gpkg.js?v=5.8"></script>
+<script src="js/export/geotiff.js?v=5.8"></script>
+<script src="js/export/qml.js?v=5.8"></script>
+<script src="js/export/gisexport.js?v=5.8"></script>
+<script src="js/app.js?v=5.8"></script>
 </body>
 </html>

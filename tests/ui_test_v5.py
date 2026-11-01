@@ -211,9 +211,9 @@ def main():
                     pg.screenshot(path=os.path.join(OUT, 'v5_ipad_analysis_he.png')); pg.evaluate('GA.pages.close()')
             pg.set_viewport_size({'width': 1440, 'height': 900}); time.sleep(0.6)
             for lang in ['ar', 'he', 'en']:
-                pg.evaluate(f'GA.i18n.setLang("{lang}")'); pg.evaluate('document.body.classList.remove("left-collapsed", "right-collapsed")'); time.sleep(0.5)
+                pg.evaluate(f'GA.i18n.setLang("{lang}")'); pg.evaluate('["analysis", "study", "layers"].forEach(k => GA.panels.set(k, true))'); time.sleep(0.5)
                 r = pg.evaluate('() => { const g = (s) => document.querySelector(s).getBoundingClientRect(); return { l: g("#col-left"), r: g("#col-right"), W: innerWidth }; }')
-                check(f'desktop {lang}: analysis physically left, study controls physically right', abs(r['l']['left']) < 1 and abs(r['r']['right'] - r['W']) < 1)
+                check(f'desktop {lang}: analysis physically left, study controls physically right', abs(r['l']['left'] - 12) < 1 and abs(r['r']['right'] - (r['W'] - 12)) < 1, r)
             check('saved projects intact after all of this (areas + sections + notes)', pg.evaluate('GA.app.store.get().areas.length') == len(old['areas']) + 4 and pg.evaluate('Object.keys(GA.app.store.get().buildingNotes || {}).length') == 1)
             check('no page errors', not errors, errors[:4])
             b.close()

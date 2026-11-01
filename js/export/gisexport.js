@@ -284,11 +284,11 @@
   const root_PLACE_COL = () => (typeof window !== 'undefined' && window.GA && window.GA.places) ? window.GA.places.PLACE_COL : {};
   function styleFor(id, lang) {
     const L = (k) => t(k);
-    const fill = (c, o) => Object.assign({ kind: 'fill', color: c, outline: '#7A7F86', outlineWidth: 0.12 }, o || {});
+    const fill = (c, o) => Object.assign({ kind: 'fill', color: c, outline: P.ink3, outlineWidth: 0.12 }, o || {});
     switch (id) {
       case 'study_area': return Q.single({ kind: 'fill', color: P.red, alpha: 0.08, outline: P.red, outlineWidth: 0.7 });
-      case 'buildings': return Q.categorized('level_band', 'fill', ['1-2', '3-4', '5-8', '9+'].map(k => ({ value: k, label: t('b.floors', { v: k }), sym: fill(P.band[k], { outline: '#9A9EA4' }) })).concat([{ value: 'no_data', label: t('nodata'), sym: fill('#FFFFFF', { outline: '#9A9EA4' }) }]));
-      case 'buildings_period': return Q.categorized('period', 'fill', Object.keys(P.period).map(k => ({ value: k, label: k === 'no_data' ? t('nodata') : k === 'pre_1900' ? t('period.pre_1900') : k === '2000_plus' ? t('period.2000_plus') : k.replace('_', '–'), sym: fill(P.period[k], { outline: '#9A9EA4' }) })));
+      case 'buildings': return Q.categorized('level_band', 'fill', ['1-2', '3-4', '5-8', '9+'].map(k => ({ value: k, label: t('b.floors', { v: k }), sym: fill(P.band[k], { outline: P.grey }) })).concat([{ value: 'no_data', label: t('nodata'), sym: fill('#FFFFFF', { outline: P.grey }) }]));
+      case 'buildings_period': return Q.categorized('period', 'fill', Object.keys(P.period).map(k => ({ value: k, label: k === 'no_data' ? t('nodata') : k === 'pre_1900' ? t('period.pre_1900') : k === '2000_plus' ? t('period.2000_plus') : k.replace('_', '–'), sym: fill(P.period[k], { outline: P.grey }) })));
       case 'streets': return Q.categorized('tier', 'line', Object.keys(P.tier).map(k => ({ value: k, label: t('tier.' + k), sym: { color: P.tier[k], width: P.tierWidth[k] * 0.32, dash: k === 'pedestrian' ? '2;1' : null } })));
       case 'landuse': case 'parks_open_space': return Q.categorized('category', 'fill', Object.keys(P.landuse).map(k => ({ value: k, label: t('lu.c.' + k), sym: fill(P.landuse[k], { alpha: 0.75, outline: P.landuse[k] }) })));
       case 'public_facilities': case 'pois_all': case 'transit_stops':
@@ -299,12 +299,12 @@
       case 'climate_cell': return Q.single({ kind: 'marker', color: P.blue, size: 3 });
       case 'sections': return Q.single({ kind: 'line', color: P.ink, width: 0.7 });
       case 'section_profile': return Q.single({ kind: 'marker', color: P.ink, size: 0.8 });
-      case 'section_cuts': return Q.categorized('height_source', 'line', [{ value: 'height', label: 'height (OSM)', sym: { color: P.ink, width: 1.4 } }, { value: 'levels', label: 'levels × floor_h_m (estimate)', sym: { color: '#6E737A', width: 1.4, dash: '2;1' } }, { value: 'unknown', label: 'unknown', sym: { color: P.red, width: 1.4 } }]);
+      case 'section_cuts': return Q.categorized('height_source', 'line', [{ value: 'height', label: 'height (OSM)', sym: { color: P.ink, width: 1.4 } }, { value: 'levels', label: 'levels × floor_h_m (estimate)', sym: { color: P.ink3, width: 1.4, dash: '2;1' } }, { value: 'unknown', label: 'unknown', sym: { color: P.red, width: 1.4 } }]);
       case 'area_indicators': return Q.single({ kind: 'fill', color: P.red, alpha: 0.05, outline: P.red, outlineWidth: 0.6 });
       case 'places': return Q.categorized('category_group', 'marker', Object.entries(root_PLACE_COL()).map(([k, c]) => ({ value: k === '_none' ? '' : k, label: k === '_none' ? t('pg._none') : t('pg.' + k), sym: { color: c, size: 1.8 } })));
-      case 'bus_service': return Q.categorized('service_level', 'marker', [['High', '#6E1C1B', 4], ['Medium-high', '#B04746', 3.2], ['Medium-low', '#D98E8C', 2.6], ['Low', '#F2D6D5', 2], ['No scheduled service', '#FFFFFF', 1.6]].map(([k, c, sz]) => ({ value: k, label: t('bl.' + k), sym: { color: c, size: sz } })));
-      case 'trees': return Q.single({ kind: 'marker', color: '#3F6E3C', size: 1.4 });
-      case 'flood_zones': return Q.categorized('return_period', 'fill', [[10, '#1F4E79'], [50, '#3C7DB8'], [100, '#78A9D6'], [500, '#B9D3EA']].map(([k, c]) => ({ value: String(k), label: 'T = ' + k, sym: fill(c, { alpha: 0.6, outline: c }) })));
+      case 'bus_service': return Q.categorized('service_level', 'marker', [['High', P.redDark, 4], ['Medium-high', P.red, 3.2], ['Medium-low', P.rose, 2.6], ['Low', P.redSoft, 2], ['No scheduled service', '#FFFFFF', 1.6]].map(([k, c, sz]) => ({ value: k, label: t('bl.' + k), sym: { color: c, size: sz } })));
+      case 'trees': return Q.single({ kind: 'marker', color: P.trees, size: 1.4 });
+      case 'flood_zones': return Q.categorized('return_period', 'fill', [[10, P.flood.q10], [50, P.flood.q50], [100, P.flood.q100], [500, P.flood.q500]].map(([k, c]) => ({ value: String(k), label: 'T = ' + k, sym: fill(c, { alpha: 0.6, outline: c }) })));
       case 'facilities': return Q.categorized('grp', 'marker', [{ value: 'health', label: 'health', sym: { color: P.red, size: 2.4 } }, { value: 'education', label: 'education', sym: { color: P.blue, size: 2.4 } }, { value: 'stay', label: 'stay', sym: { color: P.ink, size: 2.4 } }]);
     }
     return null;

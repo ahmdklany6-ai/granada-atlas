@@ -5,9 +5,9 @@
    copied. Every legend states units, date and whether a value is measured or modelled. */
 (function (root) {
   const { data: D, palette: P, ext: X, i18n: I } = root.GA;
-  const PLACE_COL = { food_and_drink: '#D98A2B', shopping: '#992B2A', services_and_business: '#6E737A', health_care: '#2F5F8A', lifestyle_services: '#B97FA6', lodging: '#6E1C1B', travel_and_transportation: '#222428', education: '#4F7FB8', sports_and_recreation: '#5E9A5B', arts_and_entertainment: '#7B5EA7', community_and_government: '#3E7C8C', cultural_and_historic: '#8C6D46', geographic_entities: '#A6B39C', _none: '#C3C6CA' };
+  const PLACE_COL = { food_and_drink: P.places.food_and_drink, shopping: P.places.shopping, services_and_business: P.places.services_and_business, health_care: P.places.health_care, lifestyle_services: P.places.lifestyle_services, lodging: P.places.lodging, travel_and_transportation: P.places.travel_and_transportation, education: P.places.education, sports_and_recreation: P.places.sports_and_recreation, arts_and_entertainment: P.places.arts_and_entertainment, community_and_government: P.places.community_and_government, cultural_and_historic: P.base.burgundy, geographic_entities: P.landuse.cemetery, _none: P.places.other };
   const PLACE_GROUPS = Object.keys(PLACE_COL);
-  const BUS_LV = { 'High': '#6E1C1B', 'Medium-high': '#B04746', 'Medium-low': '#D98E8C', 'Low': '#F2D6D5', 'No scheduled service': '#FFFFFF' };
+  const BUS_LV = P.bus;
   const BUS_ORDER = ['High', 'Medium-high', 'Medium-low', 'Low', 'No scheduled service'];
   root.GA.places = { PLACE_COL, PLACE_GROUPS, BUS_LV, BUS_ORDER };
 
@@ -28,7 +28,7 @@
         addSrc(lid('places'), { type: 'geojson', data: fc(), cluster: true, clusterRadius: 38, clusterMaxZoom: 16 });
         addLyr({ id: lid('places', 'cl'), type: 'circle', source: lid('places'), filter: ['has', 'point_count'], paint: { 'circle-color': 'rgba(34,36,40,.78)', 'circle-radius': ['interpolate', ['linear'], ['get', 'point_count'], 2, 9, 50, 14, 500, 22, 3000, 30], 'circle-stroke-color': '#FFF', 'circle-stroke-width': 1.2, 'circle-opacity': 1 } });
         addLyr({ id: lid('places', 'cn'), type: 'symbol', source: lid('places'), filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-font': ['Noto Sans Regular'], 'text-size': 11, 'text-allow-overlap': true }, paint: { 'text-color': '#FFF' } });
-        addLyr({ id: lid('places'), type: 'circle', source: lid('places'), filter: ['!', ['has', 'point_count']], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 3, 18, 6], 'circle-color': ['match', ['coalesce', ['get', 'g'], '_none'], ...Object.entries(PLACE_COL).flat(), '#C3C6CA'], 'circle-stroke-color': ['match', ['get', 's'], 'permanently_closed', '#992B2A', '#FFFFFF'], 'circle-stroke-width': ['match', ['get', 's'], 'permanently_closed', 1.6, 1], 'circle-opacity': 1 } });
+        addLyr({ id: lid('places'), type: 'circle', source: lid('places'), filter: ['!', ['has', 'point_count']], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 3, 18, 6], 'circle-color': ['match', ['coalesce', ['get', 'g'], '_none'], ...Object.entries(PLACE_COL).flat(), GA.palette.line2], 'circle-stroke-color': ['match', ['get', 's'], 'permanently_closed', GA.palette.red, '#FFFFFF'], 'circle-stroke-width': ['match', ['get', 's'], 'permanently_closed', 1.6, 1], 'circle-opacity': 1 } });
       },
       async load() { const j = await D.single('places'); this._all = j.features; this.refilter(); return this._shown; },
       refilter() {
@@ -58,7 +58,7 @@
         else if (k === 'go') { const ll = el.dataset.ll.split(',').map(Number); map.flyTo({ center: ll, zoom: 18 }); return false; }
         this.refilter(); status('places', 'ok', this._shown);
       },
-      legend() { return `<ul class="lg">${S.places.opts.groups.map(g => swd(PLACE_COL[g], t('pg.' + g))).join('')}<li><i class="sw dot" style="background:#fff;border:2px solid #992B2A"></i><span>${t('ly3.closedMark')}</span></li><li><i class="sw dot" style="background:rgba(34,36,40,.78)"></i><span>${t('ly3.cluster')}</span></li></ul><p class="lyr-src">${t('ly3.placesNote')}</p>`; },
+      legend() { return `<ul class="lg">${S.places.opts.groups.map(g => swd(PLACE_COL[g], t('pg.' + g))).join('')}<li><i class="sw dot" style="background:#fff;border:2px solid ${P.red}"></i><span>${t('ly3.closedMark')}</span></li><li><i class="sw dot" style="background:rgba(34,36,40,.78)"></i><span>${t('ly3.cluster')}</span></li></ul><p class="lyr-src">${t('ly3.placesNote')}</p>`; },
       src: () => 'Overture Maps Foundation · Places · CDLA-Permissive-2.0',
       popup: { layers: () => [lid('places')], html: (p) => `<b dir="auto">${esc(p.n || '—')}</b><br><small>${t('pg.' + (p.g || '_none'))} · <span dir="ltr">${esc(p.c || '')}${p.cd && p.cd !== p.c ? ' / ' + esc(p.cd) : ''}</span></small>${kv([[t('ly3.addr'), p.a ? `<bdi>${esc(p.a)}</bdi>` : null], [t('ly3.locality'), p.l ? esc(p.l) : null], [t('ly3.status'), p.s ? t('ly3.st.' + p.s) : t('ly3.st.missing')], [t('ly3.conf'), p.cf != null ? `<span class="num">${nf(p.cf, 2)}</span>` : null], [t('ly3.web'), p.w ? `<a href="${esc(p.w)}" target="_blank" rel="noopener" dir="ltr">${esc(p.w.replace(/^https?:\/\//, '').slice(0, 34))}</a>` : null], [t('ly3.phone'), p.ph ? `<span dir="ltr">${esc(p.ph)}</span>` : null]])}<small>${t('ly3.confNote')}</small><br><small dir="ltr">Overture ${esc(p.id)}</small>` },
     });
@@ -67,7 +67,7 @@
     defs.push({ id: 'bus_service', group: 'act', title: () => t('ly3.bus'), def: { on: false, opacity: 1, opts: { metric: 'trips_day', route: '', levels: BUS_ORDER.slice(), scheduledOnly: false } },
       build() {
         addSrc(lid('bussvc'), { type: 'geojson', data: fc() });
-        addLyr({ id: lid('bussvc'), type: 'circle', source: lid('bussvc'), paint: { 'circle-radius': 3, 'circle-color': ['match', ['get', 'service_level'], ...Object.entries(BUS_LV).flat(), '#FFF'], 'circle-stroke-color': ['match', ['get', 'service_level'], 'No scheduled service', '#8A8F96', '#FFFFFF'], 'circle-stroke-width': 1, 'circle-opacity': 0.92, 'circle-stroke-opacity': 1 } });
+        addLyr({ id: lid('bussvc'), type: 'circle', source: lid('bussvc'), paint: { 'circle-radius': 3, 'circle-color': ['match', ['get', 'service_level'], ...Object.entries(BUS_LV).flat(), '#FFF'], 'circle-stroke-color': ['match', ['get', 'service_level'], 'No scheduled service', GA.palette.grey, '#FFFFFF'], 'circle-stroke-width': 1, 'circle-opacity': 0.92, 'circle-stroke-opacity': 1 } });
         this.restyle();
       },
       async load() { const j = await D.single('bus_service'); this._all = j.features; this._routes = [...new Set(j.features.flatMap(f => String(f.properties.routes || '').split(/[;,]\s*|\s+/).filter(Boolean)))].sort((a, b) => (parseInt(a) || 999) - (parseInt(b) || 999) || a.localeCompare(b)); this._max = { trips_day: Math.max(...j.features.map(f => f.properties.trips_day)), trips_7_9: Math.max(...j.features.map(f => f.properties.trips_7_9)) }; this.refilter(); return this._shown; },
@@ -82,14 +82,14 @@
         const o = S.bus_service.opts;
         return `<label class="row2">${t('ly3.busMetric')} <select data-ly-ctl="bus_service" data-k="metric"><option value="trips_day" ${o.metric === 'trips_day' ? 'selected' : ''}>${t('ly3.tripsDay')}</option><option value="trips_7_9" ${o.metric === 'trips_7_9' ? 'selected' : ''}>${t('ly3.trips79')}</option></select></label>
           <label class="row2">${t('ly3.route')} <select data-ly-ctl="bus_service" data-k="route"><option value="">${t('ly3.allRoutes')}</option>${(this._routes || []).map(r => `<option value="${esc(r)}" ${o.route === r ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select></label>
-          <div class="ctl-grid">${BUS_ORDER.map(l => `<label class="chk"><input type="checkbox" data-ly-ctl="bus_service" data-k="lv:${l}" ${o.levels.includes(l) ? 'checked' : ''}><i class="sw dot" style="background:${BUS_LV[l]};border:1px solid #8A8F96"></i>${t('bl.' + l)}</label>`).join('')}</div>
+          <div class="ctl-grid">${BUS_ORDER.map(l => `<label class="chk"><input type="checkbox" data-ly-ctl="bus_service" data-k="lv:${l}" ${o.levels.includes(l) ? 'checked' : ''}><i class="sw dot" style="background:${BUS_LV[l]};border:1px solid ${P.grey}"></i>${t('bl.' + l)}</label>`).join('')}</div>
           <label class="chk"><input type="checkbox" data-ly-ctl="bus_service" data-k="sched" ${o.scheduledOnly ? 'checked' : ''}> ${t('ly3.schedOnly')}</label><p class="fine">${t('ly3.shownStops', { n: nf(this._shown) })}</p>`;
       },
       onControl(el) { const o = S.bus_service.opts; const k = el.dataset.k; if (k === 'metric') o.metric = el.value; else if (k === 'route') o.route = el.value; else if (k === 'sched') o.scheduledOnly = el.checked; else if (k.startsWith('lv:')) { const l = k.slice(3); o.levels = el.checked ? o.levels.concat([l]) : o.levels.filter(x => x !== l); } this.refilter(); status('bus_service', 'ok', this._shown); },
       legend() {
         const o = S.bus_service.opts; const mx = (this._max && this._max[o.metric]) || 909; const vals = o.metric === 'trips_day' ? [10, 100, 400, mx] : [2, 20, 60, mx];
         const r = (v) => 3 + Math.sqrt(v / mx) * 22 * Math.pow(2, Math.min(0, map.getZoom() - 16)) ;
-        return `<h4>${t(o.metric === 'trips_day' ? 'ly3.tripsDay' : 'ly3.trips79')}</h4><div class="prop-lg">${vals.map(v => `<span><i style="width:${(2 * Math.max(3, r(v))).toFixed(1)}px;height:${(2 * Math.max(3, r(v))).toFixed(1)}px"></i><b class="num">${nf(v)}</b></span>`).join('')}</div><ul class="lg">${BUS_ORDER.map(l => `<li><i class="sw dot" style="background:${BUS_LV[l]};border:1px solid #8A8F96"></i><span>${t('bl.' + l)}</span></li>`).join('')}</ul><p class="lyr-src">${t('ly3.busNote')}</p>`;
+        return `<h4>${t(o.metric === 'trips_day' ? 'ly3.tripsDay' : 'ly3.trips79')}</h4><div class="prop-lg">${vals.map(v => `<span><i style="width:${(2 * Math.max(3, r(v))).toFixed(1)}px;height:${(2 * Math.max(3, r(v))).toFixed(1)}px"></i><b class="num">${nf(v)}</b></span>`).join('')}</div><ul class="lg">${BUS_ORDER.map(l => `<li><i class="sw dot" style="background:${BUS_LV[l]};border:1px solid ${P.grey}"></i><span>${t('bl.' + l)}</span></li>`).join('')}</ul><p class="lyr-src">${t('ly3.busNote')}</p>`;
       },
       src: () => t('ly3.busSrc'),
       popup: { layers: () => [lid('bussvc')], html: (p) => `<b dir="auto">${esc(p.stop_name)}</b> <small dir="ltr">(${esc(p.stop_code)})</small>${kv([[t('ly3.date'), `<span dir="ltr">${t('ly3.busDate')}</span>`], [t('ly3.tripsDay'), `<span class="num">${nf(p.trips_day)}</span>`], [t('ly3.trips79'), `<span class="num">${nf(p.trips_7_9)}</span>`], [t('ly3.routes'), `<span dir="ltr">${esc(p.routes || '—')}</span> <small>(${nf(p.routes_count)})</small>`], [t('ly3.level'), t('bl.' + p.service_level)]])}<small>${t(p.trips_day ? 'ly3.busPopNote' : 'ly3.busZeroNote')}</small>` },
@@ -104,12 +104,12 @@
     defs.push({ id: 'trees', group: 'env', title: () => t('ly3.trees'), def: { on: false, opacity: 1 },
       build() {
         addSrc(lid('trees'), { type: 'geojson', data: fc() });
-        addLyr({ id: lid('trees', 'row'), type: 'line', source: lid('trees'), filter: ['==', ['get', 'kind'], 'tree_row'], paint: { 'line-color': '#3F6E3C', 'line-width': 3, 'line-dasharray': [0.6, 1.4], 'line-opacity': 1 } });
-        addLyr({ id: lid('trees'), type: 'circle', source: lid('trees'), filter: ['==', ['get', 'kind'], 'tree'], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 0.9, 15, 2.4, 19, 6], 'circle-color': '#3F6E3C', 'circle-stroke-color': '#FFF', 'circle-stroke-width': 0.8, 'circle-opacity': 1 } });
+        addLyr({ id: lid('trees', 'row'), type: 'line', source: lid('trees'), filter: ['==', ['get', 'kind'], 'tree_row'], paint: { 'line-color': GA.palette.trees, 'line-width': 3, 'line-dasharray': [0.6, 1.4], 'line-opacity': 1 } });
+        addLyr({ id: lid('trees'), type: 'circle', source: lid('trees'), filter: ['==', ['get', 'kind'], 'tree'], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 0.9, 15, 2.4, 19, 6], 'circle-color': GA.palette.trees, 'circle-stroke-color': '#FFF', 'circle-stroke-width': 0.8, 'circle-opacity': 1 } });
       },
       async load() { const r = await X.trees([-180, -90, 180, 90]); map.getSource(lid('trees')).setData(fc(X.treeFeatures(r))); this._ts = r.ts; return r.pts.length; },
       layers: () => [lid('trees', 'row'), lid('trees')], opacityProp: { [lid('trees')]: 'circle-opacity', [lid('trees', 'row')]: 'line-opacity' },
-      legend() { return `<ul class="lg">${swd('#3F6E3C', t('ly3.treePt'))}${swl('#3F6E3C', 3, t('ly3.treeRow'), true)}</ul><p class="lyr-src">${t('ly3.treesNote')}</p>`; },
+      legend() { return `<ul class="lg">${swd(GA.palette.trees, t('ly3.treePt'))}${swl(GA.palette.trees, 3, t('ly3.treeRow'), true)}</ul><p class="lyr-src">${t('ly3.treesNote')}</p>`; },
       src: () => `OpenStreetMap natural=tree / tree_row · ${t('ly3.snapshot')} 2026-10-31 · ODbL`,
       popup: { layers: () => [lid('trees'), lid('trees', 'row')], html: (p) => `<b>${t(p.kind === 'tree_row' ? 'ly3.treeRow' : 'ly3.treePt')}</b>${kv([[t('ly3.species'), p.species ? `<i dir="ltr">${esc(p.species)}</i>` : (p.genus ? `<i dir="ltr">${esc(p.genus)}</i>` : `<em>${t('nodata')}</em>`)], [t('ly3.leaf'), p.leaf_type ? esc(p.leaf_type) + (p.leaf_cycle ? ' · ' + esc(p.leaf_cycle) : '') : null], [t('ly3.height'), p.height ? esc(p.height) + ' m' : `<em>${t('nodata')}</em>`], [t('ly3.crown'), p.crown ? esc(p.crown) + ' m' : `<em>${t('nodata')}</em>`]])}<small dir="ltr">OSM ${esc(p.id)}</small>` },
     });

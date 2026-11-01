@@ -52,7 +52,7 @@ def main():
             pg.evaluate('GA.app.L.setOn("trees", false)')
 
             # Layers panel lists every new layer with its controls
-            pg.evaluate('document.body.classList.remove("right-collapsed")'); time.sleep(0.3)
+            pg.evaluate('GA.panels.set("layers", true)'); time.sleep(0.3)
             ids = pg.evaluate('[...document.querySelectorAll("#panel-layers [data-ly]")].map(e => e.dataset.ly)')
             check('Layers panel has checkboxes for places, bus, trees, canopy, flood, noise, LST, history', all(k in ids for k in ['places', 'bus_service', 'trees', 'canopy', 'flood', 'noise', 'lst', 'history']), ids)
             pg.check('#panel-layers [data-ly="places"]'); wait(pg, 'GA.app.L.S.places.status === "ok"', 30000); time.sleep(0.4)
@@ -117,8 +117,8 @@ def main():
             check('no page errors', not errors, errors[:4])
 
             # resizing a desktop window with both panels open down to phone width leaves only one panel open
-            pg.evaluate('document.body.classList.remove("left-collapsed", "right-collapsed")'); pg.set_viewport_size({'width': 390, 'height': 844}); time.sleep(0.8)
-            both = pg.evaluate('!document.body.classList.contains("left-collapsed") && !document.body.classList.contains("right-collapsed")')
+            pg.evaluate('["analysis", "study", "layers"].forEach(k => GA.panels.set(k, true))'); pg.set_viewport_size({'width': 390, 'height': 844}); time.sleep(0.8)
+            both = pg.evaluate('["analysis", "study", "layers"].filter(k => GA.panels.isOpen(k)).length > 1')
             check('narrow: never both side panels open after a resize', not both)
             pg.set_viewport_size({'width': 1440, 'height': 900}); time.sleep(0.5)
             # narrow and medium layouts in three languages

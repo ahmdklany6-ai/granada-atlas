@@ -85,7 +85,7 @@
     function reset() { const [w, h] = size(); const f = MC.fit(rings.map(r => r.ring), w, h, 0.08); fit0 = f; st = { cx: f.center[0], cy: f.center[1], mpp: o.mpp || f.mpp }; draw(); }
     function draw() {
       const [w, h] = size(); if (!w || !h) return; cv.style.transform = '';
-      GAL.drawCard(cv, { ring: rings[0].ring, style: rings[0].style }, card, { center: [st.cx, st.cy], mpp: st.mpp, w, h, overlays: (o.overlays || []).concat(rings.slice(1).map(r => ({ coords: r.ring, color: (r.style && r.style.color) || '#992B2A', width: 2, dash: r.style && r.style.dash }))) });
+      GAL.drawCard(cv, { ring: rings[0].ring, style: rings[0].style }, card, { center: [st.cx, st.cy], mpp: st.mpp, w, h, overlays: (o.overlays || []).concat(rings.slice(1).map(r => ({ coords: r.ring, color: (r.style && r.style.color) || GA.palette.red, width: 2, dash: r.style && r.style.dash }))) });
       placePin();
     }
     const clampM = (m) => Math.max(0.05, Math.min((fit0 ? fit0.mpp : m) * 8, m));
@@ -123,15 +123,15 @@
     // exports: current view, with title, legend and source
     function composed() {
       const [w, h] = size(); const W = 1800, Hm = Math.round(W * h / w); const map0 = document.createElement('canvas');
-      GAL.drawCard(map0, { ring: rings[0].ring, style: rings[0].style }, card, { center: [st.cx, st.cy], mpp: st.mpp * w / W, w: W, h: Hm, ratio: 1, overlays: rings.slice(1).map(r => ({ coords: r.ring, color: (r.style && r.style.color) || '#992B2A', width: 3, dash: r.style && r.style.dash })) });
+      GAL.drawCard(map0, { ring: rings[0].ring, style: rings[0].style }, card, { center: [st.cx, st.cy], mpp: st.mpp * w / W, w: W, h: Hm, ratio: 1, overlays: rings.slice(1).map(r => ({ coords: r.ring, color: (r.style && r.style.color) || GA.palette.red, width: 3, dash: r.style && r.style.dash })) });
       const font = getComputedStyle(document.documentElement).getPropertyValue('--f-ui') || 'sans-serif'; const rtl = I.dir() === 'rtl';
       const out = document.createElement('canvas'); out.width = W; out.height = Hm + 300; const ctx = out.getContext('2d'); ctx.direction = rtl ? 'rtl' : 'ltr';
-      ctx.fillStyle = '#FFF'; ctx.fillRect(0, 0, W, out.height); ctx.fillStyle = '#992B2A'; ctx.fillRect(0, 0, W, 6);
-      const x0 = rtl ? W - 36 : 36; ctx.textAlign = rtl ? 'right' : 'left'; ctx.fillStyle = '#1C1E21'; ctx.font = `700 38px ${font}`; ctx.fillText(String(o.title || card.title).replace(/<[^>]+>/g, ''), x0, 58);
-      if (o.subtitle) { ctx.font = `22px ${font}`; ctx.fillStyle = '#3C4046'; ctx.fillText(o.subtitle, x0, 92); }
+      ctx.fillStyle = '#FFF'; ctx.fillRect(0, 0, W, out.height); ctx.fillStyle = GA.palette.red; ctx.fillRect(0, 0, W, 6);
+      const x0 = rtl ? W - 36 : 36; ctx.textAlign = rtl ? 'right' : 'left'; ctx.fillStyle = GA.palette.ink; ctx.font = `700 38px ${font}`; ctx.fillText(String(o.title || card.title).replace(/<[^>]+>/g, ''), x0, 58);
+      if (o.subtitle) { ctx.font = `22px ${font}`; ctx.fillStyle = GA.palette.ink2; ctx.fillText(o.subtitle, x0, 92); }
       ctx.drawImage(map0, 0, 110);
       let y = root.GA.compare.legendCanvas(ctx, card.legend || [], 36, Hm + 150, W - 72, rtl, font);
-      ctx.font = `16px ${font}`; ctx.fillStyle = '#5E636A'; ctx.textAlign = rtl ? 'right' : 'left';
+      ctx.font = `16px ${font}`; ctx.fillStyle = GA.palette.ink3; ctx.textAlign = rtl ? 'right' : 'left';
       if (card.src) ctx.fillText(`${card.src.name} · ${card.src.detail || ''} · ${card.src.license || ''} · EPSG:25830 · Granada Atlas ${new Date().toISOString().slice(0, 10)}`, x0, out.height - 20);
       return out;
     }

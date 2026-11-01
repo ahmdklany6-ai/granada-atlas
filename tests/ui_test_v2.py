@@ -11,7 +11,12 @@ fails = []
 def check(name, cond, extra=''):
     print(('PASS ' if cond else 'FAIL ') + name + (('  — ' + str(extra)) if extra != '' else '')); (None if cond else fails.append(name))
 
+# Build 5.8 starts every visit with the three panels closed. The older suites were written for the sidebars that were
+# open by default, so this hook opens them after load (desktop: all three; narrow screens: Study area, as before).
+# tests/ui_test_v9.py sets window.__noPanelHook to test the real default.
+PANEL_HOOK = "document.addEventListener('DOMContentLoaded', () => { try { if (window.__noPanelHook) return; if (innerWidth >= 1000) ['analysis', 'study', 'layers'].forEach(k => GA.panels.set(k, true)); else GA.panels.set('study', true); } catch (e) { } });"
 def stub(pg):
+    pg.add_init_script(PANEL_HOOK)
     def tiles(r):
         if r.request.url.rstrip('/').endswith('/planet'):
             return r.fulfill(json={'tilejson': '3.0.0', 'tiles': ['https://tiles.openfreemap.org/stub/{z}/{x}/{y}.pbf'], 'minzoom': 0, 'maxzoom': 14})
@@ -63,12 +68,13 @@ def main():
             for lang in ['ar', 'he', 'en']:
                 pg.evaluate(f'GA.i18n.setLang("{lang}")'); time.sleep(0.4)
                 r = pg.evaluate('''() => { const g = (s) => document.querySelector(s).getBoundingClientRect(); return { l: g('#col-left'), r: g('#col-right'), m: g('#map'), W: innerWidth, dir: document.documentElement.dir, sel: g('#panel-select'), lay: g('#panel-layers') }; }''')
-                ok = abs(r['l']['left']) < 1 and abs(r['r']['right'] - r['W']) < 1 and abs(r['m']['left'] - r['l']['right']) < 2 and abs(r['m']['right'] - r['r']['left']) < 2 and r['lay']['top'] >= r['sel']['bottom'] - 1
+                # 5.8: floating panels over a full-width map (12 px gutter); Layers stacked under Study area
+                ok = abs(r['l']['left'] - 12) < 1 and abs(r['r']['right'] - (r['W'] - 12)) < 1 and abs(r['m']['left']) < 1 and abs(r['m']['right'] - r['W']) < 1 and r['l']['right'] < r['r']['left'] and r['lay']['top'] >= r['sel']['bottom'] - 1
                 check(f'layout fixed ({lang}, dir={r["dir"]}): analysis left, study+layers right, map between', ok, f"left {r['l']['left']:.0f}-{r['l']['right']:.0f}, map {r['m']['left']:.0f}-{r['m']['right']:.0f}, right {r['r']['left']:.0f}-{r['r']['right']:.0f}")
                 pg.screenshot(path=os.path.join(OUT, f'v2_layout_{lang}.png'))
             pg.evaluate('GA.i18n.setLang("en")')
             fonts = pg.evaluate('getComputedStyle(document.body).fontFamily + " | " + getComputedStyle(document.body).fontSize + " | " + getComputedStyle(document.body).color')
-            check('body text 14–16 px, dark, IBM Plex sans stack', '15px' in fonts and 'IBM Plex Sans' in fonts and 'rgb(28, 30, 33)' in fonts, fonts)
+            check('body text 14–16 px, dark, IBM Plex sans stack', '15px' in fonts and 'IBM Plex Sans' in fonts and 'rgb(41, 16, 12)' in fonts, fonts)
 
             # ---------- 2: citywide layers before any area ----------
             pg.evaluate('GA.app.sel.reset()')
