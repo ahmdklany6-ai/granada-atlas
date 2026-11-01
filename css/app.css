@@ -755,3 +755,14 @@ details.assign[open] > summary { border-bottom: 1px solid var(--line); } details
 /* ---- 5.9: wind rose and rainfall chart in legends ---- */
 .lg-rose { display: block; margin: 4px auto 6px; }
 .lg-chart { display: block; max-width: 100%; height: auto; margin: 4px 0; }
+/* ---- 5.9: print layout page ---- */
+.pl { display: grid; grid-template-columns: 340px 1fr; gap: 20px; padding: 16px 20px 40px; }
+.pl-form { display: flex; flex-direction: column; gap: 10px; }
+.pl-form label { display: flex; flex-direction: column; gap: 3px; font-size: 14px; } .pl-form label.chk { flex-direction: row; align-items: center; gap: 6px; }
+.pl-form input[type=text], .pl-form select { width: 100%; min-width: 0; }
+.pl-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .pl-form .u { display: inline-flex; align-items: center; gap: 4px; }
+.pl-form fieldset { border: 1px solid var(--line); padding: 8px 10px; display: flex; flex-direction: column; gap: 8px; }
+.pl-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.pl-prev { background: var(--paper-2); border: 1px solid var(--line); padding: 16px; display: flex; align-items: flex-start; justify-content: center; min-height: 300px; }
+.pl-sheet { width: 100%; max-width: 1000px; } .pl-canvas { display: block; box-shadow: 0 8px 24px -12px var(--shadow); background: #fff; }
+@media (max-width: 1000px) { .pl { grid-template-columns: 1fr; padding: 12px; } }
