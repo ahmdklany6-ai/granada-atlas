@@ -105,11 +105,11 @@
       build() {
         addSrc(lid('trees'), { type: 'geojson', data: fc() });
         addLyr({ id: lid('trees', 'row'), type: 'line', source: lid('trees'), filter: ['==', ['get', 'kind'], 'tree_row'], paint: { 'line-color': GA.palette.trees, 'line-width': 3, 'line-dasharray': [0.6, 1.4], 'line-opacity': 1 } });
-        addLyr({ id: lid('trees'), type: 'circle', source: lid('trees'), filter: ['==', ['get', 'kind'], 'tree'], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 0.9, 15, 2.4, 19, 6], 'circle-color': GA.palette.trees, 'circle-stroke-color': '#FFF', 'circle-stroke-width': 0.8, 'circle-opacity': 1 } });
+        addLyr({ id: lid('trees'), type: 'circle', source: lid('trees'), filter: ['==', ['get', 'kind'], 'tree'], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 0.9, 15, 2.4, 19, 6], 'circle-color': '#FFFFFF', 'circle-stroke-color': GA.palette.trees, 'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 11, 0.8, 15, 1.4, 19, 2], 'circle-opacity': 1, 'circle-stroke-opacity': 1 } }); // red ring: distinct from filled red points
       },
       async load() { const r = await X.trees([-180, -90, 180, 90]); map.getSource(lid('trees')).setData(fc(X.treeFeatures(r))); this._ts = r.ts; return r.pts.length; },
-      layers: () => [lid('trees', 'row'), lid('trees')], opacityProp: { [lid('trees')]: 'circle-opacity', [lid('trees', 'row')]: 'line-opacity' },
-      legend() { return `<ul class="lg">${swd(GA.palette.trees, t('ly3.treePt'))}${swl(GA.palette.trees, 3, t('ly3.treeRow'), true)}</ul><p class="lyr-src">${t('ly3.treesNote')}</p>`; },
+      layers: () => [lid('trees', 'row'), lid('trees')], opacityProp: { [lid('trees')]: 'circle-stroke-opacity', [lid('trees', 'row')]: 'line-opacity' },
+      legend() { return `<ul class="lg"><li><i class="sw dot" style="background:#fff;border:2px solid ${GA.palette.trees}"></i><span>${t('ly3.treePt')}</span></li>${swl(GA.palette.trees, 3, t('ly3.treeRow'), true)}</ul><p class="lyr-src">${t('ly3.treesNote')}</p>`; },
       src: () => `OpenStreetMap natural=tree / tree_row · ${t('ly3.snapshot')} 2026-10-31 · ODbL`,
       popup: { layers: () => [lid('trees'), lid('trees', 'row')], html: (p) => `<b>${t(p.kind === 'tree_row' ? 'ly3.treeRow' : 'ly3.treePt')}</b>${kv([[t('ly3.species'), p.species ? `<i dir="ltr">${esc(p.species)}</i>` : (p.genus ? `<i dir="ltr">${esc(p.genus)}</i>` : `<em>${t('nodata')}</em>`)], [t('ly3.leaf'), p.leaf_type ? esc(p.leaf_type) + (p.leaf_cycle ? ' · ' + esc(p.leaf_cycle) : '') : null], [t('ly3.height'), p.height ? esc(p.height) + ' m' : `<em>${t('nodata')}</em>`], [t('ly3.crown'), p.crown ? esc(p.crown) + ' m' : `<em>${t('nodata')}</em>`]])}<small dir="ltr">OSM ${esc(p.id)}</small>` },
     });

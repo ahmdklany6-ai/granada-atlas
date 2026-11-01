@@ -42,33 +42,37 @@
     },
     // Land-use categories (stable codes are used in exported data): blues = public/water, olives = green/agriculture,
     // burgundies = religious/commercial, warm neutrals = built fabric
-    landuse: { public: D.blueDeep, religious: BASE.oxblood, water: BASE.lightBlue, green: D.oliveMid, cemetery: '#B8B59C', agri: BASE.chartreuse, commercial: D.rose, industrial: D.warmGrey, construction: D.stone, residential: '#E9DCD3' },
+    // 5.9: more distinct hues — each category takes a different family member, no two neighbours alike
+    landuse: { public: D.blueDeep, religious: BASE.khaki, water: BASE.lightBlue, green: D.oliveMid, cemetery: BASE.olive, agri: BASE.chartreuse, commercial: RED, industrial: BASE.burgundy, construction: D.stone, residential: D.blush },
     luOther: BASE.cream,
     // Building heights (floors): sequential red, light → our red → deep wine
-    band: { '1-2': D.blush, '3-4': D.rose, '5-8': RED, '9+': BASE.wine, no_data: '#FFFFFF' },
+    band: { '1-2': D.blush, '3-4': D.rose, '5-8': RED, '9+': BASE.oxblood, no_data: '#FFFFFF' },
     // Construction period: sequential blue-grey, older = darker (distinct from the red height ramp)
     period: { pre_1900: D.blueDark, '1900_1939': D.blueDeep, '1940_1959': D.blueMid, '1960_1979': BASE.blueGrey, '1980_1999': D.bluePale, '2000_plus': BASE.cream, no_data: '#FFFFFF' },
     periodNoData: D.paper2,
     tier: { primary: RED, collector: BASE.wine, local: D.warmGrey, pedestrian: D.blueDeep, other: '#CFC9BE' },
     tierWidth: { primary: 3.2, collector: 2, local: 1.1, pedestrian: 0.9, other: 0.6 },
-    poi: { public: D.blueDeep, transit: BASE.brown, tourism: RED, food: BASE.khaki, everyday: D.oliveMid, worship: BASE.oxblood, heritage: BASE.burgundy, shop: '#9C918A', green: D.oliveMid, office: D.warmGrey2, craft: D.warmGrey2 },
+    poi: { public: D.blueDeep, transit: RED, tourism: BASE.oxblood, food: BASE.khaki, everyday: D.oliveMid, worship: BASE.burgundy, heritage: BASE.olive, shop: '#9C918A', green: D.oliveMid, office: D.warmGrey2, craft: D.warmGrey2 },
     // facilities (health / education / stay) — one colour per class, shared by map, cards and legends
     fac: { hospital: RED, clinic: D.rose, doctors: BASE.wine, dentist: D.warmGrey, pharmacy: D.blueDeep, university: BASE.wine, college: D.ink3, school: RED, early_years: D.redTint, hotel: RED, hostel: BASE.wine, guest_house: D.blueDeep, apartment: D.warmGrey },
     // Overture places groups
     places: { food_and_drink: BASE.khaki, shopping: RED, services_and_business: D.ink3, health_care: D.blueDeep, lifestyle_services: D.rose, lodging: BASE.oxblood, travel_and_transportation: BASE.brown, education: D.blueMid, sports_and_recreation: D.oliveMid, arts_and_entertainment: BASE.burgundy, community_and_government: BASE.olive, other: D.line2 },
     // bus service level (sequential red, as heights)
-    bus: { 'High': BASE.wine, 'Medium-high': RED, 'Medium-low': D.rose, 'Low': D.blush, 'No scheduled service': '#FFFFFF' },
-    choro: ['#EEF2F4', D.bluePale, BASE.blueGrey, D.blueDeep, D.blueDark], // 5-class sequential blue-grey for neighbourhood choropleths (distinct from the red height ramp)
+    bus: { 'High': BASE.oxblood, 'Medium-high': RED, 'Medium-low': D.rose, 'Low': D.blush, 'No scheduled service': '#FFFFFF' }, // light → dark red
+    stop: RED, // public-transport stop markers
+    choro: ['#F6ECE9', '#E8C9C1', D.rose, RED, BASE.oxblood], // 5-class light → dark red for neighbourhood choropleths
     // terrain: slope classes (degrees, sequential cream → khaki → burgundy, earthy so it never reads as building heights)
     // and the elevation ramp (cream → khaki → burgundy)
     slope: [['0-2', '#F4F1EA'], ['2-5', '#E8E1C8'], ['5-10', D.khakiPale], ['10-15', '#BFA97A'], ['15-25', '#9C7A55'], ['25-35', BASE.burgundy], ['35+', BASE.wine]],
     slopeAlpha: [0, 150, 175, 195, 210, 225, 235],
     elevRamp: [[560, '#EEEEE6'], [650, '#E2E3D3'], [700, '#E2DCC0'], [800, '#D3C6A0'], [950, '#BBA67F'], [1200, '#A08066'], [1600, '#83655A'], [1860, '#F2F1EC']],
-    contour: '#8C7A55', trees: BASE.olive, waterLine: D.blueDeep,
-    admin: { distrito: D.ink2, barrio: D.ink3 },
+    contour: '#8C7A55', trees: RED, waterLine: D.blueDeep,
+    // boundaries: neighbourhoods in our red; districts darker; the municipality's outer line in dark ink (not red, so it
+    // never reads as a neighbourhood line); the GHSL urban centre stays a separate dashed line
+    admin: { distrito: BASE.oxblood, barrio: RED, municipio: D.ink, urban: D.ink3 },
     // climate and environment (classified external rasters and live layers); no more than one muted yellow class
     lst: ['#4F6E80', BASE.blueGrey, BASE.cream, '#DCC3B5', '#C08572', BASE.burgundy, BASE.wine], // < 30 … ≥ 55 °C, diverging around cream
-    noise: ['#EEEBE0', D.khakiPale, '#B9A46F', '#94724F', BASE.burgundy, BASE.wine],     // 50 … 75 dB(A) sequential
+    noise: ['#F6ECE9', '#E8C9C1', '#D49E93', '#B8645A', RED, BASE.oxblood],     // 50 … 75 dB(A): pale → dark red, clearly ordered
     flood: { q10: D.blueDark, q50: D.blueDeep, q100: BASE.blueGrey, q500: D.bluePale }, arpsi: BASE.brown,
     canopy: ['#EFEEE4', '#DCD8B6', '#B9B27A', D.oliveMid, BASE.olive],                // tree-cover density, sequential olive
     // charts (cards, sheets, climate board): neutral bar, highlight bar, and two topic colours

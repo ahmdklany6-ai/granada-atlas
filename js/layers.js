@@ -98,7 +98,7 @@
         async load() { if (this._loaded) return; const j = await D.single('water'); map.getSource(lid('water')).setData(j); this._loaded = 1; return j.features.length; },
         layers: () => [lid('water')], opacityProp: { [lid('water')]: 'line-opacity' }, legend: () => `<ul class="lg">${swl(GA.palette.blue, 2.4, 'waterway=river')}${swl(GA.palette.blue, 1, 'stream / canal / drain')}</ul>`, src: () => 'OSM waterway · ODbL' },
       { id: 'barrios', group: 'admin', title: () => t('ly.barrios'), def: { on: false, opacity: 0.8, metric: 'd_health' },
-        build() { addSrc(lid('barrios'), { type: 'geojson', data: fc() }); addLyr({ id: lid('barrios'), type: 'fill', source: lid('barrios'), paint: { 'fill-color': '#EEE', 'fill-opacity': 0.8 } }); addLyr({ id: lid('barrios', 'ln'), type: 'line', source: lid('barrios'), paint: { 'line-color': '#FFFFFF', 'line-width': 1 } }); },
+        build() { addSrc(lid('barrios'), { type: 'geojson', data: fc() }); addLyr({ id: lid('barrios'), type: 'fill', source: lid('barrios'), paint: { 'fill-color': '#EEE', 'fill-opacity': 0.8 } }); addLyr({ id: lid('barrios', 'ln'), type: 'line', source: lid('barrios'), paint: { 'line-color': P.admin.barrio, 'line-width': 1.1 } }); /* neighbourhood lines in red over the choropleth */ },
         async load() { const j = await D.single('admin'); const b = j.features.filter(f => f.properties.kind === 'barrio'); this._fs = b; this.restyle(); return b.length; },
         restyle() {
           if (!this._fs) return; const m = S.barrios.metric; const vals = this._fs.map(f => f.properties[m]).filter(v => v != null && isFinite(v)).sort((a, b) => a - b);
@@ -117,15 +117,29 @@
           return `<h4>${t('ly.m.' + m)}</h4><ul class="lg">${this._cols.map((c, i) => sw(c, iso(f(edges[i]) + '–' + f(edges[i + 1])))).join('')}</ul><p class="lyr-src">${t(m.startsWith('d_') ? 'ly.densNote' : m.startsWith('n_') ? 'ly.countNote' : 'ly.otherNote')} ${t('ly.quantile')}</p>`;
         }, src: () => 'OSM admin_level 10 · ' + t('ly.statsSrc'),
         popup: { layers: () => [lid('barrios')], html: (p) => `<b dir="auto">${esc(p.name)}</b><table>${[['area_km2', 'km²'], ['n_health', ''], ['d_health', '/km²'], ['n_hospital', ''], ['n_education', ''], ['n_school', ''], ['n_stay', ''], ['n_hotel', ''], ['n_bus', ''], ['median_floors', ''], ['levels_coverage', '']].map(([k, u]) => `<tr><td>${t('ly.m.' + k)}</td><td class="num">${k === 'levels_coverage' ? nf(p[k] * 100) + '%' : nf(p[k], 2)} ${u}</td></tr>`).join('')}</table><small>${t('ly.noPop')}</small>` } },
-      { id: 'boundaries', group: 'admin', title: () => t('ly.boundaries'), def: { on: true, opacity: 1 },
+      // 5.9: three independent boundary layers. 'boundaries' keeps its id (saved layer settings) and now holds the districts and
+      // the GHSL urban centre / historic core; neighbourhoods and the municipality's outer line have their own toggles.
+      { id: 'municipality', group: 'admin', title: () => t('v9.lyMuni'), def: { on: true, opacity: 1 },
+        build() { addSrc(lid('municipality'), { type: 'geojson', data: fc() });
+          addLyr({ id: lid('municipality'), type: 'line', source: lid('municipality'), paint: { 'line-color': P.admin.municipio, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.4, 15, 2.4], 'line-opacity': 1 } }); },
+        // the municipio feature's own rings only (every part and enclave kept as mapped) — no internal lines
+        async load() { if (this._loaded) return; const j = await D.single('admin'); const f = j.features.filter(x => x.properties.kind === 'municipio'); map.getSource(lid('municipality')).setData(fc(f)); this._loaded = 1; return f.length; },
+        layers: () => [lid('municipality')], opacityProp: { [lid('municipality')]: 'line-opacity' },
+        legend: () => `<ul class="lg">${swl(P.admin.municipio, 2, t('v9.lgMuni'))}</ul><p class="lyr-src">${t('v9.muniNote')}</p>`, src: () => 'OSM admin_level 8 (Granada municipality) · ODbL' },
+      { id: 'neighbourhoods', group: 'admin', title: () => t('v9.lyNeigh'), def: { on: true, opacity: 1 },
+        build() { addSrc(lid('neighbourhoods'), { type: 'geojson', data: fc() });
+          addLyr({ id: lid('neighbourhoods'), type: 'line', source: lid('neighbourhoods'), minzoom: 11, paint: { 'line-color': P.admin.barrio, 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.7, 15, 1.4], 'line-dasharray': [3, 2], 'line-opacity': 1 } });
+          addLyr({ id: lid('neighbourhoods', 'lbl'), type: 'symbol', source: lid('neighbourhoods'), minzoom: 13, layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11, 'symbol-placement': 'point' }, paint: { 'text-color': P.admin.barrio, 'text-halo-color': '#FFFFFF', 'text-halo-width': 1.4 } }); },
+        async load() { if (this._loaded) return; const j = await D.single('admin'); const f = j.features.filter(x => x.properties.kind === 'barrio'); map.getSource(lid('neighbourhoods')).setData(fc(f)); this._loaded = 1; return f.length; },
+        layers: () => [lid('neighbourhoods'), lid('neighbourhoods', 'lbl')], opacityProp: { [lid('neighbourhoods')]: 'line-opacity' },
+        legend: () => `<ul class="lg">${swl(P.admin.barrio, 1.2, t('ly.barrio'), true)}</ul><p class="lyr-src">${t('v9.neighNote')}</p>`, src: () => 'OSM admin_level 10 · ODbL' },
+      { id: 'boundaries', group: 'admin', title: () => t('v9.lyDistricts'), def: { on: true, opacity: 1 },
         build() { addSrc(lid('boundaries'), { type: 'geojson', data: fc() });
-          addLyr({ id: lid('boundaries', 'b'), type: 'line', source: lid('boundaries'), filter: ['==', ['get', 'kind'], 'barrio'], minzoom: 12, paint: { 'line-color': GA.palette.ink3, 'line-width': 0.8, 'line-dasharray': [3, 2], 'line-opacity': 1 } });
-          addLyr({ id: lid('boundaries', 'd'), type: 'line', source: lid('boundaries'), filter: ['==', ['get', 'kind'], 'distrito'], paint: { 'line-color': GA.palette.ink2, 'line-width': 1.4, 'line-opacity': 1 } });
-          addLyr({ id: lid('boundaries', 'u'), type: 'line', source: lid('boundaries'), filter: ['in', ['get', 'kind'], ['literal', ['urban_centre', 'historic_core']]], paint: { 'line-color': P.red, 'line-width': ['match', ['get', 'kind'], 'historic_core', 1.6, 2], 'line-dasharray': ['literal', [4, 2]], 'line-opacity': 1 } });
-          addLyr({ id: lid('boundaries', 'lbl'), type: 'symbol', source: lid('boundaries'), filter: ['==', ['get', 'kind'], 'barrio'], minzoom: 13, layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11, 'symbol-placement': 'point' }, paint: { 'text-color': GA.palette.ink2, 'text-halo-color': '#FFFFFF', 'text-halo-width': 1.4 } }); },
-        async load() { if (this._loaded) return; const j = await D.single('admin'); map.getSource(lid('boundaries')).setData(j); this._loaded = 1; return j.features.length; },
-        layers: () => ['b', 'd', 'u', 'lbl'].map(k => lid('boundaries', k)), opacityProp: { [lid('boundaries', 'b')]: 'line-opacity', [lid('boundaries', 'd')]: 'line-opacity', [lid('boundaries', 'u')]: 'line-opacity' },
-        legend: () => `<ul class="lg">${swl(GA.palette.ink2, 1.4, t('ly.distrito'))}${swl(GA.palette.ink3, 1, t('ly.barrio'), true)}${swl(P.red, 2, t('ly.urbanCentre'), true)}</ul>`, src: () => 'OSM admin_level 9/10 · JRC GHSL UCDB 2025' },
+          addLyr({ id: lid('boundaries', 'd'), type: 'line', source: lid('boundaries'), filter: ['==', ['get', 'kind'], 'distrito'], paint: { 'line-color': P.admin.distrito, 'line-width': 1.4, 'line-opacity': 1 } });
+          addLyr({ id: lid('boundaries', 'u'), type: 'line', source: lid('boundaries'), filter: ['in', ['get', 'kind'], ['literal', ['urban_centre', 'historic_core']]], paint: { 'line-color': P.admin.urban, 'line-width': ['match', ['get', 'kind'], 'historic_core', 1.4, 1.8], 'line-dasharray': ['literal', [4, 2]], 'line-opacity': 1 } }); },
+        async load() { if (this._loaded) return; const j = await D.single('admin'); map.getSource(lid('boundaries')).setData(fc(j.features.filter(f => f.properties.kind !== 'barrio' && f.properties.kind !== 'municipio'))); this._loaded = 1; return j.features.length; },
+        layers: () => ['d', 'u'].map(k => lid('boundaries', k)), opacityProp: { [lid('boundaries', 'd')]: 'line-opacity', [lid('boundaries', 'u')]: 'line-opacity' },
+        legend: () => `<ul class="lg">${swl(P.admin.distrito, 1.4, t('ly.distrito'))}${swl(P.admin.urban, 1.8, t('ly.urbanCentre'), true)}</ul><p class="lyr-src">${t('v9.ghslNote')}</p>`, src: () => 'OSM admin_level 9 · JRC GHSL UCDB 2025' },
       { id: 'bld_floors', group: 'bld', title: () => t('ly.bldFloors'), def: { on: true, opacity: 0.9 }, minZ: 0,
         build() { const o = M().overview.buildingFloors; addSrc(lid('bld_floors', 'ov'), { type: 'image', url: 'data/' + o.file, coordinates: o.coordinates }); addLyr({ id: lid('bld_floors', 'ov'), type: 'raster', source: lid('bld_floors', 'ov'), maxzoom: DETAIL_Z, paint: { 'raster-opacity': 0.9, 'raster-resampling': 'nearest', 'raster-fade-duration': 0 } });
           hatchImage(); addSrc(lid('bld'), { type: 'geojson', data: fc() });
@@ -150,12 +164,18 @@
         applyOpacity(o) { setOp(lid('bld_fg', 'lite'), 'fill-opacity', fadeIn(o)); setOp(lid('bld_fg'), 'fill-opacity', o); },
         legend: () => `<ul class="lg">${sw(P.ink, t('g.building'))}</ul>${bldScaleNote()}`, src: () => 'OSM building · ODbL', popup: { layers: () => [lid('bld_fg')], html: (p) => bldPopup(p) } },
       { id: 'bld_period', group: 'bld', title: () => t('ly.bldPeriod'), def: { on: false, opacity: 1 }, minZ: LITE_Z,
-        build() { addSrc(lid('bld'), { type: 'geojson', data: fc() }); addLyr({ id: lid('bld_period'), type: 'fill', source: lid('bld'), minzoom: DETAIL_Z, paint: { 'fill-color': periodColor(), 'fill-opacity': 1, 'fill-outline-color': GA.palette.line2 } }); },
-        liteLayers: () => [lid('bld_period', 'lite')],
-        buildLite() { addLyr({ id: lid('bld_period', 'lite'), type: 'fill', source: lid('bldlite'), minzoom: LITE_Z, paint: { 'fill-color': periodColor(), 'fill-opacity': 1 } }); },
-        update: () => bldUpdate(), layers: () => [lid('bld_period', 'lite'), lid('bld_period')], visLayers() { return bldVis(this); },
-        applyOpacity(o) { setOp(lid('bld_period', 'lite'), 'fill-opacity', fadeIn(o)); setOp(lid('bld_period'), 'fill-opacity', o); },
-        legend: () => `<ul class="lg">${A.PERIODS.map(k => sw(P.period[k], root.GA.report.periodLabel(k))).join('')}${sw(GA.palette.paper, t('nodata'))}</ul><p class="lyr-src">${t('ly.periodNote')}</p>${bldScaleNote()}`, src: () => 'OSM start_date · ODbL', popup: { layers: () => [lid('bld_period')], html: (p) => bldPopup(p) } },
+        // 5.9: dated buildings in the period ramp; buildings without an OSM start_date are HATCHED (as unknown floors), never a
+        // pale class that could be read as a date. Coverage is a source gap (39 of 101,674 footprints carry a usable date).
+        build() { addSrc(lid('bld'), { type: 'geojson', data: fc() });
+          addLyr({ id: lid('bld_period', 'unk'), type: 'fill', source: lid('bld'), minzoom: DETAIL_Z, filter: ['==', ['coalesce', ['get', 'period'], 'no_data'], 'no_data'], paint: { 'fill-pattern': 'ga-hatch', 'fill-opacity': 0.55 } });
+          addLyr({ id: lid('bld_period'), type: 'fill', source: lid('bld'), minzoom: DETAIL_Z, filter: ['!=', ['coalesce', ['get', 'period'], 'no_data'], 'no_data'], paint: { 'fill-color': periodColor(), 'fill-opacity': 1, 'fill-outline-color': P.ink } }); },
+        liteLayers: () => [lid('bld_period', 'liteunk'), lid('bld_period', 'lite')],
+        buildLite() { addLyr({ id: lid('bld_period', 'liteunk'), type: 'fill', source: lid('bldlite'), minzoom: LITE_Z, filter: ['==', ['get', 'period'], 'no_data'], paint: { 'fill-pattern': 'ga-hatch', 'fill-opacity': 0.55 } });
+          addLyr({ id: lid('bld_period', 'lite'), type: 'fill', source: lid('bldlite'), minzoom: LITE_Z, filter: ['!=', ['get', 'period'], 'no_data'], paint: { 'fill-color': periodColor(), 'fill-opacity': 1, 'fill-outline-color': P.ink } }); },
+        update: () => bldUpdate(), layers: () => [lid('bld_period', 'liteunk'), lid('bld_period', 'lite'), lid('bld_period', 'unk'), lid('bld_period')], visLayers() { return bldVis(this); },
+        applyOpacity(o) { setOp(lid('bld_period', 'liteunk'), 'fill-opacity', fadeIn(o) * 0.55); setOp(lid('bld_period', 'lite'), 'fill-opacity', fadeIn(o)); setOp(lid('bld_period', 'unk'), 'fill-opacity', o * 0.55); setOp(lid('bld_period'), 'fill-opacity', o); },
+        legend: () => { const src = map.getSource(lid('bldlite')); const fs = src && src._data && src._data.features; const n = fs ? fs.length : null, d = fs ? fs.filter(f => f.properties.period && f.properties.period !== 'no_data').length : null;
+          return `<ul class="lg">${A.PERIODS.map(k => sw(P.period[k], root.GA.report.periodLabel(k))).join('')}<li><i class="sw hatch"></i><span>${t('v9.periodUnknown')}</span></li></ul><p class="lyr-src">${n ? t('v9.periodCoverage', { d: nf(d), n: nf(n) }) + ' ' : ''}${t('v9.periodNote')}</p>${bldScaleNote()}`; }, src: () => 'OSM start_date · ODbL', popup: { layers: () => [lid('bld_period')], html: (p) => bldPopup(p) } },
       { id: 'streets', group: 'streets', title: () => t('ly.streets'), def: { on: false, opacity: 1 },
         build() { addSrc(lid('streets', 'maj'), { type: 'geojson', data: fc() }); addSrc(lid('streets'), { type: 'geojson', data: fc() });
           // widths grow with scale so local streets and paths stay legible up close (line-dasharray cannot be data-driven,
@@ -193,10 +213,10 @@
       src: () => 'OSM · Overpass ' + ((M() && M().layers['fac_' + k] && M().layers['fac_' + k].date) || '').slice(0, 10) + ' · ODbL',
       popup: { layers: () => [lid('fac_' + k)], html: (p) => `<b dir="auto">${esc(p.nm || '—')}</b><br>${t('fac.' + p.cls)} <small dir="ltr">(${esc(p.cls)} · ${esc(p.id)})</small>${p.op ? `<br><small dir="auto">${esc(p.op)}</small>` : ''}` } }));
     defs.push({ id: 'bus_stops', group: 'fac', title: () => t('g.transit'), def: { on: false, opacity: 1 },
-      build() { addSrc(lid('bus'), { type: 'geojson', data: fc() }); addLyr({ id: lid('bus'), type: 'circle', source: lid('bus'), paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 1.5, 17, 4.5], 'circle-color': P.ink, 'circle-stroke-color': '#FFF', 'circle-stroke-width': 1, 'circle-opacity': 1 } }); },
+      build() { addSrc(lid('bus'), { type: 'geojson', data: fc() }); addLyr({ id: lid('bus'), type: 'circle', source: lid('bus'), paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 1.5, 17, 4.5], 'circle-color': P.stop, 'circle-stroke-color': '#FFF', 'circle-stroke-width': 1, 'circle-opacity': 1 } }); },
       async load() { if (this._loaded) return; const j = await D.single('bus_stops'); map.getSource(lid('bus')).setData(j); this._loaded = 1; return j.features.length; },
       layers: () => [lid('bus')], opacityProp: { [lid('bus')]: 'circle-opacity' },
-      legend: () => `<ul class="lg">${swd(P.ink, t('poi.transit:bus'))}</ul><p class="lyr-src">${t('g.fFreqGap')}</p>`, src: () => 'OSM highway=bus_stop · ODbL',
+      legend: () => `<ul class="lg">${swd(P.stop, t('poi.transit:bus'))}</ul><p class="lyr-src">${t('g.fFreqGap')}</p>`, src: () => 'OSM highway=bus_stop · ODbL',
       popup: { layers: () => [lid('bus')], html: (p) => `<b dir="auto">${esc(p.nm || '—')}</b><br><small dir="ltr">ref ${esc(p.ref || '—')} · ${esc(p.op || '')}</small><br><small>${t('ly.noFreq')}</small>` } });
 
     // extra layer definitions registered by other modules (layers_ext.js)
