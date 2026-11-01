@@ -397,7 +397,7 @@
     pt.path(u.concat(off(prof.depth || 40).reverse()).map(P), { fill: SP.locBand, alpha: 0.55, close: true });
     // study areas: dashed outline, plain number
     (o.areas || []).forEach(ar => { const R = ar.ring.map(U).map(P); pt.path(R, { stroke: GA.palette.ink2, lw: 1.1, dash: [4, 3], close: true }); // number centred above the top edge, plain red with a white halo (same numbering as every other map)
-      const top = Math.min(...R.map(q => q[1])); const near = R.filter(q => q[1] <= top + 0.5); const tx = near.length > 1 ? (Math.min(...near.map(q => q[0])) + Math.max(...near.map(q => q[0]))) / 2 : R.reduce((s, q) => s + q[0], 0) / R.length;
+      const top = Math.min(...R.map(q => q[1])); const tx = GA.fabricStyle.topCentre(R.map(q => q[0]), R.map(q => -q[1]));
       pt.text(String(ar.no), tx, top - 4, { font, size: fs, weight: 700, align: 'center', color: RED, halo: '#FFFFFF' }); });
     const L = u.map(P); pt.path(L, { stroke: INK, lw: 2.2, cap: 'round' });
     // viewing direction: arrow from the middle of the line towards the side seen
