@@ -215,41 +215,31 @@ sloping mixed `[-3.5990,37.1792]→[-3.5975,37.1792]` (Calle Elvira → Albaicí
   Allowed domains) or have the owner hard-reload the site and check Status → build 5.8, the cream/red palette, the three
   panel tabs, a sloping section and fabric numbers above saved fabrics.
 
-## 13. Build 5.9 (owner request of 1 Nov 2026, eight points) — what was done and what was not
+## 13. Build 5.9 (owner requests of 1 Nov 2026) — status per feature
 
-Done (tested, see §8 and `tests/ui_test_v10.py`):
-1. Colour hierarchy — red is the primary thematic colour: light → red → oxblood ramps (heights, bus frequency, choropleth,
-   noise 50–75 dB), red stops, red-ring trees, ten distinct land-use hues, red neighbourhood lines (also over the
-   choropleth); basemap unchanged and quiet. Legends are generated from the same palette entries as the paint.
-   Construction period: investigated — 54 of 101,674 buildings carry an OSM start_date, 39 parse to a period: a SOURCE
-   gap, not a rendering fault. Unknown period is hatched; the legend states the coverage and names Catastro (INSPIRE
-   buildings, year of construction) as the better source — not connected (network).
-2. Infrastructure group: railways vs Granada Metro (light rail; tunnels dashed), stations/stops (from the basemap's OSM
-   tiles); water-supply / wastewater / stormwater networks shown as "not connected" — no open dataset was reachable.
-   Disused/proposed rail: not in the OpenMapTiles source, stated.
-3. Seasonal wind rose (ERA5 via Open-Meteo, hourly 2015–2024, 10 m; winter/spring/summer/autumn selector; prevailing
-   direction, mean speed, calm share; 25 km grid cell drawn; "climatology, not forecast, not street-level").
-4. Rainfall means (ERA5 1991–2020, monthly chart + seasonal totals), mapped OSM canals/ditches/drains, terrain-derived
-   flow paths (labelled approximation, 25 m limits, separate from the flood layer), covered/culverted watercourses as
-   OSM maps them (dashed, named; the Darro under the centre where tagged tunnel=culvert) — no inferred alignment.
-5. Historical view: landmarks drawn with present-day OSM footprints (Cathedral, Cartuja, Generalife), neighbourhood
-   polygons (Albaicín, Sacromonte, Realejo, Almanjáyar) or the street line (Gran Vía); points kept with a stated reason
-   (Alhambra complex, squares, Alcaicería, Embovedado). All labelled present-day.
-6. Separate boundary layers: municipality (outer only), neighbourhoods (red), districts + GHSL urban centre.
-8. Print layout `#/print`: A4–A1, orientation, margins, 1:500–1:50,000, 150/200/300 dpi (capped to browser limits with
-   a note), legend from the live legend, optional section and image (+ caption/source), preview, PDF and PNG; scale
-   re-measured on the rendered map (A3 1:5,000 → 1:5,006; A2 1:10,000 → 1:10,009).
+Legend: VERIFIED = tested in this repository's browser suites with the real published data; UNVERIFIED-LIVE = implemented,
+works with test stubs, but its data comes from a live external service that the Claude environment cannot reach
+(network policy: only GitHub/PyPI/npm), so it has never been seen with real data; NOT DONE.
 
-Not done / open:
-- 5. Curated "earliest maps" collection beyond the existing archive (Münster c.1581, Vico/Heylan c.1612, 1795, López
-  1787, Dalmau 1796, 1895, 1915, 1943 — already in `history.js` ARCHIVE): further archive research (IGN Cartoteca,
-  Archivo Municipal, BNE, Real Chancillería) needs internet access the Claude environment did not have; no map was added
-  or claimed "first" without evidence. Manual georeferencing not done.
-- 7. Images under research paragraphs: the screenshot of that research/comparison content was not received, and Commons
-  could not be searched from the environment; not implemented rather than filled with unverified images.
-- Live-only sources (Open-Meteo, OpenFreeMap tiles for culverts/rail) could only be tested with stubs here; check them on
-  the live site (wind rose values, culvert segments of the Darro, metro line).
-- Three of the owner's eight screenshots (the choropleth one, the research-content one, one more) did not arrive.
-- Next: Catastro INSPIRE year of construction; official open stormwater data if EMASAGRA/Junta publish it; historical
-  map research with network access; research-content images once the screenshot is shared.
+| Feature | Status | Notes |
+| --- | --- | --- |
+| Red colour hierarchy (ramps, stops, bus frequency, trees, noise classes, land use, neighbourhood lines over choropleth) | VERIFIED (local data layers); noise colours UNVERIFIED-LIVE | noise tiles come from MITECO SICA, reclassified in the browser |
+| Separate boundary layers (municipality outer, neighbourhoods red, districts + GHSL) | VERIFIED | districts/GHSL off by default to keep the legend compact |
+| Construction period investigation | VERIFIED | source gap: 39 of 101,674 footprints dated; unknown hatched; Catastro named as the better source (not connected) |
+| Railways and Granada Metro, stations | UNVERIFIED-LIVE | read from the basemap's OSM vector tiles (OpenFreeMap) |
+| Water-supply / wastewater / stormwater NETWORKS | NOT DONE | no open dataset reachable; layer says "not connected" |
+| Mapped canals, ditches, drains (OSM) | VERIFIED | not the municipal stormwater network (stated) |
+| Terrain-derived flow paths | VERIFIED | computed offline from MDT25; approximation |
+| Covered Darro route | UNVERIFIED-LIVE | drawn only where OSM tags tunnel/culvert in the basemap tiles; whether the Darro segment is tagged has not been seen |
+| Seasonal wind rose | UNVERIFIED-LIVE | ERA5 via Open-Meteo, fetched by the visitor's browser; tested only with synthetic stubs inside the test runner — no synthetic or cached values are shipped in `data/` |
+| Rainfall means | UNVERIFIED-LIVE | as above (1991–2020 daily) |
+| Historical landmarks with footprints/polygons | VERIFIED geometry (published data); Wikipedia text UNVERIFIED-LIVE | |
+| Images under the linked-place paragraphs | UNVERIFIED-LIVE | the article's own Commons lead image + author/licence; otherwise "no suitable image" |
+| Additional historical maps (archive research) | NOT DONE | needs internet research; existing archive unchanged |
+| Print workspace (A4–A1, orientation, margins, true scale, dpi, templates with slots: maps at own scales, legend, sections, analysis cards, wind rose, rainfall chart, uploaded images, captions, reorder, preview, PDF/PNG) | VERIFIED | measured scale within 0.5 % (A3 1:5,000 → 1:5,006; A2/A4 two maps at 1:5,000 and 1:10,000) |
 
+Next session with network access (allow archive-api.open-meteo.com, *.wikipedia.org, commons.wikimedia.org,
+upload.wikimedia.org, tiles.openfreemap.org, ahmdklany6-ai.github.io): open the live site and check the wind rose and
+rainfall values against an independent source (e.g. AEMET normals for Granada airport), the metro line and stations, the
+Darro culvert, and the place images; then research historical maps (IGN Cartoteca, Archivo Municipal, BNE, Real
+Chancillería) and connect Catastro INSPIRE construction years.

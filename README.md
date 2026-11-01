@@ -54,7 +54,8 @@ All colours are defined once in `js/palette.js` and read by the interface (writt
 | **5.9** Infrastructure: railways vs Granada Metro (tunnels dashed), stations/stops; water-supply/sewer/stormwater networks marked "not connected" | works; utility networks not available as open data here |
 | **5.9** Seasonal wind rose (winter/spring/summer/autumn) and rainfall means from ERA5 via Open-Meteo, with the 25 km grid cell drawn | works in visitors' browsers (live API); verified with synthetic data only |
 | **5.9** Historical view: landmarks drawn with present-day OSM footprints / neighbourhood polygons / street lines; points only where no reliable boundary | works |
-| **5.9** Print layout (`#/print`): A4–A1, portrait/landscape, margins, true map scale at 100 %, 150–300 dpi, legend from the live legend, optional section and image with source, preview, PDF and PNG | works |
+| **5.9** Print layout (`#/print`): A4–A1, portrait/landscape, margins, 150–300 dpi; page templates whose slots hold maps (each at its own true scale at 100 %), the legend, saved sections, analysis cards, the wind rose, the rainfall chart or uploaded images with captions and sources; reorder, preview, PDF and PNG | works |
+| **5.9** Linked places in the historical view show the article's own Wikimedia Commons lead image with author and licence, or say that none is suitable | works (live Wikipedia/Commons) |
 | Population grid, education / unemployment data, municipal 2022 noise data, municipal tree inventory, GTFS route geometry, accessibility (network analysis), Google Street View imagery inside the tool | not connected — shown as gaps |
 
 ## New data in 5.9
