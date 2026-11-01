@@ -125,21 +125,21 @@
         // the municipio feature's own rings only (every part and enclave kept as mapped) — no internal lines
         async load() { if (this._loaded) return; const j = await D.single('admin'); const f = j.features.filter(x => x.properties.kind === 'municipio'); map.getSource(lid('municipality')).setData(fc(f)); this._loaded = 1; return f.length; },
         layers: () => [lid('municipality')], opacityProp: { [lid('municipality')]: 'line-opacity' },
-        legend: () => `<ul class="lg">${swl(P.admin.municipio, 2, t('v9.lgMuni'))}</ul><p class="lyr-src">${t('v9.muniNote')}</p>`, src: () => 'OSM admin_level 8 (Granada municipality) · ODbL' },
+        legend: () => `<ul class="lg">${swl(P.admin.municipio, 2, t('v9.lgMuni'))}</ul>`, src: () => 'OSM admin_level 8 · ODbL — ' + t('v9.muniNote') },
       { id: 'neighbourhoods', group: 'admin', title: () => t('v9.lyNeigh'), def: { on: true, opacity: 1 },
         build() { addSrc(lid('neighbourhoods'), { type: 'geojson', data: fc() });
           addLyr({ id: lid('neighbourhoods'), type: 'line', source: lid('neighbourhoods'), minzoom: 11, paint: { 'line-color': P.admin.barrio, 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.7, 15, 1.4], 'line-dasharray': [3, 2], 'line-opacity': 1 } });
           addLyr({ id: lid('neighbourhoods', 'lbl'), type: 'symbol', source: lid('neighbourhoods'), minzoom: 13, layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11, 'symbol-placement': 'point' }, paint: { 'text-color': P.admin.barrio, 'text-halo-color': '#FFFFFF', 'text-halo-width': 1.4 } }); },
         async load() { if (this._loaded) return; const j = await D.single('admin'); const f = j.features.filter(x => x.properties.kind === 'barrio'); map.getSource(lid('neighbourhoods')).setData(fc(f)); this._loaded = 1; return f.length; },
         layers: () => [lid('neighbourhoods'), lid('neighbourhoods', 'lbl')], opacityProp: { [lid('neighbourhoods')]: 'line-opacity' },
-        legend: () => `<ul class="lg">${swl(P.admin.barrio, 1.2, t('ly.barrio'), true)}</ul><p class="lyr-src">${t('v9.neighNote')}</p>`, src: () => 'OSM admin_level 10 · ODbL' },
-      { id: 'boundaries', group: 'admin', title: () => t('v9.lyDistricts'), def: { on: true, opacity: 1 },
+        legend: () => `<ul class="lg">${swl(P.admin.barrio, 1.2, t('ly.barrio'), true)}</ul>`, src: () => 'OSM admin_level 10 · ODbL — ' + t('v9.neighNote') },
+      { id: 'boundaries', group: 'admin', title: () => t('v9.lyDistricts'), def: { on: false, opacity: 1 },
         build() { addSrc(lid('boundaries'), { type: 'geojson', data: fc() });
           addLyr({ id: lid('boundaries', 'd'), type: 'line', source: lid('boundaries'), filter: ['==', ['get', 'kind'], 'distrito'], paint: { 'line-color': P.admin.distrito, 'line-width': 1.4, 'line-opacity': 1 } });
           addLyr({ id: lid('boundaries', 'u'), type: 'line', source: lid('boundaries'), filter: ['in', ['get', 'kind'], ['literal', ['urban_centre', 'historic_core']]], paint: { 'line-color': P.admin.urban, 'line-width': ['match', ['get', 'kind'], 'historic_core', 1.4, 1.8], 'line-dasharray': ['literal', [4, 2]], 'line-opacity': 1 } }); },
         async load() { if (this._loaded) return; const j = await D.single('admin'); map.getSource(lid('boundaries')).setData(fc(j.features.filter(f => f.properties.kind !== 'barrio' && f.properties.kind !== 'municipio'))); this._loaded = 1; return j.features.length; },
         layers: () => ['d', 'u'].map(k => lid('boundaries', k)), opacityProp: { [lid('boundaries', 'd')]: 'line-opacity', [lid('boundaries', 'u')]: 'line-opacity' },
-        legend: () => `<ul class="lg">${swl(P.admin.distrito, 1.4, t('ly.distrito'))}${swl(P.admin.urban, 1.8, t('ly.urbanCentre'), true)}</ul><p class="lyr-src">${t('v9.ghslNote')}</p>`, src: () => 'OSM admin_level 9 · JRC GHSL UCDB 2025' },
+        legend: () => `<ul class="lg">${swl(P.admin.distrito, 1.4, t('ly.distrito'))}${swl(P.admin.urban, 1.8, t('v9.lgGhsl'), true)}</ul>`, src: () => 'OSM admin_level 9 · JRC GHSL UCDB 2025 — ' + t('v9.ghslNote') },
       { id: 'bld_floors', group: 'bld', title: () => t('ly.bldFloors'), def: { on: true, opacity: 0.9 }, minZ: 0,
         build() { const o = M().overview.buildingFloors; addSrc(lid('bld_floors', 'ov'), { type: 'image', url: 'data/' + o.file, coordinates: o.coordinates }); addLyr({ id: lid('bld_floors', 'ov'), type: 'raster', source: lid('bld_floors', 'ov'), maxzoom: DETAIL_Z, paint: { 'raster-opacity': 0.9, 'raster-resampling': 'nearest', 'raster-fade-duration': 0 } });
           hatchImage(); addSrc(lid('bld'), { type: 'geojson', data: fc() });

@@ -4,7 +4,8 @@
   root.GA.i18n.add({
     // ----- boundaries -----
     'v9.lyMuni': ['حدود بلدية غرناطة (الخارجية)', 'גבול עיריית גרנדה (חיצוני)', 'Granada municipality (outer boundary)'],
-    'v9.lgMuni': ['الحدود الإدارية لبلدية غرناطة', 'הגבול המנהלי של עיריית גרנדה', 'Administrative boundary of the municipality of Granada'],
+    'v9.lgMuni': ['بلدية غرناطة (ليست المنطقة الكبرى ولا GHSL)', 'עיריית גרנדה (לא המטרופולין ולא GHSL)', 'Granada municipality (not metro area or GHSL)'],
+    'v9.lgGhsl': ['المركز الحضري GHSL (إحصائي، غير إداري)', 'המרכז העירוני GHSL (סטטיסטי, לא מנהלי)', 'GHSL urban centre (statistical, not administrative)'],
     'v9.muniNote': ['بلدية غرناطة فقط (الحدود البلدية الرسمية كما في OSM) — ليست المنطقة الحضرية الكبرى ولا البصمة الحضرية GHSL. تُحفظ كل الأجزاء كما رُسمت.', 'עיריית גרנדה בלבד (הגבול העירוני כפי שמופה ב-OSM) — לא המטרופולין ולא טביעת הרגל העירונית של GHSL. כל החלקים נשמרים כפי שמופו.', 'The municipality of Granada only (its administrative boundary as mapped in OSM) — not the metropolitan area and not the GHSL urban footprint. Every mapped part is kept.'],
     'v9.lyNeigh': ['حدود الأحياء', 'גבולות השכונות', 'Neighbourhood boundaries'],
     'v9.neighNote': ['32 حيًّا (barrios، OSM admin_level 10) داخل البلدية.', '32 שכונות (barrios, OSM admin_level 10) בתוך העירייה.', '32 neighbourhoods (barrios, OSM admin_level 10) inside the municipality.'],
