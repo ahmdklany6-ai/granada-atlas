@@ -166,11 +166,12 @@ sloping mixed `[-3.5990,37.1792]→[-3.5975,37.1792]` (Calle Elvira → Albaicí
 - Section endpoints are moved on the main map (Sections tab), not inside the viewer.
 - Old test suites (v2–v8) assume panels open: `tests/ui_test_v2.py` `PANEL_HOOK` opens them after load (v9 disables it
   with `window.__noPanelHook` to test the real all-closed default).
-- Locator numbers follow the order fabrics were saved; the Comparison numbers follow selection order — they can differ.
+- (Fixed in 5.8) Fabric numbers: one numbering everywhere = position in the saved list (`GA.fabricStyle.numberOf`),
+  plain red number centred above the boundary's top edge. Deleting a fabric renumbers those after it.
 - With a fabric open, "Draw section" attaches the new section to that fabric (close the fabric for a standalone one).
-- The owner's 5.8 screenshots (mood-board images, annotated section) were not attached to the 5.8 session; the palette
-  uses the hex values given in the request, and the section fix was verified on the lines above. Re-check the
-  specific circled spots when the owner shares them again.
+- The owner's annotated section (31 Oct/1 Nov, Cuesta de María de la Miel → Calle Pilar Seco, Albaicín) arrived after
+  the first 5.8 commit; reproduced as `[-3.5942,37.1813]→[-3.5959,37.1813]` (same streets, end levels +762.1/+753.0,
+  59.9 m facade gap vs 60.6 m in the screenshot — the owner's exact endpoints are not known) and checked both ways.
 - The `clim.miroNote` string still says "change the status by hand"; it should say "confirm the upload".
 - The schedule year (2026) is provisional.
 - Browser tests are slow under software GL and must run one at a time; the in-app browser panel used for live checks

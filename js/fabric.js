@@ -158,7 +158,7 @@
           { type: 'line', items: muni ? [{ g: { type: 'MultiLineString', coordinates: lines(muni.geometry) }, stroke: GA.palette.grey, width: 0.9, dash: [4, 3] }] : [] },
           { type: 'line', items: others.map(r => ({ g: { type: 'LineString', coordinates: r }, stroke: GA.palette.ink3, width: 1.4, dash: [3, 2] })) },
           { type: 'fill', items: [{ g: { type: 'Polygon', coordinates: [CMP.ringOf(a.spec)] }, fill: P.red, alpha: 0.06 }] }],
-        labels, fadeOutside: 0 } };
+        labels, fadeOutside: 0, fabricNumbers: root.GA.fabricStyle.numbered() } };
   }
   async function drawLoc(cv, a, w, h, ratio) {
     const card = await locCard(a); const ring = CMP.ringOf(a.spec); const c = G.centroidLL(ring); const f = MC.fit([G.square(c, 3600)], w, h, 0.02);

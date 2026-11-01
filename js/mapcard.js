@@ -99,6 +99,13 @@
       });
       ctx.restore();
     }
+    // fabric numbers: plain red number centred above each fabric's top edge (one numbering for every map and export)
+    // a card of one saved fabric (analysis cards, viewers, comparison cells, exports) carries that fabric's number too
+    let nums = spec.fabricNumbers;
+    if (!nums && spec.ring && spec.ownNumber !== false && root.GA.fabricStyle) { const key = (r) => r.length + ':' + r[0][0].toFixed(7) + ',' + r[0][1].toFixed(7); const k = key(spec.ring);
+      const m = root.GA.fabricStyle.numbered().find(f => f.ring.length && key(f.ring) === k); if (m) nums = [m]; }
+    if (nums && nums.length && root.GA.fabricStyle) { const placed = [];
+      nums.forEach(f => { if (f.no == null || !f.ring) return; const pts = ringUTM(f.ring).map(px); if (pts.every(q => q[0] < 0 || q[0] > W || q[1] < 0 || q[1] > H)) return; root.GA.fabricStyle.numberAbove(ctx, pts, f.no, { size: f.size || 14, placed }); }); }
     if (spec.scaleBar !== false) scaleBar(ctx, W, H, mpp, spec.scaleBarAlign);
     if (spec.north !== false) north(ctx, W);
     if (spec.areaStyle && spec.areaStyle.label) { ctx.font = `700 13px ${font()}`; ctx.fillStyle = spec.areaStyle.color || P.red; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; const t = spec.areaStyle.label; const w = ctx.measureText(t).width + 10; ctx.fillStyle = '#FFFFFF'; ctx.fillRect(6, 6, w, 20); ctx.fillStyle = spec.areaStyle.color || P.red; ctx.fillText(t, 11, 9); }

@@ -220,6 +220,10 @@
       map.addLayer({ id: 'saved-areas-lbl', type: 'symbol', source: 'saved-areas', layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11, 'symbol-placement': 'line', 'text-offset': [0, -0.8] }, paint: { 'text-color': GA.palette.ink2, 'text-halo-color': '#FFF', 'text-halo-width': 1.4 } }); }
     const feats = store.get().areas.filter(a => a.id !== currentAreaId).map(a => { const r = GA.compare.ringOf(a.spec); return r ? { type: 'Feature', properties: { name: a.name }, geometry: { type: 'LineString', coordinates: r } } : null; }).filter(Boolean);
     map.getSource('saved-areas').setData({ type: 'FeatureCollection', features: feats });
+    // fabric numbers: plain red number centred above each saved boundary (the open one included), same numbers everywhere;
+    // placed before the name labels so a number wins a collision, and numbers never overlap each other
+    const FM = GA.fabricStyle; if (!map.getSource('fabric-no')) { map.addSource('fabric-no', { type: 'geojson', data: FM.numbersFC() }); map.addLayer(FM.numberLayer('fabric-no', 'fabric-no'), 'saved-areas-lbl'); }
+    map.getSource('fabric-no').setData(FM.numbersFC());
   }
 
   // ---------- map clicks: section drawing, feature popups ----------
@@ -669,8 +673,8 @@
     exportBusy = true; exportMsg = `<span class="spin"></span> ${t('x.building')}`; renderDrawer();
     const setMsg = (m) => { exportMsg = `<span class="spin"></span> ${esc(m)}`; const el = $('.x-msg'); if (el) el.innerHTML = exportMsg; };
     try {
-      ctx.sections = ctx.area.sections && ctx.area.sections.length ? await sectionsForExport([{ area: ctx.area }]) : [];
-      if (ctx.run && run && run.X) { const iv = GA.compare.indicators(run.X); ctx.indicators = [{ no: 1, name: ctx.area.name, ring: ctx.ring, values: iv }]; ctx.v3 = v3Of(run.X); }
+      ctx.sections = ctx.area.sections && ctx.area.sections.length ? await sectionsForExport([{ area: ctx.area, no: GA.fabricStyle.numberOf(ctx.area.id) }]) : [];
+      if (ctx.run && run && run.X) { const iv = GA.compare.indicators(run.X); ctx.indicators = [{ no: GA.fabricStyle.numberOf(ctx.area.id) || 1, name: ctx.area.name, ring: ctx.ring, values: iv }]; ctx.v3 = v3Of(run.X); }
       const demGrid = exportOpts.dem && D.inRegion(G.centroidLL(ctx.ring)) ? await D.grid('dem').catch(() => null) : null;
       const r = await GA.gisexport.build(ctx, exportOpts, { loadSQL, elevation: S.elevation, progress: setMsg, demGrid });
       download(new Blob([r.zipBytes], { type: 'application/zip' }), r.filename);

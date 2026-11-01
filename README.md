@@ -89,7 +89,7 @@ MapLibre GL JS (BSD-3), sql.js 1.11.0 (MIT) vendored. IBM Plex (OFL 1.1) via Goo
 
 **Classified external rasters** (`js/rasterclass.js`). Land-surface temperature (NASA GIBS), flood zones (MITECO SNCZI), strategic noise (MITECO SICA) and tree-cover density (EEA) offer no alternative styles, so tiles are read as data: each pixel colour is looked up in the service's published classification (the GIBS colormap XML, bundled in `data/ref/gibs_lst_colormap.json`; the GeoServer legend rules; the EEA raw 0–100 values) and redrawn in the atlas classes. Map tiles, analysis cards, Exercise 1.3 plates, studio plates and their legends all use the same class tables. If the LST colormap cannot load, the original tiles and the service legend are shown together.
 
-**Fabric marks** (`js/fabricmark.js`): every fabric boundary is dashed, without heavy fills; numbers are plain text with a light halo.
+**Fabric marks** (`js/fabricmark.js`): every fabric boundary is dashed, without heavy fills. Each fabric has one number everywhere — its position in the saved-fabrics list — written as a plain number in the studio red `#992B2A` with a white halo, centred just above the top edge of its boundary (no circle or badge): on the main map (MapLibre symbol layer that grows slightly with zoom and never overlaps another number), on analysis-page location maps and cards, in the Comparison (listed in number order whatever the selection order), on section locators and in every export.
 
 **Historical explorer red dots**: present-day positions of the Spanish-Wikipedia articles listed under “Linked places” (coordinates from each article; two marked approximate). They are an overlay with its own toggle, legend and pop-up, not part of the historical scans.
 

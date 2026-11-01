@@ -162,8 +162,8 @@
     }
     async function load() {
       const A = areasById(); errors = {};
-      const Xs = await Promise.all(ids().map((id, i) => prepare(A[id]).then(x => Object.assign({}, x, { no: i + 1, style: styleOf(i), _base: x })).catch(e => { errors[id] = e.message; return null; })));
-      return Xs.filter(Boolean);
+      const Xs = await Promise.all(ids().map((id, i) => prepare(A[id]).then(x => Object.assign({}, x, { no: root.GA.fabricStyle.numberOf(id) || i + 1, style: styleOf(i), _base: x })) /* the fabric's own number, same as on every map */.catch(e => { errors[id] = e.message; return null; })));
+      return Xs.filter(Boolean).sort((p, q) => p.no - q.no); // listed in fabric-number order
     }
     async function render() {
       el.innerHTML = header() + `<div class="ws-b">${picker()}<div id="ws-content"></div></div>`;
@@ -260,7 +260,7 @@
       const ctx = cv.getContext('2d'); ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       const FM = root.GA.fabricStyle, placed = [];
       Xs.forEach(x => { const U = MC.ringUTM(x.ring); const pts = U.map(p => [r.X(p[0]), r.Y(p[1])]); FM.strokeRing(ctx, pts, { color: x.style.color, width: 2, dash: x.style.dash });
-        const cx = pts.reduce((s, q) => s + q[0], 0) / pts.length, cy = Math.min(...pts.map(q => q[1])) - 11; FM.drawNumber(ctx, String(x.no), cx, cy, { color: x.style.color, size: 15, placed }); });
+        FM.numberAbove(ctx, pts, x.no, { size: 15, placed }); });
       return r;
     }
 
