@@ -163,7 +163,7 @@
 
   // ---------- layers panel (right, below the study panel) ----------
   let lpTimer; function renderLayersPanelSoon() { clearTimeout(lpTimer); lpTimer = setTimeout(renderLayersPanel, 60); }
-  const GROUPS = ['bld', 'streets', 'land', 'act', 'fac', 'env', 'hist', 'admin', 'terrain', 'user'];
+  const GROUPS = ['bld', 'streets', 'land', 'act', 'fac', 'infra', 'water', 'env', 'climate', 'hist', 'admin', 'terrain', 'user'];
   function renderLayersPanel() {
     const box = $('#panel-layers .block-b'); if (!box) return;
     const focus = document.activeElement && document.activeElement.closest && document.activeElement.closest('#panel-layers') && document.activeElement.matches('input[type=text], input[type=search]');

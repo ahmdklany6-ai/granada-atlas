@@ -19,11 +19,28 @@
     { file: '1915 Granada.jpg', pub: '1915 (Guide Joanne, Espagne et Portugal)', dep: 'the city around 1915; survey date not stated', who: 'Paul Joanne, Ernest Franco', kind: 'plan' },
     { file: 'Map by the US Army Map Service - Granada - spain city plans - txu-pclmaps-oclc-6482717-granada.jpg', pub: '1943 (US Army Map Service, 1:5,000)', dep: 'compiled from earlier sources; survey date not stated', who: 'United States Army Map Service', kind: 'plan' },
   ];
+  // 5.9: each place is drawn with its documented present-day geometry when one is in the published data — an OSM building
+  // footprint (by OSM id), the municipal neighbourhood polygon (by name) or the street line — and stays a point only where no
+  // reliable boundary exists (`why` says which). None of these is a boundary documented for a historical period.
   const PLACES = [
-    { wiki: 'Alhambra' }, { wiki: 'Albaicín' }, { wiki: 'Sacromonte' }, { wiki: 'Catedral_de_Granada' }, { wiki: 'Plaza_de_Bib-Rambla' },
-    { wiki: 'Alcaicería_de_Granada', ll: [-3.5989, 37.1757], approx: true }, { wiki: 'Embovedado_del_Darro', ll: [-3.5972, 37.1758], approx: true },
-    { wiki: 'Plaza_Nueva_(Granada)' }, { wiki: 'Gran_Vía_de_Colón' }, { wiki: 'Realejo-San_Matías' }, { wiki: 'Cartuja_de_Granada' }, { wiki: 'Almanjáyar' },
+    { wiki: 'Alhambra', why: 'complex' }, { wiki: 'Albaicín', geo: { barrio: 'Albaicín' } }, { wiki: 'Sacromonte', geo: { barrio: 'Sacromonte' } },
+    { wiki: 'Catedral_de_Granada', geo: { bld: 'w124069145' } }, { wiki: 'Plaza_de_Bib-Rambla', why: 'square' },
+    { wiki: 'Alcaicería_de_Granada', ll: [-3.5989, 37.1757], approx: true, why: 'none' }, { wiki: 'Embovedado_del_Darro', ll: [-3.5972, 37.1758], approx: true, why: 'covered' },
+    { wiki: 'Plaza_Nueva_(Granada)', why: 'square' }, { wiki: 'Gran_Vía_de_Colón', geo: { street: 'Gran Vía de Colón' } }, { wiki: 'Realejo-San_Matías', geo: { barrio: 'San Matías - Realejo' } },
+    { wiki: 'Cartuja_de_Granada', geo: { bld: 'r5429567' } }, { wiki: 'Almanjáyar', geo: { barrio: 'Almanjáyar' } }, { wiki: 'Generalife', geo: { bld: 'r14361006' } },
   ];
+  // present-day geometry for a place (null when none is published); OSM ids and names are listed above, never guessed
+  async function placeGeom(p) {
+    const D = root.GA.data, g = p.geo; if (!g || !p.ll) return null;
+    try {
+      if (g.barrio) { const j = await D.single('admin'); const f = j.features.find(x => x.properties.kind === 'barrio' && x.properties.name === g.barrio); return f ? { geometry: f.geometry, basis: 'barrio' } : null; }
+      const bb = [p.ll[0] - 0.006, p.ll[1] - 0.005, p.ll[0] + 0.006, p.ll[1] + 0.005];
+      if (g.bld) { const fs = await D.chunked('buildings', bb, 30, 40); const f = fs.find(x => x.properties.id === g.bld); return f ? { geometry: f.geometry, basis: 'bld' } : null; }
+      if (g.street) { const fs = await D.chunked('streets', [p.ll[0] - 0.012, p.ll[1] - 0.01, p.ll[0] + 0.012, p.ll[1] + 0.01], 30, 40); const ls = fs.filter(x => x.properties.nm === g.street).map(x => x.geometry.coordinates);
+        return ls.length ? { geometry: { type: 'MultiLineString', coordinates: ls }, basis: 'street' } : null; }
+    } catch (e) { return null; }
+    return null;
+  }
   let maps = null; let meta = {}; let wiki = {}; let placesFC = null;
   const PAL = root.GA.palette;
   // Overlays drawn on top of the historical scan, each with its own toggle and legend entry:
@@ -37,15 +54,18 @@
     if (F && m.getSource('hx-areas')) F.setVisible(m, 'hx-areas', S.areas !== false);
     if (placesFC) {
       if (!m.getSource('hx-pl')) { m.addSource('hx-pl', { type: 'geojson', data: placesFC });
-        m.addLayer({ id: 'hx-pl', type: 'circle', source: 'hx-pl', paint: { 'circle-radius': 6, 'circle-color': PAL.red, 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 2 } });
-        m.on('mouseenter', 'hx-pl', () => { m.getCanvas().style.cursor = 'pointer'; }); m.on('mouseleave', 'hx-pl', () => { m.getCanvas().style.cursor = ''; });
+        // footprints / neighbourhoods: restrained red outline, light fill; streets: red line; points only where no boundary exists
+        m.addLayer({ id: 'hx-pl-fill', type: 'fill', source: 'hx-pl', filter: ['in', ['geometry-type'], ['literal', ['Polygon', 'MultiPolygon']]], paint: { 'fill-color': PAL.red, 'fill-opacity': ['match', ['get', 'basis'], 'barrio', 0.06, 0.16] } });
+        m.addLayer({ id: 'hx-pl-line', type: 'line', source: 'hx-pl', filter: ['!=', ['geometry-type'], 'Point'], paint: { 'line-color': PAL.red, 'line-width': ['match', ['get', 'basis'], 'street', 3, 'barrio', 1.4, 1.8], 'line-dasharray': ['literal', [1, 0]], 'line-opacity': 0.9 } });
+        m.addLayer({ id: 'hx-pl', type: 'circle', source: 'hx-pl', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 6, 'circle-color': PAL.red, 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 2 } });
+        ['hx-pl', 'hx-pl-fill', 'hx-pl-line'].forEach(l => { m.on('mouseenter', l, () => { m.getCanvas().style.cursor = 'pointer'; }); m.on('mouseleave', l, () => { m.getCanvas().style.cursor = ''; }); });
       } else m.getSource('hx-pl').setData(placesFC);
-      m.setLayoutProperty('hx-pl', 'visibility', S.places === false ? 'none' : 'visible');
+      ['hx-pl', 'hx-pl-fill', 'hx-pl-line'].forEach(l => m.getLayer(l) && m.setLayoutProperty(l, 'visibility', S.places === false ? 'none' : 'visible'));
     }
   }
   function placePopup(p) {
     const d = p.rev ? new Date(p.rev) : null; const ds = d && !isNaN(d) ? d.toISOString().slice(0, 10) : '';
-    return `<b dir="auto">${esc(p.title)}</b>${p.desc ? `<br><small dir="auto">${esc(p.desc)}</small>` : ''}<p class="fine">${t('hx.placeMeaning')}${+p.approx ? ' ' + t('hx.approxPos') : ''}</p>${p.extract ? `<p dir="auto" class="fine">${esc(p.extract)}…</p>` : ''}<small>${t('src.label')} <a href="${esc(p.url)}" target="_blank" rel="noopener">Wikipedia (es) ↗</a> · CC BY-SA 4.0${ds ? ` · ${t('hx.placeRev', { d: ds })}` : ''}</small>`;
+    return `<b dir="auto">${esc(p.title)}</b>${p.desc ? `<br><small dir="auto">${esc(p.desc)}</small>` : ''}<p class="fine">${t('hx.placeMeaning')}${+p.approx ? ' ' + t('hx.approxPos') : ''} ${t(p.basis ? 'v9.basis.' + p.basis : 'v9.why.' + (p.why || 'none'))}</p>${p.extract ? `<p dir="auto" class="fine">${esc(p.extract)}…</p>` : ''}<small>${t('src.label')} <a href="${esc(p.url)}" target="_blank" rel="noopener">Wikipedia (es) ↗</a> · CC BY-SA 4.0${ds ? ` · ${t('hx.placeRev', { d: ds })}` : ''}</small>`;
   }
   const H = () => { const p = store.get(); p.history = p.history || { a: 'ams56', b: 'pnoa2024', opacity: 0.85, swipe: false, pos: 50, collage: [] }; return p.history; };
   const histTiles = (h) => `${h.url}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=${h.layer}&STYLES=&SRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=${encodeURIComponent(h.fmt)}`;
@@ -76,6 +96,8 @@
         <div class="sub">${t('hx.overlays')}</div>
         <label class="chk"><input type="checkbox" id="hx-pl" ${S.places === false ? '' : 'checked'}> <i class="sw dot" style="background:${PAL.red};box-shadow:0 0 0 1px #fff inset"></i> ${t('hx.placesLayer')}</label>
         <p class="fine">${t('hx.placesLegend')}</p>
+        <ul class="lg"><li><i class="sw" style="background:${PAL.redSoft};border:1.5px solid ${PAL.red}"></i><span>${t('v9.lgFootprint')}</span></li><li><i class="sw" style="background:#fff;border:1px solid ${PAL.red}"></i><span>${t('v9.lgBarrio')}</span></li><li><i class="sw ln" style="border-top:3px solid ${PAL.red}"></i><span>${t('v9.lgStreet')}</span></li><li><i class="sw dot" style="background:${PAL.red}"></i><span>${t('v9.lgPointOnly')}</span></li></ul>
+        <p class="fine">${t('v9.presentDay')}</p>
         <label class="chk"><input type="checkbox" id="hx-ar" ${S.areas === false ? '' : 'checked'}> <i class="sw dash"></i> ${t('hx.areasLayer')}</label>
         ${S.swipe ? `<label class="row2">${t('hx.right')} <select id="hx-b">${opt(S.b)}</select></label>` : ''}
         <div class="hx-info" id="hx-info"></div>
@@ -97,8 +119,8 @@
     if (S.swipe) { const b = mk('hx-map-b', S.b); maps.push(b); let lock = false; const sync = (src, dst) => src.on('move', () => { if (lock) return; lock = true; dst.jumpTo({ center: src.getCenter(), zoom: src.getZoom() }); lock = false; }); sync(a, b); sync(b, a); }
     a.on('moveend', () => { const S2 = H(); S2.center = a.getCenter().toArray(); S2.zoom = a.getZoom(); updateInfo(body); });
     a.on('load', () => { updateInfo(body); overlays(a); });
-    a.on('click', async (e) => { const pf = a.getLayer('hx-pl') && a.getLayoutProperty('hx-pl', 'visibility') !== 'none' ? a.queryRenderedFeatures(e.point, { layers: ['hx-pl'] }) : [];
-      if (pf.length) { new maplibregl.Popup({ className: 'atlas-popup', maxWidth: '300px' }).setLngLat(pf[0].geometry.coordinates).setHTML(placePopup(pf[0].properties)).addTo(a); return; }
+    a.on('click', async (e) => { const pf = a.getLayer('hx-pl') && a.getLayoutProperty('hx-pl', 'visibility') !== 'none' ? a.queryRenderedFeatures(e.point, { layers: ['hx-pl', 'hx-pl-line', 'hx-pl-fill'] }) : [];
+      if (pf.length) { new maplibregl.Popup({ className: 'atlas-popup', maxWidth: '300px' }).setLngLat(pf[0].geometry.type === 'Point' ? pf[0].geometry.coordinates : e.lngLat).setHTML(placePopup(pf[0].properties)).addTo(a); return; }
       const S2 = H(); const h = X.HIST.find(x => x.id === S2.a); const r = await X.histInfo(h, [e.lngLat.lng, e.lngLat.lat]).catch(() => null); if (r) new maplibregl.Popup({ className: 'atlas-popup' }).setLngLat(e.lngLat).setHTML(`<b>${esc(t('hist.' + h.id))}</b><br>${histLine(h, r)}`).addTo(a); });
   }
   function histLine(h, r) { return `${r.name ? `<bdi>${esc(r.name)}</bdi> · ` : ''}${r.sheet ? t('ly3.sheet') + ' ' + esc(r.sheet) + ' · ' : ''}${r.year ? `${t(h.id === 'minutas' ? 'hx.surveyed' : 'fb.edition')} <b class="num">${esc(r.year)}</b>` : ''}${r.flights && r.flights.length ? t('ly3.flights') + ' <span class="num">' + r.flights.join(', ') + '</span>' : ''}${r.editions ? `<br><small>${t('ly3.editions')} <span class="num">${r.editions.join(', ')}</span></small>` : ''}`; }
@@ -110,9 +132,19 @@
   async function renderPlaces(body) {
     const box = body.querySelector('#hx-places'); const out = [];
     for (const p of PLACES) { const w = await wikiSummary(p.wiki); if (!w.title) continue; out.push(Object.assign({}, p, w, { ll: w.ll || p.ll })); }
-    box.innerHTML = out.map((p, i) => `<article class="hx-place"><button class="link" data-hx-fly="${i}"><b dir="auto">${esc(p.title)}</b></button>${p.approx ? ` <small>${t('hx.approxPos')}</small>` : ''}<p dir="auto">${esc((p.extract || '').slice(0, 260))}${(p.extract || '').length > 260 ? '…' : ''}</p><small><a href="${esc(p.url)}" target="_blank" rel="noopener">Wikipedia (es) ↗</a> · CC BY-SA 4.0</small></article>`).join('') || `<p class="note">${t('hx.placesFail')}</p>`;
+    // 5.9: under each paragraph, the lead image of the same Wikipedia article (an image OF that place), only when it is a
+    // freely licensed Wikimedia Commons file; author and licence come from the Commons file page. Otherwise it says so.
+    const commonsFile = (u) => { if (!u || !/\/wikipedia\/commons\//.test(u)) return null; const parts = u.split('/'); const f = /\/thumb\//.test(u) ? parts[parts.length - 2] : parts[parts.length - 1]; try { return decodeURIComponent(f); } catch (e) { return f; } };
+    out.forEach(p => { p.file = commonsFile(p.thumb); });
+    box.innerHTML = out.map((p, i) => `<article class="hx-place"><button class="link" data-hx-fly="${i}"><b dir="auto">${esc(p.title)}</b></button>${p.approx ? ` <small>${t('hx.approxPos')}</small>` : ''}<p dir="auto">${esc((p.extract || '').slice(0, 260))}${(p.extract || '').length > 260 ? '…' : ''}</p>
+      ${p.file ? `<figure class="hx-fig" data-file="${esc(p.file)}"><img src="${esc(p.thumb)}" alt="${esc(p.title)}" loading="lazy"><figcaption class="fine">${t('v9.leadImg')} <span class="hx-attr">…</span></figcaption></figure>` : `<p class="fine hx-noimg">${t(p.thumb ? 'v9.noFreeImg' : 'v9.noImg')}</p>`}
+      <small><a href="${esc(p.url)}" target="_blank" rel="noopener">Wikipedia (es) ↗</a> · CC BY-SA 4.0</small></article>`).join('') || `<p class="note">${t('hx.placesFail')}</p>`;
+    const files = out.map(p => p.file).filter(Boolean);
+    if (files.length) commonsMeta(files).then(() => box.querySelectorAll('.hx-fig').forEach(fig => { const m = meta[fig.dataset.file] || {}; const a = fig.querySelector('.hx-attr');
+      a.innerHTML = `${m.author ? esc(m.author) + ' · ' : ''}${m.license ? esc(m.license) + ' · ' : `${t('v9.licUnknown')} · `}<a href="${esc(m.page || ('https://commons.wikimedia.org/wiki/File:' + encodeURIComponent(fig.dataset.file)))}" target="_blank" rel="noopener">Wikimedia Commons ↗</a>`; })).catch(() => box.querySelectorAll('.hx-attr').forEach(a => { const f = a.closest('.hx-fig').dataset.file; a.innerHTML = `<a href="https://commons.wikimedia.org/wiki/File:${encodeURIComponent(f)}" target="_blank" rel="noopener">${t('v9.licOnPage')} ↗</a>`; }));
     box.onclick = (e) => { const b = e.target.closest('[data-hx-fly]'); if (!b || !maps) return; const p = out[+b.dataset.hxFly]; if (!p.ll) return; maps[0].flyTo({ center: p.ll, zoom: 17 }); new maplibregl.Popup({ className: 'atlas-popup' }).setLngLat(p.ll).setHTML(`<b dir="auto">${esc(p.title)}</b>${p.approx ? `<br><small>${t('hx.approxPos')}</small>` : ''}`).addTo(maps[0]); };
-    placesFC = { type: 'FeatureCollection', features: out.filter(p => p.ll).map((p, i) => ({ type: 'Feature', properties: { i, title: p.title, desc: p.desc || '', url: p.url || '', rev: p.rev || '', approx: p.approx ? 1 : 0, extract: (p.extract || '').slice(0, 220) }, geometry: { type: 'Point', coordinates: p.ll } })) };
+    const geoms = await Promise.all(out.map(p => placeGeom(p)));
+    placesFC = { type: 'FeatureCollection', features: out.map((p, i) => [p, i]).filter(([p]) => p.ll).map(([p, i]) => { const g = geoms[i]; return { type: 'Feature', properties: { i, title: p.title, desc: p.desc || '', url: p.url || '', rev: p.rev || '', approx: p.approx ? 1 : 0, extract: (p.extract || '').slice(0, 220), basis: g ? g.basis : '', why: g ? '' : (p.why || 'none'), ll: JSON.stringify(p.ll) }, geometry: g ? g.geometry : { type: 'Point', coordinates: p.ll } }; }) };
     (maps || []).forEach(m => overlays(m));
   }
   async function renderArchive(body) {

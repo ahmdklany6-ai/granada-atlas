@@ -1,4 +1,4 @@
-# Granada Atlas — handoff (state at build 5.8, 1 Nov 2026)
+# Granada Atlas — handoff (state at build 5.9, 1 Nov 2026)
 
 This document lets a new Claude Code session continue the project without the original chat. Short operating rules
 are in `CLAUDE.md`; feature and data documentation is in `README.md`.
@@ -9,12 +9,12 @@ are in `CLAUDE.md`; feature and data documentation is in `README.md`.
 | --- | --- |
 | Repository | `ahmdklany6-ai/granada-atlas` (public), branch `main` |
 | Live site | https://ahmdklany6-ai.github.io/granada-atlas/ (GitHub Pages, deploy from `main`, repo root) |
-| Current build | **5.8** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.8` asset queries) |
-| Latest feature work | Build 5.8: new palette, grounded street sections, three floating panels (commit message "Build 5.8: …"; see `git log`) |
+| Current build | **5.9** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.9` asset queries) |
+| Latest feature work | Build 5.9: colour hierarchy, boundary layers, water/runoff, infrastructure, seasonal wind/rain, landmark geometries, print layout (see §13) |
 | Deployment | see §12 (5.8 deployment record) |
-| Data version | `2026-11-01-v6` in `data/manifest.json` (display rasters re-rendered in the new palette) |
+| Data version | `2026-11-01-v7` in `data/manifest.json` (flow paths, period coverage, overview raster in the 5.9 ramp) |
 
-Build history (newest first): 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
+Build history (newest first): 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
 classified climate rasters, dashed fabric marks, historical red dots explained · 5.5/5.4 smooth building scales and
 street hierarchy at close zoom · 5.3 (v5) analysis page, viewers, unified Comparison, phone/iPad · v4/v3/v2 earlier.
 
@@ -73,7 +73,8 @@ Static ES5/ES2017 scripts loaded in order by `index.html` (no bundler). Key modu
 | Exercises / studio | `ex13.js`, `studio.js` (Miro squares, climate board, schedule), `exercises.js` (requirements), `submission.js` (four states) |
 | Palette | `palette.js` (loaded in `<head>`; writes `P.ui` as `--c-*` CSS custom properties; groups: `ui`, `landuse`, `band`, `period`, `tier`, `poi`, `fac`, `places`, `bus`, `choro`, `slope`, `elevRamp`, `lst`, `noise`, `flood`, `canopy`, `chart`, `section`, `material`, `mark`, `basemap`) |
 | Other | `history.js` (historical explorer), `library.js` (image wall), `viewer.js` (viewers, `panZoom`), `fabricmark.js`, `i18n*.js` (newest `i18n_v8.js`) |
-| Tools | `tools/build_data.js`, `build_extra.js`, `build_trees.py`, `build_buildings_lite.js`, `build_terrain_display.js` (re-renders elevation/slope/building-floors display PNGs from the repo data in the palette colours and writes the class tables to the manifest) |
+| 5.9 modules | `layers_v9.js` (water, infrastructure, climate layers via `GA.layersExtra`; `GA.climate.windStats/rainStats`), `printlayout.js` (`#/print`, `GA.printLayout`), `i18n_v9.js` |
+| Tools | `tools/build_flow.js` (flow paths from the DEM), `tools/build_data.js`, `build_extra.js`, `build_trees.py`, `build_buildings_lite.js`, `build_terrain_display.js` (re-renders elevation/slope/building-floors display PNGs from the repo data in the palette colours and writes the class tables to the manifest) |
 
 ## 5. GIS layers (published, open data — see `data/manifest.json` and README for sources/licences)
 
@@ -214,3 +215,31 @@ sloping mixed `[-3.5990,37.1792]→[-3.5975,37.1792]` (Calle Elvira → Albaicí
   Allowed domains) or have the owner hard-reload the site and check Status → build 5.8, the cream/red palette, the three
   panel tabs, a sloping section and fabric numbers above saved fabrics.
 
+## 13. Build 5.9 (owner requests of 1 Nov 2026) — status per feature
+
+Legend: VERIFIED = tested in this repository's browser suites with the real published data; UNVERIFIED-LIVE = implemented,
+works with test stubs, but its data comes from a live external service that the Claude environment cannot reach
+(network policy: only GitHub/PyPI/npm), so it has never been seen with real data; NOT DONE.
+
+| Feature | Status | Notes |
+| --- | --- | --- |
+| Red colour hierarchy (ramps, stops, bus frequency, trees, noise classes, land use, neighbourhood lines over choropleth) | VERIFIED (local data layers); noise colours UNVERIFIED-LIVE | noise tiles come from MITECO SICA, reclassified in the browser |
+| Separate boundary layers (municipality outer, neighbourhoods red, districts + GHSL) | VERIFIED | districts/GHSL off by default to keep the legend compact |
+| Construction period investigation | VERIFIED | source gap: 39 of 101,674 footprints dated; unknown hatched; Catastro named as the better source (not connected) |
+| Railways and Granada Metro, stations | UNVERIFIED-LIVE | read from the basemap's OSM vector tiles (OpenFreeMap) |
+| Water-supply / wastewater / stormwater NETWORKS | NOT DONE | no open dataset reachable; layer says "not connected" |
+| Mapped canals, ditches, drains (OSM) | VERIFIED | not the municipal stormwater network (stated) |
+| Terrain-derived flow paths | VERIFIED | computed offline from MDT25; approximation |
+| Covered Darro route | UNVERIFIED-LIVE | drawn only where OSM tags tunnel/culvert in the basemap tiles; whether the Darro segment is tagged has not been seen |
+| Seasonal wind rose | UNVERIFIED-LIVE | ERA5 via Open-Meteo, fetched by the visitor's browser; tested only with synthetic stubs inside the test runner — no synthetic or cached values are shipped in `data/` |
+| Rainfall means | UNVERIFIED-LIVE | as above (1991–2020 daily) |
+| Historical landmarks with footprints/polygons | VERIFIED geometry (published data); Wikipedia text UNVERIFIED-LIVE | |
+| Images under the linked-place paragraphs | UNVERIFIED-LIVE | the article's own Commons lead image + author/licence; otherwise "no suitable image" |
+| Additional historical maps (archive research) | NOT DONE | needs internet research; existing archive unchanged |
+| Print workspace (A4–A1, orientation, margins, true scale, dpi, templates with slots: maps at own scales, legend, sections, analysis cards, wind rose, rainfall chart, uploaded images, captions, reorder, preview, PDF/PNG) | VERIFIED | measured scale within 0.5 % (A3 1:5,000 → 1:5,006; A2/A4 two maps at 1:5,000 and 1:10,000) |
+
+Next session with network access (allow archive-api.open-meteo.com, *.wikipedia.org, commons.wikimedia.org,
+upload.wikimedia.org, tiles.openfreemap.org, ahmdklany6-ai.github.io): open the live site and check the wind rose and
+rainfall values against an independent source (e.g. AEMET normals for Granada airport), the metro line and stations, the
+Darro culvert, and the place images; then research historical maps (IGN Cartoteca, Archivo Municipal, BNE, Real
+Chancillería) and connect Catastro INSPIRE construction years.

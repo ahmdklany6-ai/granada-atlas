@@ -7,7 +7,7 @@
 /* Build check: GitHub Pages lets browsers reuse a cached index.html for up to 10 minutes. If the published build is newer
    than this page, reload once at a URL the cache has not seen, so code and data always come from one build.
    Saved projects (localStorage / IndexedDB) are untouched by the reload. */
-window.GA_BUILD = '5.8';
+window.GA_BUILD = '5.9';
 (function () { try {
   fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (v) {
     if (!v || !v.build || v.build === window.GA_BUILD) return;
@@ -20,18 +20,19 @@ window.GA_BUILD = '5.8';
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Sans+Hebrew:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css">
-<link rel="stylesheet" href="css/app.css?v=5.8">
-<script src="js/i18n.js?v=5.8"></script>
-<script src="js/i18n_gallery.js?v=5.8"></script>
-<script src="js/i18n_ui.js?v=5.8"></script>
-<script src="js/i18n_v3.js?v=5.8"></script>
-<script src="js/i18n_v3b.js?v=5.8"></script>
-<script src="js/i18n_v4.js?v=5.8"></script>
-<script src="js/i18n_v5.js?v=5.8"></script>
-<script src="js/i18n_v6.js?v=5.8"></script>
-<script src="js/i18n_v7.js?v=5.8"></script>
-<script src="js/i18n_v8.js?v=5.8"></script>
-<script src="js/palette.js?v=5.8"></script>
+<link rel="stylesheet" href="css/app.css?v=5.9">
+<script src="js/i18n.js?v=5.9"></script>
+<script src="js/i18n_gallery.js?v=5.9"></script>
+<script src="js/i18n_ui.js?v=5.9"></script>
+<script src="js/i18n_v3.js?v=5.9"></script>
+<script src="js/i18n_v3b.js?v=5.9"></script>
+<script src="js/i18n_v4.js?v=5.9"></script>
+<script src="js/i18n_v5.js?v=5.9"></script>
+<script src="js/i18n_v6.js?v=5.9"></script>
+<script src="js/i18n_v7.js?v=5.9"></script>
+<script src="js/i18n_v8.js?v=5.9"></script>
+<script src="js/i18n_v9.js?v=5.9"></script>
+<script src="js/palette.js?v=5.9"></script>
 <script>GA.i18n.apply();</script>
 </head>
 <body>
@@ -43,6 +44,7 @@ window.GA_BUILD = '5.8';
     <button class="tb-btn" data-page="library" data-i18n="nav.library">معلومات عامة</button>
     <button class="tb-btn" data-page="history" data-i18n="nav.history">الخرائط التاريخية</button>
     <button class="tb-btn" data-page="studio" data-i18n="nav.studio">الاستوديو</button>
+    <button class="tb-btn" data-page="print" data-i18n="pl.nav">تخطيط الطباعة</button>
     <button class="tb-btn tb-gis" data-drawer="export" data-i18n="nav.export">تنزيل بيانات GIS</button>
     <button class="tb-btn" id="tb-measure" data-i18n="v5.measure">قياس</button>
     <button class="tb-btn" data-drawer="status" data-i18n="v5.statusNav">الحالة</button>
@@ -111,45 +113,47 @@ window.GA_BUILD = '5.8';
 
 <noscript>This tool needs JavaScript · تحتاج الأداة إلى JavaScript · הכלי דורש JavaScript</noscript>
 <script src="vendor/maplibre/maplibre-gl.js"></script>
-<script src="js/geo.js?v=5.8"></script>
-<script src="js/proj.js?v=5.8"></script>
-<script src="js/analysis.js?v=5.8"></script>
-<script src="js/clip.js?v=5.8"></script>
-<script src="js/style.js?v=5.8"></script>
-<script src="js/store.js?v=5.8"></script>
-<script src="js/sources.js?v=5.8"></script>
-<script src="js/dates.js?v=5.8"></script>
-<script src="js/report.js?v=5.8"></script>
-<script src="js/selection.js?v=5.8"></script>
-<script src="js/data.js?v=5.8"></script>
-<script src="js/ext.js?v=5.8"></script>
-<script src="js/rasterclass.js?v=5.8"></script>
-<script src="js/io/tiffread.js?v=5.8"></script>
-<script src="js/mapcard.js?v=5.8"></script>
-<script src="js/gallery.js?v=5.8"></script>
-<script src="js/section.js?v=5.8"></script>
-<script src="js/pdf.js?v=5.8"></script>
-<script src="js/layers_ext.js?v=5.8"></script>
-<script src="js/layers.js?v=5.8"></script>
-<script src="js/import.js?v=5.8"></script>
-<script src="js/gallery_ext.js?v=5.8"></script>
-<script src="js/fabricmark.js?v=5.8"></script>
-<script src="js/compare.js?v=5.8"></script>
-<script src="js/viewer.js?v=5.8"></script>
-<script src="js/section_view.js?v=5.8"></script>
-<script src="js/pages.js?v=5.8"></script>
-<script src="js/library.js?v=5.8"></script>
-<script src="js/fabric.js?v=5.8"></script>
-<script src="js/history.js?v=5.8"></script>
-<script src="js/exercises.js?v=5.8"></script>
-<script src="js/submission.js?v=5.8"></script>
-<script src="js/studio.js?v=5.8"></script>
-<script src="js/ex13.js?v=5.8"></script>
-<script src="js/export/zip.js?v=5.8"></script>
-<script src="js/export/gpkg.js?v=5.8"></script>
-<script src="js/export/geotiff.js?v=5.8"></script>
-<script src="js/export/qml.js?v=5.8"></script>
-<script src="js/export/gisexport.js?v=5.8"></script>
-<script src="js/app.js?v=5.8"></script>
+<script src="js/geo.js?v=5.9"></script>
+<script src="js/proj.js?v=5.9"></script>
+<script src="js/analysis.js?v=5.9"></script>
+<script src="js/clip.js?v=5.9"></script>
+<script src="js/style.js?v=5.9"></script>
+<script src="js/store.js?v=5.9"></script>
+<script src="js/sources.js?v=5.9"></script>
+<script src="js/dates.js?v=5.9"></script>
+<script src="js/report.js?v=5.9"></script>
+<script src="js/selection.js?v=5.9"></script>
+<script src="js/data.js?v=5.9"></script>
+<script src="js/ext.js?v=5.9"></script>
+<script src="js/rasterclass.js?v=5.9"></script>
+<script src="js/io/tiffread.js?v=5.9"></script>
+<script src="js/mapcard.js?v=5.9"></script>
+<script src="js/gallery.js?v=5.9"></script>
+<script src="js/section.js?v=5.9"></script>
+<script src="js/pdf.js?v=5.9"></script>
+<script src="js/layers_ext.js?v=5.9"></script>
+<script src="js/layers_v9.js?v=5.9"></script>
+<script src="js/layers.js?v=5.9"></script>
+<script src="js/import.js?v=5.9"></script>
+<script src="js/gallery_ext.js?v=5.9"></script>
+<script src="js/fabricmark.js?v=5.9"></script>
+<script src="js/compare.js?v=5.9"></script>
+<script src="js/viewer.js?v=5.9"></script>
+<script src="js/section_view.js?v=5.9"></script>
+<script src="js/pages.js?v=5.9"></script>
+<script src="js/library.js?v=5.9"></script>
+<script src="js/fabric.js?v=5.9"></script>
+<script src="js/history.js?v=5.9"></script>
+<script src="js/exercises.js?v=5.9"></script>
+<script src="js/submission.js?v=5.9"></script>
+<script src="js/studio.js?v=5.9"></script>
+<script src="js/ex13.js?v=5.9"></script>
+<script src="js/printlayout.js?v=5.9"></script>
+<script src="js/export/zip.js?v=5.9"></script>
+<script src="js/export/gpkg.js?v=5.9"></script>
+<script src="js/export/geotiff.js?v=5.9"></script>
+<script src="js/export/qml.js?v=5.9"></script>
+<script src="js/export/gisexport.js?v=5.9"></script>
+<script src="js/app.js?v=5.9"></script>
 </body>
 </html>
