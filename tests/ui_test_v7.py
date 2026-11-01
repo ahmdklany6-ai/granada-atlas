@@ -178,7 +178,7 @@ try:
             const cv = document.createElement('canvas'); cv.width = cv.height = 8; const g = cv.getContext('2d'); g.fillStyle = `rgb(${c.join(',')})`; g.fillRect(0, 0, 8, 8);
             const url = cv.toDataURL('image/png'); const tiles = RC.tiles('lst', url);
             const r = await RC._tile({ url: tiles.replace('{bbox-epsg-3857}', '0,0,1,1') }); const bm = await createImageBitmap(new Blob([r.data])); const c2 = document.createElement('canvas'); c2.width = c2.height = 8; const g2 = c2.getContext('2d'); g2.drawImage(bm, 0, 0); const d = g2.getImageData(4, 4, 1, 1).data; return [d[0], d[1], d[2]]; })()''')
-        check(tilechk == [207, 127, 105], f'LST tile protocol: 47 °C pixel drawn in class 45–50 {tilechk}')
+        check(tilechk == [int(PAL['lst'][4][i:i + 2], 16) for i in (1, 3, 5)], f'LST tile protocol: 47 °C pixel drawn in class 45–50 {tilechk}')
         # legends from the same definitions; vector layers: every legend colour is drawn on the map
         aud = pg.evaluate(r'''(() => { const L = GA.app.L, m = GA.app.map; const norm = (c) => { c = String(c).trim().toLowerCase(); let r; if ((r = /^#([0-9a-f]{6})$/.exec(c))) return c; if ((r = /^#([0-9a-f]{3})$/.exec(c))) return '#' + r[1].split('').map(x => x + x).join(''); if ((r = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c))) return '#' + [r[1], r[2], r[3]].map(v => (+v).toString(16).padStart(2, '0')).join(''); return null; };
             const walk = (v, out) => { if (typeof v === 'string') { const n = norm(v); if (n) out.add(n); } else if (Array.isArray(v)) v.forEach(x => walk(x, out)); else if (v && typeof v === 'object') Object.values(v).forEach(x => walk(x, out)); };
