@@ -24,7 +24,7 @@
   document.body.classList.add('left-collapsed', 'right-collapsed', 'layers-collapsed');
 
   // ---------- map ----------
-  const map = new maplibregl.Map({ container: 'map', style: basemap.style(), center: [-3.5986, 37.1773], zoom: 13.2, minZoom: 10, maxZoom: 19, attributionControl: false, dragRotate: false, pitchWithRotate: false, preserveDrawingBuffer: false });
+  const map = new maplibregl.Map({ container: 'map', style: basemap.style(), center: [-3.5986, 37.1773], zoom: 13.2, minZoom: 10, maxZoom: 19, attributionControl: false, dragRotate: false, pitchWithRotate: true, preserveDrawingBuffer: false }); // rotation (and tilt with it) is enabled only in the 3D view (view3d.js)
   map.touchZoomRotate.disableRotation();
   // physical corners: navigation top-right, scale bottom-left, attribution bottom-right — never mirrored
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');

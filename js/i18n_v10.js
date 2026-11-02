@@ -25,5 +25,11 @@
     'v10.fitHist': ['ملاءمة الخريطة التاريخية', 'התאמה למפה ההיסטורית', 'Fit historical map'],
     'v10.histExtent': ['«{p}» سلسلة وطنية من IGN تغطي إسبانيا كلها؛ يعرضها المستكشف من التكبير 11 (نحو 30 كم) حول غرناطة.', '«{p}» היא סדרה ארצית של IGN המכסה את כל ספרד; הסייר מציג אותה מזום 11 (כ-30 ק״מ) סביב גרנדה.', '"{p}" is a national IGN series covering all of Spain; the explorer shows it from zoom 11 (about 30 km across) around Granada.'],
     'v10.openImage': ['فتح الصورة كاملة', 'פתיחת התמונה המלאה', 'Open the full image'],
+    // ----- 3D view -----
+    'v10.to3d': ['التبديل إلى العرض ثلاثي الأبعاد', 'מעבר לתצוגה תלת-ממדית', 'Switch to the 3D view'],
+    'v10.to2d': ['العودة إلى العرض ثنائي الأبعاد', 'חזרה לתצוגה דו-ממדית', 'Back to the 2D view'],
+    'v10.resetView': ['إعادة ضبط العرض', 'איפוס התצוגה', 'Reset view'],
+    'v10.no3d': ['هذا الجهاز أو المتصفح لا يدعم العرض ثلاثي الأبعاد.', 'מכשיר או דפדפן זה אינו תומך בתצוגה תלת-ממדית.', 'This device or browser does not support the 3D view.'],
+    'v10.note3d': ['<b>عرض ثلاثي الأبعاد تقريبي.</b> الأرض من MDT25 (25 م) داخل مربع 20 كم فقط، وخارجه مسطّحة عند قيمة الحافة. المباني تظهر من التكبير 14 تقريبًا: الارتفاع المسجّل كتلة داكنة، والمقدّر من عدد الطوابق × 3 م كتلة أفتح، وما لا بيانات له يبقى مسطّحًا. كتل بسيطة بلا تفاصيل واجهات — ليست نماذج ممسوحة. الرسم الدقيق للمناطق والمقاطع أسهل في العرض ثنائي الأبعاد.', '<b>תצוגה תלת-ממדית משוערת.</b> הקרקע מ-MDT25 ‏(25 מ׳) רק בתוך ריבוע 20 ק״מ, ומחוצה לו שטוחה בערך הקצה. מבנים מופיעים מזום 14 בערך: גובה רשום — גוש כהה, גובה מוערך מקומות × 3 מ׳ — גוש בהיר, ובלי נתונים — נשאר שטוח. גושים פשוטים ללא פרטי חזית — אינם מודלים שנמדדו. שרטוט מדויק של אזורים וחתכים קל יותר בדו-ממד.', '<b>Approximate 3D view.</b> Terrain from MDT25 (25 m) inside the 20 km square only; outside it the surface is flat at the edge value. Buildings appear from about zoom 14: tagged height as a solid block, floors × 3 m as a lighter ESTIMATE, no data left flat. Plain blocks with no façade detail — not surveyed models. Precise drawing of areas and sections is easier in 2D.'],
   });
 })(window);
