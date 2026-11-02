@@ -101,17 +101,46 @@
       layers: () => [lid('canopy')], opacityProp: { [lid('canopy')]: 'raster-opacity' },
       legend: () => `${rcLegend('canopy')}<p class="lyr-src">${t('ly3.canopyNote')} ${t('rc.classified')}</p>`,
       src: () => 'Copernicus HRL Tree Cover Density 2018 · 10 m · EEA (free, full and open)' });
-    defs.push({ id: 'trees', group: 'env', title: () => t('ly3.trees'), def: { on: false, opacity: 1 },
+    // 5.11: one tree model (js/trees.js) for the popup, the 2D crowns, 3D and sections. Below zoom 13 the layer becomes a
+    // labelled overview (mapped trees per 250 m cell); from 13 points; from 15.5 crowns at TRUE SCALE (recorded crown, or the
+    // editable illustrative size drawn lighter). Colours: recorded size / species known / leaf type only / unknown.
+    const TREE_AGG_Z = 13, TREE_CROWN_Z = 15.5;
+    const mppAt = (z) => 78271.517 * Math.cos(37.18 * Math.PI / 180) / Math.pow(2, z); // metres per CSS pixel (512 px tiles)
+    const treeCol = (m) => { const C = GA.palette.tree3d; return (m.hRec || m.crownRec) ? C.recorded : (m.formBasis === 'species' || m.formBasis === 'genus') ? C.known : m.formBasis === 'leaf_type' ? C.leaf : C.unknown; };
+    defs.push({ id: 'trees', group: 'env', title: () => t('ly3.trees'), def: { on: false, opacity: 1 }, minZ: TREE_AGG_Z,
       build() {
-        addSrc(lid('trees'), { type: 'geojson', data: fc() });
-        addLyr({ id: lid('trees', 'row'), type: 'line', source: lid('trees'), filter: ['==', ['get', 'kind'], 'tree_row'], paint: { 'line-color': GA.palette.trees, 'line-width': 3, 'line-dasharray': [0.6, 1.4], 'line-opacity': 1 } });
-        addLyr({ id: lid('trees'), type: 'circle', source: lid('trees'), filter: ['==', ['get', 'kind'], 'tree'], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 0.9, 15, 2.4, 19, 6], 'circle-color': '#FFFFFF', 'circle-stroke-color': GA.palette.trees, 'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 11, 0.8, 15, 1.4, 19, 2], 'circle-opacity': 1, 'circle-stroke-opacity': 1 } }); // red ring: distinct from filled red points
+        addSrc(lid('trees'), { type: 'geojson', data: fc() }); addSrc(lid('trees', 'agg'), { type: 'geojson', data: fc() }); const C = GA.palette.tree3d;
+        addLyr({ id: lid('trees', 'agg'), type: 'circle', source: lid('trees', 'agg'), maxzoom: TREE_AGG_Z, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, ['*', 0.35, ['sqrt', ['get', 'n']]], 13, ['*', 1.6, ['sqrt', ['get', 'n']]]], 'circle-color': C.known, 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 0.8, 'circle-opacity': 1 } });
+        addLyr({ id: lid('trees', 'row'), type: 'line', source: lid('trees'), minzoom: TREE_AGG_Z, filter: ['==', ['get', 'kind'], 'tree_row'], paint: { 'line-color': C.known, 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 1.5, 18, 5], 'line-dasharray': [0.6, 1.4], 'line-opacity': 1 } });
+        // true-scale crowns: radius(px) = crown radius (m) / metres-per-pixel, interpolated exponentially (exact at every zoom)
+        const rpx = ['interpolate', ['exponential', 2], ['zoom'], TREE_CROWN_Z, ['/', ['get', 'r'], mppAt(TREE_CROWN_Z)], 22, ['/', ['get', 'r'], mppAt(22)]];
+        addLyr({ id: lid('trees', 'crown'), type: 'circle', source: lid('trees'), minzoom: TREE_CROWN_Z, filter: ['==', ['get', 'kind'], 'tree'], paint: { 'circle-radius': rpx, 'circle-color': ['get', 'col'], 'circle-opacity': ['case', ['get', 'rec'], 0.95, 0.55], 'circle-stroke-color': ['case', ['get', 'rec'], GA.palette.ink, '#FFFFFF'], 'circle-stroke-width': ['case', ['get', 'rec'], 1.6, 0.8], 'circle-stroke-opacity': 1 } });
+        addLyr({ id: lid('trees'), type: 'circle', source: lid('trees'), minzoom: TREE_AGG_Z, maxzoom: 17.5, filter: ['==', ['get', 'kind'], 'tree'], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 1.4, 16, 2.6, 19, 3.2], 'circle-color': ['get', 'col'], 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 0.7, 'circle-opacity': 1, 'circle-stroke-opacity': 1 } });
       },
-      async load() { const r = await X.trees([-180, -90, 180, 90]); map.getSource(lid('trees')).setData(fc(X.treeFeatures(r))); this._ts = r.ts; return r.pts.length; },
-      layers: () => [lid('trees', 'row'), lid('trees')], opacityProp: { [lid('trees')]: 'circle-stroke-opacity', [lid('trees', 'row')]: 'line-opacity' },
-      legend() { return `<ul class="lg"><li><i class="sw dot" style="background:#fff;border:2px solid ${GA.palette.trees}"></i><span>${t('ly3.treePt')}</span></li>${swl(GA.palette.trees, 3, t('ly3.treeRow'), true)}</ul><p class="lyr-src">${t('ly3.treesNote')}</p>`; },
-      src: () => `OpenStreetMap natural=tree / tree_row · ${t('ly3.snapshot')} 2026-10-31 · ODbL`,
-      popup: { layers: () => [lid('trees'), lid('trees', 'row')], html: (p) => `<b>${t(p.kind === 'tree_row' ? 'ly3.treeRow' : 'ly3.treePt')}</b>${kv([[t('ly3.species'), p.species ? `<i dir="ltr">${esc(p.species)}</i>` : (p.genus ? `<i dir="ltr">${esc(p.genus)}</i>` : `<em>${t('nodata')}</em>`)], [t('ly3.leaf'), p.leaf_type ? esc(p.leaf_type) + (p.leaf_cycle ? ' · ' + esc(p.leaf_cycle) : '') : null], [t('ly3.height'), p.height ? esc(p.height) + ' m' : `<em>${t('nodata')}</em>`], [t('ly3.crown'), p.crown ? esc(p.crown) + ' m' : `<em>${t('nodata')}</em>`]])}<small dir="ltr">OSM ${esc(p.id)}</small>` },
+      async load() {
+        if (this._n == null) {
+          const r = await X.trees([-180, -90, 180, 90]); const T = GA.trees; this._ts = r.ts; this._n = r.pts.length; this._rows = r.ways.length;
+          const fs = r.pts.map(p => { const m = T.model(p.tags); return { type: 'Feature', properties: { id: p.id, kind: 'tree', r: m.crown / 2, rec: !!m.crownRec, col: treeCol(m), tg: JSON.stringify(p.tags) }, geometry: { type: 'Point', coordinates: p.ll } }; });
+          r.ways.forEach(w => fs.push({ type: 'Feature', properties: { id: w.id, kind: 'tree_row', tg: JSON.stringify(w.tags) }, geometry: { type: 'LineString', coordinates: w.coords } }));
+          map.getSource(lid('trees')).setData(fc(fs));
+          const cells = {}; const S = 250; r.pts.forEach(p => { const u = GA.proj.EPSG25830.forward(p.ll); const k = Math.floor(u[0] / S) + ':' + Math.floor(u[1] / S); (cells[k] = cells[k] || { n: 0, x: 0, y: 0 }); cells[k].n++; cells[k].x += p.ll[0]; cells[k].y += p.ll[1]; });
+          this._cells = Object.values(cells).length; map.getSource(lid('trees', 'agg')).setData(fc(Object.values(cells).map(c => ({ type: 'Feature', properties: { n: c.n }, geometry: { type: 'Point', coordinates: [c.x / c.n, c.y / c.n] } }))));
+          this._defs = this._defs || GA.trees.onDefaults(() => { this._n = null; this.load().then(() => H.emit()); });
+        }
+        return this._n;
+      },
+      async update() { return map.getZoom() < TREE_AGG_Z ? 'overview' : this._n; },
+      layers: () => [lid('trees', 'agg'), lid('trees', 'row'), lid('trees', 'crown'), lid('trees')],
+      applyOpacity(o) { const set = (l, p, v) => map.getLayer(l) && map.setPaintProperty(l, p, v); set(lid('trees', 'agg'), 'circle-opacity', o); set(lid('trees', 'row'), 'line-opacity', o); set(lid('trees'), 'circle-opacity', o); set(lid('trees', 'crown'), 'circle-opacity', ['case', ['get', 'rec'], 0.95 * o, 0.55 * o]); set(lid('trees', 'crown'), 'circle-stroke-opacity', o); },
+      controls() { const D = GA.trees.defaults; return `<p class="fine">${t('v11.treeDefaults')}</p><div class="row2 tree-defs"><label>${t('v10.treeH') || 'h'} <span class="u"><input type="number" min="1" max="40" step="0.5" value="${D.h}" data-ly-ctl="trees" data-k="h"> m</span></label><label>${t('v10.treeCrown')} <span class="u"><input type="number" min="0.5" max="30" step="0.5" value="${D.crown}" data-ly-ctl="trees" data-k="crown"> m</span></label></div>`; },
+      onControl(el) { const D = GA.trees.defaults; const v = +el.value; if (!(v > 0)) return false; if (el.dataset.k === 'h') GA.trees.setDefaults(v, D.crown); else GA.trees.setDefaults(D.h, v); },
+      legend() { const C = GA.palette.tree3d; const z = map.getZoom(); const dot = (c, l, op) => `<li><i class="sw dot" style="background:${c};${op ? 'opacity:calc(var(--lg-op,1) * ' + op + ')' : ''}"></i><span>${l}</span></li>`;
+        if (z < TREE_AGG_Z) return `<ul class="lg"><li><i class="sw dot" style="background:${C.known};width:14px;height:14px"></i><span>${t('v11.treeAgg', { n: nf(this._n || 0), c: nf(this._cells || 0) })}</span></li></ul><p class="lyr-src">${t('v11.treeAggNote')} ${t('ly3.treesNote')}</p>`;
+        return `<ul class="lg">${dot(C.recorded, t('v11.lgTreeRec'))}${dot(C.known, t('v11.lgTreeKnown'))}${dot(C.leaf, t('v11.lgTreeLeaf'))}${dot(C.unknown, t('v11.lgTreeUnk'))}${swl(C.known, 3, t('ly3.treeRow'), true)}</ul>${z >= TREE_CROWN_Z ? `<p class="lyr-src">${t('v11.crownScale', { h: nf(GA.trees.defaults.h, 1), c: nf(GA.trees.defaults.crown, 1) })}</p>` : ''}<p class="lyr-src">${t('v11.treeCounts', { n: nf(this._n || 0), r: nf(this._rows || 0) })} ${t('ly3.treesNote')}</p>`; },
+      src: () => `OpenStreetMap natural=tree / tree_row · ${t('ly3.snapshot')} ${(D.manifest && D.manifest.layers.trees_osm && String(D.manifest.layers.trees_osm.date).slice(0, 10)) || ''} · ODbL · ${t('v11.noInventory')}`,
+      popup: { layers: () => [lid('trees', 'crown'), lid('trees'), lid('trees', 'row'), 'ga3d-trees-crown', 'ga3d-trees-trunk'],
+        html: (p) => { let tg = {}; try { tg = JSON.parse(p.tg || '{}'); } catch (e) { } if (p.kind === 'tree_row') return `<b>${t('ly3.treeRow')}</b>${GA.trees.infoHTML(GA.trees.model(tg), { id: p.id, ts: GA.ext.treeTs && GA.ext.treeTs() }, t, esc, nf)}<p class="fine">${t('v11.rowNote')}</p>`;
+          return `<b>${t('ly3.treePt')}</b>${GA.trees.infoHTML(GA.trees.model(tg), { id: p.id, ts: GA.ext.treeTs && GA.ext.treeTs() }, t, esc, nf)}`; } },
     });
 
     // ---------- Flood zones (SNCZI) ----------

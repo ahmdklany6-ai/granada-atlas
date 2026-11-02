@@ -142,8 +142,9 @@
     })).catch(e => { treeSnap = null; throw e; });
     return treeSnap;
   }
+  let treeTsV = null; const treeTs = () => treeTsV;
   async function trees(bb) {
-    const d = await treeData();
+    const d = await treeData(); treeTsV = d.ts;
     const pts = d.pts.filter(p => G.inBBox(p.ll, bb));
     const ways = d.ways.filter(w => (() => { const b = G.bbox(w.coords); return b[0] <= bb[2] && b[2] >= bb[0] && b[1] <= bb[3] && b[3] >= bb[1]; })());
     return { pts, ways, ts: d.ts };
@@ -194,6 +195,6 @@
     { id: 'noise', file: 'Granada_Noise_Maps_English.pdf', kind: 'noise', title: 'Strategic noise map 2022 (Phase 4) — Lden, Ld, Le, Ln; overview + 13 sheets each', publisher: 'Ayuntamiento de Granada, Servicio de Protección Ambiental — Phase 4 strategic noise map (titles translated)', dataYear: '2022', reportYear: '2022', type: 'modelled noise levels (strategic noise mapping), dB(A)', unit: 'dB(A); Lden = day-evening-night, Ln = night', coverage: 'Granada municipality, 1:40,000 overview, EPSG:25830', data: 'the 2022 maps are a PDF; the national SICA service shows the Granada agglomeration from an earlier phase (3rd), connected live for orientation only', url: 'https://sicaweb.cedex.es/' },
   ];
 
-  const api = { SVC, FLOOD, LST_DATE, HIST, DOCS, wmsTiles, wmsURL, loadImage, warp3857, merc, imerc, floodExposure, floodWFS, tcdGrid, tcdStats, TCD_CLASSES, tcdColour, trees, treeFeatures, histInfo };
+  const api = { SVC, FLOOD, LST_DATE, HIST, DOCS, wmsTiles, wmsURL, loadImage, warp3857, merc, imerc, floodExposure, floodWFS, tcdGrid, tcdStats, TCD_CLASSES, tcdColour, trees, treeFeatures, treeTs, histInfo };
   root.GA = root.GA || {}; root.GA.ext = api;
 })(window);

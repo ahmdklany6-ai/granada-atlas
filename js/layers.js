@@ -337,6 +337,31 @@
       map.getSource('ly-mask').setData(on ? fc([{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]]].concat(maskRings.map(r => r.slice().reverse())) } }]) : fc());
     }
 
+    // ---------- legend states (5.11) ----------
+    const GRANADA_BB = [[-3.7259, 37.0777], [-3.4992, 37.2591]]; // municipal data region (data/manifest.json region4326)
+    function failureHTML(id) {
+      const s = S[id]; const msg = String(s.statusExtra || ''); const kind = /429|quota/i.test(msg) ? 'quota' : /timeout/i.test(msg) ? 'timeout' : /network|Failed to fetch|NetworkError/i.test(msg) ? 'network' : 'other';
+      return `<div class="ly-fail" role="alert"><b>${t('v11.failTitle')}</b><span>${t('v11.fail.' + kind)}</span>${msg ? `<small dir="ltr">${esc(msg)}</small>` : ''}<button type="button" class="btn btn-tiny" data-ly-retry="${id}">${t('retry')}</button></div>`;
+    }
+    // the zoom range in which a layer draws anything: from its style layers' min/max zoom and its sources' min zoom
+    function zoomRange(d) {
+      let lo = Infinity, hi = -Infinity; const ls = d.layers().filter(l => map.getLayer(l));
+      ls.forEach(l => { const L = map.getLayer(l); const src = L.source && map.getSource(L.source); const smin = src && src.type !== 'image' && src.minzoom ? src.minzoom : 0; /* image sources draw at every zoom */ lo = Math.min(lo, Math.max(L.minzoom || 0, smin)); hi = Math.max(hi, L.maxzoom == null ? 24 : L.maxzoom); });
+      return ls.length ? [lo, hi] : null;
+    }
+    function drawsHere(d) { const r = zoomRange(d); if (!r) return true; const z = map.getZoom(); return z >= r[0] && z < r[1]; }
+    function zoomHint(id) {
+      const s = S[id]; const d = byId[id]; if (!s || !s.on || !d || s.status === 'failed' || s.status === 'loading') return '';
+      const scale = ['zoom', 'zoomLite'].includes(s.status) || !drawsHere(d);
+      if (!scale && s.status !== 'empty') return '';
+      return `<p class="ly-zoomhint">${t(scale ? 'v11.notAtScale' : 'v11.emptyHere')}${scale && d.scaleNote ? ' ' + d.scaleNote() : ''} <button type="button" class="btn btn-tiny" data-ly-zoomto="${id}">${t('v11.zoomTo')}</button></p>`;
+    }
+    function legendBody(d) {
+      const s = S[d.id] || {}; if (s.status === 'failed') return failureHTML(d.id);
+      let body = ''; try { body = d.legend ? d.legend() : ''; } catch (e) { body = ''; }
+      if (s.status === 'loading' && !body) body = `<p class="lyr-src">${t('ly.st.loading')}</p>`;
+      return zoomHint(d.id) + body;
+    }
     const api = {
       defs, S, byId, userDefs, get order() { return order; }, get scope() { return scope; }, onChange: (f) => listeners.push(f), ensureBuilt,
       setOn(id, on) { const d = byId[id] || userDefs.find(u => u.id === id); if (!d) return; S[id].on = on; if (built) { applyVis(d); if (on) runLoad(d); } persist(); emit(); },
@@ -348,8 +373,21 @@
       setMaskRings(rings) { maskRings = rings || []; applyMask(); },
       highlight(features) { if (built) map.getSource('ly-hl').setData(fc(features)); },
       legendHTML() {
-        return order.map(id => byId[id] || userDefs.find(u => u.id === id)).filter(d => d && S[d.id] && S[d.id].on).map(d => `<div class="lg-blk" data-ly="${d.id}" style="--lg-op:${S[d.id].opacity == null ? 1 : S[d.id].opacity}"><h4>${esc(d.title())}</h4>${d.legend ? d.legend() : ''}</div>`).join(''); // swatches carry the layer's opacity, as drawn on the map
+        // swatches carry the layer's opacity, as drawn on the map. A layer whose data failed shows the failure, its cause and
+        // Retry — never its normal legend (which would suggest that data is on the map); a loading layer says so.
+        return order.map(id => byId[id] || userDefs.find(u => u.id === id)).filter(d => d && S[d.id] && S[d.id].on).map(d => `<div class="lg-blk${S[d.id].status === 'failed' ? ' lg-failed' : ''}" data-ly="${d.id}" style="--lg-op:${S[d.id].opacity == null ? 1 : S[d.id].opacity}"><h4>${esc(d.title())}</h4>${legendBody(d)}</div>`).join('');
       },
+      failureHTML: (id) => failureHTML(id),
+      retry(id) { const d = byId[id]; if (!d) return; if (d.reset) d.reset(); runLoad(d); },
+      // zoom so the layer draws: into Granada when the view is outside it, to the layer's first drawing zoom, or out of a
+      // too-close zoom; the centre stays where it is when it is already inside the municipal region
+      zoomTo(id) { const d = byId[id]; if (!d) return; const r = zoomRange(d) || [0, 24]; const s = S[id]; const z0 = map.getZoom();
+        let need = Math.max(r[0], s.status === 'zoom' ? (d.minZ || DETAIL_Z) : s.status === 'zoomLite' ? LITE_Z : 0); if (z0 >= r[1]) need = r[1] - 0.5;
+        const c = map.getCenter(); const inside = c.lng > GRANADA_BB[0][0] && c.lng < GRANADA_BB[1][0] && c.lat > GRANADA_BB[0][1] && c.lat < GRANADA_BB[1][1];
+        const zt = z0 >= r[1] ? need : Math.max(need + 0.05, inside ? z0 : 11.5);
+        if (!inside && zt <= 11.5) map.fitBounds(GRANADA_BB, { padding: 30, duration: 1000 }); else map.easeTo({ center: inside ? c : [-3.5986, 37.1773], zoom: zt, duration: 1000 }); },
+      drawsHere: (id) => byId[id] ? drawsHere(byId[id]) : true, zoomRange: (id) => byId[id] ? zoomRange(byId[id]) : null,
+      zoomHint: (id) => zoomHint(id),
       popupAt(point) {
         if (!built) return null;
         const all = order.map(id => byId[id] || userDefs.find(u => u.id === id)).filter(d => d && S[d.id].on && d.popup);

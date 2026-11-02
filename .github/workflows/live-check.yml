@@ -1,0 +1,28 @@
+# Live checks that need the open internet (the public site, Open-Meteo, basemap tiles), run on a GitHub runner.
+# Results, including screenshots (base64 between ===IMG name=== markers), go to the job log only — nothing is committed.
+name: live-check
+on:
+  workflow_dispatch:
+    inputs:
+      script:
+        description: 'script in tools/verify/ to run'
+        required: true
+        default: 'live_site.py'
+  push:
+    branches: ['claude/**']
+    paths: ['tools/verify/**', '.github/workflows/live-check.yml']
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install playwright==1.48.0 && python -m playwright install --with-deps chromium
+      - name: run
+        env:
+          SCRIPT: ${{ github.event.inputs.script || '' }}
+        run: |
+          S="${SCRIPT:-$(cat tools/verify/RUN)}"
+          for s in $S; do echo "##### $s"; python tools/verify/$s || echo "SCRIPT FAILED: $s"; done

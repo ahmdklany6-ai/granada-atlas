@@ -1,0 +1,47 @@
+{
+  "_note": "Translations of the Spanish Wikipedia summaries for places with no article in the interface language (AI-assisted, prepared for build 5.11 from data/ref/history_places.json; text CC BY-SA 4.0, source: the Spanish article). 'excerpt' marks a translation of the opening sentences only.",
+  "Sacromonte": {
+    "ar": {"title": "ساكرومونتي", "extract": "ساكرومونتي حيّ في مدينة غرناطة بإسبانيا، يقع في الجزء الشرقي من المدينة. وهو أحد الأحياء الستة التي تؤلّف منطقة البيازين. يحدّه البيازين وريالخو-سان ماتياس وإل فارغي وآثا غراندي."},
+    "he": {"title": "סקרומונטה", "extract": "סקרומונטה היא שכונה בעיר גרנדה שבספרד, הממוקמת בחלקה המזרחי של העיר. היא אחת משש השכונות המרכיבות את רובע אלבאיסין. היא גובלת בשכונות אלבאיסין, ריאלחו-סן מטיאס, אל פרגה ואסה גרנדה."}
+  },
+  "Catedral_de_Granada": {
+    "he": {"title": "הקתדרלה של גרנדה", "extract": "הכנסייה הקתדרלית המטרופוליטנית הקדושה והשליחית, בזיליקת הבשורה של גרנדה, היא כנסייה קתולית בעיר גרנדה שבספרד ומושב הארכיבישוף של העיר. המבנה הוא אחת מפסגות הרנסנס הספרדי, והוא מוקדש למסתורין הבשורה (התגלמות האל)."}
+  },
+  "Plaza_de_Bib-Rambla": {
+    "ar": {"title": "ساحة بيب رامبلا", "extract": "ساحة بيب رامبلا، أو بيبارّامبلا، فضاء عام في مدينة غرناطة الإسبانية، في منطقة الأندلس ذات الحكم الذاتي."},
+    "he": {"title": "כיכר ביב-רמבלה", "extract": "כיכר ביב-רמבלה, או ביבארמבלה, היא מרחב ציבורי בעיר גרנדה שבספרד, בקהילה האוטונומית אנדלוסיה."},
+    "en": {"title": "Plaza de Bib-Rambla", "extract": "The Plaza de Bib-Rambla, or Bibarrambla, is a public space in the Spanish city of Granada, in the autonomous community of Andalusia."}
+  },
+  "Alcaicería_de_Granada": {
+    "he": {"title": "אלקאיסריה של גרנדה", "extract": "האלקאיסריה של גרנדה היא שוק מקורה (אלקאיסריה) בסמוך לקתדרלה של גרנדה, בעיר גרנדה שבספרד, בקהילה האוטונומית אנדלוסיה. כיום פועלות בה חנויות של מלאכת יד גרנדית, שבהן נמכרים כלי החרס הפופולריים של פחאלאוסה, שיבוץ עץ (טרסאה) ופנסי זכוכית צבעונית. יש בה גם חנויות ספרים, תכשיטים ובתי אוכל."}
+  },
+  "Embovedado_del_Darro": {
+    "ar": {"title": "تغطية نهر حدرّه (دارّو)", "extract": "يشير «إمبوبيدادو» نهر دارّو (حدرّه) إلى أعمال قَنْوَنة نهر دارّو وتغطيته في مدينة غرناطة، الأندلس، إسبانيا."},
+    "he": {"title": "קירוי נהר הדארו", "extract": "קירוי (אמבובדאדו) נהר הדארו מתייחס לעבודות התיעול והכיסוי של נהר הדארו בעיר גרנדה, אנדלוסיה, ספרד."},
+    "en": {"title": "Covering of the Darro (Embovedado del Darro)", "extract": "The embovedado of the river Darro refers to the works that channelled and covered the river Darro in the city of Granada, Andalusia, Spain."}
+  },
+  "Plaza_Nueva_(Granada)": {
+    "ar": {"title": "الساحة الجديدة (بلاثا نويبا)", "extract": "بلاثا نويبا (الساحة الجديدة) فضاء حضري في مدينة غرناطة الإسبانية، في منطقة الأندلس ذات الحكم الذاتي."},
+    "he": {"title": "פלאסה נואבה (גרנדה)", "extract": "פלאסה נואבה (הכיכר החדשה) היא מרחב עירוני בעיר גרנדה שבספרד, בקהילה האוטונומית אנדלוסיה."},
+    "en": {"title": "Plaza Nueva (Granada)", "extract": "Plaza Nueva is an urban space in the Spanish city of Granada, in the autonomous community of Andalusia."}
+  },
+  "Gran_Vía_de_Colón": {
+    "ar": {"title": "غران بيا دي كولون", "extract": "غران بيا دي كولون شارع في غرناطة (إسبانيا)، وهو الشريان الرئيسي لوسط المدينة."},
+    "he": {"title": "גראן ויה דה קולון", "extract": "גראן ויה דה קולון היא רחוב בגרנדה (ספרד), העורק הראשי של מרכז העיר."},
+    "en": {"title": "Gran Vía de Colón", "extract": "The Gran Vía de Colón is a street in Granada (Spain), the main artery of the city centre."}
+  },
+  "Realejo-San_Matías": {
+    "ar": {"title": "ريالخو-سان ماتياس", "excerpt": true, "extract": "ريالخو-سان ماتياس حيّ في مدينة غرناطة بإسبانيا، يتبع إداريًا منطقة الوسط، ويتكوّن من أربعة أحياء: ريالخو وسان ماتياس وسانتا آنا وحيّ العذراء، ويقع في البلدة القديمة عند سفح قصر الحمراء من جهته الجنوبية الشرقية. تتحدّث المصادر عن ربض يهودي في المدينة الإسلامية في العصور الوسطى المبكرة يُعرف بـ«غرناطة اليهود» على الضفة اليسرى لنهر دارّو، لكن لا دليل أثريًا عليه بعد. بدأت التحوّلات العمرانية الكبرى في القرن الثاني عشر مع إنشاء ربض الفخّارين."},
+    "he": {"title": "ריאלחו-סן מטיאס", "excerpt": true, "extract": "ריאלחו-סן מטיאס היא שכונה בעיר גרנדה שבספרד, השייכת מבחינה מנהלית לרובע המרכז ומורכבת מארבע שכונות: ריאלחו, סן מטיאס, סנטה אנה ושכונת הבתולה. היא שוכנת בעיר העתיקה, למרגלות האלהמברה מצדה הדרום-מזרחי. המקורות מזכירים פרבר יהודי של העיר המוסלמית בימי הביניים המוקדמים, שנודע בשם «גרנדה של היהודים», על הגדה השמאלית של הדארו, אך עדיין אין לו עדות ארכאולוגית. התמורות העירוניות הגדולות החלו במאה ה-12 עם הקמת פרבר הקדרים."},
+    "en": {"title": "Realejo-San Matías", "excerpt": true, "extract": "Realejo-San Matías is a neighbourhood of the city of Granada, Spain. Administratively part of the Centro district, it is made up of four neighbourhoods — Realejo, San Matías, Santa Ana and Barrio de la Virgen — in the old town, at the foot of the Alhambra on its south-eastern side. For the early medieval period the sources mention a Jewish suburb of the Muslim city, known as Garnata al-Yahud, “Granada of the Jews”, on the left bank of the Darro, for which there is as yet no archaeological evidence. The great urban transformations began in the 12th century with the creation of the potters’ suburb."}
+  },
+  "Cartuja_de_Granada": {
+    "ar": {"title": "دير الكارتوخا في غرناطة", "extract": "الدير الملكي لسيدة الانتقال (الكارتوخا)، في مدينة غرناطة الإسبانية بمنطقة الأندلس ذات الحكم الذاتي، أوى جماعة من الرهبان الكرثوزيين منذ تأسيسه في القرن السادس عشر حتى إخراج الرهبان منه عام 1835. ومع أنه يمزج بين أساليب متعددة، فإنه يُعدّ من قمم العمارة الباروكية الإسبانية."},
+    "he": {"title": "מנזר הקרתוזיאנים של גרנדה", "extract": "המנזר המלכותי של גבירתנו של העלייה (הקרתוחה), בעיר גרנדה שבספרד, בקהילה האוטונומית אנדלוסיה, שיכן קהילת נזירים קרתוזיאנים מייסודו במאה ה-16 ועד פינוי הנזירים בשנת 1835. אף שהוא משלב סגנונות שונים, הוא נחשב לאחת מפסגות האדריכלות הבארוקית הספרדית."}
+  },
+  "Almanjáyar": {
+    "ar": {"title": "المنجيار (ألمانخايار)", "excerpt": true, "extract": "ألمانخايار حيّ في مدينة غرناطة بإسبانيا، يتبع إداريًا منطقة الشمال. يقع في شمال غرب غرناطة، ويحدّه شمالًا بيثنار وألفاكار، وغربًا بولياناس، وجنوبًا طريق خاين، وشرقًا نهر بيرو. وهو حيّ للطبقة العاملة."},
+    "he": {"title": "אלמנחאיאר", "excerpt": true, "extract": "אלמנחאיאר היא שכונה בעיר גרנדה שבספרד, השייכת מבחינה מנהלית לרובע הצפון. היא שוכנת בצפון-מערב גרנדה וגובלת בצפון בוויסנר ובאלפקאר, במערב בפוליאנס, בדרום בכביש חאאן ובמזרח בנהר בֵּיירו. זוהי שכונה של מעמד הפועלים."},
+    "en": {"title": "Almanjáyar", "excerpt": true, "extract": "Almanjáyar is a neighbourhood of the city of Granada, Spain, administratively part of the Norte district. It lies in the north-west of Granada, bounded to the north by Víznar and Alfacar, to the west by Pulianas, to the south by the Jaén road and to the east by the river Beiro. It is a working-class neighbourhood."}
+  }
+}

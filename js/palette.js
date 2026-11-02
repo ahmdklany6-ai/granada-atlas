@@ -47,6 +47,9 @@
     luOther: BASE.cream,
     // Building heights (floors): sequential red, light → our red → deep wine
     band: { '1-2': D.blush, '3-4': D.rose, '5-8': RED, '9+': BASE.oxblood, no_data: '#FFFFFF' },
+    // 3D extrusions (5.11, opaque): tagged height = measured (blue-grey family, apart from the red floor ramp);
+    // floors × floor height = estimate, in the same floor bands as the 2D map
+    extrude: { measured: D.blueDeep, estimate: { '1-2': D.blush, '3-4': D.rose, '5-8': RED, '9+': BASE.oxblood } },
     // Construction period: sequential blue-grey, older = darker (distinct from the red height ramp)
     period: { pre_1900: D.blueDark, '1900_1939': D.blueDeep, '1940_1959': D.blueMid, '1960_1979': BASE.blueGrey, '1980_1999': D.bluePale, '2000_plus': BASE.cream, no_data: '#FFFFFF' },
     periodNoData: D.paper2,
@@ -66,6 +69,8 @@
     slope: [['0-2', '#F4F1EA'], ['2-5', '#E8E1C8'], ['5-10', D.khakiPale], ['10-15', '#BFA97A'], ['15-25', '#9C7A55'], ['25-35', BASE.burgundy], ['35+', BASE.wine]],
     slopeAlpha: [0, 150, 175, 195, 210, 225, 235],
     elevRamp: [[560, '#EEEEE6'], [650, '#E2E3D3'], [700, '#E2DCC0'], [800, '#D3C6A0'], [950, '#BBA67F'], [1200, '#A08066'], [1600, '#83655A'], [1860, '#F2F1EC']],
+    // trees (5.11): restrained olives; recorded size darkest, unknown species neutral (generic model)
+    tree3d: { recorded: BASE.olive, known: D.oliveMid, leaf: BASE.khaki, unknown: D.warmGrey2, trunk: BASE.burgundy },
     contour: '#8C7A55', trees: RED, waterLine: D.blueDeep, blueDark: D.blueDark,
     // water and runoff (water keeps the blue family): terrain flow paths by upslope area, small → large; mapped ditches
     flow: [D.bluePale, BASE.blueGrey, D.blueDeep, D.blueDark], drain: D.blueMid,
@@ -91,7 +96,7 @@
     material: { tiles: '#B5654A', slate: '#5B5F66', metal: '#8A9097', green: D.oliveMid, membrane: '#A8A8A8', render: '#D9D3C7', brick: '#B9785C', stone: '#BFB6A4', concrete: '#B3B5B8', glass: BASE.lightBlue, timber: '#A07A52' },
     // study areas, comparison and locator marks
     mark: { area: RED, other: D.ink3, mask: D.paper, section: D.ink, sectionBg: D.ink3, corridor: BASE.olive },
-    basemap: { land: '#F4F3EE', block: '#ECEAE3', green: D.olivePale, agri: '#EFEEE2', water: '#D6E2E8', waterLine: BASE.lightBlue, bld: '#E3DFD6', bldLine: '#CFC9BD', road: '#FFFFFF', casing: '#D8D3C8', casingMajor: '#BAB3A6', rail: D.warmGrey, label: '#3A2C27', labelSoft: '#6F625C', halo: '#F4F3EE', boundary: '#A9A096', waterLabel: D.blueDeep },
+    basemap: { land: '#F4F3EE', block: '#ECEAE3', green: D.olivePale, agri: '#EFEEE2', water: '#D6E2E8', waterLine: BASE.lightBlue, bld: '#E3DFD6', bldLine: '#CFC9BD', road: '#FFFFFF', casing: '#D8D3C8', casingMajor: '#BAB3A6', rail: D.warmGrey, label: '#3A2C27', labelSoft: '#6F625C', halo: '#F4F3EE', boundary: '#A9A096', boundaryCountry: D.warmGrey, seaLabel: D.blueMid, waterLabel: D.blueDeep },
   };
   // Old saved analyses used en dashes and Arabic period labels as keys.
   P.bandKey = (k) => String(k).replace('–', '-').replace('none', 'no_data');

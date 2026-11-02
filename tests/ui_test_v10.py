@@ -37,6 +37,10 @@ def wiki(route):
 def boot(b, vp, lang='en', mobile=False):
     ctx = b.new_context(viewport=vp, is_mobile=mobile, has_touch=mobile, accept_downloads=True); pg = ctx.new_page(); V3.stub3(pg)
     pg.route('https://archive-api.open-meteo.com/**', open_meteo); pg.route('https://es.wikipedia.org/api/rest_v1/page/summary/**', wiki); errs = []
+    # 5.11: wind/rain and the place descriptions ship as snapshots; this suite tests the live fallbacks (snapshots blocked,
+    # no interlanguage links) with its synthetic stubs — ui_test_v12.py tests the snapshots themselves
+    pg.route('**/data/climate/**', lambda r: r.fulfill(status=404, body='')); pg.route('**/data/ref/history_places.json*', lambda r: r.fulfill(status=404, body=''))
+    pg.route('https://es.wikipedia.org/w/api.php**', lambda r: r.fulfill(json={'query': {'pages': {'1': {'title': 'x'}}}}))
     pg.on('console', lambda m: m.type == 'error' and 'Failed to load resource' not in m.text and errs.append(m.text[:300])); pg.on('pageerror', lambda e: errs.append('PAGE ' + str(e)[:300]))
     pg.goto(f'http://127.0.0.1:{PORT}/index.html'); pg.wait_for_function('window.GA && GA.app && GA.app.map.isStyleLoaded()', timeout=90000)
     pg.evaluate(f'GA.i18n.setLang("{lang}")'); time.sleep(0.4); return ctx, pg, errs
@@ -55,7 +59,7 @@ try:
         check(P['band']['9+'] == P['base']['oxblood'] and P['bus']['High'] == P['base']['oxblood'], 'red ramps end in oxblood (no brown/black at the dark end)')
         on('bus_stops'); time.sleep(1.5); check(P['red'] in paint('ly-bus', 'circle-color'), 'public-transport stops are red', paint('ly-bus', 'circle-color'))
         on('bus_service'); time.sleep(2); bp = paint('ly-bussvc', 'circle-color'); check(all(P['bus'][k] in bp for k in ['High', 'Medium-high', 'Medium-low', 'Low']) and P['base']['brown'] not in bp, 'bus frequency uses the light→dark red ramp, no brown')
-        on('trees'); time.sleep(2); check(paint('ly-trees', 'circle-stroke-color') == json.dumps(P['red']) and paint('ly-trees', 'circle-color') == '"#FFFFFF"', 'mapped trees: red ring (distinct from filled red points)')
+        on('trees'); time.sleep(2); check(paint('ly-trees', 'circle-color') == json.dumps(['get', 'col']) and pg.evaluate('GA.palette.tree3d.known') != P['red'], 'mapped trees (5.11): restrained olive classes from palette.tree3d, not red', paint('ly-trees', 'circle-color'))
         check(P['red'] in leg() or '153, 43, 42' in leg(), 'tree legend shows the red ring')
         noise = P['noise']; check(len(set(noise)) == 6 and noise[4] == P['red'] and noise[5] == P['base']['oxblood'], 'noise scale pale → dark red, six ordered classes')
         lu = list(P['landuse'].values()); check(len(set(lu)) == len(lu), f'land-use categories all distinct ({len(lu)} colours)')
