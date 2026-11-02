@@ -796,3 +796,7 @@ details.assign[open] > summary { border-bottom: 1px solid var(--line); } details
 .note-3d { position: absolute; top: calc(var(--gut) + 44px); left: calc(var(--lw-eff) + var(--gut)); max-width: min(420px, calc(100% - var(--lw-eff) - var(--rw-eff) - 80px)); z-index: 6; background: rgba(252, 251, 248, .96); border: 1px solid var(--line); border-inline-start: 3px solid var(--red); padding: 6px 10px; font-size: 12.5px; color: var(--ink-2); }
 @media (max-width: 699px) { .note-3d { left: 8px; right: 60px; top: 8px; max-width: none; font-size: 11.5px; } }
 body.view-3d .north { display: none; } /* the map can be rotated in 3D: the north arrow would be wrong */
+/* fixed 4:3 frame for every place image (padding ratio: works for buttons and placeholders alike) */
+.hx-thumb { position: relative; height: 0 !important; padding: 0 0 75% 0 !important; aspect-ratio: auto; }
+.hx-thumb > img, .hx-thumb > span { position: absolute; inset: 0; }
+.hx-thumb > span { display: flex; align-items: center; justify-content: center; padding: 10px; }
