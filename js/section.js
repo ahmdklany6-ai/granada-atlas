@@ -256,7 +256,7 @@
     // looking to the left of A→B puts A on the left of the drawing; looking to the right puts B on the left (what one sees)
     const mir = prof.look === 'right'; const X = (d) => x0 + (mir ? prof.L - d : d) * xs, Y = (e) => yBase - (e - lo) * ys;
     const XX = (d0, d1) => { const p = X(d0), q = X(d1); return p < q ? [p, q] : [q, p]; };
-    const hits = []; const flags = { bgGround: false, plinth: false, estH: false, roofSchematic: false, roofLevels: false, basement: false, illustrative: false, documented: false, userDims: false, figures: false, treesSchem: false, measured: false, slabs: false, unknownH: 0 };
+    const drawnTrees = []; const hits = []; const flags = { bgGround: false, plinth: false, estH: false, roofSchematic: false, roofLevels: false, basement: false, illustrative: false, documented: false, userDims: false, figures: false, treesSchem: false, measured: false, slabs: false, unknownH: 0 };
     const gy = (d) => { const i = Math.max(0, Math.min(prof.elev.length - 1, Math.round(d / prof.step))); return prof.elev[i]; };
     const roofPts = (shape, a, b, yE, rh) => { const yR = yE - rh; const w = b - a;
       if (ROOF_TRI.test(shape)) return [[a, yE], [(a + b) / 2, yR], [b, yE]];
@@ -292,7 +292,7 @@
     const drawTree = (tr) => {
       if (tr.base == null) return; const on = tr.near;
       if (!on && tr.lineBase != null && Math.abs(tr.base - tr.lineBase) > 0.3) pt.path([[X(tr.d) - 5, Y(tr.base)], [X(tr.d) + 5, Y(tr.base)]], { stroke: TREE_BG, lw: 0.8 }); /* its own ground */ const col = on ? TREE_ON : TREE_BG; const lw = on ? 1.2 : 0.8; const alpha = on ? 1 : 0.75; const x = X(tr.d), y0 = Y(tr.base);
-      const dm = treeDims(tr); if (dm.sch) flags.treesSchem = true; const ryM = Math.min(dm.c / 2, dm.h * 0.45); const rx = Math.max(1.2, dm.c / 2 * xs), ry = Math.max(1.2, ryM * ys);
+      const dm = treeDims(tr); if (dm.sch) flags.treesSchem = true; drawnTrees.push({ d: tr.d, h: dm.h, c: dm.c, sch: dm.sch, hPx: dm.h * ys, cPx: dm.c * xs, near: !!tr.near, base: tr.base }); const ryM = Math.min(dm.c / 2, dm.h * 0.45); const rx = Math.max(1.2, dm.c / 2 * xs), ry = Math.max(1.2, ryM * ys);
       const cyM = tr.base + dm.h - ryM; const cx = x, cyy = Y(cyM); const ell = []; for (let k = 0; k <= 28; k++) { const a = k / 28 * Math.PI * 2; ell.push([cx + Math.cos(a) * rx, cyy + Math.sin(a) * ry]); }
       pt.path([[x, y0], [x, Y(cyM - ryM * 0.55)]], { stroke: col, lw: Math.max(lw + 0.3, Math.min(3, 0.3 * xs)), alpha }); // trunk anchored at its ground
       pt.path(ell, { fill: on ? '#FFFFFF' : SP.treeFillBg, stroke: col, lw, alpha, close: true, dash: dm.sch ? [3, 2] : null });
@@ -411,7 +411,7 @@
       // ---- locator: north-up plan with the section line, A/B, viewing direction, projection band, study areas ----
       if (prof.ctx && locW > 80) drawLocator(pt, prof, { x: locX, y: fy + 14, w: locW, h: locH }, Object.assign({ font, fs }, o));
     }
-    return { ve, X, Y, hits, flags, xs, ys };
+    return { ve, X, Y, hits, flags, xs, ys, trees: drawnTrees, figPx: 1.75 * ys };
   }
   function drawLocator(pt, prof, box, o) {
     const font = o.font, fs = o.fs; const [wx0, wy0, wx1, wy1] = prof.ctx.win; const k = Math.min(box.w / (wx1 - wx0), box.h / (wy1 - wy0)); const cx = (wx0 + wx1) / 2, cy = (wy0 + wy1) / 2;

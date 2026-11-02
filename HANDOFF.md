@@ -1,4 +1,4 @@
-# Granada Atlas — handoff (state at build 5.9, 1 Nov 2026)
+# Granada Atlas — handoff (state at build 5.10, 2 Nov 2026)
 
 This document lets a new Claude Code session continue the project without the original chat. Short operating rules
 are in `CLAUDE.md`; feature and data documentation is in `README.md`.
@@ -9,12 +9,12 @@ are in `CLAUDE.md`; feature and data documentation is in `README.md`.
 | --- | --- |
 | Repository | `ahmdklany6-ai/granada-atlas` (public), branch `main` |
 | Live site | https://ahmdklany6-ai.github.io/granada-atlas/ (GitHub Pages, deploy from `main`, repo root) |
-| Current build | **5.9** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.9` asset queries) |
+| Current build | **5.10** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.10` asset queries) |
 | Latest feature work | Build 5.9: colour hierarchy, boundary layers, water/runoff, infrastructure, seasonal wind/rain, landmark geometries, print layout (see §13) |
 | Deployment | see §12 (5.8 deployment record) |
 | Data version | `2026-11-01-v7` in `data/manifest.json` (flow paths, period coverage, overview raster in the 5.9 ramp) |
 
-Build history (newest first): 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
+Build history (newest first): 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
 classified climate rasters, dashed fabric marks, historical red dots explained · 5.5/5.4 smooth building scales and
 street hierarchy at close zoom · 5.3 (v5) analysis page, viewers, unified Comparison, phone/iPad · v4/v3/v2 earlier.
 
@@ -73,6 +73,7 @@ Static ES5/ES2017 scripts loaded in order by `index.html` (no bundler). Key modu
 | Exercises / studio | `ex13.js`, `studio.js` (Miro squares, climate board, schedule), `exercises.js` (requirements), `submission.js` (four states) |
 | Palette | `palette.js` (loaded in `<head>`; writes `P.ui` as `--c-*` CSS custom properties; groups: `ui`, `landuse`, `band`, `period`, `tier`, `poi`, `fac`, `places`, `bus`, `choro`, `slope`, `elevRamp`, `lst`, `noise`, `flood`, `canopy`, `chart`, `section`, `material`, `mark`, `basemap`) |
 | Other | `history.js` (historical explorer), `library.js` (image wall), `viewer.js` (viewers, `panZoom`), `fabricmark.js`, `i18n*.js` (newest `i18n_v8.js`) |
+| 5.10 modules | `view3d.js` (2D/3D switch, `gadem://` local terrain tiles from the MDT25 grid, extrusions), `i18n_v10.js`; `app.js` `placeLegend()`; `section.js` `windowProfile()` + metre-scale trees; `section_view.js` Full section / Street detail |
 | 5.9 modules | `layers_v9.js` (water, infrastructure, climate layers via `GA.layersExtra`; `GA.climate.windStats/rainStats`), `printlayout.js` (`#/print`, `GA.printLayout`), `i18n_v9.js` |
 | Tools | `tools/build_flow.js` (flow paths from the DEM), `tools/build_data.js`, `build_extra.js`, `build_trees.py`, `build_buildings_lite.js`, `build_terrain_display.js` (re-renders elevation/slope/building-floors display PNGs from the repo data in the palette colours and writes the class tables to the manifest) |
 
@@ -243,3 +244,18 @@ upload.wikimedia.org, tiles.openfreemap.org, ahmdklany6-ai.github.io): open the 
 rainfall values against an independent source (e.g. AEMET normals for Granada airport), the metro line and stations, the
 Darro culvert, and the place images; then research historical maps (IGN Cartoteca, Archivo Municipal, BNE, Real
 Chancillería) and connect Catastro INSPIRE construction years.
+
+## 14. Build 5.10 (owner requests of 2 Nov 2026)
+
+| Request | Done | Notes |
+| --- | --- | --- |
+| Trees smaller than people in sections | yes | cause: schematic trees were drawn in fixed PIXELS; now metres on the drawing's scale (ellipse crowns, so VE applies equally); recorded height/crown kept; missing → editable schematic 6 m / 4 m crown, dashed, "not measured" |
+| Legend hidden behind the Layers panel | yes | `placeLegend()` measures the free map space from the panels actually on screen; collapses to a "Legend" button with a compact scrollable panel when space is short; returns to its place when panels close |
+| Long sections unreadable | yes | Full section / Street detail at the same true scale; Fit height / Fit entire section; pan by arrows, slider, overview strip; exports take the view on screen (title states "detail a–b m of L m"; locator highlights the stretch) |
+| Optional 3D view | yes | terrain from the repository's MDT25 via a local tile protocol (flat at the edge outside the 20 km square — stated); extrusions: tagged height solid, floors × 3 m lighter "ESTIMATE", no data flat; Reset view; layers/fabrics kept |
+| Consistent historical image cards | yes | 4:3 frames, subgrid-aligned rows, object-fit cover, click → full image viewer with author/licence |
+| Frame the historical map on Granada | yes | fits the municipal boundary once per opening; "Zoom to Granada"; "Fit historical map" explains the IGN series are national (explorer min zoom 11) |
+
+Still unverified with live data (network policy of the build environment): Commons images in the cards, IGN historical
+tiles, OpenFreeMap tiles (rail/metro/culverts), Open-Meteo wind/rain — see §13.
+
