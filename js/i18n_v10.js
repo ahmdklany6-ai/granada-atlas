@@ -20,5 +20,10 @@
     'v10.fitAll': ['ملاءمة المقطع كاملًا', 'התאמה לחתך כולו', 'Fit entire section'],
     'v10.viewNote': ['«تفاصيل الشارع» يعرض جزءًا من الخط بالمقياس نفسه (حقيقي أو مبالغة معلنة) — لا يُمطّ أي ارتفاع. التصدير يأخذ العرض الظاهر مع خريطة الموقع.', '«פרטי הרחוב» מציג חלק מהקו באותו קנה מידה (אמיתי או הגזמה מוצהרת) — שום גובה אינו נמתח. הייצוא לוקח את התצוגה המוצגת עם מפת המיקום.', '"Street detail" shows part of the line at the same scale (true, or a stated exaggeration) — no height is stretched. Exports take the view on screen, with the locator.'],
     'v10.detailOf': ['تفاصيل {a}–{b} م من {L} م', 'פרט {a}–{b} מ׳ מתוך {L} מ׳', 'detail {a}–{b} m of {L} m'],
+    // ----- historical explorer -----
+    'v10.zoomGranada': ['تكبير إلى غرناطة', 'התמקדות בגרנדה', 'Zoom to Granada'],
+    'v10.fitHist': ['ملاءمة الخريطة التاريخية', 'התאמה למפה ההיסטורית', 'Fit historical map'],
+    'v10.histExtent': ['«{p}» سلسلة وطنية من IGN تغطي إسبانيا كلها؛ يعرضها المستكشف من التكبير 11 (نحو 30 كم) حول غرناطة.', '«{p}» היא סדרה ארצית של IGN המכסה את כל ספרד; הסייר מציג אותה מזום 11 (כ-30 ק״מ) סביב גרנדה.', '"{p}" is a national IGN series covering all of Spain; the explorer shows it from zoom 11 (about 30 km across) around Granada.'],
+    'v10.openImage': ['فتح الصورة كاملة', 'פתיחת התמונה המלאה', 'Open the full image'],
   });
 })(window);

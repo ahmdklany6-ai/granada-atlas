@@ -779,3 +779,14 @@ details.assign[open] > summary { border-bottom: 1px solid var(--line); } details
 .sv-view .seg { margin-bottom: 6px; } .sv-ov { display: block; width: 100%; height: 56px; border: 1px solid var(--line); background: var(--white); cursor: pointer; }
 .sv-pan { display: grid; grid-template-columns: auto 1fr auto; gap: 6px; align-items: center; margin: 6px 0 2px; } .sv-pan input { width: 100%; }
 .sv-fit { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+/* ---- 5.10: historical place cards — one image frame size, aligned at the bottom of every card ---- */
+.hx-places { align-items: stretch; } .hx-place { display: flex; flex-direction: column; gap: 4px; }
+.hx-place > p { flex: 1 1 auto; margin: 4px 0; }
+.hx-fig { margin: 4px 0 2px; } .hx-thumb { display: block; width: 100%; aspect-ratio: 4 / 3; padding: 0; border: 1px solid var(--line); background: var(--paper-2); overflow: hidden; cursor: zoom-in; }
+.hx-thumb img { display: block; width: 100%; height: 100%; max-height: none; object-fit: cover; border: 0; }
+.hx-fig figcaption { min-height: 2.6em; } .hx-fig-none .hx-thumb { cursor: default; display: flex; align-items: center; justify-content: center; text-align: center; padding: 10px; color: var(--ink-3); font-style: italic; font-size: 12.5px; }
+.hx-fitbtns { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
+/* each row of cards shares row heights (title · text · image frame · caption · links), so frames line up */
+.hx-place { display: grid; grid-template-rows: subgrid; grid-row: span 5; row-gap: 4px; align-content: start; }
+.hx-place > .hx-fig { display: contents; } .hx-place > p { margin: 2px 0; }
+.hx-place > .hx-fig > .hx-thumb { align-self: start; } .hx-place > .hx-fig > figcaption { margin: 0; }
