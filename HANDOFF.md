@@ -301,7 +301,7 @@ translations of Spanish summaries are AI-assisted and should be checked by a rea
   snapshot with no Open-Meteo request; their legends show the statistics; the Arabic historical page shows Arabic texts and
   real Commons images (screenshot in the job log).
 - Not possible on the runner: moving the map with the real basemap in software WebGL did not finish within the job limit
-  (the same hang was probed for 5.10 — see `tools/verify/hang_probe.py`). The same files rendered in this environment with
+  (an A/B probe, `tools/verify/hang_probe.py`, showed build 5.10 freezing the same way on the runner: the runner's software WebGL, not a regression). The same files rendered in this environment with
   real OpenFreeMap tiles and glyphs fetched by the runner (`tools/verify/fetch_tiles.py`) move in 1–2 s, so the map
   screenshots of 3D, the regional view, layers, climate and sections were made locally from the verified-identical files.
 - 5.12 (follow-up): the translation label and the "Original text" fold took grid rows of their own on translated place
