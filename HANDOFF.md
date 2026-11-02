@@ -285,7 +285,7 @@ How it was verified: this cloud environment cannot reach the public site, Open-M
 Local tests (2 Nov 2026, this environment, software GL): `node tests/*.test.js` (incl. new `trees.test.js`, 32 checks) pass;
 `ui_test_v4` (build check 5.11), `ui_test_v10` (climate/history now test the live-API fallbacks; tree colour check updated to
 the olive classes), `ui_test_v11` (3D check now reads the ground directly — `queryTerrainElevation` is relative to the centre
-elevation in MapLibre 4, which is why 5.10's test passed with the bug), `ui_test_v12` (new) pass. Not re-run this build: v2, v3,
+elevation in MapLibre 4, which is why 5.10's test passed with the bug), `ui_test_v9` (panels, palette, legends) and `ui_test_v12` (new) pass. Not re-run this build: v2, v3,
 v5–v8. Browser 3D frames under software GL take up to minutes — `ui_test_v12` takes `SECTIONS=1,…,8` to run parts.
 
 Remaining limitations: building heights remain mostly floor estimates (67 tagged heights); tree sizes are illustrative for all
