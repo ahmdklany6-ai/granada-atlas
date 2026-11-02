@@ -1,4 +1,4 @@
-# Granada Atlas — handoff (state at build 5.10, 2 Nov 2026)
+# Granada Atlas — handoff (state at build 5.11, 2 Nov 2026)
 
 This document lets a new Claude Code session continue the project without the original chat. Short operating rules
 are in `CLAUDE.md`; feature and data documentation is in `README.md`.
@@ -9,12 +9,12 @@ are in `CLAUDE.md`; feature and data documentation is in `README.md`.
 | --- | --- |
 | Repository | `ahmdklany6-ai/granada-atlas` (public), branch `main` |
 | Live site | https://ahmdklany6-ai.github.io/granada-atlas/ (GitHub Pages, deploy from `main`, repo root) |
-| Current build | **5.10** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.10` asset queries) |
+| Current build | **5.11** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.11` asset queries) |
 | Latest feature work | Build 5.9: colour hierarchy, boundary layers, water/runoff, infrastructure, seasonal wind/rain, landmark geometries, print layout (see §13) |
 | Deployment | see §12 (5.8 deployment record) |
-| Data version | `2026-11-01-v7` in `data/manifest.json` (flow paths, period coverage, overview raster in the 5.9 ramp) |
+| Data version | `2026-11-02-v8` in `data/manifest.json` (5.11: OSM trees 2 Nov 2026, ERA5 climate snapshot, history place texts) |
 
-Build history (newest first): 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
+Build history (newest first): 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
 classified climate rasters, dashed fabric marks, historical red dots explained · 5.5/5.4 smooth building scales and
 street hierarchy at close zoom · 5.3 (v5) analysis page, viewers, unified Comparison, phone/iPad · v4/v3/v2 earlier.
 
@@ -73,6 +73,7 @@ Static ES5/ES2017 scripts loaded in order by `index.html` (no bundler). Key modu
 | Exercises / studio | `ex13.js`, `studio.js` (Miro squares, climate board, schedule), `exercises.js` (requirements), `submission.js` (four states) |
 | Palette | `palette.js` (loaded in `<head>`; writes `P.ui` as `--c-*` CSS custom properties; groups: `ui`, `landuse`, `band`, `period`, `tier`, `poi`, `fac`, `places`, `bus`, `choro`, `slope`, `elevRamp`, `lst`, `noise`, `flood`, `canopy`, `chart`, `section`, `material`, `mark`, `basemap`) |
 | Other | `history.js` (historical explorer), `library.js` (image wall), `viewer.js` (viewers, `panZoom`), `fabricmark.js`, `i18n*.js` (newest `i18n_v8.js`) |
+| 5.11 modules | `trees.js` (shared tree model: species/form/sizes recorded vs estimate, silhouettes), `trees3d.js` (3D trees), `regional.js` (locator below zoom 10), `view3d.js` rewritten (composite terrain, centre-elevation sync, opaque extrusions), `layers.js` legend states (failed → cause + Retry, not drawn at this scale → Zoom to layer), `i18n_v11.js`; `.github/workflows/live-check.yml` + `tools/verify/*.py` (runner-side checks against the public site and open data) |
 | 5.10 modules | `view3d.js` (2D/3D switch, `gadem://` local terrain tiles from the MDT25 grid, extrusions), `i18n_v10.js`; `app.js` `placeLegend()`; `section.js` `windowProfile()` + metre-scale trees; `section_view.js` Full section / Street detail |
 | 5.9 modules | `layers_v9.js` (water, infrastructure, climate layers via `GA.layersExtra`; `GA.climate.windStats/rainStats`), `printlayout.js` (`#/print`, `GA.printLayout`), `i18n_v9.js` |
 | Tools | `tools/build_flow.js` (flow paths from the DEM), `tools/build_data.js`, `build_extra.js`, `build_trees.py`, `build_buildings_lite.js`, `build_terrain_display.js` (re-renders elevation/slope/building-floors display PNGs from the repo data in the palette colours and writes the class tables to the manifest) |
@@ -259,3 +260,28 @@ Chancillería) and connect Catastro INSPIRE construction years.
 Still unverified with live data (network policy of the build environment): Commons images in the cards, IGN historical
 tiles, OpenFreeMap tiles (rail/metro/culverts), Open-Meteo wind/rain — see §13.
 
+
+## 15. Build 5.11 (owner requests of 2 Nov 2026)
+
+How it was verified: this cloud environment cannot reach the public site, Open-Meteo, Wikipedia, Overpass or OpenFreeMap
+(network policy; GitHub and S3 work). Everything needing the open internet ran on a GitHub runner through
+`.github/workflows/live-check.yml` (`workflow_dispatch` input `script`, or a push to a `claude/**` branch touching
+`tools/verify/`): results and screenshots (base64 JPEG between `===IMG` markers) are in the job log, fetched with
+`gh api repos/OWNER/REPO/actions/runs/ID/logs`. Nothing from those runs is committed except the dated data snapshots below.
+
+| Request | Done | Cause / notes |
+| --- | --- | --- |
+| 3D: huge triangles when zooming in | yes | MapLibre 4 samples the ground under the map centre only when an animation starts; the 3D switch animated before any terrain tile had loaded, so the centre stayed at 0 m while Granada lies at 650–800 m. Zooming in then put the camera inside the terrain. Now the centre elevation follows the ground on every move and tile load, and the tilt waits for the tile under the centre. Verified z15–18.8, pan, rotate, 2D↔3D ×2 |
+| Opaque 3D buildings, measured vs estimate | yes | opacity 1; recorded `height` = blue-grey (`palette.extrude.measured`), floors × 3 m = floor ramp; no data = flat hatch. MapLibre sinks walls 10 m below the centroid ground: footprints on > 10 m of slope may show a gap — counted in the 3D note |
+| Zoom out to Spain / Mediterranean / North Africa | yes | minZoom 3, `renderWorldCopies: false`, no bounds; country borders, country and sea names in the interface language; Granada locator + study-area dots below zoom 10 (`regional.js`) |
+| No walls / stretched terrain outside the DEM | yes | `gadem://` tiles composite MDT25 (inside the 20 km square) with Terrain Tiles on AWS Open Data (Terrarium, CORS open), 600 m blend; fallback: smooth 3 km ramp to a flat reference level and terrain off below zoom 9, stated in the note |
+| Layers disappearing when zooming out | yes | generic: every enabled layer is drawn, summarised (buildings 50 m raster, major streets, trees 250 m cells, locator) or its panel row and legend say "not drawn in detail at this scale" with **Zoom to layer**; never removed from the legend. Checked at zooms 4.3–17.6 |
+| Wind and rainfall "Failed" | yes | diagnosed from a runner: the requests work (HTTP 200, CORS *), but Open-Meteo's free tier is 600 units/min and 5,000/h **per IP**; one wind request costs ≈ 52 units, one rain request ≈ 78, so repeated reloads exhaust it (HTTP 429). Fix: closed periods → shipped snapshot `data/climate/` (`tools/build_climate.py`, retrieved 2 Nov 2026; cell 37.25, −3.50; 87,672 h; 10,958 days); live API only as fallback. A failed layer shows cause + Retry, never its legend |
+| Section trees, grounding, detail | yes | same metre scale as figures/buildings (5.10); now the shared model: recorded height/crown used, otherwise the shared editable illustrative size (dashed, "schematic"); silhouettes by species type; trunks on their own ground. No balconies/materials added (no evidence in the data) |
+| Historical page language | yes | `wikiSummary` always asked es.wikipedia; now the interlanguage-linked ar/he/en article (snapshot `data/ref/history_places.json`, live fallback). Articles exist for ar 5/13, he 3/13, en 6/13 places; the rest are translations of the Spanish summary in `tools/history_translations.json`, labelled "translation … AI-assisted … check the original", the Spanish original one click away; source + CC BY-SA on every text |
+| Trees: sources | yes | no open municipal inventory: opendata.granada.org (CKAN, 6 datasets), datos.gob.es and Junta de Andalucía list none for Granada (2 Nov 2026). OSM refreshed (2 Nov 2026): 7,426 trees + 139 rows; 67 species/genus, 435 leaf type, 2 heights, 0 crown diameters, 0 circumferences; 2 ambiguous `diameter` tags shown, not used |
+| Trees: map, 3D, card, overview | yes | card: species, form (and its basis), leaf, height, crown, trunk — "recorded" or "Unknown · illustrative estimate"; 2D crowns at true scale from zoom 15.5; 250 m overview below 13; opaque 3D trees (≤ 2,500 in view, from zoom 15). Mapped data contains no palms or columnar trees, so those forms exist in code but appear nowhere on the map |
+
+Remaining limitations: building heights remain mostly floor estimates (67 tagged heights); tree sizes are illustrative for all
+but two trees; MDT25 is 25 m; the ERA5 cell (~25 km) is not station data (annual mean 511 mm in the cell; not checked here against AEMET station normals);
+translations of Spanish summaries are AI-assisted and should be checked by a reader of the language.

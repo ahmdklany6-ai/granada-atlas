@@ -30,5 +30,9 @@ for t in titles:
             except Exception as e: rec[lang] = None; print('ERR', lang, t, e)
         else: rec[lang] = None
     out['places'][t] = rec; print(t, {k: (v['title'] if v else None) for k, v in rec.items()})
+# translations for languages without an article (tools/history_translations.json, labelled as translations in the page)
+tr = json.load(open(os.path.join(ROOT, 'tools', 'history_translations.json'), encoding='utf8')); out['translations'] = tr.get('_note')
+for k, v in tr.items():
+    if k in out['places']: out['places'][k]['tr'] = {l: x for l, x in v.items() if not out['places'][k].get(l)}
 os.makedirs(os.path.join(ROOT, 'data', 'ref'), exist_ok=True)
 json.dump(out, open(os.path.join(ROOT, 'data', 'ref', 'history_places.json'), 'w', encoding='utf8'), ensure_ascii=False, separators=(',', ':'))

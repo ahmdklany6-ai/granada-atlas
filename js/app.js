@@ -24,7 +24,7 @@
   document.body.classList.add('left-collapsed', 'right-collapsed', 'layers-collapsed');
 
   // ---------- map ----------
-  const map = new maplibregl.Map({ container: 'map', style: basemap.style(), center: [-3.5986, 37.1773], zoom: 13.2, minZoom: 10, maxZoom: 19, attributionControl: false, dragRotate: false, pitchWithRotate: true, preserveDrawingBuffer: false }); // rotation (and tilt with it) is enabled only in the 3D view (view3d.js)
+  const map = new maplibregl.Map({ container: 'map', style: basemap.style(), center: [-3.5986, 37.1773], zoom: 13.2, minZoom: 3, maxZoom: 19, renderWorldCopies: false, attributionControl: false, dragRotate: false, pitchWithRotate: true, preserveDrawingBuffer: false }); // rotation (and tilt with it) is enabled only in the 3D view (view3d.js). 5.11: zoom out to zoom 3 (Spain, the Mediterranean and North Africa in one view); no geographic bounds — Granada's own data stays at its true place and size
   map.touchZoomRotate.disableRotation();
   // physical corners: navigation top-right, scale bottom-left, attribution bottom-right — never mirrored
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
@@ -64,7 +64,7 @@
   }
   $('#lang').addEventListener('click', (e) => { const b = e.target.closest('[data-lang]'); if (b && b.dataset.lang !== I.lang) I.setLang(b.dataset.lang); });
   I.onChange(() => {
-    renderLangSwitch(); sel.redraw(); secTool.render(); secCtl.label();
+    renderLangSwitch(); basemap.setLang && basemap.setLang(map, I.lang); sel.redraw(); secTool.render(); secCtl.label();
     renderSelectPanel(sel.info()); renderLeft(); renderLayersPanel(); renderLegend(); renderDrawerIfOpen(); if (CMP.isOpen()) CMP.render();
     updateToggles();
   });
@@ -180,6 +180,7 @@
       ds.forEach(d => {
         const s = L.S[d.id]; const i = L.order.indexOf(d.id);
         h += `<div class="lyr ${s.on ? 'on' : ''}"><div class="lyr-h"><label><input type="checkbox" data-ly="${d.id}" ${s.on ? 'checked' : ''}><span dir="auto">${esc(d.title())}</span></label>${st(d.id)}<span><button class="icon-btn" data-ly-up="${d.id}" title="${esc(t('ly.up'))}" ${i <= 0 ? 'disabled' : ''}>↑</button><button class="icon-btn" data-ly-down="${d.id}" title="${esc(t('ly.down'))}" ${i >= L.order.length - 1 ? 'disabled' : ''}>↓</button></span></div>`;
+        if (s.on && s.status === 'failed') h += L.failureHTML(d.id); else if (s.on) h += L.zoomHint(d.id);
         if (s.on) h += `<div class="lyr-b"><label class="row2">${t('ly.opacity')} <input type="range" min="0.1" max="1" step="0.05" value="${s.opacity}" data-ly-op="${d.id}"></label>${d.controls ? d.controls() : ''}${d.user ? IMP.userControls(d.id) : ''}<span class="lyr-src">${t('src.label')} ${d.src ? d.src() : ''}</span></div>`;
         h += `</div>`;
       });
@@ -190,6 +191,8 @@
   $('#panel-layers').addEventListener('click', async (e) => {
     if (await IMP.onEvent(e)) return;
     const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.lyRetry) { L.retry(b.dataset.lyRetry); return; }
+    if (b.dataset.lyZoomto) { L.zoomTo(b.dataset.lyZoomto); return; }
     if (b.dataset.lyCtl) { L.control(b.dataset.lyCtl, b); return; }
     if (b.dataset.scope) { L.setScope(b.dataset.scope); updateMask(); return; }
     if (b.dataset.lyUp) return L.move(b.dataset.lyUp, -1);
@@ -205,7 +208,7 @@
   let lySearchT; $('#panel-layers').addEventListener('input', (e) => { const el = e.target; if (el.dataset.lyOp) { L.setOpacity(el.dataset.lyOp, +el.value); IMP.syncState(); } if (el.dataset.lyCtl && el.type === 'search') { clearTimeout(lySearchT); lySearchT = setTimeout(() => { L.control(el.dataset.lyCtl, el); const box = $('#panel-layers .block-b'); const keep = el.value; document.activeElement.blur(); renderLayersPanel(); const ne = box.querySelector('input[type=search][data-ly-ctl]'); if (ne) { ne.focus(); ne.value = keep; ne.setSelectionRange(keep.length, keep.length); } }, 300); } });
 
   function renderLegend() {
-    const el = $('#legend'); let h = L.legendHTML();
+    const el = $('#legend'); let h = (GA.regional ? GA.regional.legendHTML() : '') + (GA.view3d && GA.view3d.legendHTML ? GA.view3d.legendHTML() : '') + L.legendHTML();
     if (run && sel.info().ring) h += `<h4>${t('lg.study')}</h4><ul class="lg"><li><i class="sw ln" style="border-top:2px solid ${PAL.red}"></i><span>${t('lg.studyArea')}</span></li></ul>`;
     el.hidden = !h; if (!h) return;
     el.innerHTML = `<button class="legend-t" id="legend-toggle">${t('lg.title')} <span></span></button><div class="legend-b">${h}</div>`;
@@ -232,7 +235,8 @@
     Object.assign(el.style, { left: 'auto', top: 'auto', right: Math.max(0, W - right) + 'px', bottom: Math.max(0, H - bottom) + 'px', maxWidth: Math.max(120, Math.min(260, fw)) + 'px', maxHeight: Math.max(44, Math.min(fh, tight ? fh : H * 0.46)) + 'px' });
     const b = $('#legend-toggle'); if (b) { b.setAttribute('aria-expanded', String(!min)); b.querySelector('span').textContent = min ? '▸' : '▾'; }
   }
-  $('#legend').addEventListener('click', (e) => { if (e.target.closest('#legend-toggle')) { if ($('#legend').classList.contains('tight')) legendOpenTight = !legendOpenTight; else ui.legendMin = !ui.legendMin; placeLegend(); } });
+  $('#legend').addEventListener('click', (e) => { const rb = e.target.closest('[data-ly-retry]'); if (rb) { L.retry(rb.dataset.lyRetry); return; } const zb = e.target.closest('[data-ly-zoomto]'); if (zb) { L.zoomTo(zb.dataset.lyZoomto); return; }
+    if (e.target.closest('#legend-toggle')) { if ($('#legend').classList.contains('tight')) legendOpenTight = !legendOpenTight; else ui.legendMin = !ui.legendMin; placeLegend(); } });
   addEventListener('resize', () => setTimeout(placeLegend, 60));
 
   // mask outside study areas when the scope is "study areas"
@@ -247,6 +251,7 @@
     // placed before the name labels so a number wins a collision, and numbers never overlap each other
     const FM = GA.fabricStyle; if (!map.getSource('fabric-no')) { map.addSource('fabric-no', { type: 'geojson', data: FM.numbersFC() }); map.addLayer(FM.numberLayer('fabric-no', 'fabric-no'), 'saved-areas-lbl'); }
     map.getSource('fabric-no').setData(FM.numbersFC());
+    if (GA.regional) GA.regional.update(); // study-area dots at regional scales
   }
 
   // ---------- map clicks: section drawing, feature popups ----------

@@ -32,9 +32,32 @@
   const WIND_URL = `${API}?latitude=${LAT}&longitude=${LON}&start_date=2015-01-01&end_date=2024-12-31&hourly=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms&timezone=UTC&models=era5`;
   const RAIN_URL = `${API}?latitude=${LAT}&longitude=${LON}&start_date=1991-01-01&end_date=2020-12-31&daily=precipitation_sum&timezone=Europe%2FMadrid&models=era5`;
   const cache = {};
-  const getJSON = (url) => cache[url] || (cache[url] = fetch(url).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).catch(e => { delete cache[url]; throw e; }));
+  // live request: time-out, and a readable cause (Open-Meteo answers 429 when the visitor's IP has used its free quota)
+  async function fetchJSON(url, ms) {
+    const ac = typeof AbortController !== 'undefined' ? new AbortController() : null; const tm = ac && setTimeout(() => ac.abort(), ms || 45000);
+    let r; try { r = await fetch(url, ac ? { signal: ac.signal } : undefined); } catch (e) { const err = new Error(e && e.name === 'AbortError' ? 'timeout' : 'network'); err.kind = err.message; throw err; } finally { tm && clearTimeout(tm); }
+    if (!r.ok) { let reason = ''; try { reason = (await r.json()).reason || ''; } catch (e) { } const err = new Error('HTTP ' + r.status + (reason ? ' — ' + reason : '')); err.kind = r.status === 429 ? 'quota' : 'http'; throw err; }
+    return r.json();
+  }
+  const getJSON = (url) => cache[url] || (cache[url] = fetchJSON(url).catch(e => { delete cache[url]; throw e; }));
+  // 5.11: the two periods are closed, so the same ERA5 values ship with the site as a dated snapshot (tools/build_climate.py,
+  // data/climate/*.json). The snapshot is the normal source; the live API is only a fallback if the file cannot be read.
+  const SNAP = { wind: 'data/climate/era5_wind_2015_2024.json', rain: 'data/climate/era5_rain_1991_2020.json' };
+  function expand(kind, j) {
+    const step = kind === 'wind' ? 3600e3 : 864e5; const t0 = Date.parse(j.t0 + (kind === 'wind' ? ':00Z' : 'T00:00:00Z'));
+    const time = new Array(j.n); for (let i = 0; i < j.n; i++) { const iso = new Date(t0 + i * step).toISOString(); time[i] = kind === 'wind' ? iso.slice(0, 16) : iso.slice(0, 10); }
+    const d10 = (v) => v == null ? null : v / 10; const base = { latitude: j.latitude, longitude: j.longitude, elevation: j.elevation, _snapshot: { retrieved: j.retrieved, request: j.request, source: j.source, license: j.license, period: j.period } };
+    return kind === 'wind' ? Object.assign(base, { hourly: { time, wind_speed_10m: j.s.map(d10), wind_direction_10m: j.d } }) : Object.assign(base, { daily: { time, precipitation_sum: j.p.map(d10) } });
+  }
+  function climateData(kind) {
+    const k = 'snap:' + kind; if (cache[k]) return cache[k];
+    const ver = (root.GA.data && root.GA.data.manifest && root.GA.data.manifest.dataVersion) || '0';
+    return (cache[k] = fetchJSON(SNAP[kind] + '?d=' + encodeURIComponent(ver), 60000).then(j => expand(kind, j))
+      .catch(e1 => getJSON(kind === 'wind' ? WIND_URL : RAIN_URL).catch(e2 => { const err = new Error(e2.message); err.kind = e2.kind; err.snapshotError = e1.message; throw err; }))
+      .catch(e => { delete cache[k]; throw e; }));
+  }
   const cellRing = (lat, lon, half) => [[lon - half, lat - half], [lon + half, lat - half], [lon + half, lat + half], [lon - half, lat + half], [lon - half, lat - half]];
-  root.GA.climate = { windStats, rainStats, SEASONS, DIR16, BINS, WIND_URL, RAIN_URL, getJSON };
+  root.GA.climate = { windStats, rainStats, SEASONS, DIR16, BINS, WIND_URL, RAIN_URL, getJSON, climateData, expand, clearCache: () => Object.keys(cache).forEach(k => delete cache[k]) };
 
   // wind rose as a canvas image (also used in the legend as a PNG data URL)
   function roseCanvas(st, size, labels) {
@@ -112,7 +135,7 @@
     defs.push({ id: 'wind', group: 'climate', title: () => t('v9.lyWind'), def: { on: false, opacity: 1, opts: { season: 'djf' } },
       build() { if (!map.hasImage('ga-wind-rose')) map.addImage('ga-wind-rose', { width: 1, height: 1, data: new Uint8Array(4) }); cellLayers('wind'); addSrc(lid('wind'), { type: 'geojson', data: fc([{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [LON, LAT] } }]) });
         addLyr({ id: lid('wind'), type: 'symbol', source: lid('wind'), layout: { 'icon-image': 'ga-wind-rose', 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-size': 1 }, paint: { 'icon-opacity': 1 } }); },
-      async load() { const j = await getJSON(WIND_URL); this._j = j; this._st = windStats(j.hourly); setCell('wind', j); this.draw(); return this._st[S.wind.opts.season].n; },
+      async load() { this._st = null; const j = await climateData('wind'); this._j = j; this._st = windStats(j.hourly); setCell('wind', j); this.draw(); return this._st[S.wind.opts.season].n; },
       draw() { if (!this._st) return; const c = roseCanvas(this._st[S.wind.opts.season], 200, { font: font() }); const img = c.getContext('2d').getImageData(0, 0, c.width, c.height); const data = { width: c.width, height: c.height, data: img.data };
         if (map.hasImage('ga-wind-rose')) map.removeImage('ga-wind-rose'); map.addImage('ga-wind-rose', data, { pixelRatio: 2 }); map.triggerRepaint(); this._url = c.toDataURL('image/png'); }, // replaced (sizes differ from the placeholder)
       layers: () => [lid('wind', 'cell'), lid('wind')], opacityProp: { [lid('wind')]: 'icon-opacity' },
@@ -123,10 +146,10 @@
           <ul class="lg">${['0.5–2', '2–4', '4–6', '≥ 6'].map((l, i) => sw(P.wind[i], `<span class="num">${l} m/s</span>`)).join('')}</ul>
           <p class="lyr-src">${t('v9.windStats', { dir: s.prevailing, p: nf(s.prevailingPct, 0), v: nf(s.meanSpeed, 1), c: nf(s.calmPct, 0), n: nf(s.n) })}</p>
           <p class="lyr-src">${t('v9.windNote')} ${t('v9.cellNote', { lat: (this._j.latitude).toFixed(2), lon: (this._j.longitude).toFixed(2) })}</p>`; },
-      src: () => 'ERA5 reanalysis (ECMWF / Copernicus C3S) via Open-Meteo Historical Weather API · CC BY 4.0 · hourly 2015–2024, 10 m' });
+      src() { const sn = this._j && this._j._snapshot; return 'ERA5 reanalysis (ECMWF / Copernicus C3S) via Open-Meteo Historical Weather API · CC BY 4.0 · hourly 2015–2024, 10 m' + (sn ? ' · ' + t('v11.snapshot', { d: String(sn.retrieved).slice(0, 10) }) : ''); } });
     defs.push({ id: 'rain', group: 'climate', title: () => t('v9.lyRain'), def: { on: false, opacity: 1, opts: { season: 'djf' } },
       build() { cellLayers('rain'); },
-      async load() { const j = await getJSON(RAIN_URL); this._j = j; this._st = rainStats(j.daily); setCell('rain', j); return this._st.years; },
+      async load() { this._st = null; const j = await climateData('rain'); this._j = j; this._st = rainStats(j.daily); setCell('rain', j); return this._st.years; },
       layers: () => [lid('rain', 'cell')], opacityProp: { [lid('rain', 'cell')]: 'line-opacity' },
       controls() { return seasonSel('rain'); },
       onControl(el) { S.rain.opts.season = el.value; H.persist(); H.emit(); },
@@ -135,7 +158,7 @@
         return `<h4>${t('v9.rainMonthly')}</h4><svg class="lg-chart" viewBox="0 0 ${W} ${Hh}" width="${W}" height="${Hh}" role="img" aria-label="${esc(t('v9.rainMonthly'))}">${bars}</svg>
           <p class="lyr-src">${t('v9.rainStats', { s: t('v9.s.' + S.rain.opts.season), mm: nf(st.season[S.rain.opts.season], 0), a: nf(st.annual, 0), y0: st.from, y1: st.to })}</p>
           <p class="lyr-src">${t('v9.rainNote')} ${t('v9.cellNote', { lat: (this._j.latitude).toFixed(2), lon: (this._j.longitude).toFixed(2) })}</p>`; },
-      src: () => 'ERA5 reanalysis (ECMWF / Copernicus C3S) via Open-Meteo Historical Weather API · CC BY 4.0 · daily 1991–2020' });
+      src() { const sn = this._j && this._j._snapshot; return 'ERA5 reanalysis (ECMWF / Copernicus C3S) via Open-Meteo Historical Weather API · CC BY 4.0 · daily 1991–2020' + (sn ? ' · ' + t('v11.snapshot', { d: String(sn.retrieved).slice(0, 10) }) : ''); } });
     return defs;
   });
 })(window);

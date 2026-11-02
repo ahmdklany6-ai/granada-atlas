@@ -81,10 +81,24 @@
     }
     return files.map(f => meta[f]);
   }
+  // 5.11: the description is shown in the INTERFACE language — the Arabic / Hebrew / English Wikipedia article linked from
+  // the Spanish one (data/ref/history_places.json, a dated snapshot built by tools/build_history_places.py; live API as a
+  // fallback). Where no article exists in that language the Spanish original is shown and labelled as such. Images and
+  // positions stay those of the Spanish article (one image per place in every language).
+  let snapP = null; const snapshot = () => snapP || (snapP = fetch('data/ref/history_places.json?d=' + encodeURIComponent((root.GA.data.manifest && root.GA.data.manifest.dataVersion) || '0')).then(r => r.ok ? r.json() : null).catch(() => null));
+  async function liveSummary(lang, title) { const r = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`); if (!r.ok) throw new Error('HTTP ' + r.status); const j = await r.json();
+    return { title: j.title, extract: j.extract, description: j.description || '', url: j.content_urls && j.content_urls.desktop.page, rev: j.timestamp || null, thumb: j.thumbnail && j.thumbnail.source, ll: j.coordinates ? [j.coordinates.lon, j.coordinates.lat] : null }; }
+  async function liveLink(lang, title) { const j = await root.GA.sources.fetchJSON(`https://es.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&prop=langlinks&lllang=${lang}&titles=${encodeURIComponent(title)}`, { timeout: 20000 }); const pg = Object.values((j.query && j.query.pages) || {})[0] || {}; return ((pg.langlinks || [])[0] || {})['*'] || null; }
   async function wikiSummary(title) {
-    if (wiki[title]) return wiki[title];
-    const out = {}; for (const lang of [I.lang === 'en' ? 'en' : I.lang, 'es']) { try { const r = await fetch(`https://es.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`); if (!r.ok) continue; const j = await r.json(); Object.assign(out, { title: j.title, extract: j.extract, thumb: j.thumbnail && j.thumbnail.source, url: j.content_urls && j.content_urls.desktop.page, ll: j.coordinates ? [j.coordinates.lon, j.coordinates.lat] : null, rev: j.timestamp || null, desc: j.description || '', lang: 'es' }); break; } catch (e) { } }
-    wiki[title] = out; return out;
+    const lang = I.lang; const key = lang + '|' + title; if (wiki[key]) return wiki[key];
+    let es = null, loc = null, retrieved = null, trn = null; const snap = await snapshot();
+    if (snap && snap.places && snap.places[title]) { const r = snap.places[title]; es = r.es; loc = lang === 'es' ? r.es : r[lang]; retrieved = snap.retrieved; if (!loc && r.tr && r.tr[lang]) trn = r.tr[lang]; }
+    else { try { es = await liveSummary('es', title); } catch (e) { } if (lang !== 'es') { try { const lt = await liveLink(lang, title); if (lt) loc = await liveSummary(lang, lt); } catch (e) { } } }
+    if (!es && !loc) { wiki[key] = {}; return wiki[key]; }
+    const w = loc || es; const out = { title: w.title, extract: w.extract, desc: w.description || '', url: w.url, rev: w.rev || null, thumb: (es || w).thumb, ll: (es || w).ll, lang: loc ? lang : 'es', orig: !loc && lang !== 'es', esTitle: es && es.title, retrieved };
+    // no article in this language: the atlas's labelled translation of the Spanish summary, the original kept one click away
+    if (trn && es) Object.assign(out, { title: trn.title, extract: trn.extract, desc: '', lang, orig: false, translated: true, excerpt: !!trn.excerpt, esExtract: es.extract, url: es.url, rev: es.rev });
+    wiki[key] = out; return out;
   }
 
   async function render(body) {
@@ -145,9 +159,9 @@
     // freely licensed Wikimedia Commons file; author and licence come from the Commons file page. Otherwise it says so.
     const commonsFile = (u) => { if (!u || !/\/wikipedia\/commons\//.test(u)) return null; const parts = u.split('/'); const f = /\/thumb\//.test(u) ? parts[parts.length - 2] : parts[parts.length - 1]; try { return decodeURIComponent(f); } catch (e) { return f; } };
     out.forEach(p => { p.file = commonsFile(p.thumb); });
-    box.innerHTML = out.map((p, i) => `<article class="hx-place"><div class="hx-h"><button class="link" data-hx-fly="${i}"><b dir="auto">${esc(p.title)}</b></button>${p.approx ? ` <small>${t('hx.approxPos')}</small>` : ''}</div><p dir="auto">${esc((p.extract || '').slice(0, 260))}${(p.extract || '').length > 260 ? '…' : ''}</p>
+    box.innerHTML = out.map((p, i) => `<article class="hx-place"><div class="hx-h"><button class="link" data-hx-fly="${i}"><b dir="auto">${esc(p.title)}</b></button>${p.approx ? ` <small>${t('hx.approxPos')}</small>` : ''}</div>${p.orig ? `<p class="hx-orig">${t('v11.origEs', { l: t('v11.lang.' + I.lang) })}</p>` : ''}${p.translated ? `<p class="hx-orig">${t(p.excerpt ? 'v11.trExcerpt' : 'v11.trNote', { l: t('v11.lang.' + I.lang) })}</p>` : ''}<p dir="${p.lang === 'es' || p.lang === 'en' ? 'ltr' : 'rtl'}" lang="${p.lang}">${esc((p.extract || '').slice(0, 420))}${(p.extract || '').length > 420 ? '…' : ''}</p>${p.translated ? `<details class="hx-origtxt"><summary>${t('v11.showOrig')}</summary><p dir="ltr" lang="es">${esc((p.esExtract || '').slice(0, 420))}${(p.esExtract || '').length > 420 ? '…' : ''}</p></details>` : ''}
       ${p.file ? `<figure class="hx-fig" data-file="${esc(p.file)}"><button type="button" class="hx-thumb" data-hx-img="${i}" aria-label="${esc(t('v10.openImage') + ': ' + p.title)}"><img src="${esc(p.thumb)}" alt="${esc(p.title)}" loading="lazy"></button><figcaption class="fine">${t('v9.leadImg')} <span class="hx-attr">…</span></figcaption></figure>` : `<figure class="hx-fig hx-fig-none"><div class="hx-thumb hx-noimg"><span>${t(p.thumb ? 'v9.noFreeImg' : 'v9.noImg')}</span></div><figcaption class="fine"></figcaption></figure>`}
-      <small><a href="${esc(p.url)}" target="_blank" rel="noopener">Wikipedia (es) ↗</a> · CC BY-SA 4.0</small></article>`).join('') || `<p class="note">${t('hx.placesFail')}</p>`;
+      <small>${t(p.translated ? 'v11.trSrc' : 'v11.textSrc')}: <a href="${esc(p.url)}" target="_blank" rel="noopener">Wikipedia (${p.translated ? 'es' : p.lang}) — <bdi>${esc(p.translated ? p.esTitle : p.title)}</bdi> ↗</a> · CC BY-SA 4.0${p.rev ? ` · ${t('v11.revision')} <span dir="ltr">${esc(String(p.rev).slice(0, 10))}</span>` : ''}</small></article>`).join('') || `<p class="note">${t('hx.placesFail')}</p>`;
     const files = out.map(p => p.file).filter(Boolean);
     if (files.length) commonsMeta(files).then(() => box.querySelectorAll('.hx-fig[data-file]').forEach(fig => { const m = meta[fig.dataset.file] || {}; const a = fig.querySelector('.hx-attr');
       a.innerHTML = `${m.author ? esc(m.author) + ' · ' : ''}${m.license ? esc(m.license) + ' · ' : `${t('v9.licUnknown')} · `}<a href="${esc(m.page || ('https://commons.wikimedia.org/wiki/File:' + encodeURIComponent(fig.dataset.file)))}" target="_blank" rel="noopener">Wikimedia Commons ↗</a>`; })).catch(() => box.querySelectorAll('.hx-attr').forEach(a => { const f = a.closest('.hx-fig').dataset.file; a.innerHTML = `<a href="https://commons.wikimedia.org/wiki/File:${encodeURIComponent(f)}" target="_blank" rel="noopener">${t('v9.licOnPage')} ↗</a>`; }));

@@ -133,9 +133,9 @@
       const bb = G.bbox(sec.pts); const pad = corridor / 80000; const r = await root.GA.ext.trees([bb[0] - pad, bb[1] - pad, bb[2] + pad, bb[3] + pad]); treeTs = r.ts;
       const num = (v) => { const x = parseFloat(String(v || '').replace(',', '.')); return isFinite(x) && x > 0 ? x : null; };
       r.pts.forEach(p => { const u = U(p.ll); const pj = project(pl, u); if (pj.d <= 0 || pj.d >= pl.L || pj.off > corridor) return; if (pj.off > 1.5 && sideOf(u) !== look) return;
-        const own = pj.off <= NEAR ? null : demAt(u); trees.push({ id: p.id, d: pj.d, off: pj.off, near: pj.off <= NEAR, base: own != null ? own : gAt(pj.d), lineBase: gAt(pj.d), h: num(p.tags.height), crown: num(p.tags.diameter_crown), species: p.tags.species || p.tags.genus || p.tags['species:es'] || null }); });
+        const own = pj.off <= NEAR ? null : demAt(u); trees.push({ id: p.id, d: pj.d, off: pj.off, near: pj.off <= NEAR, base: own != null ? own : gAt(pj.d), lineBase: gAt(pj.d), h: num(p.tags.height), crown: num(p.tags.diameter_crown), species: p.tags.species || p.tags.genus || p.tags['species:es'] || null, tags: p.tags }); });
       r.ways.forEach(w => { const C = w.coords.map(U); let crossed = false;
-        for (let i = 1; i < pl.u.length; i++) for (let j = 1; j < C.length; j++) { const tt = segX(pl.u[i - 1], pl.u[i], C[j - 1], C[j]); if (tt != null) { const d = pl.cum[i - 1] + tt * (pl.cum[i] - pl.cum[i - 1]); trees.push({ id: w.id, row: true, d, off: 0, near: true, base: ground(d), h: null, crown: null }); crossed = true; } }
+        for (let i = 1; i < pl.u.length; i++) for (let j = 1; j < C.length; j++) { const tt = segX(pl.u[i - 1], pl.u[i], C[j - 1], C[j]); if (tt != null) { const d = pl.cum[i - 1] + tt * (pl.cum[i] - pl.cum[i - 1]); trees.push({ id: w.id, row: true, d, off: 0, near: true, base: ground(d), h: num(w.tags.height), crown: num(w.tags.diameter_crown), tags: w.tags }); crossed = true; } }
         if (!crossed && C.some(c => { const pj = project(pl, c); return pj.off <= corridor && pj.d > 0 && pj.d < pl.L && sideOf(c) === look; })) rowsNear++; });
     } catch (e) { tErr = e.message; } }
     trees.sort((a, b) => b.off - a.off);
@@ -243,7 +243,9 @@
     // 5.10: trees in METRES on the drawing's own scale (as buildings and the 1.75 m figures). Recorded height / crown are used
     // as given (small trees and saplings stay small); missing values take the section's schematic size (default 6 m tall,
     // 4 m crown, editable in the viewer) and are drawn dashed and labelled "schematic — not measured".
-    const schH = Math.max(1, +o.treeH || 6), schC = Math.max(0.5, +o.treeCrown || 4);
+    // 5.11: the default comes from the shared tree model (js/trees.js — the same editable size as the map and 3D view)
+    const TD = (root.GA.trees && root.GA.trees.defaults) || { h: 6, crown: 4 };
+    const schH = Math.max(1, +o.treeH || TD.h), schC = Math.max(0.5, +o.treeCrown || TD.crown);
     const treeDims = (tr) => { const h = tr.h > 0 ? tr.h : null, c = tr.crown > 0 ? tr.crown : null;
       if (h && c) return { h, c, sch: false }; if (h) return { h, c: Math.min(schC, h * 0.8), sch: 'crown' }; if (c) return { h: Math.max(schH, c * 1.25), c, sch: 'height' }; return { h: schH, c: schC, sch: 'both' }; };
     const treeTop = (tr) => tr.base + treeDims(tr).h;
@@ -293,6 +295,12 @@
       if (tr.base == null) return; const on = tr.near;
       if (!on && tr.lineBase != null && Math.abs(tr.base - tr.lineBase) > 0.3) pt.path([[X(tr.d) - 5, Y(tr.base)], [X(tr.d) + 5, Y(tr.base)]], { stroke: TREE_BG, lw: 0.8 }); /* its own ground */ const col = on ? TREE_ON : TREE_BG; const lw = on ? 1.2 : 0.8; const alpha = on ? 1 : 0.75; const x = X(tr.d), y0 = Y(tr.base);
       const dm = treeDims(tr); if (dm.sch) flags.treesSchem = true; drawnTrees.push({ d: tr.d, h: dm.h, c: dm.c, sch: dm.sch, hPx: dm.h * ys, cPx: dm.c * xs, near: !!tr.near, base: tr.base }); const ryM = Math.min(dm.c / 2, dm.h * 0.45); const rx = Math.max(1.2, dm.c / 2 * xs), ry = Math.max(1.2, ryM * ys);
+      // 5.11: silhouette of the tree's form (palm, conifer, columnar, rounded, spreading, generic) from the shared model, at the
+      // drawing's metre scale; trunk anchored at the tree's own ground. Unknown size → schematic (dashed), as before.
+      const TM = root.GA.trees; if (TM) { const m = Object.assign(TM.model(tr.tags || {}), { h: dm.h, crown: dm.c }); const ol = TM.outline(m); flags.treeForms = flags.treeForms || {}; flags.treeForms[m.form] = 1;
+        const toPx = (q) => [x + q[0] * xs, Y(tr.base + q[1])];
+        pt.path(ol.trunk.map(toPx), { fill: col, stroke: col, lw: 0.6, alpha, close: true });
+        pt.path(ol.crown.map(toPx), { fill: on ? '#FFFFFF' : SP.treeFillBg, stroke: col, lw, alpha, close: true, dash: dm.sch ? [3, 2] : null }); void rx; void ry; return; }
       const cyM = tr.base + dm.h - ryM; const cx = x, cyy = Y(cyM); const ell = []; for (let k = 0; k <= 28; k++) { const a = k / 28 * Math.PI * 2; ell.push([cx + Math.cos(a) * rx, cyy + Math.sin(a) * ry]); }
       pt.path([[x, y0], [x, Y(cyM - ryM * 0.55)]], { stroke: col, lw: Math.max(lw + 0.3, Math.min(3, 0.3 * xs)), alpha }); // trunk anchored at its ground
       pt.path(ell, { fill: on ? '#FFFFFF' : SP.treeFillBg, stroke: col, lw, alpha, close: true, dash: dm.sch ? [3, 2] : null });
@@ -400,7 +408,7 @@
         else if (k === 'dim' || k === 'dimU') { pt.path([[x, y], [L2, y]], { stroke: k === 'dim' ? INK : GREY, lw: 0.7 }); pt.path([[x - 2, y + 2], [x + 2, y - 2]], { stroke: INK, lw: 0.8 }); pt.path([[L2 - 2, y + 2], [L2 + 2, y - 2]], { stroke: INK, lw: 0.8 }); } };
       items.forEach(([k, label]) => { const wI = 24 + pt.measure(label, `${fs - 1}px ${font}`) + 18; if (lx + wI > tw) { if (slim) return; lx = 0; ly += rowH; rows++; } const x = rtl ? tx0 - lx - 16 : tx0 + lx; sw(k, x, ly); pt.text(label, rtl ? x - 6 : x + 22, ly + 3, { font, size: fs - 1, align: al, dir, color: GA.palette.ink2 }); lx += wI; });
       // estimation notes and gaps, then sources and dates
-      const nts = []; if (flags.estH) nts.push(t('v7.nEst', { f: nf(floorH, 1) })); if (flags.unknownH) nts.push(t('v7.nUnknown', { n: flags.unknownH })); if (flags.roofSchematic) nts.push(t('v7.nRoof')); if (flags.treesSchem) nts.push(t('v10.nTreeSch', { h: nf(schH, 1), c: nf(schC, 1) })); if (flags.plinth) nts.push(t('v8.nPlinth')); if (flags.bgGround) nts.push(t('v8.nBgGround'));
+      const nts = []; if (flags.estH) nts.push(t('v7.nEst', { f: nf(floorH, 1) })); if (flags.unknownH) nts.push(t('v7.nUnknown', { n: flags.unknownH })); if (flags.roofSchematic) nts.push(t('v7.nRoof')); if (flags.treesSchem) nts.push(t('v10.nTreeSch', { h: nf(schH, 1), c: nf(schC, 1) })); if (flags.treeForms) nts.push(t('v11.nTreeForms', { f: Object.keys(flags.treeForms).map(k => t('v11.f.' + k)).join(', ') })); if (flags.plinth) nts.push(t('v8.nPlinth')); if (flags.bgGround) nts.push(t('v8.nBgGround'));
       if (flags.measured && !flags.userDims) nts.push(t('v7.nWidths')); if (flags.userDims) nts.push(t('v7.nUser')); if (flags.documented) nts.push(t('v5.secDoc')); if (ill && flags.illustrative) nts.push(t('v5.secIll'));
       const cov = prof.coverage || {}; if (cov.demMissing > 0) nts.push(t('v6.covDem', { p: Math.round(cov.demMissing * 100) })); if (cov.outsideRegion > 0) nts.push(t('v6.covBld', { p: Math.round(cov.outsideRegion * 100) }));
       ly += rowH + 6; const wrap = (txt, y, size, col) => { const words = String(txt).split(/\s+/); let line = ''; const maxW = tw; for (const w2 of words) { const test = line ? line + ' ' + w2 : w2; if (pt.measure(test, `${size}px ${font}`) > maxW && line) { pt.text(line, tx0, y, { font, size, align: al, dir, color: col }); y += size + 4; line = w2; if (y > H - 22) return y; } else line = test; } if (line) { pt.text(line, tx0, y, { font, size, align: al, dir, color: col }); y += size + 4; } return y; };

@@ -7,6 +7,9 @@
   const F = ['Noto Sans Regular'], FB = ['Noto Sans Bold'], FI = ['Noto Sans Italic'];
   const w = (pairs) => ['interpolate', ['exponential', 1.5], ['zoom']].concat(pairs.flat());
 
+  // country and sea names follow the interface language (Arabic / Hebrew / English), falling back to the local name
+  const nameL = (lang) => { const l = lang || (root.GA.i18n && root.GA.i18n.lang) || 'en'; return ['coalesce', ['get', 'name:' + l], ['get', 'name:en'], ['get', 'name:latin'], ['get', 'name']]; };
+  function setLang(map, lang) { ['label-sea', 'label-country'].forEach(id => { if (map.getLayer(id)) map.setLayoutProperty(id, 'text-field', nameL(lang)); }); }
   function style() {
     return {
       version: 8,
@@ -33,14 +36,18 @@
         { id: 'road-major-case', type: 'line', source: 'omt', 'source-layer': 'transportation', filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary']]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': C.casingMajor, 'line-width': w([[8, 1], [14, 5], [18, 24]]) } },
         { id: 'road-major', type: 'line', source: 'omt', 'source-layer': 'transportation', filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary']]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': C.road, 'line-width': w([[8, 0.6], [14, 3.6], [18, 21]]) } },
         { id: 'rail', type: 'line', source: 'omt', 'source-layer': 'transportation', filter: ['in', ['get', 'class'], ['literal', ['rail', 'transit']]], paint: { 'line-color': C.rail, 'line-width': w([[10, 0.6], [16, 1.6]]), 'line-dasharray': [3, 2] } },
-        { id: 'boundary', type: 'line', source: 'omt', 'source-layer': 'boundary', filter: ['all', ['<=', ['get', 'admin_level'], 8], ['!=', ['get', 'maritime'], 1]], paint: { 'line-color': C.boundary, 'line-width': 0.8, 'line-dasharray': [4, 2, 1, 2] } },
+        { id: 'boundary', type: 'line', source: 'omt', 'source-layer': 'boundary', minzoom: 7, filter: ['all', ['>', ['get', 'admin_level'], 2], ['<=', ['get', 'admin_level'], 8], ['!=', ['get', 'maritime'], 1]], paint: { 'line-color': C.boundary, 'line-width': 0.8, 'line-dasharray': [4, 2, 1, 2] } },
+        // 5.11 regional context (zoom 3–9): country borders, country and sea names
+        { id: 'boundary-country', type: 'line', source: 'omt', 'source-layer': 'boundary', filter: ['all', ['==', ['get', 'admin_level'], 2], ['!=', ['get', 'maritime'], 1], ['!=', ['get', 'disputed'], 1]], paint: { 'line-color': C.boundaryCountry, 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.7, 8, 1.4] } },
         { id: 'label-water', type: 'symbol', source: 'omt', 'source-layer': 'waterway', minzoom: 13, layout: { 'symbol-placement': 'line', 'text-field': name, 'text-font': FI, 'text-size': 11 }, paint: { 'text-color': GA.palette.blue, 'text-halo-color': C.halo, 'text-halo-width': 1.2 } },
         { id: 'label-street', type: 'symbol', source: 'omt', 'source-layer': 'transportation_name', minzoom: 14, layout: { 'symbol-placement': 'line', 'text-field': name, 'text-font': F, 'text-size': w([[14, 10], [18, 13]]), 'text-max-angle': 30 }, paint: { 'text-color': C.label, 'text-halo-color': C.halo, 'text-halo-width': 1.6 } },
         { id: 'label-poi', type: 'symbol', source: 'omt', 'source-layer': 'poi', minzoom: 16, filter: ['<=', ['get', 'rank'], 20], layout: { 'text-field': name, 'text-font': FI, 'text-size': 10.5, 'text-max-width': 8 }, paint: { 'text-color': C.labelSoft, 'text-halo-color': C.halo, 'text-halo-width': 1.4 } },
         { id: 'label-place-minor', type: 'symbol', source: 'omt', 'source-layer': 'place', filter: ['in', ['get', 'class'], ['literal', ['suburb', 'quarter', 'neighbourhood', 'hamlet', 'village']]], layout: { 'text-field': name, 'text-font': FB, 'text-size': w([[11, 10], [16, 14]]), 'text-transform': 'uppercase', 'text-letter-spacing': 0.12, 'text-max-width': 9 }, paint: { 'text-color': C.labelSoft, 'text-halo-color': C.halo, 'text-halo-width': 1.6 } },
+        { id: 'label-sea', type: 'symbol', source: 'omt', 'source-layer': 'water_name', maxzoom: 9, filter: ['in', ['get', 'class'], ['literal', ['sea', 'ocean', 'bay']]], layout: { 'text-field': nameL(), 'text-font': FI, 'text-size': ['interpolate', ['linear'], ['zoom'], 3, 11, 8, 14], 'text-letter-spacing': 0.15, 'text-max-width': 7 }, paint: { 'text-color': C.seaLabel, 'text-halo-color': C.water, 'text-halo-width': 1 } },
+        { id: 'label-country', type: 'symbol', source: 'omt', 'source-layer': 'place', maxzoom: 8, filter: ['==', ['get', 'class'], 'country'], layout: { 'text-field': nameL(), 'text-font': FB, 'text-size': ['interpolate', ['linear'], ['zoom'], 3, 11, 7, 15], 'text-transform': 'uppercase', 'text-letter-spacing': 0.12, 'text-max-width': 8 }, paint: { 'text-color': C.labelSoft, 'text-halo-color': C.halo, 'text-halo-width': 1.6 } },
         { id: 'label-place-major', type: 'symbol', source: 'omt', 'source-layer': 'place', filter: ['in', ['get', 'class'], ['literal', ['city', 'town']]], layout: { 'text-field': name, 'text-font': FB, 'text-size': w([[8, 13], [14, 22]]), 'text-letter-spacing': 0.08 }, paint: { 'text-color': C.label, 'text-halo-color': C.halo, 'text-halo-width': 2 } },
       ],
     };
   }
-  root.GA = root.GA || {}; root.GA.basemap = { style, colors: C };
+  root.GA = root.GA || {}; root.GA.basemap = { style, colors: C, setLang };
 })(window);

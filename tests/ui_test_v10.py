@@ -37,6 +37,10 @@ def wiki(route):
 def boot(b, vp, lang='en', mobile=False):
     ctx = b.new_context(viewport=vp, is_mobile=mobile, has_touch=mobile, accept_downloads=True); pg = ctx.new_page(); V3.stub3(pg)
     pg.route('https://archive-api.open-meteo.com/**', open_meteo); pg.route('https://es.wikipedia.org/api/rest_v1/page/summary/**', wiki); errs = []
+    # 5.11: wind/rain and the place descriptions ship as snapshots; this suite tests the live fallbacks (snapshots blocked,
+    # no interlanguage links) with its synthetic stubs — ui_test_v12.py tests the snapshots themselves
+    pg.route('**/data/climate/**', lambda r: r.fulfill(status=404, body='')); pg.route('**/data/ref/history_places.json*', lambda r: r.fulfill(status=404, body=''))
+    pg.route('https://es.wikipedia.org/w/api.php**', lambda r: r.fulfill(json={'query': {'pages': {'1': {'title': 'x'}}}}))
     pg.on('console', lambda m: m.type == 'error' and 'Failed to load resource' not in m.text and errs.append(m.text[:300])); pg.on('pageerror', lambda e: errs.append('PAGE ' + str(e)[:300]))
     pg.goto(f'http://127.0.0.1:{PORT}/index.html'); pg.wait_for_function('window.GA && GA.app && GA.app.map.isStyleLoaded()', timeout=90000)
     pg.evaluate(f'GA.i18n.setLang("{lang}")'); time.sleep(0.4); return ctx, pg, errs

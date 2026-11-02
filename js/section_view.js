@@ -62,7 +62,7 @@
       const ve = s.veUser ? s.ve : 1; el.querySelectorAll('[data-ve]').forEach(b => b.setAttribute('aria-pressed', String(String(ve) === b.dataset.ve)));
       el.querySelectorAll('[data-ill]').forEach(b => b.setAttribute('aria-pressed', String((s.ill ? '1' : '0') === b.dataset.ill)));
       const v = (k, x) => { el.querySelector(`[data-sv=${k}]`).value = x; };
-      v('look', s.look === 'right' ? 'right' : 'left'); v('depth', s.depth || 40); v('corridor', s.corridor || 15); v('floorH', s.floorH || 3); v('treeH', s.treeH || 6); v('treeCrown', s.treeCrown || 4);
+      v('look', s.look === 'right' ? 'right' : 'left'); v('depth', s.depth || 40); v('corridor', s.corridor || 15); v('floorH', s.floorH || 3); v('treeH', s.treeH || GA.trees.defaults.h); v('treeCrown', s.treeCrown || GA.trees.defaults.crown);
       el.querySelector('[data-sv=floors]').checked = s.floors !== false; el.querySelector('[data-sv=figures]').checked = s.figures !== false;
     };
     async function recompute() { stage.classList.add('busy'); try { prof = await SEC.compute(s, { floorH: s.floorH || 3 }); } catch (e) { stage.innerHTML = `<p class="warn">${esc(e.message)}</p>`; return; } finally { stage.classList.remove('busy'); } paint(); widths(); methods(); }
@@ -133,7 +133,7 @@
       const big = document.createElement('canvas'); SEC.draw(big, p2, Object.assign(o, { ratio: 3 })); big.toBlob(bl => dl(bl, nm + '.png'), 'image/png');
     }
     // ---- full section / street detail ----
-    function extentOf(r0, len) { const p2 = SEC.windowProfile(prof, r0, r0 + len); const th = s.treeH || 6;
+    function extentOf(r0, len) { const p2 = SEC.windowProfile(prof, r0, r0 + len); const th = s.treeH || GA.trees.defaults.h;
       const tops = p2.cuts.concat(p2.bg).filter(c => c.h != null && c.base != null).map(c => c.base + c.h).concat(p2.trees.filter(x => x.base != null).map(x => x.base + (x.h || th))); return Math.max(p2.max, ...tops) - p2.min + 3; }
     // the window length at which the drawing fills the frame's height at the chosen (true or stated) scale
     function fitHeight() { if (!prof) return; const ve = s.veUser ? s.ve : 1; const W = logical.w, H = logical.h; const ph = H - 44 - Math.max(170, Math.min(250, H * 0.27)) - 46, pw = W - 60;
