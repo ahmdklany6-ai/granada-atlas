@@ -226,7 +226,7 @@
     // the zoom / draw-section column (top right of the free map): the legend never rises above its bottom where they meet
     const ctl = $('.maplibregl-ctrl-top-right'); if (vis(ctl)) { const c = R(ctl); if (c.left - st.left < right) top = Math.max(top, c.bottom - st.top + 8); }
     const sc = $('.maplibregl-ctrl-bottom-left'); if (vis(sc)) { const c = R(sc); if (c.right - st.left > right - 260) bottom = Math.min(bottom, c.top - st.top - 6); }
-    const fw = right - left, fh = bottom - top; const tight = fw < 200 || fh < 170 || (phone() && fh < 260);
+    const fw = right - left, fh = bottom - top; const tight = fw < 200 || fh < 170 || phone(); // phones: the legend starts as its button so it never covers the map you tap on
     const min = tight ? !legendOpenTight : !!ui.legendMin;
     el.classList.toggle('min', min); el.classList.toggle('tight', tight);
     Object.assign(el.style, { left: 'auto', top: 'auto', right: Math.max(0, W - right) + 'px', bottom: Math.max(0, H - bottom) + 'px', maxWidth: Math.max(120, Math.min(260, fw)) + 'px', maxHeight: Math.max(44, Math.min(fh, tight ? fh : H * 0.46)) + 'px' });
