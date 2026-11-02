@@ -771,3 +771,7 @@ details.assign[open] > summary { border-bottom: 1px solid var(--line); } details
 .pl-slot { display: grid; grid-template-columns: 20px 1fr auto; gap: 6px; align-items: start; padding: 6px 0; border-top: 1px solid var(--line); }
 .pl-slot-b { display: flex; flex-direction: column; gap: 4px; min-width: 0; } .pl-slot-b select, .pl-slot-b input { width: 100%; min-width: 0; }
 .pl-mv { display: flex; gap: 2px; } .pl-img { display: flex; flex-direction: column; gap: 4px; padding: 6px 0; border-top: 1px solid var(--line); }
+/* ---- 5.10: legend placed by app.js in the free map space; collapsed it is a labelled button ---- */
+.legend { overflow: auto; } .legend.min { overflow: hidden; } .legend.tight:not(.min) { box-shadow: 0 8px 22px -12px var(--shadow); }
+.legend-t { min-height: 30px; }
+@media (pointer: coarse) { .legend-t { min-height: 42px; } }

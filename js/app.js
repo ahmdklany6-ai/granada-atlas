@@ -81,6 +81,7 @@
     const B = document.body.classList; const dock = isOpen('study') || isOpen('layers'); B.toggle('dock-closed', !dock); B.toggle('dock-both', isOpen('study') && isOpen('layers'));
     const gut = 12; const lw = phone() || !isOpen('analysis') ? 0 : $('#col-left').offsetWidth + gut; const rw = phone() || !dock ? 0 : $('#col-right').offsetWidth + gut;
     rootEl.style.setProperty('--lw-eff', lw + 'px'); rootEl.style.setProperty('--rw-eff', rw + 'px');
+    if (typeof placeLegend === 'function') requestAnimationFrame(() => placeLegend());
   }
   function updateToggles() {
     Object.keys(PN).forEach(k => { const b = document.querySelector(`.pn-tab[data-pn="${k}"]`); if (b) { b.setAttribute('aria-expanded', String(isOpen(k))); b.classList.toggle('on', isOpen(k)); } });
@@ -207,10 +208,32 @@
     const el = $('#legend'); let h = L.legendHTML();
     if (run && sel.info().ring) h += `<h4>${t('lg.study')}</h4><ul class="lg"><li><i class="sw ln" style="border-top:2px solid ${PAL.red}"></i><span>${t('lg.studyArea')}</span></li></ul>`;
     el.hidden = !h; if (!h) return;
-    el.classList.toggle('min', !!ui.legendMin);
-    el.innerHTML = `<button class="legend-t" id="legend-toggle" aria-expanded="${!ui.legendMin}">${t('lg.title')} <span>${ui.legendMin ? '▸' : '▾'}</span></button><div class="legend-b">${h}</div>`;
+    el.innerHTML = `<button class="legend-t" id="legend-toggle">${t('lg.title')} <span></span></button><div class="legend-b">${h}</div>`;
+    placeLegend();
   }
-  $('#legend').addEventListener('click', (e) => { if (e.target.closest('#legend-toggle')) { ui.legendMin = !ui.legendMin; saveUI(); renderLegend(); } });
+  // 5.10: the legend lives in the map space the open panels leave free. It is measured from the panels actually on screen
+  // (side panels on desktop/iPad, the bottom sheet on phones), kept clear of the attribution and the zoom / section
+  // controls, and collapses to a labelled "Legend" button that opens a compact scrollable panel when that space is small.
+  let legendOpenTight = false; // the user opened the legend although space is tight
+  function placeLegend() {
+    const el = $('#legend'); if (!el || el.hidden) return; const st = $('.stage').getBoundingClientRect(); const W = st.width, H = st.height;
+    const vis = (e) => !!(e && e.offsetWidth && getComputedStyle(e).display !== 'none'); const R = (e) => e.getBoundingClientRect();
+    let left = 12, right = W - 12, top = 12, bottom = H - 12;
+    const tabs = [...document.querySelectorAll('.pn-tabs')].filter(vis); if (tabs.length) top = Math.max(top, ...tabs.map(e => R(e).bottom - st.top + 8));
+    const attr = $('.maplibregl-ctrl-bottom-right'); if (vis(attr)) bottom = Math.min(bottom, R(attr).top - st.top - 6);
+    if (!phone()) { if (vis($('#col-left'))) left = R($('#col-left')).right - st.left + 12; const rp = [...document.querySelectorAll('#pn-study, #pn-layers')].filter(vis); if (rp.length) right = Math.min(...rp.map(e => R(e).left - st.left)) - 12; }
+    else { const sh = [...document.querySelectorAll('#col-left, #pn-study, #pn-layers')].find(vis); if (sh) bottom = Math.min(bottom, R(sh).top - st.top - 8); }
+    // the zoom / draw-section column (top right of the free map): the legend never rises above its bottom where they meet
+    const ctl = $('.maplibregl-ctrl-top-right'); if (vis(ctl)) { const c = R(ctl); if (c.left - st.left < right) top = Math.max(top, c.bottom - st.top + 8); }
+    const sc = $('.maplibregl-ctrl-bottom-left'); if (vis(sc)) { const c = R(sc); if (c.right - st.left > right - 260) bottom = Math.min(bottom, c.top - st.top - 6); }
+    const fw = right - left, fh = bottom - top; const tight = fw < 200 || fh < 170 || (phone() && fh < 260);
+    const min = tight ? !legendOpenTight : !!ui.legendMin;
+    el.classList.toggle('min', min); el.classList.toggle('tight', tight);
+    Object.assign(el.style, { left: 'auto', top: 'auto', right: Math.max(0, W - right) + 'px', bottom: Math.max(0, H - bottom) + 'px', maxWidth: Math.max(120, Math.min(260, fw)) + 'px', maxHeight: Math.max(44, Math.min(fh, tight ? fh : H * 0.46)) + 'px' });
+    const b = $('#legend-toggle'); if (b) { b.setAttribute('aria-expanded', String(!min)); b.querySelector('span').textContent = min ? '▸' : '▾'; }
+  }
+  $('#legend').addEventListener('click', (e) => { if (e.target.closest('#legend-toggle')) { if ($('#legend').classList.contains('tight')) legendOpenTight = !legendOpenTight; else ui.legendMin = !ui.legendMin; placeLegend(); } });
+  addEventListener('resize', () => setTimeout(placeLegend, 60));
 
   // mask outside study areas when the scope is "study areas"
   function updateMask() { const rings = store.get().areas.map(a => GA.compare.ringOf(a.spec)).filter(Boolean); const r = sel.ring(); if (r) rings.push(r); L.setMaskRings(rings); drawSavedAreas(); }
