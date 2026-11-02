@@ -122,7 +122,8 @@ try:
         # centre must sit ON it (5.10 left it at 0 m — the camera ended up inside the terrain when zooming in)
         check(r['terrain'] and r['pitch'] > 40 and r['est'] and r['h'] and r['elev'] and 600 < r['elev'] < 900 and abs(r['centre'] - r['elev']) < 2, f'3D: MDT25 terrain ({r["elev"]:.0f} m at centre, map centre on it), tilted, tagged and estimated extrusions', r)
         check('estimate' in r['note'].lower() and 'opaque blocks' in r['note'] and 'MDT25' in r['note'], '3D note: estimates labelled, plain blocks, terrain source')
-        pg.screenshot(path=f'{OUT}/view3d.png')
+        try: pg.screenshot(path=f'{OUT}/view3d.png', timeout=300000)  # 3D frames under software GL can take minutes
+        except Exception as e: print('     (3D screenshot skipped: ' + str(e)[:60] + ')')
         pg.click('.ga-3dctl [data-3dr]'); time.sleep(1); check(pg.evaluate('Math.abs(GA.app.map.getBearing() + 20) < 1'), 'Reset view restores the 3D orientation')
         pg.click('.ga-3dctl [data-3d]'); time.sleep(2); pg.wait_for_function('GA.app.map.getPitch() === 0', timeout=30000)
         after = pg.evaluate('({ on: Object.keys(GA.app.L.S).filter(k => GA.app.L.S[k].on).sort(), pitch: GA.app.map.getPitch(), terrain: !!GA.app.map.getTerrain() })')
