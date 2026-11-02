@@ -221,7 +221,13 @@
     const footH = compact ? 58 : slim ? 104 : Math.round(Math.max(170, Math.min(250, H * 0.27)));
     const ml = compact ? 12 : 30, mr = ml, mt = compact ? 26 : 44; const pw = W - ml - mr; const dimPx = compact ? 0 : 46; const ph = H - mt - footH - dimPx;
     const ve = o.ve === 'auto' ? chooseVE(prof, W, H) : Math.max(1, +o.ve || 1);
-    const treeTop = (tr) => tr.base + (tr.h || 0);
+    // 5.10: trees in METRES on the drawing's own scale (as buildings and the 1.75 m figures). Recorded height / crown are used
+    // as given (small trees and saplings stay small); missing values take the section's schematic size (default 6 m tall,
+    // 4 m crown, editable in the viewer) and are drawn dashed and labelled "schematic — not measured".
+    const schH = Math.max(1, +o.treeH || 6), schC = Math.max(0.5, +o.treeCrown || 4);
+    const treeDims = (tr) => { const h = tr.h > 0 ? tr.h : null, c = tr.crown > 0 ? tr.crown : null;
+      if (h && c) return { h, c, sch: false }; if (h) return { h, c: Math.min(schC, h * 0.8), sch: 'crown' }; if (c) return { h: Math.max(schH, c * 1.25), c, sch: 'height' }; return { h: schH, c: schC, sch: 'both' }; };
+    const treeTop = (tr) => tr.base + treeDims(tr).h;
     const tops = prof.cuts.concat(prof.bg).filter(c => c.h != null && c.base != null).map(c => c.base + c.h).concat((prof.trees || []).filter(tr => tr.base != null).map(treeTop));
     const bottoms = prof.cuts.filter(c => c.lvu && c.base != null).map(c => c.base - c.lvu * floorH);
     const top = Math.max(prof.max, ...tops) + 1.5; const lo = Math.max(Math.min(prof.min, ...bottoms) - 0.5, prof.min - Math.max(3, (top - prof.min) * 0.12));
@@ -267,9 +273,10 @@
     const drawTree = (tr) => {
       if (tr.base == null) return; const on = tr.near;
       if (!on && tr.lineBase != null && Math.abs(tr.base - tr.lineBase) > 0.3) pt.path([[X(tr.d) - 5, Y(tr.base)], [X(tr.d) + 5, Y(tr.base)]], { stroke: TREE_BG, lw: 0.8 }); /* its own ground */ const col = on ? TREE_ON : TREE_BG; const lw = on ? 1.2 : 0.8; const alpha = on ? 1 : 0.75; const x = X(tr.d), y0 = Y(tr.base);
-      if (tr.h) { const tp = Y(tr.base + tr.h); const r = tr.crown ? Math.max(2, tr.crown / 2 * xs) : Math.max(3, Math.min((y0 - tp) * 0.32, tr.h * 0.3 * xs)); const cy = tp + Math.min(r, (y0 - tp) * 0.45);
-        pt.path([[x, y0], [x, cy + r * 0.4]], { stroke: col, lw: lw + 0.4, alpha }); pt.circle(x, cy, r, { fill: on ? '#FFFFFF' : SP.treeFillBg, stroke: col, lw, alpha, dash: tr.crown ? null : [3, 2] }); if (!tr.crown) flags.treesSchem = true; }
-      else { flags.treesSchem = true; const r = (tr.row ? 4.5 : 6) * sc; const stem = 9 * sc; pt.path([[x, y0], [x, y0 - stem]], { stroke: col, lw: lw + 0.3, alpha }); pt.circle(x, y0 - stem - r, r, { fill: on ? '#FFFFFF' : SP.treeFillBg, stroke: col, lw, alpha, dash: [2.5, 1.8] }); }
+      const dm = treeDims(tr); if (dm.sch) flags.treesSchem = true; const ryM = Math.min(dm.c / 2, dm.h * 0.45); const rx = Math.max(1.2, dm.c / 2 * xs), ry = Math.max(1.2, ryM * ys);
+      const cyM = tr.base + dm.h - ryM; const cx = x, cyy = Y(cyM); const ell = []; for (let k = 0; k <= 28; k++) { const a = k / 28 * Math.PI * 2; ell.push([cx + Math.cos(a) * rx, cyy + Math.sin(a) * ry]); }
+      pt.path([[x, y0], [x, Y(cyM - ryM * 0.55)]], { stroke: col, lw: Math.max(lw + 0.3, Math.min(3, 0.3 * xs)), alpha }); // trunk anchored at its ground
+      pt.path(ell, { fill: on ? '#FFFFFF' : SP.treeFillBg, stroke: col, lw, alpha, close: true, dash: dm.sch ? [3, 2] : null });
     };
     const trs = (prof.trees || []).slice().sort((a, b) => b.off - a.off);
     prof.bg.map(b => ({ off: b.off, f: () => drawBg(b) })).concat(trs.filter(tr => !tr.near).map(tr => ({ off: tr.off, f: () => drawTree(tr) }))).sort((a, b) => b.off - a.off).forEach(x => x.f());
@@ -362,7 +369,7 @@
       // legend items (only those present)
       // ordered by what must never be misread (estimates, decorative figures, schematic trees) first
       const items = [['cut', t('v7.lgCut')]]; if (flags.estH) items.push(['est', t('v7.lgEst', { f: nf(floorH, 1) })]); if (flags.figures) items.push(['fig', t('v7.lgFig')]);
-      if (trs.some(x => x.near)) items.push(['treeOn', t('v7.lgTreeOn')]); if (trs.some(x => !x.near)) items.push(['treeBg', t('v7.lgTreeBg', { c: nf(prof.corridor || 15) })]); if (flags.treesSchem) items.push(['treeSch', t('v7.lgTreeSch')]);
+      if (trs.some(x => x.near)) items.push(['treeOn', t('v7.lgTreeOn')]); if (trs.some(x => !x.near)) items.push(['treeBg', t('v7.lgTreeBg', { c: nf(prof.corridor || 15) })]); if (flags.treesSchem) items.push(['treeSch', t('v10.lgTreeSch', { h: nf(schH, 1), c: nf(schC, 1) })]);
       if (prof.bg.length) items.push(['bg', t('v7.lgBg', { d: nf(prof.depth || 40) })]); if (flags.bgGround) items.push(['bgG', t('v8.lgBgGround')]); if (flags.plinth) items.push(['plinth', t('v8.lgPlinth')]); if (flags.slabs) items.push(['slab', t('v7.lgSlab')]); if (flags.measured) items.push(['dim', t('v7.lgDim')]); if (flags.userDims) items.push(['dimU', t('v7.lgDimUser')]);
       let lx = 0, ly = fy + (slim ? 70 : 80); const rowH = fs + 9; let rows = 1; const sw = (k, x, y) => { const L2 = x + 16;
         if (k === 'cut') pt.rect(x, y - 6, 16, 10, { fill: '#FFFFFF', stroke: RED, lw: 2 }); else if (k === 'est') pt.path([[x, y], [L2, y]], { stroke: RED, lw: 2, dash: [4, 2] }); else if (k === 'slab') { pt.rect(x, y - 6, 16, 10, { fill: '#FFFFFF', stroke: RED, lw: 1.2 }); pt.path([[x, y - 1], [L2, y - 1]], { stroke: RED, lw: 0.7 }); }
@@ -373,7 +380,7 @@
         else if (k === 'dim' || k === 'dimU') { pt.path([[x, y], [L2, y]], { stroke: k === 'dim' ? INK : GREY, lw: 0.7 }); pt.path([[x - 2, y + 2], [x + 2, y - 2]], { stroke: INK, lw: 0.8 }); pt.path([[L2 - 2, y + 2], [L2 + 2, y - 2]], { stroke: INK, lw: 0.8 }); } };
       items.forEach(([k, label]) => { const wI = 24 + pt.measure(label, `${fs - 1}px ${font}`) + 18; if (lx + wI > tw) { if (slim) return; lx = 0; ly += rowH; rows++; } const x = rtl ? tx0 - lx - 16 : tx0 + lx; sw(k, x, ly); pt.text(label, rtl ? x - 6 : x + 22, ly + 3, { font, size: fs - 1, align: al, dir, color: GA.palette.ink2 }); lx += wI; });
       // estimation notes and gaps, then sources and dates
-      const nts = []; if (flags.estH) nts.push(t('v7.nEst', { f: nf(floorH, 1) })); if (flags.unknownH) nts.push(t('v7.nUnknown', { n: flags.unknownH })); if (flags.roofSchematic) nts.push(t('v7.nRoof')); if (flags.treesSchem) nts.push(t('v7.nTree')); if (flags.plinth) nts.push(t('v8.nPlinth')); if (flags.bgGround) nts.push(t('v8.nBgGround'));
+      const nts = []; if (flags.estH) nts.push(t('v7.nEst', { f: nf(floorH, 1) })); if (flags.unknownH) nts.push(t('v7.nUnknown', { n: flags.unknownH })); if (flags.roofSchematic) nts.push(t('v7.nRoof')); if (flags.treesSchem) nts.push(t('v10.nTreeSch', { h: nf(schH, 1), c: nf(schC, 1) })); if (flags.plinth) nts.push(t('v8.nPlinth')); if (flags.bgGround) nts.push(t('v8.nBgGround'));
       if (flags.measured && !flags.userDims) nts.push(t('v7.nWidths')); if (flags.userDims) nts.push(t('v7.nUser')); if (flags.documented) nts.push(t('v5.secDoc')); if (ill && flags.illustrative) nts.push(t('v5.secIll'));
       const cov = prof.coverage || {}; if (cov.demMissing > 0) nts.push(t('v6.covDem', { p: Math.round(cov.demMissing * 100) })); if (cov.outsideRegion > 0) nts.push(t('v6.covBld', { p: Math.round(cov.outsideRegion * 100) }));
       ly += rowH + 6; const wrap = (txt, y, size, col) => { const words = String(txt).split(/\s+/); let line = ''; const maxW = tw; for (const w2 of words) { const test = line ? line + ' ' + w2 : w2; if (pt.measure(test, `${size}px ${font}`) > maxW && line) { pt.text(line, tx0, y, { font, size, align: al, dir, color: col }); y += size + 4; line = w2; if (y > H - 22) return y; } else line = test; } if (line) { pt.text(line, tx0, y, { font, size, align: al, dir, color: col }); y += size + 4; } return y; };
@@ -420,7 +427,7 @@
   const areasForLocator = () => { const st = root.GA.store, CMP = root.GA.compare; if (!st || !CMP) return []; return st.get().areas.map((a, i) => ({ ring: CMP.ringOf(a.spec), no: i + 1 })).filter(x => x.ring); };
   const withNotes = (o) => Object.assign({ notes: (root.GA.store && root.GA.store.get && root.GA.store.get().buildingNotes) || {}, areas: areasForLocator() }, o || {});
   // equal horizontal and vertical scales by default; an exaggeration is used only when the user chose one
-  const optsFor = (s) => ({ ve: s && s.veUser ? s.ve : 1, floors: !(s && s.floors === false), illustrative: !!(s && s.ill), figures: !(s && s.figures === false), widths: (s && s.widths) || {} });
+  const optsFor = (s) => ({ treeH: s && s.treeH, treeCrown: s && s.treeCrown, ve: s && s.veUser ? s.ve : 1, floors: !(s && s.floors === false), illustrative: !!(s && s.ill), figures: !(s && s.figures === false), widths: (s && s.widths) || {} });
   const UI_FONT = () => getComputedStyle(document.documentElement).getPropertyValue('--f-ui') || 'sans-serif';
   function draw(canvas, prof, o) {
     o = withNotes(o); const ratio = o.ratio || (root.devicePixelRatio || 1); const W = o.w || 600, H = o.h || 300;

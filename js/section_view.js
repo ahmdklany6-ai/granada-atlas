@@ -35,6 +35,8 @@
               <label title="${esc(t('v7.depthHint'))}">${t('v7.depth')} <span class="u"><input type="number" min="10" max="150" step="5" data-sv="depth"> m</span></label>
               <label title="${esc(t('v4.corridorHint'))}">${t('v7.treeDist')} <span class="u"><input type="number" min="2" max="60" step="1" data-sv="corridor"> m</span></label>
               <label>${t('sec.floorH')} <span class="u"><input type="number" min="2.4" max="6" step="0.1" data-sv="floorH"> m</span></label>
+              <label title="${esc(t('v10.treeSchHint'))}">${t('v10.treeH')} <span class="u"><input type="number" min="1" max="30" step="0.5" data-sv="treeH"> m</span></label>
+              <label title="${esc(t('v10.treeSchHint'))}">${t('v10.treeCrown')} <span class="u"><input type="number" min="0.5" max="20" step="0.5" data-sv="treeCrown"> m</span></label>
               <label class="chk"><input type="checkbox" data-sv="floors"> ${t('v7.slabs')}</label>
               <label class="chk"><input type="checkbox" data-sv="figures"> ${t('v7.figures')}</label>
             </div>
@@ -51,7 +53,7 @@
       const ve = s.veUser ? s.ve : 1; el.querySelectorAll('[data-ve]').forEach(b => b.setAttribute('aria-pressed', String(String(ve) === b.dataset.ve)));
       el.querySelectorAll('[data-ill]').forEach(b => b.setAttribute('aria-pressed', String((s.ill ? '1' : '0') === b.dataset.ill)));
       const v = (k, x) => { el.querySelector(`[data-sv=${k}]`).value = x; };
-      v('look', s.look === 'right' ? 'right' : 'left'); v('depth', s.depth || 40); v('corridor', s.corridor || 15); v('floorH', s.floorH || 3);
+      v('look', s.look === 'right' ? 'right' : 'left'); v('depth', s.depth || 40); v('corridor', s.corridor || 15); v('floorH', s.floorH || 3); v('treeH', s.treeH || 6); v('treeCrown', s.treeCrown || 4);
       el.querySelector('[data-sv=floors]').checked = s.floors !== false; el.querySelector('[data-sv=figures]').checked = s.figures !== false;
     };
     async function recompute() { stage.classList.add('busy'); try { prof = await SEC.compute(s, { floorH: s.floorH || 3 }); } catch (e) { stage.innerHTML = `<p class="warn">${esc(e.message)}</p>`; return; } finally { stage.classList.remove('busy'); } paint(); widths(); methods(); }
@@ -134,8 +136,8 @@
         if (f === 'src') { if (val) u.src = val; else delete u.src; } else { const n2 = parseFloat(val); if (val === '' || !isFinite(n2) || n2 < 0) delete u[f]; else u[f] = Math.round(n2 * 10) / 10; }
         s.widths = Object.assign({}, s.widths || {}); if (u.sa == null && u.sb == null) delete s.widths[k]; else s.widths[k] = u; save(); paint(); return; }
       const k = e.target.dataset.sv; if (!k) return; const num = (lo, hi, d) => { const n2 = parseFloat(e.target.value); return isFinite(n2) ? Math.max(lo, Math.min(hi, n2)) : d; };
-      if (k === 'look') s.look = e.target.value; if (k === 'depth') s.depth = num(10, 150, 40); if (k === 'corridor') s.corridor = num(2, 60, 15); if (k === 'floorH') s.floorH = num(2.4, 6, 3);
-      if (k === 'floors') s.floors = e.target.checked; if (k === 'figures') s.figures = e.target.checked; save(); syncCtl(); if (k === 'floors' || k === 'figures') paint(); else recompute();
+      if (k === 'look') s.look = e.target.value; if (k === 'depth') s.depth = num(10, 150, 40); if (k === 'corridor') s.corridor = num(2, 60, 15); if (k === 'floorH') s.floorH = num(2.4, 6, 3); if (k === 'treeH') s.treeH = num(1, 30, 6); if (k === 'treeCrown') s.treeCrown = num(0.5, 20, 4);
+      if (k === 'floors') s.floors = e.target.checked; if (k === 'figures') s.figures = e.target.checked; save(); syncCtl(); if (k === 'floors' || k === 'figures' || k === 'treeH' || k === 'treeCrown') paint(); else recompute();
     });
     const ro = new ResizeObserver(() => paint()); ro.observe(stage);
     const c0 = sh.close; sh.close = (q) => { ro.disconnect(); c0(q); root.GA.app && root.GA.app.refresh && root.GA.app.refresh(); };
