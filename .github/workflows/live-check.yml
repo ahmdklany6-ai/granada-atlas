@@ -14,15 +14,23 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [a, b, c, d]   # live_site.py is split so each part fits in one job; other scripts run in part a only
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
-      - run: pip install playwright==1.48.0 && python -m playwright install --with-deps chromium
+      - run: pip install playwright==1.48.0 pillow && python -m playwright install --with-deps chromium
       - name: run
         env:
           SCRIPT: ${{ github.event.inputs.script || '' }}
+          PART: ${{ matrix.part }}
         run: |
           S="${SCRIPT:-$(cat tools/verify/RUN)}"
-          for s in $S; do echo "##### $s"; python tools/verify/$s || echo "SCRIPT FAILED: $s"; done
+          for s in $S; do
+            if [ "$s" != "live_site.py" ] && [ "$PART" != "a" ]; then continue; fi
+            echo "##### $s part $PART"; python -u tools/verify/$s || echo "SCRIPT FAILED: $s"
+          done

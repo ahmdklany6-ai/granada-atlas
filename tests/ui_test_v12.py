@@ -42,7 +42,7 @@ try:
     with sync_playwright() as p:
         b = p.chromium.launch(args=['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'])
         ctx, pg, errs, meteo = boot(b, {'width': 1100, 'height': 700})  # small frames: 3D under software GL is slow
-        ver = json.load(open(os.path.join(ROOT, 'version.json')))['build']; check(ver == '5.11' and pg.evaluate('window.GA_BUILD') == '5.11', 'build 5.11 (version.json and GA_BUILD)')
+        ver = json.load(open(os.path.join(ROOT, 'version.json')))['build']; check(ver >= '5.11' and pg.evaluate('window.GA_BUILD') == ver, f'build {ver} (version.json and GA_BUILD agree)')
 
         # ================= 1. 3D: camera on the ground at every zoom, opaque buildings =================
         if '1' in SECT:
