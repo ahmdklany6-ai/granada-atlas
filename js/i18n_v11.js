@@ -72,5 +72,7 @@
     'v11.trSrc': ['مصدر الترجمة', 'מקור התרגום', 'Translated from'],
     'v11.snapshot': ['نسخة محفوظة مع الموقع، جُلبت في {d} (الفترة مغلقة، والقيم لا تتغير)', 'עותק שמור עם האתר, נמשך ב-{d} (תקופה סגורה, הערכים אינם משתנים)', 'copy shipped with the site, retrieved {d} (closed period, the values do not change)'],
     'ly3.treesNote': ['مواقع الأشجار المرسومة في OSM داخل البلدية (لقطة مؤرخة 2/11/2026). غياب شجرة على الخريطة لا يعني غيابها في الواقع؛ لم يُعثر على جرد بلدي مفتوح للأشجار (بحث في 2/11/2026: بوابة البيانات المفتوحة لبلدية غرناطة، datos.gob.es، حكومة الأندلس).', 'מיקומי עצים ממופים ב-OSM בתחום העירייה (תמונת מצב מ-2.11.2026). היעדר עץ במפה אינו אומר שאין עץ במציאות; לא נמצא סקר עצים עירוני פתוח (חיפוש ב-2.11.2026: פורטל הנתונים הפתוחים של עיריית גרנדה, datos.gob.es, ממשלת אנדלוסיה).', 'OSM-mapped tree positions inside the municipality (snapshot of 2 November 2026). A tree missing from the map does not mean there is no tree; no open municipal tree inventory was found (searched 2 Nov 2026: Granada city open-data portal, datos.gob.es, Junta de Andalucía).'],
+    'v10.lgTreeSch': ['شجرة بحجم تخطيطي {h} م وتاج {c} م (أو بهذه النسبة إلى بُعد مُسجَّل) — غير مقيس', 'עץ בגודל סכמטי {h} מ׳ וצמרת {c} מ׳ (או ביחס זה למימד רשום) — לא נמדד', 'tree drawn at a schematic {h} m height and {c} m crown (or in these proportions to a recorded dimension) — not measured'],
+    'ly.st.zoom': ['قرّبوا', 'התקרבו', 'zoom in'],
   });
 })(window);
