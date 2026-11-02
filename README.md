@@ -56,6 +56,10 @@ All colours are defined once in `js/palette.js` and read by the interface (writt
 | **5.9** Historical view: landmarks drawn with present-day OSM footprints / neighbourhood polygons / street lines; points only where no reliable boundary | works |
 | **5.9** Print layout (`#/print`): A4–A1, portrait/landscape, margins, 150–300 dpi; page templates whose slots hold maps (each at its own true scale at 100 %), the legend, saved sections, analysis cards, the wind rose, the rainfall chart or uploaded images with captions and sources; reorder, preview, PDF and PNG | works |
 | **5.9** Linked places in the historical view show the article's own Wikimedia Commons lead image with author and licence, or say that none is suitable | works (live Wikipedia/Commons) |
+| **5.10** Map legend placed in the free map space beside open panels; collapses to a Legend button on small screens | works |
+| **5.10** Section trees at the drawing's metre scale (schematic 6 m / 4 m crown, editable, labelled); Full section / Street detail with Fit height, panning and overview | works |
+| **5.10** Optional 3D view: MDT25 terrain (local), buildings extruded from tagged heights or labelled floor-count estimates, Reset view | works |
+| **5.10** Historical explorer opens on Granada (municipal boundary), Zoom to Granada / Fit historical map, aligned 4:3 image cards with full-image viewer | works |
 | Population grid, education / unemployment data, municipal 2022 noise data, municipal tree inventory, GTFS route geometry, accessibility (network analysis), Google Street View imagery inside the tool | not connected — shown as gaps |
 
 ## New data in 5.9
@@ -95,6 +99,7 @@ Layers: study_area, buildings, streets, landuse, parks_open_space, public_facili
 - `python3 tests/ui_test_v4.py <out>` — hanging/failing services (analysis and fabric page still complete, retry), Layers panel controls for the new layers, versioned data URLs, section corridor and no distance axis, exercise names in ar/he, no overflow at 390/820/1024 px in three languages.
 - `python3 tests/ui_test_v5.py <out>` — data findings (flood availability, place wording, transport, photo dates), analysis page, viewers (zoom/pan/inspect/export/Escape), unified comparison (2 vs 4 fabrics), section view (VE ×1, detail levels, annotations need a source), touch drawing buttons, phone/iPad portrait and landscape in ar/he/en; every download is opened (pdfinfo/pdftoppm, Pillow, XML parse, SQLite).
 - `python3 tests/ui_test_v6.py` / `ui_test_v7.py` / `ui_test_v8.py` — zoom cycles and building/street scales; street control, standalone sections, classified rasters and legends; section drawing language, viewer and exports.
+- `python3 tests/ui_test_v11.py` — build 5.10: legend placement in every panel combination (desktop/iPad/phone, ar/he/en), trees vs figures at the metre scale, street detail and its exports, historical framing and aligned image frames, 3D terrain and extrusions.
 - `python3 tests/ui_test_v10.py` — build 5.9: colour hierarchy (paint = legend = palette), boundary layers, period coverage, flow paths / drains / culverts, rail and metro, wind and rainfall (stubbed series), historical landmark geometries, print layout (A3/A4/A2, measured scale within 0.5 %), iPad and phone.
 - `python3 tests/ui_test_v9.py` — build 5.8: panels start closed and open/close independently in ar/he/en, never overlap, keep map view, layers, selection and unsaved input; iPad one side at a time; phone bottom sheets; palette colours shared by CSS, map paint, legends and rasters; every cut building meets the terrain and every background building stands on its own ground on four test lines in both directions; viewer, PNG, SVG and PDF checked.
 - `node tests/dates.test.js` — date parsing.

@@ -105,7 +105,7 @@ try:
         pg.evaluate('GA.pages.go("history")')
         pg.wait_for_function('document.querySelectorAll("#hx-places .hx-place").length >= 10', timeout=120000); time.sleep(20)
         txt = pg.evaluate('document.querySelector("#page").innerText'); check('present-day' in txt and 'position only' in txt, 'historical view legend: present-day shapes, points only where no boundary')
-        figs = pg.evaluate('[...document.querySelectorAll("#hx-places .hx-fig")].map(f => [f.dataset.file, f.innerText])'); noimg = pg.evaluate('document.querySelectorAll("#hx-places .hx-noimg").length')
+        figs = pg.evaluate('[...document.querySelectorAll("#hx-places .hx-fig[data-file]")].map(f => [f.dataset.file, f.innerText])'); noimg = pg.evaluate('document.querySelectorAll("#hx-places .hx-noimg").length')
         check(len(figs) == 1 and figs[0][0] == 'Catedral_test.jpg' and 'Wikimedia Commons' in figs[0][1], f'image under the paragraph: the article\'s own Commons lead image with attribution {figs}')
         check(noimg >= 10, f'places without an image say so instead of showing a filler ({noimg})')
         pg.evaluate('document.querySelector("[data-hx-fly=\'3\']").click()'); time.sleep(5); pg.screenshot(path=f'{OUT}/history_cathedral.png')

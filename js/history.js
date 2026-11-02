@@ -52,6 +52,9 @@
     const F = root.GA.fabricStyle;
     if (F && !m.getSource('hx-areas')) { m.addSource('hx-areas', { type: 'geojson', data: F.areasFC() }); F.addLayers(m, 'hx-areas'); }
     if (F && m.getSource('hx-areas')) F.setVisible(m, 'hx-areas', S.areas !== false);
+    // the municipal boundary of Granada (the frame of "Zoom to Granada"), a thin dark line under everything else
+    if (!m.getSource('hx-muni')) { m.addSource('hx-muni', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } }); m.addLayer({ id: 'hx-muni', type: 'line', source: 'hx-muni', paint: { 'line-color': PAL.ink, 'line-width': 1.6, 'line-opacity': 0.85 } });
+      root.GA.data.single('admin').then(j => { const f = j.features.filter(x => x.properties.kind === 'municipio'); if (m.getSource('hx-muni')) m.getSource('hx-muni').setData({ type: 'FeatureCollection', features: f }); }).catch(() => { }); }
     if (placesFC) {
       if (!m.getSource('hx-pl')) { m.addSource('hx-pl', { type: 'geojson', data: placesFC });
         // footprints / neighbourhoods: restrained red outline, light fill; streets: red line; points only where no boundary exists
@@ -92,12 +95,15 @@
         <div class="hx-periods">${X.HIST.map(h => `<button class="hx-chip ${S.a === h.id ? 'on' : ''}" data-hx-a="${h.id}"><b class="num">${h.period}</b><span>${t('hist.' + h.id)}</span><small>${t(h.kind === 'photo' ? 'ly3.histPhoto' : 'ly3.histMap')}</small></button>`).join('')}</div>
         <label class="chk"><input type="checkbox" id="hx-vis" ${S.hidden ? '' : 'checked'}> ${t('hx.visible')}</label>
         <label class="row2">${t('ly.opacity')} <input type="range" id="hx-op" min="0" max="1" step="0.05" value="${S.opacity}"></label>
+        <div class="hx-fitbtns"><button type="button" class="btn btn-small" id="hx-fit-gr">${t('v10.zoomGranada')}</button><button type="button" class="btn btn-small" id="hx-fit-map">${t('v10.fitHist')}</button></div>
+        <p class="fine" id="hx-fit-msg" role="status"></p>
         <label class="chk"><input type="checkbox" id="hx-swipe" ${S.swipe ? 'checked' : ''}> ${t('hx.swipe')}</label>
         <div class="sub">${t('hx.overlays')}</div>
         <label class="chk"><input type="checkbox" id="hx-pl" ${S.places === false ? '' : 'checked'}> <i class="sw dot" style="background:${PAL.red};box-shadow:0 0 0 1px #fff inset"></i> ${t('hx.placesLayer')}</label>
         <p class="fine">${t('hx.placesLegend')}</p>
         <ul class="lg"><li><i class="sw" style="background:${PAL.redSoft};border:1.5px solid ${PAL.red}"></i><span>${t('v9.lgFootprint')}</span></li><li><i class="sw" style="background:#fff;border:1px solid ${PAL.red}"></i><span>${t('v9.lgBarrio')}</span></li><li><i class="sw ln" style="border-top:3px solid ${PAL.red}"></i><span>${t('v9.lgStreet')}</span></li><li><i class="sw dot" style="background:${PAL.red}"></i><span>${t('v9.lgPointOnly')}</span></li></ul>
         <p class="fine">${t('v9.presentDay')}</p>
+        <ul class="lg"><li><i class="sw ln" style="border-top:2px solid ${PAL.ink}"></i><span>${t('v9.lgMuni')}</span></li></ul>
         <label class="chk"><input type="checkbox" id="hx-ar" ${S.areas === false ? '' : 'checked'}> <i class="sw dash"></i> ${t('hx.areasLayer')}</label>
         ${S.swipe ? `<label class="row2">${t('hx.right')} <select id="hx-b">${opt(S.b)}</select></label>` : ''}
         <div class="hx-info" id="hx-info"></div>
@@ -118,11 +124,14 @@
     maps = [a];
     if (S.swipe) { const b = mk('hx-map-b', S.b); maps.push(b); let lock = false; const sync = (src, dst) => src.on('move', () => { if (lock) return; lock = true; dst.jumpTo({ center: src.getCenter(), zoom: src.getZoom() }); lock = false; }); sync(a, b); sync(b, a); }
     a.on('moveend', () => { const S2 = H(); S2.center = a.getCenter().toArray(); S2.zoom = a.getZoom(); updateInfo(body); });
-    a.on('load', () => { updateInfo(body); overlays(a); });
+    a.on('load', () => { updateInfo(body); overlays(a); fitGranada(a, false); });
     a.on('click', async (e) => { const pf = a.getLayer('hx-pl') && a.getLayoutProperty('hx-pl', 'visibility') !== 'none' ? a.queryRenderedFeatures(e.point, { layers: ['hx-pl', 'hx-pl-line', 'hx-pl-fill'] }) : [];
       if (pf.length) { new maplibregl.Popup({ className: 'atlas-popup', maxWidth: '300px' }).setLngLat(pf[0].geometry.type === 'Point' ? pf[0].geometry.coordinates : e.lngLat).setHTML(placePopup(pf[0].properties)).addTo(a); return; }
       const S2 = H(); const h = X.HIST.find(x => x.id === S2.a); const r = await X.histInfo(h, [e.lngLat.lng, e.lngLat.lat]).catch(() => null); if (r) new maplibregl.Popup({ className: 'atlas-popup' }).setLngLat(e.lngLat).setHTML(`<b>${esc(t('hist.' + h.id))}</b><br>${histLine(h, r)}`).addTo(a); });
   }
+  // 5.10: open framed on the municipality of Granada (its boundary, with padding) — once per opening, never while exploring
+  async function muniBounds() { const j = await root.GA.data.single('admin'); const f = j.features.find(x => x.properties.kind === 'municipio'); if (!f) return null; const pts = (f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates).flat(2); return [[Math.min(...pts.map(p => p[0])), Math.min(...pts.map(p => p[1]))], [Math.max(...pts.map(p => p[0])), Math.max(...pts.map(p => p[1]))]]; }
+  async function fitGranada(m, animate) { try { const b = await muniBounds(); if (!b || !m) return; m.fitBounds(b, { padding: 36, duration: animate ? 600 : 0, maxZoom: 15 }); } catch (e) { } }
   function histLine(h, r) { return `${r.name ? `<bdi>${esc(r.name)}</bdi> · ` : ''}${r.sheet ? t('ly3.sheet') + ' ' + esc(r.sheet) + ' · ' : ''}${r.year ? `${t(h.id === 'minutas' ? 'hx.surveyed' : 'fb.edition')} <b class="num">${esc(r.year)}</b>` : ''}${r.flights && r.flights.length ? t('ly3.flights') + ' <span class="num">' + r.flights.join(', ') + '</span>' : ''}${r.editions ? `<br><small>${t('ly3.editions')} <span class="num">${r.editions.join(', ')}</span></small>` : ''}`; }
   async function updateInfo(body) {
     const S = H(); const h = X.HIST.find(x => x.id === S.a); const box = body.querySelector('#hx-info'); if (!box || !maps) return; const c = maps[0].getCenter();
@@ -136,13 +145,15 @@
     // freely licensed Wikimedia Commons file; author and licence come from the Commons file page. Otherwise it says so.
     const commonsFile = (u) => { if (!u || !/\/wikipedia\/commons\//.test(u)) return null; const parts = u.split('/'); const f = /\/thumb\//.test(u) ? parts[parts.length - 2] : parts[parts.length - 1]; try { return decodeURIComponent(f); } catch (e) { return f; } };
     out.forEach(p => { p.file = commonsFile(p.thumb); });
-    box.innerHTML = out.map((p, i) => `<article class="hx-place"><button class="link" data-hx-fly="${i}"><b dir="auto">${esc(p.title)}</b></button>${p.approx ? ` <small>${t('hx.approxPos')}</small>` : ''}<p dir="auto">${esc((p.extract || '').slice(0, 260))}${(p.extract || '').length > 260 ? '…' : ''}</p>
-      ${p.file ? `<figure class="hx-fig" data-file="${esc(p.file)}"><img src="${esc(p.thumb)}" alt="${esc(p.title)}" loading="lazy"><figcaption class="fine">${t('v9.leadImg')} <span class="hx-attr">…</span></figcaption></figure>` : `<p class="fine hx-noimg">${t(p.thumb ? 'v9.noFreeImg' : 'v9.noImg')}</p>`}
+    box.innerHTML = out.map((p, i) => `<article class="hx-place"><div class="hx-h"><button class="link" data-hx-fly="${i}"><b dir="auto">${esc(p.title)}</b></button>${p.approx ? ` <small>${t('hx.approxPos')}</small>` : ''}</div><p dir="auto">${esc((p.extract || '').slice(0, 260))}${(p.extract || '').length > 260 ? '…' : ''}</p>
+      ${p.file ? `<figure class="hx-fig" data-file="${esc(p.file)}"><button type="button" class="hx-thumb" data-hx-img="${i}" aria-label="${esc(t('v10.openImage') + ': ' + p.title)}"><img src="${esc(p.thumb)}" alt="${esc(p.title)}" loading="lazy"></button><figcaption class="fine">${t('v9.leadImg')} <span class="hx-attr">…</span></figcaption></figure>` : `<figure class="hx-fig hx-fig-none"><div class="hx-thumb hx-noimg"><span>${t(p.thumb ? 'v9.noFreeImg' : 'v9.noImg')}</span></div><figcaption class="fine"></figcaption></figure>`}
       <small><a href="${esc(p.url)}" target="_blank" rel="noopener">Wikipedia (es) ↗</a> · CC BY-SA 4.0</small></article>`).join('') || `<p class="note">${t('hx.placesFail')}</p>`;
     const files = out.map(p => p.file).filter(Boolean);
-    if (files.length) commonsMeta(files).then(() => box.querySelectorAll('.hx-fig').forEach(fig => { const m = meta[fig.dataset.file] || {}; const a = fig.querySelector('.hx-attr');
+    if (files.length) commonsMeta(files).then(() => box.querySelectorAll('.hx-fig[data-file]').forEach(fig => { const m = meta[fig.dataset.file] || {}; const a = fig.querySelector('.hx-attr');
       a.innerHTML = `${m.author ? esc(m.author) + ' · ' : ''}${m.license ? esc(m.license) + ' · ' : `${t('v9.licUnknown')} · `}<a href="${esc(m.page || ('https://commons.wikimedia.org/wiki/File:' + encodeURIComponent(fig.dataset.file)))}" target="_blank" rel="noopener">Wikimedia Commons ↗</a>`; })).catch(() => box.querySelectorAll('.hx-attr').forEach(a => { const f = a.closest('.hx-fig').dataset.file; a.innerHTML = `<a href="https://commons.wikimedia.org/wiki/File:${encodeURIComponent(f)}" target="_blank" rel="noopener">${t('v9.licOnPage')} ↗</a>`; }));
-    box.onclick = (e) => { const b = e.target.closest('[data-hx-fly]'); if (!b || !maps) return; const p = out[+b.dataset.hxFly]; if (!p.ll) return; maps[0].flyTo({ center: p.ll, zoom: 17 }); new maplibregl.Popup({ className: 'atlas-popup' }).setLngLat(p.ll).setHTML(`<b dir="auto">${esc(p.title)}</b>${p.approx ? `<br><small>${t('hx.approxPos')}</small>` : ''}`).addTo(maps[0]); };
+    box.onclick = (e) => { const im = e.target.closest('[data-hx-img]'); if (im) { const p = out[+im.dataset.hxImg]; const m = meta[p.file] || {};
+        root.GA.viewer.image({ src: m.url || p.thumb, title: p.title, subtitle: [m.author, m.license, 'Wikimedia Commons'].filter(Boolean).join(' · '), alt: p.title, notGIS: true }); return; }
+      const b = e.target.closest('[data-hx-fly]'); if (!b || !maps) return; const p = out[+b.dataset.hxFly]; if (!p.ll) return; maps[0].flyTo({ center: p.ll, zoom: 17 }); new maplibregl.Popup({ className: 'atlas-popup' }).setLngLat(p.ll).setHTML(`<b dir="auto">${esc(p.title)}</b>${p.approx ? `<br><small>${t('hx.approxPos')}</small>` : ''}`).addTo(maps[0]); };
     const geoms = await Promise.all(out.map(p => placeGeom(p)));
     placesFC = { type: 'FeatureCollection', features: out.map((p, i) => [p, i]).filter(([p]) => p.ll).map(([p, i]) => { const g = geoms[i]; return { type: 'Feature', properties: { i, title: p.title, desc: p.desc || '', url: p.url || '', rev: p.rev || '', approx: p.approx ? 1 : 0, extract: (p.extract || '').slice(0, 220), basis: g ? g.basis : '', why: g ? '' : (p.why || 'none'), ll: JSON.stringify(p.ll) }, geometry: g ? g.geometry : { type: 'Point', coordinates: p.ll } }; }) };
     (maps || []).forEach(m => overlays(m));
@@ -173,6 +184,9 @@
     const S = H(); const save = () => store.save();
     body.onclick = async (e) => {
       const b = e.target.closest('button'); if (!b) return;
+      if (b.id === 'hx-fit-gr') { fitGranada(maps && maps[0], true); body.querySelector('#hx-fit-msg').textContent = ''; return; }
+      // the IGN series are national: their full extent is Spain; the explorer shows them from zoom 11 around Granada
+      if (b.id === 'hx-fit-map') { const m = maps && maps[0]; if (m) { const c = m.getCenter(); m.easeTo({ center: c, zoom: m.getMinZoom(), duration: 600 }); } body.querySelector('#hx-fit-msg').textContent = t('v10.histExtent', { p: t('hist.' + S.a) }); return; }
       if (b.dataset.hxA) { S.a = b.dataset.hxA; save(); return render(body); }
       if (b.dataset.hxView != null) return viewer(+b.dataset.hxView);
       if (b.dataset.hxCol != null) { S.collage.push({ file: ARCHIVE[+b.dataset.hxCol].file, caption: '' }); save(); return renderCollage(body); }
