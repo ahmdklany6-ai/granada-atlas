@@ -96,7 +96,7 @@ with sync_playwright() as p:
     if 'd' in PART:  # ---------------- history (ar), tablet (he), phone (ar) ----------------
         ctx, pg, errs, meteo = boot(b, {'width': 1280, 'height': 860}, 'ar')
         pg.evaluate('GA.pages.go("history")'); pg.wait_for_function('document.querySelectorAll("#hx-places .hx-place").length >= 13', timeout=300000); time.sleep(8)
-        r = pg.evaluate('[...document.querySelectorAll("#hx-places .hx-place p[lang]")].map(p => p.lang)'); check(r and all(x == 'ar' for x in r), 'live history (ar): every place description in Arabic (native or labelled translation)', r)
+        r = pg.evaluate('[...document.querySelectorAll("#hx-places .hx-place .hx-txt > p[lang]")].map(p => p.lang)'); check(r and all(x == 'ar' for x in r), 'live history (ar): every place description in Arabic (native or labelled translation)', r)
         pg.evaluate('document.querySelector("#hx-places").scrollIntoView()'); time.sleep(1); shot(pg, '16_history_places_ar')
         check(not errs, 'live history: no page errors', errs[:3]); ctx.close()
         for tag, vp, lang in [('tablet', {'width': 820, 'height': 1180}, 'he'), ('phone', {'width': 390, 'height': 844}, 'ar')]:
