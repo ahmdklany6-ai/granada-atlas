@@ -20,7 +20,7 @@ ok(T.model({ species: 'Olivo' }).genus === 'Olea', 'Spanish word in species → 
 ok(T.model({ leaf_type: 'needleleaved' }).form === 'conical' && T.model({ leaf_type: 'needleleaved' }).formBasis === 'leaf_type', 'leaf type only → approximate form');
 // recorded sizes
 m = T.model({ species: 'Pinus halepensis', height: '20', diameter: '3.1 m' });
-ok(m.hRec && m.h === 20 && !m.crownRec && m.crown === 4 && m.diameterTag === '3.1 m' && !m.trunkRec, 'recorded height kept; ambiguous diameter tag shown, not used');
+ok(m.hRec && m.h === 20 && !m.crownRec && Math.abs(m.crown - 20 * 4 / 6) < 1e-9 && m.diameterTag === '3.1 m' && !m.trunkRec, 'recorded height kept; crown estimated in the default proportions; ambiguous diameter tag shown, not used');
 m = T.model({ height: '3', diameter_crown: '2.5' }); ok(m.hRec && m.crownRec && !m.estimated && m.h === 3 && m.crown === 2.5, 'small recorded tree stays small');
 m = T.model({ height: '2' }); ok(m.crown <= 1.6 + 1e-9, 'estimated crown never wider than 0.8 × recorded height');
 m = T.model({ circumference: '1.57' }); ok(m.trunkRec && Math.abs(m.trunk - 0.5) < 0.001, 'trunk diameter = circumference / π');

@@ -1,4 +1,4 @@
-# Granada Atlas — handoff (state at build 5.11, 2 Nov 2026)
+# Granada Atlas — handoff (state at build 5.12, 2 Nov 2026)
 
 This document lets a new Claude Code session continue the project without the original chat. Short operating rules
 are in `CLAUDE.md`; feature and data documentation is in `README.md`.
@@ -9,12 +9,12 @@ are in `CLAUDE.md`; feature and data documentation is in `README.md`.
 | --- | --- |
 | Repository | `ahmdklany6-ai/granada-atlas` (public), branch `main` |
 | Live site | https://ahmdklany6-ai.github.io/granada-atlas/ (GitHub Pages, deploy from `main`, repo root) |
-| Current build | **5.11** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.11` asset queries) |
+| Current build | **5.12** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.12` asset queries) |
 | Latest feature work | Build 5.9: colour hierarchy, boundary layers, water/runoff, infrastructure, seasonal wind/rain, landmark geometries, print layout (see §13) |
 | Deployment | see §12 (5.8 deployment record) |
 | Data version | `2026-11-02-v8` in `data/manifest.json` (5.11: OSM trees 2 Nov 2026, ERA5 climate snapshot, history place texts) |
 
-Build history (newest first): 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
+Build history (newest first): 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
 classified climate rasters, dashed fabric marks, historical red dots explained · 5.5/5.4 smooth building scales and
 street hierarchy at close zoom · 5.3 (v5) analysis page, viewers, unified Comparison, phone/iPad · v4/v3/v2 earlier.
 
@@ -291,3 +291,18 @@ v5–v8. Browser 3D frames under software GL take up to minutes — `ui_test_v12
 Remaining limitations: building heights remain mostly floor estimates (67 tagged heights); tree sizes are illustrative for all
 but two trees; MDT25 is 25 m; the ERA5 cell (~25 km) is not station data (annual mean 511 mm in the cell; not checked here against AEMET station normals);
 translations of Spanish summaries are AI-assisted and should be checked by a reader of the language.
+
+### 5.11 deployment record and live verification
+
+- PR https://github.com/ahmdklany6-ai/granada-atlas/pull/5 squash-merged as `d2593ee`; "pages build and deployment" run
+  41503101651 succeeded. A GitHub runner fetched 70 files the page uses (code, styles, MapLibre, manifest, climate, history and
+  tree data) from the public URL: all byte-identical to `main` `d2593ee` (`tools/verify/live_files.py`).
+- Live in a browser on the runner (real services): build 5.11 served and running; wind and rainfall load from the shipped
+  snapshot with no Open-Meteo request; their legends show the statistics; the Arabic historical page shows Arabic texts and
+  real Commons images (screenshot in the job log).
+- Not possible on the runner: moving the map with the real basemap in software WebGL did not finish within the job limit
+  (the same hang was probed for 5.10 — see `tools/verify/hang_probe.py`). The same files rendered in this environment with
+  real OpenFreeMap tiles and glyphs fetched by the runner (`tools/verify/fetch_tiles.py`) move in 1–2 s, so the map
+  screenshots of 3D, the regional view, layers, climate and sections were made locally from the verified-identical files.
+- 5.12 (follow-up): the translation label and the "Original text" fold took grid rows of their own on translated place
+  cards (text and image out of line); label, text and original now share the card's text row.

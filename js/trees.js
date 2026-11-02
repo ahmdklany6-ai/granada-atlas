@@ -53,8 +53,10 @@
     tags = tags || {}; const tx = taxon(tags); const f = formOf(tags);
     const hRec = num(tags.height), cRec = num(tags.diameter_crown), circ = num(tags.circumference);
     const H = hRec || null, C = cRec || null;
-    // illustrative size where not recorded (the crown never wider than 0.8 × a recorded height; a recorded crown sets a plausible minimum height)
-    const h = H || Math.max(defaults.h, C ? C * 1.25 : 0), c = C || Math.min(defaults.crown, H ? H * 0.8 : Infinity);
+    // illustrative size where not recorded, in the editable default PROPORTIONS (crown : height = default crown : default
+    // height): a recorded height sets the estimated crown, a recorded crown the estimated height; neither → the defaults
+    const ratio = defaults.crown / defaults.h;
+    const h = H || (C ? C / ratio : defaults.h), c = C || (H ? H * ratio : defaults.crown);
     const trunkRec = circ ? circ / Math.PI : null;
     const trunk = trunkRec || Math.max(0.15, Math.min(0.6, c * 0.07)); // drawing only
     return { species: tx.species, speciesEs: tx.speciesEs, genus: tx.genus, form: f.form, formBasis: f.basis, leafType: tags.leaf_type || null, leafCycle: tags.leaf_cycle || null,

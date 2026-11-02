@@ -247,7 +247,7 @@
     const TD = (root.GA.trees && root.GA.trees.defaults) || { h: 6, crown: 4 };
     const schH = Math.max(1, +o.treeH || TD.h), schC = Math.max(0.5, +o.treeCrown || TD.crown);
     const treeDims = (tr) => { const h = tr.h > 0 ? tr.h : null, c = tr.crown > 0 ? tr.crown : null;
-      if (h && c) return { h, c, sch: false }; if (h) return { h, c: Math.min(schC, h * 0.8), sch: 'crown' }; if (c) return { h: Math.max(schH, c * 1.25), c, sch: 'height' }; return { h: schH, c: schC, sch: 'both' }; };
+      if (h && c) return { h, c, sch: false }; if (h) return { h, c: h * schC / schH, sch: 'crown' }; if (c) return { h: c * schH / schC, c, sch: 'height' }; return { h: schH, c: schC, sch: 'both' }; }; // 5.12: missing dimension in the default proportions (as js/trees.js)
     const treeTop = (tr) => tr.base + treeDims(tr).h;
     const tops = prof.cuts.concat(prof.bg).filter(c => c.h != null && c.base != null).map(c => c.base + c.h).concat((prof.trees || []).filter(tr => tr.base != null).map(treeTop));
     const bottoms = prof.cuts.filter(c => c.lvu && c.base != null).map(c => c.base - c.lvu * floorH);
