@@ -8,5 +8,17 @@
     'v10.treeH': ['ارتفاع الشجرة التخطيطي', 'גובה עץ סכמטי', 'Schematic tree height'],
     'v10.treeCrown': ['قطر التاج التخطيطي', 'קוטר צמרת סכמטי', 'Schematic crown diameter'],
     'v10.treeSchHint': ['يُطبَّق فقط على الأشجار التي لا يُسجَّل لها ارتفاع أو تاج في OSM؛ لا يغيّر القيم المسجّلة.', 'חל רק על עצים שאין להם גובה או צמרת רשומים ב-OSM; אינו משנה ערכים רשומים.', 'Applies only to trees without a recorded height or crown in OSM; recorded values are never changed.'],
+    // ----- long sections -----
+    'v10.view': ['العرض', 'תצוגה', 'View'],
+    'v10.full': ['المقطع كاملًا', 'החתך המלא', 'Full section'],
+    'v10.detail': ['تفاصيل الشارع', 'פרטי הרחוב', 'Street detail'],
+    'v10.overview': ['نظرة عامة على المقطع والجزء الظاهر', 'מבט כולל על החתך והחלק המוצג', 'Overview of the section and the visible part'],
+    'v10.panBack': ['إزاحة إلى الخلف على طول المقطع', 'הזזה אחורה לאורך החתך', 'Move back along the section'],
+    'v10.panFwd': ['إزاحة إلى الأمام على طول المقطع', 'הזזה קדימה לאורך החתך', 'Move forward along the section'],
+    'v10.position': ['موضع الجزء الظاهر', 'מיקום החלק המוצג', 'Position of the visible part'],
+    'v10.fitHeight': ['ملاءمة الارتفاع', 'התאמה לגובה', 'Fit height'],
+    'v10.fitAll': ['ملاءمة المقطع كاملًا', 'התאמה לחתך כולו', 'Fit entire section'],
+    'v10.viewNote': ['«تفاصيل الشارع» يعرض جزءًا من الخط بالمقياس نفسه (حقيقي أو مبالغة معلنة) — لا يُمطّ أي ارتفاع. التصدير يأخذ العرض الظاهر مع خريطة الموقع.', '«פרטי הרחוב» מציג חלק מהקו באותו קנה מידה (אמיתי או הגזמה מוצהרת) — שום גובה אינו נמתח. הייצוא לוקח את התצוגה המוצגת עם מפת המיקום.', '"Street detail" shows part of the line at the same scale (true, or a stated exaggeration) — no height is stretched. Exports take the view on screen, with the locator.'],
+    'v10.detailOf': ['تفاصيل {a}–{b} م من {L} م', 'פרט {a}–{b} מ׳ מתוך {L} מ׳', 'detail {a}–{b} m of {L} m'],
   });
 })(window);

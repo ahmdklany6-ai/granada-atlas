@@ -161,6 +161,25 @@
       ref: { a: pl.u[0], b: pl.u[pl.u.length - 1], aLL: A0, bLL: B0, azimuth: az }, vertexD: pl.cum.slice(), computed: new Date().toISOString() };
   }
 
+  // ---------- street detail: the same profile clipped to a window [r0, r1] along the line (metres) ----------
+  // Distances are shifted so the window starts at 0; terrain is interpolated at both edges; buildings, background,
+  // trees and street crossings outside are dropped and those crossing an edge are clipped. Scales are untouched — the
+  // drawing stays at true scale (or the user's stated exaggeration); only less of the line is shown.
+  function windowProfile(prof, r0, r1) {
+    r0 = Math.max(0, Math.min(prof.L - 5, r0)); r1 = Math.max(r0 + 5, Math.min(prof.L, r1)); const sh = (d) => d - r0; const inR = (d) => d >= r0 && d <= r1;
+    const ip = (d) => { let i = Math.max(0, Math.min(prof.elev.length - 2, Math.floor(d / prof.step))); const a = prof.elev[i], b = prof.elev[i + 1]; if (a == null) return b; if (b == null) return a; const t2 = Math.max(0, Math.min(1, (d - prof.dist[i]) / ((prof.dist[i + 1] - prof.dist[i]) || 1))); return a + (b - a) * t2; };
+    const dist = [0], elev = [ip(r0)]; prof.dist.forEach((d, i) => { if (d > r0 && d < r1) { dist.push(sh(d)); elev.push(prof.elev[i]); } }); dist.push(r1 - r0); elev.push(ip(r1));
+    const clipSpan = (c) => c.d1 > r0 && c.d0 < r1 ? Object.assign({}, c, { d0: sh(Math.max(r0, c.d0)), d1: sh(Math.min(r1, c.d1)), gnd: c.gnd ? c.gnd.filter(q => inR(q[0])).map(q => [sh(q[0]), q[1]]) : c.gnd }) : null;
+    const cuts = prof.cuts.map(clipSpan).filter(Boolean), bg = prof.bg.map(clipSpan).filter(Boolean);
+    const trees = (prof.trees || []).filter(tr => inR(tr.d)).map(tr => Object.assign({}, tr, { d: sh(tr.d) }));
+    const sf = prof.surf || { green: [], streets: [], water: [] };
+    const surf = { streets: sf.streets.filter(z => inR(z.d)).map(z => Object.assign({}, z, { d: sh(z.d) }, z.faceA != null ? (inR(z.faceA) && inR(z.faceB) ? { faceA: sh(z.faceA), faceB: sh(z.faceB) } : { faceA: null, faceB: null, gap: null }) : {})),
+      green: sf.green.map(g => g.d1 > r0 && g.d0 < r1 ? Object.assign({}, g, { d0: sh(Math.max(r0, g.d0)), d1: sh(Math.min(r1, g.d1)) }) : null).filter(Boolean), water: sf.water.filter(w => inR(w.d)).map(w => Object.assign({}, w, { d: sh(w.d) })) };
+    const ev = elev.filter(v => v != null);
+    return Object.assign({}, prof, { L: r1 - r0, dist, elev, min: Math.min(...ev), max: Math.max(...ev), cuts, bg, trees, surf, vertexD: [0, r1 - r0].concat(prof.vertexD.filter(d => d > r0 && d < r1).map(sh)).sort((a, b) => a - b),
+      window: { r0, r1, L: prof.L }, endLabels: [nf(r0) + ' m', nf(r1) + ' m'] });
+  }
+
   // ---------- drawing: one routine, three back-ends (canvas for screen/PNG, SVG and PDF for vector export) ----------
   function canvasPainter(canvas, W, H, ratio) {
     canvas.width = Math.round(W * ratio); canvas.height = Math.round(H * ratio); const ctx = canvas.getContext('2d'); ctx.setTransform(ratio, 0, 0, ratio, 0, 0); ctx.lineJoin = 'round';
@@ -342,9 +361,10 @@
       const placed = []; lv.forEach(([d, e, k]) => { const x = X(d), y = Y(e); const label = '+' + e.toFixed(1); const tw = pt.measure(label, `${fs - 1}px ${font}`); const atL = Math.abs(x - Math.min(X(0), X(prof.L))) < 2, atR = Math.abs(x - Math.max(X(0), X(prof.L))) < 2; const tx = atL ? x + 10 : atR ? x - 10 - tw : x - tw / 2; if (placed.some(p => Math.abs(p - tx) < tw + 8)) return; placed.push(tx);
         pt.path([[x - 4, y - 7], [x + 4, y - 7], [x, y - 1]], { fill: '#FFFFFF', stroke: INK, lw: 0.8, close: true }); pt.text(label, tx, y - 9, { font, size: fs - 1, color: INK, halo: '#FFFFFF' }); }); }
     // ---- A / B (and intermediate vertices) above the drawing ----
-    const Ls = LETTERS(prof.vertexD.length);
+    const Ls = prof.window ? prof.vertexD.map((d, i) => i === 0 ? prof.endLabels[0] : i === prof.vertexD.length - 1 ? prof.endLabels[1] : '·') : LETTERS(prof.vertexD.length);
     const yAB = Math.max(mt + 6, Y(top) - 4);
     prof.vertexD.forEach((d, i) => { const x = X(d); const end = i === 0 || i === Ls.length - 1; const ge = gy(d); pt.path([[x, yAB - 4], [x, ge != null ? Y(ge) : yAB + 10]], { stroke: RED, lw: end ? 1 : 0.6, dash: [3, 3], alpha: 0.6 });
+      if (prof.window && end) { const lab = Ls[i]; const tw2 = pt.measure(lab, `700 ${fs}px ${font}`); const xc = Math.max(ml + tw2 / 2, Math.min(W - mr - tw2 / 2, x)); pt.text(lab, xc, yAB - 9, { font, size: fs, weight: 700, color: RED, align: 'center', halo: '#FFFFFF' }); return; }
       pt.text(Ls[i], x, yAB - 9, { font, size: end ? fs + 6 : fs, weight: 700, color: RED, align: 'center', halo: '#FFFFFF' }); });
     // ---- dimension chain: facade-to-facade widths measured from the footprints; user widths on a second row ----
     if (!compact) { const yD = yBase + 16, yU = yBase + 34; const tick = (x, y) => pt.path([[x - 3.5, y + 3.5], [x + 3.5, y - 3.5]], { stroke: INK, lw: 0.9 });
@@ -357,7 +377,7 @@
     const fy = H - footH; pt.path([[ml, fy + 6], [W - mr, fy + 6]], { stroke: SP.rule, lw: 0.8 });
     const locW = compact || slim ? 0 : Math.round(Math.min(W * 0.26, (footH - 22) * 1.45)); const locH = compact ? 0 : footH - 22;
     const locX = rtl ? ml : W - mr - locW; const tx0 = rtl ? W - mr : ml; const tw = W - ml - mr - (locW ? locW + 24 : 0); const al = rtl ? 'right' : 'left';
-    const veTxt = ve === 1 ? t('v7.scaleEqual') : t('v7.scaleVE', { v: ve });
+    const veTxt = (ve === 1 ? t('v7.scaleEqual') : t('v7.scaleVE', { v: ve })) + (prof.window ? ' · ' + t('v10.detailOf', { a: nf(prof.window.r0), b: nf(prof.window.r1), L: nf(prof.window.L) }) : '');
     pt.text(prof.name || '', tx0, fy + 26, { font, size: fs + 3, weight: 700, align: al, dir });
     pt.text(veTxt, tx0 + (rtl ? -1 : 1) * (pt.measure(prof.name || '', `700 ${fs + 3}px ${font}`) + 14), fy + 26, { font, size: fs, weight: 600, align: al, color: ve === 1 ? INK : RED, dir });
     // scale bar (and the vertical bar when exaggerated)
@@ -407,6 +427,8 @@
       const top = Math.min(...R.map(q => q[1])); const tx = GA.fabricStyle.topCentre(R.map(q => q[0]), R.map(q => -q[1]));
       pt.text(String(ar.no), tx, top - 4, { font, size: fs, weight: 700, align: 'center', color: RED, halo: '#FFFFFF' }); });
     const L = u.map(P); pt.path(L, { stroke: INK, lw: 2.2, cap: 'round' });
+    // street detail: the part of the line shown in the drawing, in red
+    if (prof.window) { const plw = polyline(prof.pts); const seg = []; for (let k = 0; k <= 40; k++) seg.push(P(at(plw, prof.window.r0 + (prof.window.r1 - prof.window.r0) * k / 40))); pt.path(seg, { stroke: RED, lw: 5, cap: 'round' }); }
     // viewing direction: arrow from the middle of the line towards the side seen
     const pl = polyline(prof.pts); const m = at(pl, pl.L / 2); let i = 1; while (i < pl.cum.length - 1 && pl.cum[i] < pl.L / 2) i++; const a = pl.u[i - 1], b = pl.u[i]; const L0 = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; const nx = -(b[1] - a[1]) / L0 * sgn, ny = (b[0] - a[0]) / L0 * sgn;
     const al = Math.max(14, Math.min(26, box.w * 0.08)); const p0 = P(m), p1 = [p0[0] + nx * al, p0[1] - ny * al]; pt.path([p0, p1], { stroke: RED, lw: 2 }); const ang = Math.atan2(p1[1] - p0[1], p1[0] - p0[0]);
@@ -509,5 +531,5 @@
     return api;
   }
 
-  root.GA.section = { compute, draw, svg, pdf, tool, chooseVE, LETTERS, polyline, optsFor, parseFloors, MAT };
+  root.GA.section = { compute, draw, svg, pdf, tool, chooseVE, LETTERS, polyline, optsFor, parseFloors, MAT, windowProfile };
 })(window);
