@@ -282,6 +282,12 @@ How it was verified: this cloud environment cannot reach the public site, Open-M
 | Trees: sources | yes | no open municipal inventory: opendata.granada.org (CKAN, 6 datasets), datos.gob.es and Junta de Andalucía list none for Granada (2 Nov 2026). OSM refreshed (2 Nov 2026): 7,426 trees + 139 rows; 67 species/genus, 435 leaf type, 2 heights, 0 crown diameters, 0 circumferences; 2 ambiguous `diameter` tags shown, not used |
 | Trees: map, 3D, card, overview | yes | card: species, form (and its basis), leaf, height, crown, trunk — "recorded" or "Unknown · illustrative estimate"; 2D crowns at true scale from zoom 15.5; 250 m overview below 13; opaque 3D trees (≤ 2,500 in view, from zoom 15). Mapped data contains no palms or columnar trees, so those forms exist in code but appear nowhere on the map |
 
+Local tests (2 Nov 2026, this environment, software GL): `node tests/*.test.js` (incl. new `trees.test.js`, 32 checks) pass;
+`ui_test_v4` (build check 5.11), `ui_test_v10` (climate/history now test the live-API fallbacks; tree colour check updated to
+the olive classes), `ui_test_v11` (3D check now reads the ground directly — `queryTerrainElevation` is relative to the centre
+elevation in MapLibre 4, which is why 5.10's test passed with the bug), `ui_test_v12` (new) pass. Not re-run this build: v2, v3,
+v5–v8. Browser 3D frames under software GL take up to minutes — `ui_test_v12` takes `SECTIONS=1,…,8` to run parts.
+
 Remaining limitations: building heights remain mostly floor estimates (67 tagged heights); tree sizes are illustrative for all
 but two trees; MDT25 is 25 m; the ERA5 cell (~25 km) is not station data (annual mean 511 mm in the cell; not checked here against AEMET station normals);
 translations of Spanish summaries are AI-assisted and should be checked by a reader of the language.

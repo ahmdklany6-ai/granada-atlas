@@ -44,7 +44,9 @@
     // does the tile touch the square (or the blend ramp around it)? test the four corners + centre in 25830
     const cs = [[w, n], [e, n], [w, s], [e, s], [(w + e) / 2, (n + s) / 2]].map(p => PJ.EPSG25830.forward(p));
     const near = !(Math.min(...cs.map(c => c[0])) > X1 + RAMP || Math.max(...cs.map(c => c[0])) < X0 - RAMP || Math.min(...cs.map(c => c[1])) > Y1 + RAMP || Math.max(...cs.map(c => c[1])) < Y0 - RAMP);
-    let glob = null; if (state.global !== 'failed') { try { glob = await globalTile(z, x, y); state.global = 'ok'; } catch (err) { state.global = 'failed'; state.globalErr = String(err && err.message || err); syncNote(); } }
+    // tiles wholly inside the square (beyond the blend band) need only MDT25: no download, so city terrain never waits on the network
+    const inner = cs.every(c => c[0] > X0 + BLEND && c[0] < X1 - BLEND && c[1] > Y0 + BLEND && c[1] < Y1 - BLEND);
+    let glob = null; if (!inner && state.global !== 'failed') { try { glob = await globalTile(z, x, y); state.global = 'ok'; } catch (err) { state.global = 'failed'; state.globalErr = String(err && err.message || err); syncNote(); } }
     const ref = demEdgeMean();
     for (let j = 0; j < S; j++) { const lat = n + (s - n) * (j + 0.5) / S; for (let i = 0; i < S; i++) { const lon = w + (e - w) * (i + 0.5) / S; const o = j * S + i;
       let h;

@@ -59,7 +59,7 @@ try:
         check(P['band']['9+'] == P['base']['oxblood'] and P['bus']['High'] == P['base']['oxblood'], 'red ramps end in oxblood (no brown/black at the dark end)')
         on('bus_stops'); time.sleep(1.5); check(P['red'] in paint('ly-bus', 'circle-color'), 'public-transport stops are red', paint('ly-bus', 'circle-color'))
         on('bus_service'); time.sleep(2); bp = paint('ly-bussvc', 'circle-color'); check(all(P['bus'][k] in bp for k in ['High', 'Medium-high', 'Medium-low', 'Low']) and P['base']['brown'] not in bp, 'bus frequency uses the light→dark red ramp, no brown')
-        on('trees'); time.sleep(2); check(paint('ly-trees', 'circle-stroke-color') == json.dumps(P['red']) and paint('ly-trees', 'circle-color') == '"#FFFFFF"', 'mapped trees: red ring (distinct from filled red points)')
+        on('trees'); time.sleep(2); check(paint('ly-trees', 'circle-color') == json.dumps(['get', 'col']) and pg.evaluate('GA.palette.tree3d.known') != P['red'], 'mapped trees (5.11): restrained olive classes from palette.tree3d, not red', paint('ly-trees', 'circle-color'))
         check(P['red'] in leg() or '153, 43, 42' in leg(), 'tree legend shows the red ring')
         noise = P['noise']; check(len(set(noise)) == 6 and noise[4] == P['red'] and noise[5] == P['base']['oxblood'], 'noise scale pale → dark red, six ordered classes')
         lu = list(P['landuse'].values()); check(len(set(lu)) == len(lu), f'land-use categories all distinct ({len(lu)} colours)')
