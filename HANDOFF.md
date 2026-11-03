@@ -317,3 +317,19 @@ translations of Spanish summaries are AI-assisted and should be checked by a rea
 | 4 Print readability | fixed | Board text ≥ 19 px at 150 dpi (≈ 9 pt), body ≈ 10.5 pt; two panels per A3 page, a single panel goes wide; empty sections omitted (option "Include empty sections", `b.pdfEmpty`). Print workspace: all text × paper factor (A4 1, A3 1.41, A2 2, A1 2.83), legend auto-sized to its slot, empty slots omitted and the others reflowed (option "Keep empty slots"). |
 | 5 Blank PNOA | fixed | IGN `PNOA2024` and `PNOA2023` are in the capabilities but return a 2,203-byte plain-white JPEG over Granada (runner check 3 Nov 2026; 2022 and older have imagery). Every historical image is checked (`blankness`); PNOA falls back to the most recent flight with imagery, labelled "PNOA 2022 — …"; anything else is an explicit "Image unavailable" frame with the reason. The export waits for all images (`ensureHistory`). |
 | 6 Missing area 3 | fixed (cause reproduced) | With four test areas (3 = Almanjáyar, ~3 km north) build 5.12's location map showed 1, 2, 4: it was always framed on a 3.6 km square around the open area, and areas outside the frame were not drawn or listed. Now "Show all areas" (default on) frames every saved area; off, the page says which areas lie outside. The main map could also drop a colliding number (MapLibre collision) and canvas exports could push one off the frame — both removed. |
+
+## 17. Build 5.14 (owner request of 3 Nov 2026) — current study area in red on the locator
+
+The owner asked for one exception to the 5.13 black-mark rule, on the analysis-page **location map only**:
+
+| Item | Change |
+| --- | --- |
+| Current study area | `fabric.js` `LOC_CUR` = red `#992B2A` (`palette.red`), dashed `[11, 6]`, width 4.2 (others 2.2); its number red and larger (`LOC_NUM` 30 px vs `fabricStyle.NUM` 22), still just above the top-right corner and drawn first so it keeps its corner. |
+| Other saved areas | unchanged: black dashes (`palette.mark.boundary`) over a white under-stroke, black numbers (`palette.mark.number`, now passed explicitly). |
+| Interiors | the 6 % red tint inside the current area was removed — every interior is transparent. |
+| Legend | "Current study area" (red dashed swatch) / "Other study areas" (black dashed swatch), `v13.locCurrent` / `v13.locOthers` in `js/i18n_v13.js` (ar / he / en). Generated from the same `locLegend()` the map uses. |
+| Where | the page locator (`drawLoc`), its enlarged viewer (same style; framed on every saved area via the new `viewer.map({ fitRings })`), the viewer's PNG / PDF exports and the analysis-board PDF. `mapcard.js` now passes a per-number `color` to `fabricStyle.numberAt`. |
+| Not changed | the main map, cards, comparison, sections, studio squares and every thematic layer colour keep the 5.13 marks and palette. |
+
+Test: `python3 tests/ui_test_v13.py` (locator in en / ar / he, viewer, PNG / PDF exports, board PDF; spies on `fabricStyle.strokeRing` / `numberAt` per canvas and counts #992B2A pixels in the outputs).
+
