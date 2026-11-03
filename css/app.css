@@ -854,3 +854,4 @@ body.view-3d .north { display: none; } /* the map can be rotated in 3D: the nort
 .x13-frame h3 { font-size: 14px; margin: 8px 0 4px; } .x13-auto { font-style: italic; color: var(--ink-2); margin: 2px 0 6px; }
 .x13-audit summary { cursor: pointer; font-weight: 600; margin-top: 10px; }
 .x13-audit .tbl-wrap { overflow-x: auto; } .x13-tbl { border-collapse: collapse; font-size: 12px; min-width: 640px; } .x13-tbl th, .x13-tbl td { border-bottom: 1px solid var(--line); padding: 4px 6px; text-align: start; vertical-align: top; }
+.x13-prev > p { grid-column: 1 / -1; margin: 0; }
