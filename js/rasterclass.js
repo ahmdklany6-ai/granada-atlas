@@ -69,7 +69,7 @@
     if (scheme === 'canopy') { // raw tree-cover values (0–100) from the EEA ImageServer, coloured with ext.js TCD classes
       const X = root.GA.ext; const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status);
       const tif = await root.GA.tiffread.read(await r.arrayBuffer()); const c = mkCanvas(tif.width, tif.height); const g = c.getContext('2d'); const d = g.createImageData(tif.width, tif.height);
-      for (let i = 0; i < tif.data.length; i++) { const v = tif.data[i]; const col = v > 100 ? null : X.tcdColour(v); if (!col) continue; d.data.set(col, i * 4); }
+      for (let i = 0; i < tif.data.length; i++) { const v = tif.data[i]; const col = v > 100 ? X.tcdHatch(i % tif.width, Math.floor(i / tif.width)) : X.tcdColour(v); if (!col) continue; d.data.set(col, i * 4); } // > 100 = no data: hatched
       g.putImageData(d, 0, 0); return { data: await toBuf(c) };
     }
     if (scheme === 'lst') await lstReady;
@@ -91,8 +91,10 @@
     if (scheme === 'lst') return LST.map(k => ({ sw: k.col, label: `${k.label} °C` })).concat([{ hatch: true, label: t('rc.noData') }]);
     if (scheme === 'noise') { const ind = opts.ind || 'lden'; return NOISE.filter(n => ind === 'ln' || n.v >= 55).map((n, i, a) => ({ sw: n.col, label: `${n.v}–${n.v + 4}${i === a.length - 1 ? '+' : ''} dB(A)` })); }
     if (scheme === 'flood') { const X = root.GA.ext; const ks = opts.periods || X.FLOOD.map(z => z.k); return X.FLOOD.filter(z => ks.includes(z.k)).map(z => ({ sw: z.color, label: `T = ${z.T} · ${z.p} ${t('ly3.perYear')}` })).concat(opts.arpsi === false ? [] : [{ line: ARPSI_COL, w: 2, label: t('ly3.arpsi') }]); }
-    if (scheme === 'canopy') { const X = root.GA.ext; return X.TCD_CLASSES.filter(c => c.col[3]).map(c => ({ sw: `rgb(${c.col.slice(0, 3).join(',')})`, label: `${c.k} %` })); }
+    if (scheme === 'canopy') return canopyLegend();
     return [];
   }
-  root.GA = root.GA || {}; root.GA.rasterClass = { LST, NOISE, FLOOD_SRC, ARPSI_COL, state, lstReady, register, tiles, recolour, recolourImage, legendItems, lstClass, _tile: tile };
+  // tree-cover legend from the TCD class table (0 % white veil, classes cream → olive, missing hatched) — every map uses it
+  function canopyLegend() { const X = root.GA.ext, t = (k, v) => I().t(k, v); return X.TCD_CLASSES.map(c => c.zero ? { sw: '#FFFFFF', alpha: 1, border: true, label: t('v12.tcdZero') } : { sw: `rgb(${c.col.slice(0, 3).join(',')})`, label: `${c.k.replace('-', '–')} % ${t('g3.tcd')}` }).concat([{ hatch: true, label: t('v12.tcdMissing') }]); }
+  root.GA = root.GA || {}; root.GA.rasterClass = { canopyLegend,  LST, NOISE, FLOOD_SRC, ARPSI_COL, state, lstReady, register, tiles, recolour, recolourImage, legendItems, lstClass, _tile: tile };
 })(window);

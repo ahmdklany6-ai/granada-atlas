@@ -12,20 +12,28 @@
   const MAX_PAGE_PX = 40e6, MAX_TEX = 8000; // browser limits: page canvas area, WebGL map canvas side
   // slots: what goes where. Templates divide the body; each slot holds one item (map, legend, section, analysis card,
   // wind rose, rainfall chart, uploaded image) with its own caption. Maps carry their own scale.
-  const st = { paper: 'A3', orient: 'landscape', margin: 12, dpi: 200, title: '', subtitle: '', template: 'side',
+  const st = { paper: 'A3', orient: 'landscape', margin: 12, dpi: 200, title: '', subtitle: '', template: 'side', keepEmpty: false,
     slots: [{ type: 'map', denom: 5000, caption: '' }, { type: 'legend', caption: '' }, { type: 'none', caption: '' }, { type: 'none', caption: '' }], images: [] };
   const TEMPLATES = { side: 4, top3: 4, grid: 4, single: 1 };
   const pageMm = () => { const [a, b] = PAPERS[st.paper]; return st.orient === 'landscape' ? [b, a] : [a, b]; };
   const ptOf = (mm) => mm / 25.4 * 72;
   function effDpi(dpi) { const [w, h] = pageMm(); let d = dpi; while ((w / 25.4 * d) * (h / 25.4 * d) > MAX_PAGE_PX) d -= 25; return Math.max(72, d); }
-  // slot rectangles in mm for the chosen template (gap 6 mm; caption band 5 mm inside each rectangle)
+  // 5.13: text scales with the paper so it is readable at the intended print size (A4 body ≈ 9 pt; A1 ≈ 2.8× larger)
+  const FS = { A4: 1, A3: 1.41, A2: 2, A1: 2.83 }; const fsOf = () => FS[st.paper] || 1;
+  // slots actually used: empty ones are omitted by default and the others take their space (option: keep empty slots)
+  const usedSlots = () => { const n = TEMPLATES[st.template]; const all = st.slots.slice(0, n).map((sl, i) => ({ sl, i })); return st.keepEmpty ? all : all.filter(x => x.sl && x.sl.type !== 'none'); };
+  // slot rectangles in mm for the chosen template (gap and caption band scale with the paper)
   function layout() {
-    const [W, H] = pageMm(); const m = st.margin; const head = 22, foot = 16; const B = { x: m, y: m + head, w: W - 2 * m, h: H - 2 * m - head - foot }; const g = 6; let R;
-    if (st.template === 'single') R = [B];
+    const [W, H] = pageMm(); const m = st.margin; const f = fsOf(); const head = 22 * f, foot = 16 * f; const B = { x: m, y: m + head, w: W - 2 * m, h: H - 2 * m - head - foot }; const g = 6 * Math.sqrt(f); let R;
+    const n = usedSlots().length; const tpl = st.keepEmpty || n === TEMPLATES[st.template] ? st.template : n <= 1 ? 'single' : n === 2 ? 'pair' : st.template === 'grid' ? 'grid3' : 'side3';
+    if (tpl === 'single') R = [B];
+    else if (tpl === 'pair') { const w1 = B.w * 0.72, w2 = B.w - w1 - g; R = [{ x: B.x, y: B.y, w: w1, h: B.h }, { x: B.x + w1 + g, y: B.y, w: w2, h: B.h }]; }
+    else if (tpl === 'side3') { const w1 = B.w * 0.68, w2 = B.w - w1 - g, h = (B.h - g) / 2; R = [{ x: B.x, y: B.y, w: w1, h: B.h }, { x: B.x + w1 + g, y: B.y, w: w2, h }, { x: B.x + w1 + g, y: B.y + h + g, w: w2, h }]; }
+    else if (tpl === 'grid3') { const w = (B.w - g) / 2, h = (B.h - g) / 2; R = [{ x: B.x, y: B.y, w, h: B.h }, { x: B.x + w + g, y: B.y, w, h }, { x: B.x + w + g, y: B.y + h + g, w, h }]; }
     else if (st.template === 'grid') { const w = (B.w - g) / 2, h = (B.h - g) / 2; R = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([i, k]) => ({ x: B.x + i * (w + g), y: B.y + k * (h + g), w, h })); }
     else if (st.template === 'top3') { const h1 = B.h * 0.64, h2 = B.h - h1 - g, w = (B.w - 2 * g) / 3; R = [{ x: B.x, y: B.y, w: B.w, h: h1 }].concat([0, 1, 2].map(i => ({ x: B.x + i * (w + g), y: B.y + h1 + g, w, h: h2 }))); }
     else { const w1 = B.w * 0.7, w2 = B.w - w1 - g, h = (B.h - 2 * g) / 3; R = [{ x: B.x, y: B.y, w: w1, h: B.h }].concat([0, 1, 2].map(i => ({ x: B.x + w1 + g, y: B.y + i * (h + g), w: w2, h }))); }
-    return { W, H, m, head, foot, rects: R };
+    return { W, H, m, head, foot, f, rects: R };
   }
   // ---------- the map at a true scale ----------
   async function renderMap(frameMm, dpi, denom) {
@@ -66,35 +74,42 @@
     return o.map(([v, l]) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(l)}</option>`).join('');
   }
   const svgImage = (svg) => loadImg('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.includes('xmlns') ? svg : svg.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')));
-  async function drawLegend(g, X, r, F, rtl) {
-    const C = P(); const items = legendItems(); let y = r.y; const cx = r.x, cw = r.w; const lx = rtl ? cx + cw : cx; g.textAlign = rtl ? 'right' : 'left';
-    g.fillStyle = C.ink; g.font = `700 ${X(3.4)}px ${F}`; g.fillText(t('lg.title'), X(lx), X(y + 4)); y += 8;
-    for (const it of items) { if (y > r.y + r.h - 4) break;
-      if (it.h) { g.font = `600 ${X(2.9)}px ${F}`; g.fillStyle = C.ink; g.fillText(it.h, X(lx), X(y + 3)); y += 5; continue; }
-      if (it.img) { const im = await loadImg(it.img); if (im) { g.drawImage(im, X(cx), X(y), X(26), X(26)); y += 28; } continue; }
-      const sx = rtl ? cx + cw - 6 : cx; g.globalAlpha = it.op;
-      if (it.kind === 'line') { g.strokeStyle = it.bc; g.lineWidth = Math.max(1, X(Math.max(0.25, it.bw * 0.26))); g.setLineDash(it.bs === 'dashed' ? [X(1.2), X(0.8)] : []); g.beginPath(); g.moveTo(X(sx), X(y + 2)); g.lineTo(X(sx + 6), X(y + 2)); g.stroke(); g.setLineDash([]); }
-      else if (it.kind === 'dot') { g.beginPath(); g.arc(X(sx + 3), X(y + 2), X(1.4), 0, Math.PI * 2); g.fillStyle = it.bg; g.fill(); if (it.bw) { g.strokeStyle = it.bc; g.lineWidth = Math.max(1, X(0.3)); g.stroke(); } }
-      else if (it.kind === 'hatch') { g.strokeStyle = C.grey; g.lineWidth = Math.max(1, X(0.15)); g.strokeRect(X(sx), X(y + 0.5), X(6), X(3)); for (let q = 0; q < 6; q += 1.2) { g.beginPath(); g.moveTo(X(sx + q), X(y + 3.5)); g.lineTo(X(sx + Math.min(6, q + 3)), X(y + 0.5)); g.stroke(); } }
-      else { g.fillStyle = it.bg; g.fillRect(X(sx), X(y + 0.5), X(6), X(3)); if (it.bw) { g.strokeStyle = it.bc; g.lineWidth = Math.max(1, X(0.2)); g.strokeRect(X(sx), X(y + 0.5), X(6), X(3)); } }
-      g.globalAlpha = 1; g.fillStyle = C.ink2; g.font = `${X(2.6)}px ${F}`; PG.wrap(g, it.text, X(rtl ? cx + cw - 8 : cx + 8), X(y + 3), X(cw - 9), X(3.3), 2); y += 4.6; }
+  async function drawLegend(g, X, r, F, rtl, f) {
+    const C = P(); const items = legendItems(); const cx = r.x, cw = r.w; const lx = rtl ? cx + cw : cx;
+    // sizes in mm at z = 1 (A4); measured once, then scaled so the legend fills its slot (readable, no wasted space)
+    const run = async (z, dry) => { let y = r.y; g.textAlign = rtl ? 'right' : 'left'; const lh = 3.3 * z, sw = 6 * z, sh = 3 * z;
+      g.font = `700 ${X(3.4 * z)}px ${F}`; if (!dry) { g.fillStyle = C.ink; g.fillText(t('lg.title'), X(lx), X(y + 4 * z)); } y += 7 * z;
+      for (const it of items) {
+        if (it.h) { g.font = `600 ${X(2.9 * z)}px ${F}`; if (!dry) { g.fillStyle = C.ink; g.fillText(it.h, X(lx), X(y + 3.4 * z)); } y += 5.2 * z; continue; }
+        if (it.img) { const sz = Math.min(cw, 30 * z); if (!dry) { const im = await loadImg(it.img); if (im) g.drawImage(im, X(rtl ? cx + cw - sz : cx), X(y), X(sz), X(sz)); } y += sz + 2 * z; continue; }
+        const sx = rtl ? cx + cw - sw : cx; g.font = `${X(2.6 * z)}px ${F}`; const tw = cw - sw - 2.5 * z; const lines = Math.min(3, Math.max(1, Math.ceil(g.measureText(it.text).width / X(tw))));
+        if (!dry) { g.globalAlpha = it.op;
+          if (it.kind === 'line') { g.strokeStyle = it.bc; g.lineWidth = Math.max(1, X(Math.max(0.25, it.bw * 0.26) * z)); g.setLineDash(it.bs === 'dashed' ? [X(1.2 * z), X(0.8 * z)] : []); g.beginPath(); g.moveTo(X(sx), X(y + sh / 2 + 0.5)); g.lineTo(X(sx + sw), X(y + sh / 2 + 0.5)); g.stroke(); g.setLineDash([]); }
+          else if (it.kind === 'dot') { g.beginPath(); g.arc(X(sx + sw / 2), X(y + sh / 2 + 0.5), X(1.4 * z), 0, Math.PI * 2); g.fillStyle = it.bg; g.fill(); if (it.bw) { g.strokeStyle = it.bc; g.lineWidth = Math.max(1, X(0.3)); g.stroke(); } }
+          else if (it.kind === 'hatch') { g.strokeStyle = C.grey; g.lineWidth = Math.max(1, X(0.15 * z)); g.strokeRect(X(sx), X(y + 0.5), X(sw), X(sh)); for (let q = 0; q < sw; q += 1.2 * z) { g.beginPath(); g.moveTo(X(sx + q), X(y + 0.5 + sh)); g.lineTo(X(sx + Math.min(sw, q + sh)), X(y + 0.5)); g.stroke(); } }
+          else { g.fillStyle = it.bg; g.fillRect(X(sx), X(y + 0.5), X(sw), X(sh)); g.strokeStyle = it.bw ? it.bc : 'rgba(0,0,0,.3)'; g.lineWidth = Math.max(1, X(0.2 * z)); g.strokeRect(X(sx), X(y + 0.5), X(sw), X(sh)); }
+          g.globalAlpha = 1; g.fillStyle = C.ink2; PG.wrap(g, it.text, X(rtl ? cx + cw - sw - 2.5 * z : cx + sw + 2.5 * z), X(y + 3 * z), X(tw), X(lh), 3); }
+        y += Math.max(4.6 * z, lines * lh + 1.3 * z); }
+      return y - r.y; };
+    const need = await run(1, true); const z = Math.max(0.8 * f, Math.min(1.9 * f, (r.h - 2) / need)); await run(z, false);
   }
-  function scaleBarMm(g, X, r, denom, F, rtl) { const C = P(); const mmPerM = 1000 / denom; const nice = [10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000].filter(v => v * mmPerM <= r.w * 0.3).pop() || 10; const len = nice * mmPerM; const x0 = r.x + 5, y0 = r.y + r.h - 7;
-    g.fillStyle = 'rgba(255,255,255,0.88)'; g.fillRect(X(x0 - 2), X(y0 - 5), X(len + 18), X(9)); for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#FFFFFF' : C.ink; g.fillRect(X(x0 + i * len / 4), X(y0), X(len / 4), X(1.4)); } g.strokeStyle = C.ink; g.lineWidth = Math.max(1, X(0.15)); g.strokeRect(X(x0), X(y0), X(len), X(1.4));
-    g.fillStyle = C.ink; g.font = `${X(2.6)}px ${F}`; g.textAlign = 'left'; g.direction = 'ltr'; g.fillText('0', X(x0), X(y0 - 1)); g.fillText(`${nf(nice)} m`, X(x0 + len + 1), X(y0 + 1.4)); g.fillText(`1:${nf(denom)}`, X(x0), X(y0 - 2.6 - 2)); g.direction = rtl ? 'rtl' : 'ltr'; }
+  function scaleBarMm(g, X, r, denom, F, rtl, f) { f = f || 1; const C = P(); const mmPerM = 1000 / denom; const nice = [10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000].filter(v => v * mmPerM <= r.w * 0.3).pop() || 10; const len = nice * mmPerM; const x0 = r.x + 5 * f, y0 = r.y + r.h - 7 * f;
+    g.fillStyle = 'rgba(255,255,255,0.88)'; g.fillRect(X(x0 - 2 * f), X(y0 - 8 * f), X(len + 20 * f), X(12 * f)); for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#FFFFFF' : C.ink; g.fillRect(X(x0 + i * len / 4), X(y0), X(len / 4), X(1.4 * f)); } g.strokeStyle = C.ink; g.lineWidth = Math.max(1, X(0.15 * f)); g.strokeRect(X(x0), X(y0), X(len), X(1.4 * f));
+    g.fillStyle = C.ink; g.font = `${X(2.6 * f)}px ${F}`; g.textAlign = 'left'; g.direction = 'ltr'; g.fillText('0', X(x0), X(y0 - 1 * f)); g.fillText(`${nf(nice)} m`, X(x0 + len + 1 * f), X(y0 + 1.4 * f)); g.font = `600 ${X(2.6 * f)}px ${F}`; g.fillText(`1:${nf(denom)}`, X(x0), X(y0 - 4.6 * f)); g.direction = rtl ? 'rtl' : 'ltr'; }
   // ---------- compose the page ----------
   async function compose(dpi, preview) {
     const L = layout(); const d = preview ? Math.min(dpi, 60) : effDpi(dpi); const k = d / 25.4; const F = PG.font(); const rtl = I.dir() === 'rtl'; const C = P();
     const cv = document.createElement('canvas'); cv.width = Math.round(L.W * k); cv.height = Math.round(L.H * k); const g = cv.getContext('2d'); g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, cv.width, cv.height);
     const X = (mm) => mm * k; const al = rtl ? 'right' : 'left'; const tx = (mm) => rtl ? X(L.W - mm) : X(mm); g.direction = rtl ? 'rtl' : 'ltr';
-    g.fillStyle = C.red; g.fillRect(0, 0, cv.width, X(2)); g.textAlign = al; g.fillStyle = C.ink; g.font = `700 ${X(7)}px ${F}`; g.fillText(st.title || t('pl.untitled'), tx(L.m), X(L.m + 9));
-    g.font = `${X(3.6)}px ${F}`; g.fillStyle = C.ink2; g.fillText(st.subtitle || '', tx(L.m), X(L.m + 15));
+    const f = L.f; g.fillStyle = C.red; g.fillRect(0, 0, cv.width, X(2 * f)); g.textAlign = al; g.fillStyle = C.ink; g.font = `700 ${X(7 * f)}px ${F}`; g.fillText(st.title || t('pl.untitled'), tx(L.m), X(L.m + 9 * f));
+    g.font = `${X(3.6 * f)}px ${F}`; g.fillStyle = C.ink2; g.fillText(st.subtitle || '', tx(L.m), X(L.m + 15 * f));
     const maps = []; const srcExtra = [];
-    for (let n = 0; n < L.rects.length; n++) {
-      const sl = st.slots[n]; if (!sl || sl.type === 'none') continue; const R0 = L.rects[n]; const cap = sl.caption ? 5 : 0; const r = { x: R0.x, y: R0.y, w: R0.w, h: R0.h - cap };
+    const used = usedSlots();
+    for (let q = 0; q < L.rects.length && q < used.length; q++) {
+      const n = used[q].i; const sl = used[q].sl; const R0 = L.rects[q]; if (!sl || sl.type === 'none') continue; const cap = sl.caption ? 6 * f : 0; const r = { x: R0.x, y: R0.y, w: R0.w, h: R0.h - cap };
       if (sl.type === 'map') { const m = await renderMap(r, preview ? 60 : d, sl.denom || 5000); g.drawImage(m.img, X(r.x), X(r.y), X(r.w), X(r.h)); g.strokeStyle = C.ink; g.lineWidth = Math.max(1, X(0.3)); g.strokeRect(X(r.x), X(r.y), X(r.w), X(r.h));
-        PG.northArrow(g, X(r.x + r.w - 8), X(r.y + 4), X(1) / 3.4); scaleBarMm(g, X, r, sl.denom || 5000, F, rtl); maps.push({ n: n + 1, denom: sl.denom || 5000, measured: m.measured, mapDpi: m.mapDpi }); }
-      else if (sl.type === 'legend') await drawLegend(g, X, r, F, rtl);
+        PG.northArrow(g, X(r.x + r.w - 8 * f), X(r.y + 4 * f), X(1) / 3.4 * f); scaleBarMm(g, X, r, sl.denom || 5000, F, rtl, f); maps.push({ n: n + 1, denom: sl.denom || 5000, measured: m.measured, mapDpi: m.mapDpi }); }
+      else if (sl.type === 'legend') await drawLegend(g, X, r, F, rtl, f);
       else if (sl.type === 'section') { const s = allSections().find(x => x.s.id === sl.ref); if (s) { const prof = await root.GA.section.compute(s.s); const sc = document.createElement('canvas'); const ratio = Math.max(1, d / 96);
         root.GA.section.draw(sc, prof, Object.assign(root.GA.section.optsFor(s.s), { w: Math.round(X(r.w) / ratio), h: Math.round(X(r.h) / ratio), ratio })); g.drawImage(sc, X(r.x), X(r.y), X(r.w), X(r.h)); g.strokeStyle = C.line2; g.lineWidth = 1; g.strokeRect(X(r.x), X(r.y), X(r.w), X(r.h)); srcExtra.push('IGN MDT25 · OSM'); } }
       else if (sl.type === 'card') { const c = cards().find(x => String(x.i) === String(sl.ref)); if (c) { PG.drawImageFit(g, c.cv, X(r.x), X(r.y), X(r.w), X(r.h)); } }
@@ -102,12 +117,12 @@
         if (sl.ref === 'wind' && Ly && Ly._url) im = await loadImg(Ly._url); else if (sl.ref === 'rain' && Ly && Ly._st) { const box = document.createElement('div'); box.innerHTML = Ly.legend(); const svg = box.querySelector('svg'); if (svg) im = await svgImage(svg.outerHTML); }
         if (im) { PG.drawImageFit(g, im, X(r.x), X(r.y), X(r.w), X(r.h)); srcExtra.push('ERA5 (ECMWF/Copernicus) via Open-Meteo, CC BY 4.0'); } }
       else if (sl.type === 'image') { const im = st.images[+sl.ref]; if (im && im.img) { PG.drawImageFit(g, im.img, X(r.x), X(r.y), X(r.w), X(r.h)); srcExtra.push(`${im.caption || t('pl.image')}: ${im.source || t('pl.noSource')}`); } }
-      if (cap) { g.fillStyle = C.ink2; g.font = `${X(2.6)}px ${F}`; g.textAlign = al; g.fillText(`${n + 1}. ${sl.caption}`, rtl ? X(R0.x + R0.w) : X(R0.x), X(R0.y + R0.h - 1.2)); }
+      if (cap) { g.fillStyle = C.ink2; g.font = `${X(3.2 * f)}px ${F}`; g.textAlign = al; g.fillText(`${n + 1}. ${sl.caption}`, rtl ? X(R0.x + R0.w) : X(R0.x), X(R0.y + R0.h - 1.4 * f)); }
     }
-    const fy = L.H - L.m - L.foot + 4; g.textAlign = al; g.fillStyle = C.ink; g.font = `600 ${X(3)}px ${F}`;
-    g.fillText(maps.length ? maps.map(m => t('pl.scaleLine', { n: nf(m.denom), p: st.paper, o: t('pl.' + st.orient), m: nf(m.measured, 0) })).join(' · ') : t('pl.noMap'), tx(L.m), X(fy + 3));
-    g.font = `${X(2.4)}px ${F}`; g.fillStyle = C.ink3; g.fillText(t('pl.resLine', { d: nf(d), md: nf(maps.length ? Math.min(...maps.map(m => m.mapDpi)) : d, 0) }), tx(L.m), X(fy + 7));
-    PG.wrap(g, `${t('v7.sources')}: ${activeSources().concat(srcExtra).join(' · ')} · ${t('pl.made')} ${new Date().toISOString().slice(0, 10)}`, tx(L.m), X(fy + 10.5), X(L.W - 2 * L.m), X(3), 2);
+    const fy = L.H - L.m - L.foot + 4 * f; g.textAlign = al; g.fillStyle = C.ink; g.font = `600 ${X(3 * f)}px ${F}`;
+    g.fillText(maps.length ? maps.map(m => t('pl.scaleLine', { n: nf(m.denom), p: st.paper, o: t('pl.' + st.orient), m: nf(m.measured, 0) })).join(' · ') : t('pl.noMap'), tx(L.m), X(fy + 3 * f));
+    g.font = `${X(2.5 * f)}px ${F}`; g.fillStyle = C.ink3; g.fillText(t('pl.resLine', { d: nf(d), md: nf(maps.length ? Math.min(...maps.map(m => m.mapDpi)) : d, 0) }), tx(L.m), X(fy + 7 * f));
+    PG.wrap(g, `${t('v7.sources')}: ${activeSources().concat(srcExtra).join(' · ')} · ${t('pl.made')} ${new Date().toISOString().slice(0, 10)}`, tx(L.m), X(fy + 10.8 * f), X(L.W - 2 * L.m), X(3.1 * f), 2);
     return { cv, dpi: d, maps, measured: maps.length ? maps[0].measured : null };
   }
   const loadImg = (src) => new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
@@ -124,6 +139,7 @@
       <label>${t('pl.dpi')} <select data-pl="dpi">${[150, 200, 300].map(v => opt(v, st.dpi, v + ' dpi')).join('')}</select></label></div>
       <p class="fine">${t('pl.scaleVsRes')}</p>
       <label>${t('pl.template')} <select data-pl="template">${Object.keys(TEMPLATES).map(k => opt(k, st.template, t('pl.tpl.' + k))).join('')}</select></label>
+      <label class="chk"><input type="checkbox" data-pl="keepEmpty" ${st.keepEmpty ? 'checked' : ''}> ${t('v12.keepEmptySlots')}</label>
       <fieldset><legend>${t('pl.slots')}</legend>
         ${st.slots.slice(0, n).map((sl, i) => `<div class="pl-slot"><b class="num">${i + 1}</b><div class="pl-slot-b">
           <select data-slot="${i}" data-sk="item" aria-label="${esc(t('pl.slots'))} ${i + 1}">${itemOptions(sl)}</select>
@@ -143,11 +159,11 @@
   let busy = false;
   async function run(kind, body) {
     if (busy) return; busy = true; const msg = body.querySelector('#pl-msg'); msg.innerHTML = `<span class="spin"></span> ${t('pl.working')}`;
-    const scaleTxt = (r) => r.maps.map(m => `1:${nf(m.measured, 0)}`).join(', ') || '—';
+    const scaleTxt = (r) => r.maps.map(m => nf(m.measured, 0)).join(', ') || '—';
     try {
       if (kind === 'preview') { const r = await compose(60, true); const box = body.querySelector('#pl-sheet'); box.innerHTML = ''; r.cv.style.width = '100%'; r.cv.style.height = 'auto'; r.cv.className = 'pl-canvas'; box.appendChild(r.cv); msg.textContent = t('pl.previewDone', { m: scaleTxt(r) }); root.GA.lastPrint = r; }
       else { const r = await compose(st.dpi, false); const [W, H] = pageMm(); const name = `granada_atlas_${PG.slug(st.title || 'print')}_${st.paper}_${st.orient}`;
-        if (kind === 'png') PG.download(await PG.toBlob(r.cv, 'image/png'), name + '.png'); else { const bytes = root.GA.pdf.build([{ canvas: r.cv, paper: [ptOf(W), ptOf(H)], quality: 0.92 }], { title: st.title || 'Granada Atlas print' }); PG.download(new Blob([bytes], { type: 'application/pdf' }), name + '.pdf'); }
+        if (kind === 'png') PG.download(await PG.toBlob(r.cv, 'image/png'), name + '.png'); else { const bytes = root.GA.pdf.build([{ canvas: r.cv, paper: [ptOf(W), ptOf(H)], quality: 0.92 }], { title: st.title || 'Granada Atlas print' }); root.GA.lastPrintPDF = bytes; PG.download(new Blob([bytes], { type: 'application/pdf' }), name + '.pdf'); }
         msg.textContent = t('pl.exported', { d: r.dpi, req: st.dpi, m: scaleTxt(r) }) + (r.dpi < st.dpi ? ' ' + t('pl.dpiCapped') : ''); root.GA.lastPrint = r; }
     } catch (e) { console.error(e); msg.textContent = t('pl.failed') + ' ' + (e.message || e); } finally { busy = false; }
   }
@@ -161,6 +177,7 @@
       if (el.dataset.img != null) { st.images[+el.dataset.img][el.dataset.ik] = el.value; return; }
       const k = el.dataset.pl; if (!k) return;
       if (k === 'image') { const f = el.files && el.files[0]; if (f) { const img = await loadImg(URL.createObjectURL(f)); if (img) { st.images.push({ img, caption: f.name.replace(/\.[^.]+$/, ''), source: '' }); const free = st.slots.slice(0, TEMPLATES[st.template]).find(x => x.type === 'none'); if (free) { free.type = 'image'; free.ref = String(st.images.length - 1); } } } redraw(); return; }
+      if (k === 'keepEmpty') { st.keepEmpty = el.checked; return; }
       st[k] = (k === 'dpi' || k === 'margin') ? +el.value : el.value; if (k === 'template') redraw(); };
     body.oninput = (e) => { const el = e.target; if (el.dataset.pl === 'title' || el.dataset.pl === 'subtitle') st[el.dataset.pl] = el.value; };
     body.onclick = (e) => { const mv = e.target.closest('[data-mv]'); if (mv) { const [i, dd] = mv.dataset.mv.split(':').map(Number); const j = i + dd; [st.slots[i], st.slots[j]] = [st.slots[j], st.slots[i]]; redraw(); return; }

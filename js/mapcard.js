@@ -42,7 +42,10 @@
       const img = ctx.createImageData(iw, ih); const g = spec.raster.grid;
       for (let j = 0; j < ih; j++) for (let i = 0; i < iw; i++) {
         const x = cx + ((i + 0.5) * step - W / 2) * mpp, y = cy - ((j + 0.5) * step - H / 2) * mpp;
-        const v = root.GA.data.sampleGrid(g, x, y, spec.raster.nearest); if (v == null) continue;
+        const v = root.GA.data.sampleGrid(g, x, y, spec.raster.nearest);
+        // 5.13: a missing value inside the grid is hatched when the layer defines it (never drawn as a class)
+        if (v == null) { if (!spec.raster.missing) continue; const gi = (x - g.ox) / g.px, gj = (g.oy - y) / g.py; if (gi < 0 || gj < 0 || gi >= g.width || gj >= g.height) continue;
+          const hc = spec.raster.missing(i, j); if (!hc) continue; const o = (j * iw + i) * 4; img.data[o] = hc[0]; img.data[o + 1] = hc[1]; img.data[o + 2] = hc[2]; img.data[o + 3] = hc[3]; continue; }
         const col = spec.raster.colour(v); if (!col) continue; const o = (j * iw + i) * 4; img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = col[3] == null ? 255 : col[3];
       }
       const tmp = document.createElement('canvas'); tmp.width = iw; tmp.height = ih; tmp.getContext('2d').putImageData(img, 0, 0);
@@ -65,7 +68,7 @@
           if (it.stroke) { ctx.strokeStyle = it.stroke; ctx.lineWidth = it.width || 0.5; ctx.stroke(); }
         } else if (L.type === 'line') {
           ctx.beginPath(); lines(c, g.type).forEach(l => l.forEach((p, i) => { const q = px(p); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }));
-          ctx.strokeStyle = it.stroke; ctx.lineWidth = it.width || 1; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.setLineDash(it.dash || []); ctx.stroke(); ctx.setLineDash([]);
+          ctx.strokeStyle = it.stroke; ctx.lineWidth = it.width || 1; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.setLineDash(it.dash || []); ctx.globalAlpha = it.alpha == null ? 1 : it.alpha; ctx.stroke(); ctx.globalAlpha = 1; ctx.setLineDash([]);
         } else if (L.type === 'point') {
           const q = px(c); const r = it.r || 3.5; ctx.beginPath();
           if (it.shape === 'square') ctx.rect(q[0] - r, q[1] - r, 2 * r, 2 * r); else if (it.shape === 'diamond') { ctx.moveTo(q[0], q[1] - r * 1.3); ctx.lineTo(q[0] + r * 1.3, q[1]); ctx.lineTo(q[0], q[1] + r * 1.3); ctx.lineTo(q[0] - r * 1.3, q[1]); ctx.closePath(); } else ctx.arc(q[0], q[1], r, 0, Math.PI * 2);
@@ -77,7 +80,7 @@
     if (spec.ring) {
       const R = ringUTM(spec.ring);
       if (spec.fadeOutside) { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); path([R]); ctx.fillStyle = `rgba(255,255,255,${spec.fadeOutside})`; ctx.fill('evenodd'); ctx.restore(); }
-      const st = spec.areaStyle || {}; ctx.beginPath(); path([R]); ctx.strokeStyle = st.color || P.red; ctx.lineWidth = st.width || 1.8; ctx.setLineDash(st.dash && st.dash.length ? st.dash : (root.GA && root.GA.fabricStyle ? root.GA.fabricStyle.DASH : [7, 4])); ctx.stroke(); // fabric boundaries are always dashed ctx.setLineDash([]);
+      const st = spec.areaStyle || {}; root.GA.fabricStyle.strokeRing(ctx, R.map(px), { color: st.color, width: st.width || root.GA.fabricStyle.WIDTH, dash: st.dash }); // 5.13: black dashed, white under-stroke
     }
     // overlay lines (e.g. section line) drawn above the boundary
     (spec.overlays || []).forEach(o => {
@@ -105,7 +108,7 @@
     if (!nums && spec.ring && spec.ownNumber !== false && root.GA.fabricStyle) { const key = (r) => r.length + ':' + r[0][0].toFixed(7) + ',' + r[0][1].toFixed(7); const k = key(spec.ring);
       const m = root.GA.fabricStyle.numbered().find(f => f.ring.length && key(f.ring) === k); if (m) nums = [m]; }
     if (nums && nums.length && root.GA.fabricStyle) { const placed = [];
-      nums.forEach(f => { if (f.no == null || !f.ring) return; const pts = ringUTM(f.ring).map(px); if (pts.every(q => q[0] < 0 || q[0] > W || q[1] < 0 || q[1] > H)) return; root.GA.fabricStyle.numberAbove(ctx, pts, f.no, { size: f.size || 14, placed }); }); }
+      nums.forEach(f => { if (f.no == null || !f.ring) return; const pts = ringUTM(f.ring).map(px); if (pts.every(q => q[0] < 0 || q[0] > W || q[1] < 0 || q[1] > H)) return; root.GA.fabricStyle.numberAt(ctx, pts, f.no, { size: f.size || spec.numberSize || root.GA.fabricStyle.NUM, placed, W, H }); }); }
     if (spec.scaleBar !== false) scaleBar(ctx, W, H, mpp, spec.scaleBarAlign);
     if (spec.north !== false) north(ctx, W);
     if (spec.areaStyle && spec.areaStyle.label) { ctx.font = `700 13px ${font()}`; ctx.fillStyle = spec.areaStyle.color || P.red; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; const t = spec.areaStyle.label; const w = ctx.measureText(t).width + 10; ctx.fillStyle = '#FFFFFF'; ctx.fillRect(6, 6, w, 20); ctx.fillStyle = spec.areaStyle.color || P.red; ctx.fillText(t, 11, 9); }

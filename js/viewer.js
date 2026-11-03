@@ -123,7 +123,7 @@
     // exports: current view, with title, legend and source
     function composed() {
       const [w, h] = size(); const W = 1800, Hm = Math.round(W * h / w); const map0 = document.createElement('canvas');
-      GAL.drawCard(map0, { ring: rings[0].ring, style: rings[0].style }, card, { center: [st.cx, st.cy], mpp: st.mpp * w / W, w: W, h: Hm, ratio: 1, overlays: rings.slice(1).map(r => ({ coords: r.ring, color: (r.style && r.style.color) || GA.palette.red, width: 3, dash: r.style && r.style.dash })) });
+      GAL.drawCard(map0, { ring: rings[0].ring, style: rings[0].style }, card, { center: [st.cx, st.cy], mpp: st.mpp * w / W, w: W, h: Hm, ratio: 1, overlays: rings.slice(1).map(r => ({ coords: r.ring, color: (r.style && r.style.color) || GA.palette.mark.boundary, width: 3, dash: (r.style && r.style.dash) || [10, 6] })) });
       const font = getComputedStyle(document.documentElement).getPropertyValue('--f-ui') || 'sans-serif'; const rtl = I.dir() === 'rtl';
       const out = document.createElement('canvas'); out.width = W; out.height = Hm + 300; const ctx = out.getContext('2d'); ctx.direction = rtl ? 'rtl' : 'ltr';
       ctx.fillStyle = '#FFF'; ctx.fillRect(0, 0, W, out.height); ctx.fillStyle = GA.palette.red; ctx.fillRect(0, 0, W, 6);

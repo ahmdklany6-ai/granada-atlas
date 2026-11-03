@@ -22,8 +22,8 @@
       map.addSource('sel', { type: 'geojson', data: fc([]) });
       map.addSource('sel-draft', { type: 'geojson', data: fc([]) });
       map.addSource('measure', { type: 'geojson', data: fc([]) });
-      map.addLayer({ id: 'sel-fill', type: 'fill', source: 'sel', paint: { 'fill-color': GA.palette.red, 'fill-opacity': 0.07 } });
-      map.addLayer({ id: 'sel-line', type: 'line', source: 'sel', paint: { 'line-color': GA.palette.red, 'line-width': 2, 'line-dasharray': [3.5, 2] } }); // fabric boundaries are dashed everywhere
+      map.addLayer({ id: 'sel-fill', type: 'fill', source: 'sel', paint: { 'fill-color': GA.palette.mark.boundary, 'fill-opacity': 0.04 } });
+      GA.fabricStyle.lineLayers('sel-line', 'sel').forEach(l => map.addLayer(l)); // 5.13: study-area boundaries are black dashed everywhere
       map.addLayer({ id: 'sel-draft', type: 'line', source: 'sel-draft', paint: { 'line-color': GA.palette.red, 'line-width': 1.4, 'line-dasharray': [2, 2] } });
       map.addLayer({ id: 'measure-line', type: 'line', source: 'measure', paint: { 'line-color': GA.palette.ink, 'line-width': 1.4, 'line-dasharray': [1, 1.5] } });
     }

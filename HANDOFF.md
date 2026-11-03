@@ -1,4 +1,4 @@
-# Granada Atlas — handoff (state at build 5.12, 2 Nov 2026)
+# Granada Atlas — handoff (state at build 5.13, 3 Nov 2026)
 
 This document lets a new Claude Code session continue the project without the original chat. Short operating rules
 are in `CLAUDE.md`; feature and data documentation is in `README.md`.
@@ -9,12 +9,12 @@ are in `CLAUDE.md`; feature and data documentation is in `README.md`.
 | --- | --- |
 | Repository | `ahmdklany6-ai/granada-atlas` (public), branch `main` |
 | Live site | https://ahmdklany6-ai.github.io/granada-atlas/ (GitHub Pages, deploy from `main`, repo root) |
-| Current build | **5.12** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.12` asset queries) |
+| Current build | **5.13** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.13` asset queries) |
 | Latest feature work | Build 5.9: colour hierarchy, boundary layers, water/runoff, infrastructure, seasonal wind/rain, landmark geometries, print layout (see §13) |
 | Deployment | see §12 (5.8 deployment record) |
 | Data version | `2026-11-02-v8` in `data/manifest.json` (5.11: OSM trees 2 Nov 2026, ERA5 climate snapshot, history place texts) |
 
-Build history (newest first): 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
+Build history (newest first): 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
 classified climate rasters, dashed fabric marks, historical red dots explained · 5.5/5.4 smooth building scales and
 street hierarchy at close zoom · 5.3 (v5) analysis page, viewers, unified Comparison, phone/iPad · v4/v3/v2 earlier.
 
@@ -306,3 +306,14 @@ translations of Spanish summaries are AI-assisted and should be checked by a rea
   screenshots of 3D, the regional view, layers, climate and sections were made locally from the verified-identical files.
 - 5.12 (follow-up): the translation label and the "Original text" fold took grid rows of their own on translated place
   cards (text and image out of line); label, text and original now share the card's text row.
+
+## 16. Build 5.13 (owner review of 3 Nov 2026)
+
+| Item | Status | Cause / change |
+| --- | --- | --- |
+| 1 Vegetation colours | fixed | `ext.js` TCD_CLASSES had hard-coded bright greens. Now from `palette.canopy` = #E5E3DA / #BFB065 / #A49250 / #53461C for 1–29 / 30–59 / 60–79 / 80–100 % (thresholds unchanged); 0 % = white veil (`canopyZero`), missing (> 100) = hatched (`tcdHatch`, also in `mapcard` via `raster.missing`). One table → live raster, cards, comparison, exports, all legends (`rasterClass.canopyLegend`). 3D trees / 2D crowns: `palette.tree3d` in the same olives; `palette.trees` olive. |
+| 2 Study-area marks | fixed | `fabricmark.js`: black dashed boundary (`palette.mark.boundary` #161616) over a white under-stroke, width 3; bold number above the TOP-RIGHT corner (`topRight`, `cornerLL`), moved sideways with a leader line when crowded, never hidden (map layer `text-allow-overlap` + `ignore-placement`). Used by the main map, selection, saved areas, history explorer, cards, location maps, comparison (black, differing dashes), section locator, studio squares, viewer, GIS QML (black dashed outline). |
+| 3 Analysis PDF | fixed | `fabric.exportPDF` drew card maps with a title only. Now `boardPages` + `js/boardexport.js`: each map panel = map at 2× (scale bar, north, boundary, number) + legend from `card.legend` + indicators with units/estimate flags + chart (`card.chart`, same data as the page) + findings + source/date + method/limits. Identity page lists contents and what was omitted. |
+| 4 Print readability | fixed | Board text ≥ 19 px at 150 dpi (≈ 9 pt), body ≈ 10.5 pt; two panels per A3 page, a single panel goes wide; empty sections omitted (option "Include empty sections", `b.pdfEmpty`). Print workspace: all text × paper factor (A4 1, A3 1.41, A2 2, A1 2.83), legend auto-sized to its slot, empty slots omitted and the others reflowed (option "Keep empty slots"). |
+| 5 Blank PNOA | fixed | IGN `PNOA2024` and `PNOA2023` are in the capabilities but return a 2,203-byte plain-white JPEG over Granada (runner check 3 Nov 2026; 2022 and older have imagery). Every historical image is checked (`blankness`); PNOA falls back to the most recent flight with imagery, labelled "PNOA 2022 — …"; anything else is an explicit "Image unavailable" frame with the reason. The export waits for all images (`ensureHistory`). |
+| 6 Missing area 3 | fixed (cause reproduced) | With four test areas (3 = Almanjáyar, ~3 km north) build 5.12's location map showed 1, 2, 4: it was always framed on a 3.6 km square around the open area, and areas outside the frame were not drawn or listed. Now "Show all areas" (default on) frames every saved area; off, the page says which areas lie outside. The main map could also drop a colliding number (MapLibre collision) and canvas exports could push one off the frame — both removed. |

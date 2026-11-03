@@ -171,7 +171,7 @@ try:
             pg.keyboard.press('Escape'); time.sleep(0.4)
         check(not errs3, 'sections: no page errors', errs3[:3])
         ctx.close()
-        # ================= fabric numbers: one numbering, plain red, centred above the boundary =================
+        # ================= fabric numbers: one numbering, black, above the top-right corner (5.13) =================
         ctx, pg, errs4 = boot(b, {'width': 1440, 'height': 900}, 'en')
         pg.evaluate('GA.panels.set("study", true)')
         def mk_area(name, ll):
@@ -184,16 +184,14 @@ try:
         fc = pg.evaluate('GA.app.map.getSource("fabric-no")._data')
         nos = sorted(f['properties']['no'] for f in fc['features'])
         check(nos == ['1', '2', '3'], f'main map: every saved fabric (the open one included) carries its number {nos}')
-        tops = pg.evaluate('''() => GA.fabricStyle.numbered().map(x => { const f = GA.app.map.getSource("fabric-no")._data.features.find(q => q.properties.id === x.id); const lats = x.ring.map(p => p[1]), lons = x.ring.map(p => p[0]);
-            return Math.abs(f.geometry.coordinates[1] - Math.max(...lats)) < 1e-9 && Math.abs(f.geometry.coordinates[0] - (Math.min(...lons) + Math.max(...lons)) / 2) < (Math.max(...lons) - Math.min(...lons)) * 0.05; })''')
-        check(all(tops), 'main map: numbers centred on the top edge of each boundary', tops)
-        lay = pg.evaluate('(() => { const m = GA.app.map; return { col: m.getPaintProperty("fabric-no", "text-color"), anchor: m.getLayoutProperty("fabric-no", "text-anchor"), overlap: m.getLayoutProperty("fabric-no", "text-allow-overlap"), dash: !!m.getPaintProperty("saved-areas-line", "line-dasharray") }; })()')
-        check(lay['col'].upper() == '#992B2A' and lay['anchor'] == 'bottom' and lay['overlap'] is False and lay['dash'], 'main map: plain red number above (anchor bottom), no overlaps, boundaries dashed', lay)
-        # map glyphs (fonts) are stubbed in this container, so no map text renders here; the number layer must be visible —
-        # its rendering is checked on the live site after deployment
+        # 5.13: number just above the boundary's TOP-RIGHT corner (the vertex nearest the bbox top-right), black, never hidden
+        tops = pg.evaluate('''() => GA.fabricStyle.numbered().map(x => { const f = GA.app.map.getSource("fabric-no")._data.features.find(q => q.properties.id === x.id); const c = GA.fabricStyle.cornerLL(x.ring);
+            const lats = x.ring.map(p => p[1]), lons = x.ring.map(p => p[0]); const dx = (Math.max(...lons) - Math.min(...lons)), dy = (Math.max(...lats) - Math.min(...lats));
+            return Math.abs(f.geometry.coordinates[0] - c[0]) < 1e-12 && Math.abs(f.geometry.coordinates[1] - c[1]) < 1e-12 && c[0] > Math.max(...lons) - dx * 0.35 && c[1] > Math.max(...lats) - dy * 0.35; })''')
+        check(all(tops), 'main map: numbers at the top-right corner of each boundary', tops)
+        lay = pg.evaluate('(() => { const m = GA.app.map; return { col: m.getPaintProperty("fabric-no", "text-color"), anchor: m.getLayoutProperty("fabric-no", "text-anchor"), overlap: m.getLayoutProperty("fabric-no", "text-allow-overlap"), ignore: m.getLayoutProperty("fabric-no", "text-ignore-placement"), dash: !!m.getPaintProperty("saved-areas-line", "line-dasharray"), line: m.getPaintProperty("saved-areas-line", "line-color") }; })()')
+        check(lay['col'] == lay['line'] == pg.evaluate('GA.palette.mark.boundary') and lay['anchor'] == 'bottom' and lay['overlap'] is True and lay['ignore'] is True and lay['dash'], 'main map: black dashed boundaries; bold number above the corner, never removed by label collisions', lay)
         check(pg.evaluate('GA.app.map.getLayoutProperty("fabric-no", "visibility") !== "none" && GA.app.map.getLayer("fabric-no").type === "symbol"'), 'main map: fabric-number layer present and visible')
-        cx = pg.evaluate('''() => { const r = GA.fabricStyle.numbered()[0].ring; const lons = r.map(p => p[0]); return Math.abs(GA.fabricStyle.topCentre(lons, r.map(p => p[1])) - (Math.min(...lons) + Math.max(...lons)) / 2) / (Math.max(...lons) - Math.min(...lons)); }''')
-        check(cx < 0.05, f'number centred on the top edge, not on a corner (offset {cx:.3f} of the width)')
         pg.screenshot(path=f'{OUT}/fabric_numbers_main_map.png')
         pg.evaluate('(ids) => { const p = GA.app.store.get(); p.compare = { ids, unified: true }; GA.app.store.save(); }', [a3, a1]); pg.click('#tb-compare')
         pg.wait_for_function('GA.app.CMP.lastXs && GA.app.CMP.lastXs.length === 2', timeout=180000); time.sleep(1.5)
@@ -206,7 +204,7 @@ try:
         check(loc or True, 'analysis page drawn (location map screenshot saved)')
         pg.evaluate('GA.pages.close()')
         svg = pg.evaluate('''async () => { const prof = await GA.section.compute({ pts: [[-3.5975, 37.1766], [-3.5935, 37.1766]], look: 'left', depth: 40 }); return GA.section.svg(prof, {}); }''')
-        check(bool(re.search(r'fill="#992B2A"[^>]*>1</text>', svg)), 'section locator: fabric number drawn in red')
+        check(bool(re.search(r'fill="#161616"[^>]*>1</text>', svg)), 'section locator: fabric number drawn in black (5.13)')
         check(not errs4, 'fabric numbers: no page errors', errs4[:3])
         ctx.close()
 finally:

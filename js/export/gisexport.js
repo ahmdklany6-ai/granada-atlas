@@ -286,7 +286,7 @@
     const L = (k) => t(k);
     const fill = (c, o) => Object.assign({ kind: 'fill', color: c, outline: P.ink3, outlineWidth: 0.12 }, o || {});
     switch (id) {
-      case 'study_area': return Q.single({ kind: 'fill', color: P.red, alpha: 0.08, outline: P.red, outlineWidth: 0.7 });
+      case 'study_area': return Q.single({ kind: 'fill', color: P.mark.boundary, alpha: 0, noFill: true, outline: P.mark.boundary, outlineWidth: 0.9, outlineDash: true }); // 5.13: black dashed, as on every map
       case 'buildings': return Q.categorized('level_band', 'fill', ['1-2', '3-4', '5-8', '9+'].map(k => ({ value: k, label: t('b.floors', { v: k }), sym: fill(P.band[k], { outline: P.grey }) })).concat([{ value: 'no_data', label: t('nodata'), sym: fill('#FFFFFF', { outline: P.grey }) }]));
       case 'buildings_period': return Q.categorized('period', 'fill', Object.keys(P.period).map(k => ({ value: k, label: k === 'no_data' ? t('nodata') : k === 'pre_1900' ? t('period.pre_1900') : k === '2000_plus' ? t('period.2000_plus') : k.replace('_', '–'), sym: fill(P.period[k], { outline: P.grey }) })));
       case 'streets': return Q.categorized('tier', 'line', Object.keys(P.tier).map(k => ({ value: k, label: t('tier.' + k), sym: { color: P.tier[k], width: P.tierWidth[k] * 0.32, dash: k === 'pedestrian' ? '2;1' : null } })));

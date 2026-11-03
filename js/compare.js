@@ -9,8 +9,9 @@
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const nf = (n, d) => n == null || !isFinite(n) ? null : Number(n).toLocaleString('en-US', { maximumFractionDigits: d == null ? 0 : d, minimumFractionDigits: d ? Math.min(1, d) : 0 });
   // every fabric boundary is dashed (colour and dash pattern together keep the fabrics apart)
-  const STYLES = [{ color: GA.palette.red, dash: [7, 4] }, { color: GA.palette.blue, dash: [3, 3] }, { color: GA.palette.ink, dash: [10, 3, 2, 3] }, { color: GA.palette.base.burgundy, dash: [5, 2] }, { color: GA.palette.olive, dash: [7, 4] }, { color: GA.palette.base.khaki, dash: [3, 3] }, { color: GA.palette.ink3, dash: [10, 3, 2, 3] }, { color: GA.palette.redDark, dash: [5, 2] }];
-  const styleOf = (i) => Object.assign({ label: String(i + 1), width: 2.2 }, STYLES[i % STYLES.length]);
+  // 5.13: every study area is a BLACK dashed boundary; in comparisons they differ by dash pattern and by their number
+  const B = GA.palette.mark.boundary; const STYLES = [{ color: B, dash: [10, 6] }, { color: B, dash: [4, 4] }, { color: B, dash: [14, 4, 3, 4] }, { color: B, dash: [7, 3] }, { color: B, dash: [2, 3] }, { color: B, dash: [18, 6] }, { color: B, dash: [10, 3, 2, 3, 2, 3] }, { color: B, dash: [5, 6] }];
+  const styleOf = (i) => Object.assign({ label: String(i + 1), width: 3 }, STYLES[i % STYLES.length]);
 
   function ringOf(spec) {
     if (!spec || !spec.center) return null;
@@ -255,12 +256,12 @@
       const rings = Xs.map(x => x.ring).concat(uc ? [uc.geometry.type === 'Polygon' ? uc.geometry.coordinates[0] : uc.geometry.coordinates[0][0]] : []);
       const f = MC.fit(rings, w, h, 0.04);
       const ctxStreets = maj ? maj.features.filter(x => /motorway|trunk|primary|secondary/.test(x.properties.hw)).map(x => x.geometry) : [];
-      const distr = adm ? adm.features.filter(x => x.properties.kind === 'distrito' || x.properties.kind === 'urban_centre').map(x => ({ g: x.geometry, stroke: x.properties.kind === 'urban_centre' ? P.red : GA.palette.grey, width: x.properties.kind === 'urban_centre' ? 1.2 : 0.7, dash: x.properties.kind === 'urban_centre' ? [4, 3] : null })) : [];
+      const distr = adm ? adm.features.filter(x => x.properties.kind === 'distrito' || x.properties.kind === 'urban_centre').map(x => ({ g: x.geometry, stroke: x.properties.kind === 'urban_centre' ? GA.palette.admin.urban /* 5.13: not red (the old study-area mark) */ : GA.palette.grey, width: x.properties.kind === 'urban_centre' ? 1.2 : 0.7, dash: x.properties.kind === 'urban_centre' ? [4, 3] : null })) : [];
       const r = MC.render(cv, { center: f.center, mpp: f.mpp, w, h, ratio, context: { streets: ctxStreets, streetColor: GA.palette.grey2 }, layers: [{ type: 'line', items: distr.map(d => ({ g: { type: d.g.type === 'Polygon' ? 'MultiLineString' : 'MultiLineString', coordinates: d.g.type === 'Polygon' ? d.g.coordinates : d.g.coordinates.flat() }, stroke: d.stroke, width: d.width, dash: d.dash })) }] });
       const ctx = cv.getContext('2d'); ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       const FM = root.GA.fabricStyle, placed = [];
-      Xs.forEach(x => { const U = MC.ringUTM(x.ring); const pts = U.map(p => [r.X(p[0]), r.Y(p[1])]); FM.strokeRing(ctx, pts, { color: x.style.color, width: 2, dash: x.style.dash });
-        FM.numberAbove(ctx, pts, x.no, { size: 15, placed }); });
+      Xs.forEach(x => { const U = MC.ringUTM(x.ring); const pts = U.map(p => [r.X(p[0]), r.Y(p[1])]); FM.strokeRing(ctx, pts, { color: x.style.color, width: 3, dash: x.style.dash });
+        FM.numberAt(ctx, pts, x.no, { size: 24, placed }); });
       return r;
     }
 
