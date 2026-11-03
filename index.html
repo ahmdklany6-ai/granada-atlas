@@ -7,7 +7,7 @@
 /* Build check: GitHub Pages lets browsers reuse a cached index.html for up to 10 minutes. If the published build is newer
    than this page, reload once at a URL the cache has not seen, so code and data always come from one build.
    Saved projects (localStorage / IndexedDB) are untouched by the reload. */
-window.GA_BUILD = "5.14";
+window.GA_BUILD = '5.14';
 (function () { try {
   fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (v) {
     if (!v || !v.build || v.build === window.GA_BUILD) return;
