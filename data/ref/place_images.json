@@ -1,0 +1,355 @@
+{
+"built": "5.15",
+"source": "Wikimedia Commons (file pages linked); metadata retrieved 3 Nov 2026",
+"images": {
+"Alhambra": [
+{
+"file": "Granada, gezicht op Alhambra, RP-F-F01139-BT.jpg",
+"kind": "hist",
+"y1": 1850,
+"y2": 1880,
+"circa": true,
+"author": "Anonymous photographer (Rijksmuseum, RP-F-F01139-BT)",
+"license": "CC0",
+"licurl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+"url": "https://commons.wikimedia.org/wiki/File:Granada,_gezicht_op_Alhambra,_RP-F-F01139-BT.jpg",
+"w": 6234,
+"h": 4586,
+"cap": [
+"منظر على قصر الحمراء، طبعة ألبومين",
+"מבט על האלהמברה, הדפס אלבומין",
+"View over the Alhambra, albumen print"
+]
+},
+{
+"file": "Dawn Charles V Palace Alhambra Granada Andalusia Spain.jpg",
+"kind": "now",
+"y1": 2014,
+"y2": 2014,
+"circa": false,
+"author": "Jebulon",
+"license": "CC0",
+"licurl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+"url": "https://commons.wikimedia.org/wiki/File:Dawn_Charles_V_Palace_Alhambra_Granada_Andalusia_Spain.jpg",
+"w": 4592,
+"h": 3056,
+"cap": [
+"قصر كارلوس الخامس والحمراء عند الفجر",
+"ארמון קרל החמישי והאלהמברה עם שחר",
+"Palace of Charles V and the Alhambra at dawn"
+]
+}
+],
+"Generalife": [
+{
+"file": "Waterkanaal in de Generalife te Granada, RP-F-00-3141.jpg",
+"kind": "hist",
+"y1": 1875,
+"y2": 1900,
+"circa": true,
+"author": "Anonymous photographer (Rijksmuseum, RP-F-00-3141)",
+"license": "CC0",
+"licurl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+"url": "https://commons.wikimedia.org/wiki/File:Waterkanaal_in_de_Generalife_te_Granada,_RP-F-00-3141.jpg",
+"w": 7594,
+"h": 5882,
+"cap": [
+"قناة الماء في جنة العريف («Vista de la acequia»)",
+"תעלת המים בחנרליפה (\"Vista de la acequia\")",
+"The water channel of the Generalife (\"Vista de la acequia\")"
+]
+},
+{
+"file": "LAlhambra de Grenade (8356975975) (2).jpg",
+"kind": "now",
+"y1": 2004,
+"y2": 2004,
+"circa": false,
+"author": "Jean-Pierre Dalbéra",
+"license": "CC BY 2.0",
+"licurl": "https://creativecommons.org/licenses/by/2.0",
+"url": "https://commons.wikimedia.org/wiki/File:LAlhambra_de_Grenade_(8356975975)_(2).jpg",
+"w": 768,
+"h": 1024,
+"cap": [
+"فناء الساقية في جنة العريف",
+"חצר התעלה בחנרליפה",
+"Court of the Water Channel, Generalife"
+]
+}
+],
+"Albaicín": [
+{
+"file": "Granada, Albaicin, RP-F-F01139-AL.jpg",
+"kind": "hist",
+"y1": 1850,
+"y2": 1880,
+"circa": true,
+"author": "Anonymous photographer (Rijksmuseum, RP-F-F01139-AL)",
+"license": "CC0",
+"licurl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+"url": "https://commons.wikimedia.org/wiki/File:Granada,_Albaicin,_RP-F-F01139-AL.jpg",
+"w": 3518,
+"h": 2526,
+"cap": [
+"شارع في حي البيازين، طبعة ألبومين",
+"רחוב באלבאיסין, הדפס אלבומין",
+"A street in the Albaicín, albumen print"
+]
+},
+{
+"file": "Albaicin-granada.JPG",
+"kind": "now",
+"y1": 2006,
+"y2": 2006,
+"circa": false,
+"author": "Miguel303xm",
+"license": "CC BY-SA 2.5",
+"licurl": "https://creativecommons.org/licenses/by-sa/2.5",
+"url": "https://commons.wikimedia.org/wiki/File:Albaicin-granada.JPG",
+"w": 1229,
+"h": 922,
+"cap": [
+"منظر على حي البيازين",
+"מבט על האלבאיסין",
+"View over the Albaicín"
+]
+}
+],
+"Sacromonte": [
+{
+"file": "\"Les grottes des gitanos, au Sacro-monte\" (19929759032).jpg",
+"kind": "hist",
+"y1": 1874,
+"y2": 1874,
+"circa": false,
+"author": "Gustave Doré (wood engraving) in Ch. Davillier, L’Espagne, Paris: Hachette, 1874",
+"license": "CC BY 2.0",
+"licurl": "https://creativecommons.org/licenses/by/2.0",
+"url": "https://commons.wikimedia.org/wiki/File:%22Les_grottes_des_gitanos,_au_Sacro-monte%22_(19929759032).jpg",
+"w": 2844,
+"h": 4098,
+"cap": [
+"«مغارات الغجر في الساكرومونتي» — نقش خشبي لغوستاف دوريه",
+"\"מערות הצוענים בסאקרומונטה\" — חיתוך עץ מאת גוסטב דורה",
+"\"The gypsy caves of the Sacromonte\" — wood engraving by Gustave Doré"
+]
+},
+{
+"file": "Barrio del Sacromonte, en Granada (España).jpg",
+"kind": "now",
+"y1": 2012,
+"y2": 2012,
+"circa": false,
+"author": "Jebulon",
+"license": "CC0",
+"licurl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+"url": "https://commons.wikimedia.org/wiki/File:Barrio_del_Sacromonte,_en_Granada_(Espa%C3%B1a).jpg",
+"w": 1321,
+"h": 743,
+"cap": [
+"حي الساكرومونتي",
+"שכונת סאקרומונטה",
+"The Sacromonte quarter"
+]
+}
+],
+"Catedral_de_Granada": [
+{
+"file": "Interior-de-la-catedrall-de-Granada.J.Laurent.siglo-XIX.jpg",
+"kind": "hist",
+"y1": null,
+"y2": 1886,
+"circa": false,
+"author": "J. Laurent",
+"license": "Public domain",
+"licurl": "",
+"url": "https://commons.wikimedia.org/wiki/File:Interior-de-la-catedrall-de-Granada.J.Laurent.siglo-XIX.jpg",
+"w": 2905,
+"h": 4042,
+"cap": [
+"الصحن الرئيسي للكاتدرائية، طبعة ألبومين",
+"הספינה המרכזית של הקתדרלה, הדפס אלבומין",
+"The cathedral’s main nave, albumen print"
+]
+},
+{
+"file": "Granada cathedral from mirador San Cristobal Spain.jpg",
+"kind": "now",
+"y1": 2012,
+"y2": 2012,
+"circa": false,
+"author": "Jebulon",
+"license": "CC0",
+"licurl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+"url": "https://commons.wikimedia.org/wiki/File:Granada_cathedral_from_mirador_San_Cristobal_Spain.jpg",
+"w": 3031,
+"h": 2017,
+"cap": [
+"الكاتدرائية من مرصد سان كريستوبال",
+"הקתדרלה מתצפית סן כריסטובל",
+"The cathedral from the San Cristóbal viewpoint"
+]
+}
+],
+"Plaza_Nueva_(Granada)": [
+{
+"file": "Plaza Nueva oJean-Laurent.-La plaza nueva (ca. 1871).jpg",
+"kind": "hist",
+"y1": 1871,
+"y2": 1871,
+"circa": true,
+"author": "J. Laurent",
+"license": "Public domain",
+"licurl": "",
+"url": "https://commons.wikimedia.org/wiki/File:Plaza_Nueva_oJean-Laurent.-La_plaza_nueva_(ca._1871).jpg",
+"w": 1024,
+"h": 745,
+"cap": [
+"الساحة الجديدة (بلاثا نويبا)",
+"פלאסה נואבה",
+"Plaza Nueva"
+]
+},
+{
+"file": "Plaza Nueva de Granada.jpg",
+"kind": "now",
+"y1": 2009,
+"y2": 2009,
+"circa": false,
+"author": "Antonio Cantero",
+"license": "CC BY-SA 3.0",
+"licurl": "https://creativecommons.org/licenses/by-sa/3.0",
+"url": "https://commons.wikimedia.org/wiki/File:Plaza_Nueva_de_Granada.jpg",
+"w": 1024,
+"h": 768,
+"cap": [
+"الساحة الجديدة اليوم",
+"פלאסה נואבה כיום",
+"Plaza Nueva today"
+]
+}
+],
+"Alcaicería_de_Granada": [
+{
+"file": "Entrada a la alcaicería de Granada.jpg",
+"kind": "now",
+"y1": 2010,
+"y2": 2010,
+"circa": false,
+"author": "Jesus Abizanda",
+"license": "CC BY 2.0",
+"licurl": "https://creativecommons.org/licenses/by/2.0",
+"url": "https://commons.wikimedia.org/wiki/File:Entrada_a_la_alcaicer%C3%ADa_de_Granada.jpg",
+"w": 1200,
+"h": 1600,
+"cap": [
+"مدخل القيسارية (أُعيد بناؤها بعد حريق 1843)",
+"הכניסה לאלקאיסריה (נבנתה מחדש אחרי השריפה של 1843)",
+"Entrance to the Alcaicería (rebuilt after the 1843 fire)"
+]
+}
+],
+"Embovedado_del_Darro": [
+{
+"file": "Santa Ana Iglesia frontal lejos.jpg",
+"kind": "now",
+"y1": 2022,
+"y2": 2022,
+"circa": false,
+"author": "Juliaruizconde13",
+"license": "CC BY-SA 4.0",
+"licurl": "https://creativecommons.org/licenses/by-sa/4.0",
+"url": "https://commons.wikimedia.org/wiki/File:Santa_Ana_Iglesia_frontal_lejos.jpg",
+"w": 3024,
+"h": 4032,
+"cap": [
+"كنيسة سانتا آنا في الساحة الجديدة، عند بداية تغطية نهر حدرّة",
+"כנסיית סנטה אנה בפלאסה נואבה, בתחילת כיסוי נהר הדארו",
+"Santa Ana church on Plaza Nueva, where the Darro’s vault begins"
+]
+}
+],
+"Plaza_de_Bib-Rambla": [
+{
+"file": "Spain Andalusia Granada BW 2015-10-25 14-16-08.jpg",
+"kind": "now",
+"y1": 2015,
+"y2": 2015,
+"circa": false,
+"author": "Berthold Werner",
+"license": "CC BY-SA 3.0",
+"licurl": "https://creativecommons.org/licenses/by-sa/3.0",
+"url": "https://commons.wikimedia.org/wiki/File:Spain_Andalusia_Granada_BW_2015-10-25_14-16-08.jpg",
+"w": 3872,
+"h": 2592,
+"cap": [
+"ساحة باب الرملة",
+"כיכר ביב-רמבלה",
+"Plaza de Bib-Rambla"
+]
+}
+],
+"Gran_Vía_de_Colón": [
+{
+"file": "Gran Vía de Colón (2973320148).jpg",
+"kind": "now",
+"y1": 2008,
+"y2": 2008,
+"circa": false,
+"author": "monicat81",
+"license": "CC BY-SA 2.0",
+"licurl": "https://creativecommons.org/licenses/by-sa/2.0",
+"url": "https://commons.wikimedia.org/wiki/File:Gran_V%C3%ADa_de_Col%C3%B3n_(2973320148).jpg",
+"w": 2592,
+"h": 1944,
+"cap": [
+"شارع غران بيا دي كولون",
+"שדרות גראן ויה דה קולון",
+"Gran Vía de Colón"
+]
+}
+],
+"Realejo-San_Matías": [
+{
+"file": "Granada - Iglesia de Santo Domingo.jpg",
+"kind": "now",
+"y1": 2017,
+"y2": 2017,
+"circa": false,
+"author": "0000ff",
+"license": "CC BY-SA 4.0",
+"licurl": "https://creativecommons.org/licenses/by-sa/4.0",
+"url": "https://commons.wikimedia.org/wiki/File:Granada_-_Iglesia_de_Santo_Domingo.jpg",
+"w": 2700,
+"h": 3600,
+"cap": [
+"كنيسة سانتو دومينغو في الريالخو",
+"כנסיית סנטו דומינגו בריאלחו",
+"Santo Domingo church, Realejo"
+]
+}
+],
+"Cartuja_de_Granada": [
+{
+"file": "Monasterio de la Cartuja Granada.jpg",
+"kind": "now",
+"y1": 2007,
+"y2": 2007,
+"circa": false,
+"author": "Germán Póo-Caamaño",
+"license": "CC BY 2.0",
+"licurl": "https://creativecommons.org/licenses/by/2.0",
+"url": "https://commons.wikimedia.org/wiki/File:Monasterio_de_la_Cartuja_Granada.jpg",
+"w": 3456,
+"h": 2304,
+"cap": [
+"دير الكارتوخا",
+"מנזר הקרטוחה",
+"The Cartuja monastery"
+]
+}
+],
+"Almanjáyar": []
+}
+}

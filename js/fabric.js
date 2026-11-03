@@ -277,26 +277,33 @@
   function newPage(a, b, title, sub) { const S = PG.sheet(A3[0], A3[1], DPI); const y = PG.header(S.ctx, S.W, title, sub, { scale: 1.3 }); return Object.assign(S, { y: y + 26, M: 70, F: PG.font(), rtl: I.dir() === 'rtl' }); }
   function endPage(S) { PG.footer(S.ctx, S.W, S.H, `Granada Atlas · ${t('fb.footer')} · ${new Date().toISOString().slice(0, 10)} · EPSG:25830`, 1.5); return S.cv; }
   const isEmptyCard = (c) => !c || !!c.gapOnly;
-  // one result panel in a column [x, x + w] between y and bottom
-  function panel(S, c, x, y, w, bottom) { // eslint-disable-line no-param-reassign
-    const { ctx, F, rtl } = S; const B = BE(); const o = (size, extra) => Object.assign({ size, F, rtl }, extra || {});
-    let yy = B.para(ctx, c.title, x, y, w, o(32, { weight: 700, lines: 2 }));
-    if (isEmptyCard(c)) { B.para(ctx, t('v12.noData') + ' ' + B.clean(c ? c.gapOnly : ''), x, yy + 10, w, o(22, { color: GA.palette.ink2, lines: 8 })); return; }
-    const body = (dry, y0) => { let z = y0;
-      z = B.legend(ctx, c.legend || [], x, z, w, o(21, { dry }));
-      if ((c.ind || []).length) { z += 10; (c.ind || []).forEach(r => { z = B.para(ctx, `${B.clean(r[0])}: ${B.clean(r[1])}${r[2] === 'est' ? ' (' + t('st.est') + ')' : ''}`, x, z, w, o(22, { dry, weight: 600, lines: 2 })); }); }
-      if (c.chart) { z += 14; z = B.chart(ctx, c.chart, x, z + 20, w, o(20, { dry })); }
-      const finds = (c.find || []).map(B.clean).filter(Boolean).slice(0, 3); if (finds.length) { z += 10; finds.forEach(f => { z = B.para(ctx, '• ' + f, x, z, w, o(21, { dry, lines: 3, color: GA.palette.ink2 })); }); }
-      if (c.src) { z += 8; z = B.para(ctx, `${t('src.label')} ${B.clean(c.src.name)} · ${B.clean(c.src.detail || '')} · ${B.clean(c.src.license || '')}`, x, z, w, o(19, { dry, lines: 2, color: GA.palette.ink3 })); }
-      if (c.method) { const m = B.clean(c.method); z = B.para(ctx, `${t('g.method')}: ${m.length > 330 ? m.slice(0, 330).replace(/\s+\S*$/, '') + ' …' : m}`, x, z + 4, w, o(19, { dry, lines: 4, color: GA.palette.ink3 })); }
-      return z; };
-    const drawMap = (mx, my, mw, mh) => { const off = document.createElement('canvas'); const v = MC.fit([state.X.ring], mw / 2, mh / 2, 0.08); GAL.drawCard(off, { ring: state.X.ring }, c, { center: v.center, mpp: v.mpp, w: mw / 2, h: mh / 2, ratio: 2 }); ctx.drawImage(off, mx, my, mw, mh); };
-    if (S.wide) { // a single panel on the page: map and its legend/chart/text side by side, filling the page
-      const mw = Math.round(w * 0.6), tw = w - mw - 60, mh = Math.min(bottom - yy - 10, Math.round(mw * 0.85)); const mx = rtl ? x + w - mw : x, bx = rtl ? x : x + mw + 60;
-      drawMap(mx, yy + 10, mw, mh); const save = { x, w }; x = bx; w = tw; body(false, yy + 10); x = save.x; w = save.w; return; }
-    const need = body(true, 0) + 24; const mapH = Math.max(320, Math.min(Math.round(w * 0.95), bottom - yy - 14 - need));
-    drawMap(x, yy + 10, w, mapH);
-    body(false, yy + 10 + mapH + 16);
+  // 5.15: every map is ONE card — title, map, legend, indicators, chart, interpretation, source + method (boardExport.card).
+  // Two cards per A3 page, one shared title height and one map size for the whole export, so maps align top and bottom in
+  // a row and have the same dimensions on every page; a page that holds a single card keeps the same card (no sidebar).
+  const GRID = { G: 70, gapTM: 8 };
+  function cardOpts(S, extra) { return Object.assign({ F: S.F, rtl: S.rtl, t }, extra || {}); }
+  function drawMapFor(ctx, c) { return (mx, my, mw, mh) => { const off = document.createElement('canvas'); const v = MC.fit([state.X.ring], mw / 2, mh / 2, 0.08); GAL.drawCard(off, { ring: state.X.ring }, c, { center: v.center, mpp: v.mpp, w: mw / 2, h: mh / 2, ratio: 2 }); ctx.drawImage(off, mx, my, mw, mh); }; }
+  // one export-wide metric set: column width, title band, map height (the same for every card and the location map)
+  function boardMetrics(cards) {
+    const S = PG.sheet(A3[0], A3[1], DPI); const y0 = PG.header(S.ctx, S.W, 'Ag', 'Ag', { scale: 1.3 }) + 26; const M = 70; const F = PG.font(); const rtl = I.dir() === 'rtl';
+    const cw = Math.floor((S.W - 2 * M - GRID.G) / 2); const bottom = S.H - 90; const B = BE(); const o = { F, rtl, t };
+    const needs = cards.map(x => B.cardNeeds(S.ctx, x.c, cw, Object.assign({ kicker: x.kicker }, o)));
+    const titleH = Math.max(90, ...needs.map(n => n.title)); const bodyMax = Math.max(0, ...needs.map(n => n.body));
+    const room = bottom - y0 - titleH - GRID.gapTM; const mapH = Math.max(560, Math.min(Math.round(cw * 0.78), room - bodyMax));
+    return { cw, titleH, mapH, bottom, y0, M, room };
+  }
+  function cardOnPage(S, x, c, kicker, Mx) {
+    const B = BE(); let o = cardOpts(S, { kicker, titleH: Mx.titleH, mapH: Mx.mapH, drawMap: c && !c.gapOnly ? drawMapFor(S.ctx, c) : null });
+    if (Mx.mapH + B.cardNeeds(S.ctx, c, Mx.cw, o).body > Mx.room) o = Object.assign(o, { compact: true }); // never past the page foot
+    return B.card(S.ctx, c, x, S.y, Mx.cw, o);
+  }
+  function cardPages(a, b, queue, pages, Mx) {
+    for (let i = 0; i < queue.length; i += 2) {
+      const two = queue.slice(i, i + 2); const secs = [...new Set(two.map(q => q.k))];
+      const S = newPage(a, b, `${a.name} — ${secs.map(k => t('v5.th.' + k)).join(' · ')}`, b.captions[secs[0]] || t('fb.boardSub'));
+      two.forEach((q, j) => { const x = S.rtl ? S.W - S.M - (j + 1) * Mx.cw - j * GRID.G : S.M + j * (Mx.cw + GRID.G); const r = cardOnPage(S, x, q.c, q.kicker, Mx); S.cards = (S.cards || []).concat([{ id: q.c.id, x, w: Mx.cw, mapY: r.mapY, mapBottom: r.mapBottom, bottom: r.bottom }]); });
+      pages.push({ canvas: endPage(S), k: secs[0], keys: secs, cards: S.cards });
+    }
   }
   function emptyNote(S, msg) { BE().para(S.ctx, msg, S.M, S.y + 20, S.W - 2 * S.M, { size: 26, F: S.F, rtl: S.rtl, color: GA.palette.ink2 }); }
   // which parts of the board have content (empty ones are omitted by default)
@@ -315,11 +322,14 @@
     const plan = keys.map(k => { const sc = sectionContent(k, a, b); const th = THEMES.find(x => x.id === k);
       if (th && th.topics) { if (!incEmpty) sc.empty.forEach(c => omitted.push(`${B_t(c.title)} — ${BE().clean(c.gapOnly)}`)); const list = incEmpty ? sc.cards : sc.full; if (!list.length) { if (!incEmpty) omitted.push(t('v5.th.' + k)); return null; } return { k, list }; }
       if (sc.empty && !incEmpty) { omitted.push(t('v5.th.' + k)); return null; } return { k, empty: sc.empty }; }).filter(Boolean);
-    if (!opts.keys || opts.keys.includes('identity')) pages.push(await identityPage(a, b, plan, omitted));
+    // one metric set for the whole export (the location map on the identity page uses the same map size)
+    const allCards = []; plan.forEach(pl => { if (pl.list) pl.list.forEach(c => allCards.push({ c, k: pl.k, kicker: t('v5.th.' + pl.k) })); });
+    const Mx = boardMetrics(allCards.length ? allCards : [{ c: { title: t('v5.locTitle'), legend: [] }, kicker: '' }]);
+    if (!opts.keys || opts.keys.includes('identity')) pages.push(await identityPage(a, b, plan, omitted, Mx));
+    let queue = []; const flush = () => { if (queue.length) cardPages(a, b, queue, pages, Mx); queue = []; };
     for (const pl of plan) { const k = pl.k; const sub = b.captions[k] || t('fb.boardSub');
-      if (pl.list) { for (let i = 0; i < pl.list.length; i += 2) { const S = newPage(a, b, `${a.name} — ${t('v5.th.' + k)}`, sub); const G = 70, cw = (S.W - 2 * S.M - G) / 2, bottom = S.H - 90;
-          const two = pl.list.slice(i, i + 2); if (two.length === 1) { S.wide = true; panel(S, two[0], S.M, S.y, S.W - 2 * S.M, bottom); }
-          else two.forEach((c, j) => { const x = S.rtl ? S.W - S.M - (j + 1) * cw - j * G : S.M + j * (cw + G); panel(S, c, x, S.y, cw, bottom); }); pages.push({ canvas: endPage(S), k }); } continue; }
+      if (pl.list) { pl.list.forEach(c => queue.push({ c, k, kicker: t('v5.th.' + k) })); continue; } // consecutive map sections flow on, two cards per page
+      flush();
       const S = newPage(a, b, `${a.name} — ${t('v5.th.' + k)}`, sub); const W = S.W, M = S.M, ctx = S.ctx; const B = BE(); const o = (size, extra) => Object.assign({ size, F: S.F, rtl: S.rtl }, extra || {});
       if (pl.empty) { emptyNote(S, t('v12.sectionEmpty')); pages.push({ canvas: endPage(S), k }); continue; }
       if (k === 'sections') { let first = true; for (const s of (a.sections || []).slice(0, 4)) { const P2 = first ? S : newPage(a, b, `${a.name} — ${t('v5.th.' + k)}`, s.name || sub); first = false;
@@ -342,25 +352,31 @@
         for (const it of items.slice(0, 10)) { const x = S.rtl ? W - M - (i % cols + 1) * pw - (i % cols) * gap : M + (i % cols) * (pw + gap), yy = S.y + Math.floor(i / cols) * (pw * 0.75 + 130); if (it.thumb) { try { const im = await new Promise((r, j) => { const q = new Image(); q.onload = () => r(q); q.onerror = j; q.src = it.thumb; }); PG.drawImageFit(ctx, im, x, yy, pw, pw * 0.75, true); } catch (e) { } } B.para(ctx, it.title, x, yy + pw * 0.75 + 4, pw, o(21, { weight: 600, lines: 2 })); i++; }
         pages.push({ canvas: endPage(S), k }); continue; }
     }
+    flush();
     return pages;
   }
   const B_t = (s) => BE().clean(s);
-  async function identityPage(a, b, plan, omitted) {
-    const S = newPage(a, b, a.name, b.summary || t('v5.analysisOf')); const { ctx, W, H, M, F, rtl } = S; const B = BE(); const o = (size, extra) => Object.assign({ size, F, rtl }, extra || {});
-    const mw = 1280, mh = Math.min(1180, H - S.y - 300); const mx = rtl ? W - M - mw : M; const off = document.createElement('canvas'); const card = await drawLoc(off, a, mw / 2, mh / 2, 2); ctx.drawImage(off, mx, S.y, mw, mh);
-    let ly = B.legend(ctx, card.legend, mx, S.y + mh + 14, mw, o(21)); if (card.outside && card.outside.length) ly = B.para(ctx, t('v12.outside', { n: card.outside.join(', ') }), mx, ly + 4, mw, o(20, { color: GA.palette.ink2 }));
-    B.para(ctx, `${t('src.label')} ${card.src.name} · ${card.src.detail} · ${card.src.license}`, mx, ly + 2, mw, o(19, { color: GA.palette.ink3, lines: 2 }));
-    const tx = rtl ? M : M + mw + 70, tw = W - 2 * M - mw - 70; let yy = S.y; const ind = state.ind; const X0 = state.X;
-    yy = B.para(ctx, (X0.parsed.admin || []).map(x => x.name).reverse().join(' · '), tx, yy, tw, o(24, { weight: 600, color: GA.palette.ink2, lines: 2 }));
-    yy = B.para(ctx, t('fb.rationale'), tx, yy + 18, tw, o(28, { weight: 700 })); yy = B.para(ctx, b.rationale || '—', tx, yy + 2, tw, o(22, { lines: 8 }));
-    yy = B.para(ctx, t('v12.keyInd'), tx, yy + 22, tw, o(28, { weight: 700 }));
+  // identity page: the location map as a card (title, map, legend, notes, source — the same card and map size as every
+  // other map) in the first column; the area's description and key indicators as a text card in the second column
+  async function identityPage(a, b, plan, omitted, Mx) {
+    const S = newPage(a, b, a.name, b.summary || t('v5.analysisOf')); const { ctx, W, M, F, rtl } = S; const B = BE(); const o = (size, extra) => Object.assign({ size, F, rtl }, extra || {});
+    const cw = Mx.cw; const mx = rtl ? W - M - cw : M; let card = null;
+    const loc = { title: t('v5.locTitle'), legend: [], src: null }; const off = document.createElement('canvas'); card = await drawLoc(off, a, cw / 2, Mx.mapH / 2, 2);
+    Object.assign(loc, { legend: card.legend, src: card.src, notes: card.outside && card.outside.length ? [t('v12.outside', { n: card.outside.join(', ') })] : [] });
+    const rr = B.card(ctx, loc, mx, S.y, cw, cardOpts(S, { kicker: a.name, titleH: Mx.titleH, mapH: Mx.mapH, drawMap: (x, y, w, h) => ctx.drawImage(off, x, y, w, h) }));
+    S.cards = [{ id: 'location', x: mx, w: cw, mapY: rr.mapY, mapBottom: rr.mapBottom, bottom: rr.bottom }];
+    const tx = rtl ? M : W - M - cw, tw = cw; let yy = B.cardTitle(ctx, { title: t('fb.rationale') }, tx, S.y, tw, cardOpts(S, { kicker: (state.X.parsed.admin || []).map(x => x.name).reverse().join(' · ') })); yy = Math.max(yy, S.y + Mx.titleH) + 8;
+    const ind = state.ind;
+    yy = B.para(ctx, b.rationale || '—', tx, yy, tw, o(22, { lines: 8 }));
+    yy = B.para(ctx, t('v12.keyInd'), tx, yy + 22, tw, o(26, { weight: 700 }));
     ['buildings', 'gsi', 'median_floors', 'places_per_km2', 'canopy_mean', 'bus_sched', 'flood_t100_share', 'relief_m'].forEach(key => { const row = CMP.IND_ROWS.find(r => r[0] === key); if (!row) return; const v = CMP.fmtInd(row, ind[key]); yy = B.para(ctx, `${B.clean(t(row[1]))}: ${v == null ? CMP.whyLabel((ind._why || {})[key]) : B.clean(v)}`, tx, yy + 2, tw, o(22, { lines: 2 })); });
-    yy = B.para(ctx, t('v12.contents'), tx, yy + 22, tw, o(28, { weight: 700 })); yy = B.para(ctx, plan.map(p => t('v5.th.' + p.k)).join(' · ') || '—', tx, yy + 2, tw, o(22, { lines: 4 }));
+    yy = B.para(ctx, t('v12.contents'), tx, yy + 22, tw, o(26, { weight: 700 })); yy = B.para(ctx, plan.map(p => t('v5.th.' + p.k)).join(' · ') || '—', tx, yy + 2, tw, o(22, { lines: 4 }));
     if (omitted.length) { yy = B.para(ctx, t('v12.omitted'), tx, yy + 18, tw, o(24, { weight: 700, color: GA.palette.ink2 })); omitted.slice(0, 10).forEach(m => { yy = B.para(ctx, '• ' + m, tx, yy + 2, tw, o(19, { lines: 2, color: GA.palette.ink3 })); }); }
-    return { canvas: endPage(S), k: 'identity' };
+    return { canvas: endPage(S), k: 'identity', cards: S.cards };
   }
-  // one section of the board as an image (the PNG button on the page): its first page
-  async function blockCanvas(k, a, b) { if (k === 'identity') { const p = await boardPages(a, b, { keys: ['identity'] }); return p[0].canvas; } const pages = await boardPages(a, b, { keys: [k], includeEmpty: true }); return (pages[0] || {}).canvas; }
+  // one section as an image (the PNG button): all its pages, stacked (a section never loses its third map)
+  async function blockCanvas(k, a, b) { if (k === 'identity') { const p = await boardPages(a, b, { keys: ['identity'] }); return p[0].canvas; } const pages = await boardPages(a, b, { keys: [k], includeEmpty: true });
+    if (pages.length <= 1) return (pages[0] || {}).canvas; const W = pages[0].canvas.width, H = pages.reduce((s2, p) => s2 + p.canvas.height, 0); const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d'); let y = 0; pages.forEach(p => { g.drawImage(p.canvas, 0, y); y += p.canvas.height; }); return cv; }
   async function exportPDF(id, opts) {
     const a = areaOf(id); const b = board(id); if (!state || state.id !== id) return; root.GA.toast && root.GA.toast(t('ex.building'));
     if (state.paintAllNow) state.paintAllNow(); await ensureHistory().catch(() => { }); // export readiness: every image loaded (or explicitly unavailable)

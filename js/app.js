@@ -515,16 +515,15 @@
     const X = run.X; const DPI = 200; const W = 1600, Hm = 1200; // 203 × 152 mm map at 200 dpi
     const need = MC.fit([X.ring], W, Hm, 0.06).mpp / (0.0254 / DPI); const den = NICE.find(v => v >= need) || Math.ceil(need / 1000) * 1000; const mpp = den * 0.0254 / DPI;
     const font = getComputedStyle(rootEl).getPropertyValue('--f-ui'); const rtl = I.dir() === 'rtl';
-    const map0 = document.createElement('canvas'); GAL.drawCard(map0, { ring: X.ring }, card, { center: MC.fit([X.ring], W, Hm, 0.06).center, mpp, w: W, h: Hm, ratio: 1 });
-    const out = document.createElement('canvas'); out.width = W; out.height = Hm + 330; const ctx = out.getContext('2d'); ctx.direction = rtl ? 'rtl' : 'ltr';
-    ctx.fillStyle = '#FFF'; ctx.fillRect(0, 0, out.width, out.height); ctx.fillStyle = PAL.red; ctx.fillRect(0, 0, W, 6);
-    ctx.textAlign = rtl ? 'right' : 'left'; const x0 = rtl ? W - 30 : 30; ctx.fillStyle = GA.palette.ink; ctx.font = `700 34px ${font}`; ctx.fillText(card.title + ' — ' + (areaObj() || {}).name, x0, 54);
-    ctx.font = `20px ${font}`; ctx.fillStyle = GA.palette.ink2; ctx.fillText(t('ui.pngScale', { s: '1:' + den.toLocaleString('en-US'), d: DPI, w: Math.round(W / DPI * 25.4), h: Math.round(Hm / DPI * 25.4) }), x0, 86);
-    ctx.drawImage(map0, 0, 100);
-    let y = GA.compare.legendCanvas(ctx, card.legend || [], 30, Hm + 130, W - 60, rtl, font);
-    ctx.font = `17px ${font}`; ctx.fillStyle = GA.palette.ink; ctx.textAlign = rtl ? 'right' : 'left';
-    (card.find || []).forEach(f => { y = GA.compare.wrap(ctx, String(f).replace(/<[^>]+>/g, '').replace(/[⁦⁩]/g, ''), x0, y + 6, W - 60, 24, 2); });
-    ctx.font = `15px ${font}`; ctx.fillStyle = GA.palette.ink3; ctx.fillText(`${card.src.name} · ${card.src.detail} · ${card.src.license} · EPSG:25830 · ${new Date().toISOString().slice(0, 10)}`, x0, out.height - 18);
+    // 5.15: the same card as every other export — title, map (at the stated true scale), legend, indicators, chart,
+    // interpretation, source and method underneath (GA.boardExport.card); the map keeps its exact 1600 × 1200 px size
+    const BE = GA.boardExport; const M = 40, s = 1.25; const c = Object.assign({}, card, { title: card.title + ' — ' + ((areaObj() || {}).name || '') });
+    const opts = { F: font, rtl, s, t, mapH: Hm, subtitle: t('ui.pngScale', { s: '1:' + den.toLocaleString('en-US'), d: DPI, w: Math.round(W / DPI * 25.4), h: Math.round(Hm / DPI * 25.4) }) };
+    const needC = BE.cardNeeds(document.createElement('canvas').getContext('2d'), c, W, opts);
+    const out = document.createElement('canvas'); out.width = W + 2 * M; out.height = Math.ceil(34 + needC.title + 10 + Hm + needC.body + 60); const ctx = out.getContext('2d'); ctx.direction = rtl ? 'rtl' : 'ltr';
+    ctx.fillStyle = '#FFF'; ctx.fillRect(0, 0, out.width, out.height); ctx.fillStyle = PAL.red; ctx.fillRect(0, 0, out.width, 6);
+    const r = BE.card(ctx, c, M, 34, W, Object.assign({ drawMap: (x, y) => { const map0 = document.createElement('canvas'); GAL.drawCard(map0, { ring: X.ring }, card, { center: MC.fit([X.ring], W, Hm, 0.06).center, mpp, w: W, h: Hm, ratio: 1 }); ctx.drawImage(map0, x, y); } }, opts));
+    ctx.font = `20px ${font}`; ctx.fillStyle = GA.palette.ink3; ctx.textAlign = rtl ? 'right' : 'left'; ctx.direction = 'ltr'; ctx.fillText(`EPSG:25830 · Granada Atlas ${new Date().toISOString().slice(0, 10)}`, rtl ? M + W : M, Math.min(out.height - 18, r.bottom + 40));
     out.toBlob(bl => download(bl, `granada_${card.id}_1-${den}.png`), 'image/png');
   }
   function download(blob, name) { const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); }

@@ -78,5 +78,44 @@
     let yy = para(ctx, title, x + 20, y + h * 0.3, w - 40, { size: (o.size || 22) + 2, weight: 700, F: o.F, rtl: o.rtl, color: P().ink2 });
     para(ctx, reason, x + 20, yy + 6, w - 40, { size: o.size || 20, F: o.F, rtl: o.rtl, color: P().ink3, lines: 6 });
   }
-  root.GA = root.GA || {}; root.GA.boardExport = { clean, para, legend, chart, unavailable, pctTxt };
+  // ---------- 5.15: ONE card format for every analysis map and its exports ----------
+  // title (with a small section kicker) → map → legend → key indicators → chart → short interpretation → source and
+  // method. Nothing is ever placed beside the map. o: { F, rtl, s (text scale), titleH, mapH, drawMap(x, y, w, h), kicker,
+  // compact, t (i18n) }. `cardTitle` / `cardBody` with o.dry measure without drawing, so a row of cards can share one
+  // title height and one map height (top and bottom edges aligned) and a page never clips a card.
+  function sz(o, v) { return Math.round(v * (o.s || 1)); }
+  function cardTitle(ctx, c, x, y, w, o) {
+    const q = (size, ex) => Object.assign({ size: sz(o, size), F: o.F, rtl: o.rtl, dry: o.dry }, ex || {}); let z = y;
+    if (o.kicker) z = para(ctx, o.kicker, x, z, w, q(19, { weight: 600, color: P().ink3, lines: 1 }));
+    z = para(ctx, c.title, x, z, w, q(30, { weight: 700, lines: 2 }));
+    if (o.subtitle) z = para(ctx, o.subtitle, x, z, w, q(21, { color: P().ink2, lines: 2 }));
+    return z;
+  }
+  function cardBody(ctx, c, x, y, w, o) {
+    const T = o.t || ((k) => k); const q = (size, ex) => Object.assign({ size: sz(o, size), F: o.F, rtl: o.rtl, dry: o.dry }, ex || {}); let z = y;
+    const gap = sz(o, 10);
+    z = legend(ctx, c.legend || [], x, z, w, q(21));
+    (c.notes || []).forEach(n => { z = para(ctx, n, x, z + 2, w, q(20, { color: P().ink2, lines: 3 })); });
+    const ind = (c.ind || []).slice(0, o.compact ? 3 : 4);
+    if (ind.length) { z += gap; ind.forEach(r => { z = para(ctx, `${clean(r[0])}: ${clean(r[1])}${r[2] === 'est' ? ' (' + T('st.est') + ')' : ''}`, x, z, w, q(22, { weight: 600, lines: 2 })); }); }
+    if (c.chart && c.chart.items && c.chart.items.length) { z += gap + sz(o, 18); z = chart(ctx, c.chart, x, z, w, q(20)); }
+    const finds = (c.find || []).map(clean).filter(Boolean).slice(0, o.compact ? 2 : 3);
+    if (finds.length) { z += gap; finds.forEach(f => { z = para(ctx, '• ' + f, x, z, w, q(21, { lines: o.compact ? 2 : 3, color: P().ink2 })); }); }
+    if (c.src) { z += sz(o, 8); z = para(ctx, `${T('src.label')} ${clean(c.src.name)} · ${clean(c.src.detail || '')} · ${clean(c.src.license || '')}`, x, z, w, q(19, { lines: 2, color: P().ink3 })); }
+    if (c.method) { const m = clean(c.method); const cut = o.compact ? 200 : 330; z = para(ctx, `${T('g.method')}: ${m.length > cut ? m.slice(0, cut).replace(/\s+\S*$/, '') + ' …' : m}`, x, z + 4, w, q(19, { lines: o.compact ? 2 : 4, color: P().ink3 })); }
+    return z;
+  }
+  // a complete card at (x, y), width w; returns { mapY, mapBottom, bottom }
+  function card(ctx, c, x, y, w, o) {
+    const T = o.t || ((k) => k); const tEnd = cardTitle(ctx, c, x, y, w, o); const mapY = y + Math.max(o.titleH || 0, tEnd - y) + sz(o, 8); const mh = o.mapH || Math.round(w * 0.72);
+    if (!o.dry) {
+      if (!c || c.gapOnly || !o.drawMap) unavailable(ctx, x, mapY, w, mh, T('v12.noData'), clean(c && c.gapOnly) || '', { F: o.F, rtl: o.rtl, size: sz(o, 21) });
+      else { o.drawMap(x, mapY, w, mh); ctx.save(); ctx.strokeStyle = P().line2; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, mapY + 0.5, w - 1, mh - 1); ctx.restore(); }
+    }
+    const bottom = (c && c.gapOnly) ? mapY + mh : cardBody(ctx, c, x, mapY + mh + sz(o, 16), w, o);
+    return { mapY, mapBottom: mapY + mh, bottom };
+  }
+  // heights a card needs around its map (title block, body under the map)
+  function cardNeeds(ctx, c, w, o) { const d = Object.assign({}, o, { dry: true }); const th = cardTitle(ctx, c, 0, 0, w, d); const body = (c && c.gapOnly) ? 0 : cardBody(ctx, c, 0, 0, w, d) + sz(o, 16); return { title: th, body }; }
+  root.GA = root.GA || {}; root.GA.boardExport = { clean, para, legend, chart, unavailable, pctTxt, card, cardTitle, cardBody, cardNeeds };
 })(window);
