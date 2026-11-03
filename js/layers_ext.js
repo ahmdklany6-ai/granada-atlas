@@ -106,7 +106,9 @@
     // editable illustrative size drawn lighter). Colours: recorded size / species known / leaf type only / unknown.
     const TREE_AGG_Z = 13, TREE_CROWN_Z = 15.5;
     const mppAt = (z) => 78271.517 * Math.cos(37.18 * Math.PI / 180) / Math.pow(2, z); // metres per CSS pixel (512 px tiles)
-    const treeCol = (m) => { const C = GA.palette.tree3d; return (m.hRec || m.crownRec) ? C.recorded : (m.formBasis === 'species' || m.formBasis === 'genus') ? C.known : m.formBasis === 'leaf_type' ? C.leaf : C.unknown; };
+    // tree classes → colours in the layer's own style (one definition for map and legend)
+    const treeCls = (m) => (m.hRec || m.crownRec) ? 'recorded' : (m.formBasis === 'species' || m.formBasis === 'genus') ? 'known' : m.formBasis === 'leaf_type' ? 'leaf' : 'unknown';
+    const treeColExpr = () => { const C = GA.palette.tree3d; return ['match', ['get', 'cls'], 'recorded', C.recorded, 'known', C.known, 'leaf', C.leaf, C.unknown]; };
     defs.push({ id: 'trees', group: 'env', title: () => t('ly3.trees'), def: { on: false, opacity: 1 }, minZ: TREE_AGG_Z,
       build() {
         addSrc(lid('trees'), { type: 'geojson', data: fc() }); addSrc(lid('trees', 'agg'), { type: 'geojson', data: fc() }); const C = GA.palette.tree3d;
@@ -114,13 +116,13 @@
         addLyr({ id: lid('trees', 'row'), type: 'line', source: lid('trees'), minzoom: TREE_AGG_Z, filter: ['==', ['get', 'kind'], 'tree_row'], paint: { 'line-color': C.known, 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 1.5, 18, 5], 'line-dasharray': [0.6, 1.4], 'line-opacity': 1 } });
         // true-scale crowns: radius(px) = crown radius (m) / metres-per-pixel, interpolated exponentially (exact at every zoom)
         const rpx = ['interpolate', ['exponential', 2], ['zoom'], TREE_CROWN_Z, ['/', ['get', 'r'], mppAt(TREE_CROWN_Z)], 22, ['/', ['get', 'r'], mppAt(22)]];
-        addLyr({ id: lid('trees', 'crown'), type: 'circle', source: lid('trees'), minzoom: TREE_CROWN_Z, filter: ['==', ['get', 'kind'], 'tree'], paint: { 'circle-radius': rpx, 'circle-color': ['get', 'col'], 'circle-opacity': ['case', ['get', 'rec'], 0.95, 0.55], 'circle-stroke-color': ['case', ['get', 'rec'], GA.palette.ink, '#FFFFFF'], 'circle-stroke-width': ['case', ['get', 'rec'], 1.6, 0.8], 'circle-stroke-opacity': 1 } });
-        addLyr({ id: lid('trees'), type: 'circle', source: lid('trees'), minzoom: TREE_AGG_Z, maxzoom: 17.5, filter: ['==', ['get', 'kind'], 'tree'], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 1.4, 16, 2.6, 19, 3.2], 'circle-color': ['get', 'col'], 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 0.7, 'circle-opacity': 1, 'circle-stroke-opacity': 1 } });
+        addLyr({ id: lid('trees', 'crown'), type: 'circle', source: lid('trees'), minzoom: TREE_CROWN_Z, filter: ['==', ['get', 'kind'], 'tree'], paint: { 'circle-radius': rpx, 'circle-color': treeColExpr(), 'circle-opacity': ['case', ['get', 'rec'], 0.95, 0.55], 'circle-stroke-color': ['case', ['get', 'rec'], GA.palette.ink, '#FFFFFF'], 'circle-stroke-width': ['case', ['get', 'rec'], 1.6, 0.8], 'circle-stroke-opacity': 1 } });
+        addLyr({ id: lid('trees'), type: 'circle', source: lid('trees'), minzoom: TREE_AGG_Z, maxzoom: 17.5, filter: ['==', ['get', 'kind'], 'tree'], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 1.4, 16, 2.6, 19, 3.2], 'circle-color': treeColExpr(), 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 0.7, 'circle-opacity': 1, 'circle-stroke-opacity': 1 } });
       },
       async load() {
         if (this._n == null) {
           const r = await X.trees([-180, -90, 180, 90]); const T = GA.trees; this._ts = r.ts; this._n = r.pts.length; this._rows = r.ways.length;
-          const fs = r.pts.map(p => { const m = T.model(p.tags); return { type: 'Feature', properties: { id: p.id, kind: 'tree', r: m.crown / 2, rec: !!m.crownRec, col: treeCol(m), tg: JSON.stringify(p.tags) }, geometry: { type: 'Point', coordinates: p.ll } }; });
+          const fs = r.pts.map(p => { const m = T.model(p.tags); return { type: 'Feature', properties: { id: p.id, kind: 'tree', r: m.crown / 2, rec: !!m.crownRec, cls: treeCls(m), tg: JSON.stringify(p.tags) }, geometry: { type: 'Point', coordinates: p.ll } }; });
           r.ways.forEach(w => fs.push({ type: 'Feature', properties: { id: w.id, kind: 'tree_row', tg: JSON.stringify(w.tags) }, geometry: { type: 'LineString', coordinates: w.coords } }));
           map.getSource(lid('trees')).setData(fc(fs));
           const cells = {}; const S = 250; r.pts.forEach(p => { const u = GA.proj.EPSG25830.forward(p.ll); const k = Math.floor(u[0] / S) + ':' + Math.floor(u[1] / S); (cells[k] = cells[k] || { n: 0, x: 0, y: 0 }); cells[k].n++; cells[k].x += p.ll[0]; cells[k].y += p.ll[1]; });
