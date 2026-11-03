@@ -1,0 +1,35 @@
+{
+ "density": {
+  "muni_area_weighted": 243227,
+  "muni_centres_build": 243069,
+  "diff_pct": 0.07,
+  "peak_from_projected_area": 39886,
+  "peak_build": 39785,
+  "note": "peak recomputed with each cell’s area in EPSG:25830 (≈ 0.01 km² ± projection distortion)"
+ },
+ "morphology": {
+  "coverage_vector_pct": 10.89,
+  "coverage_raster_build_pct": 10.9,
+  "buildings_in_frame": 49555
+ },
+ "centre": {
+  "c1_kernel_direct": 2775,
+  "c1_kernel_build": 2776,
+  "c1_count_300m_direct": 564,
+  "c1_count_build": 563,
+  "note": "direct sum over places inside the frame (C1 is > 3 km from the frame edge, so the margin cannot change it)"
+ },
+ "climate": {
+  "plaza_nueva_block_build": 43.6,
+  "plaza_nueva_median_of_block_obs": 43.6,
+  "plaza_nueva_mean_of_pixel_medians": 43.6,
+  "scenes": 29,
+  "frame_median_of_scene_medians": 45.1,
+  "frame_median_build": 44.8
+ },
+ "human": {
+  "reach_nearest_pct": 91.82,
+  "reach_build_pct": 91.9,
+  "note": "targets clipped to the frame + 50 m in the data file, so cells near the edge may differ slightly"
+ }
+}

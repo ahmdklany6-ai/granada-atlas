@@ -125,7 +125,8 @@ try:
         st13 = pg.evaluate('[...document.querySelectorAll("#e13-sub .ss")].map(e => e.className.includes("ok"))')
         check(len(st13) == 4 and st13[0] and not st13[2] and not st13[3], f'Ex 1.3: four separate states (tools / content / exported / uploaded) {st13}')
         miss = pg.evaluate('[...document.querySelectorAll("#e13-sub .sub-miss [data-sub-go]")].map(b => b.textContent)')
-        check(len(miss) == 7 and any('Student' in m for m in miss) and any('synthesis' in m for m in miss), f'missing names, 5 interpretations and synthesis listed ({len(miss)})')
+        # 5.16: sentences and synthesis are generated from the data (editable), so only the student names can be missing
+        check(len(miss) == 1 and any('Student' in m for m in miss), f'missing student names listed ({len(miss)})')
         pg.click('#e13-sub [data-sub-go]'); time.sleep(0.8)
         check(pg.evaluate('document.activeElement && document.activeElement.dataset.e === "students"'), 'missing-field link focuses the student-names field')
         pg.wait_for_function('document.querySelectorAll(".e13-img canvas").length >= 2', timeout=120000)
