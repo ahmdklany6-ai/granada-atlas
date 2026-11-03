@@ -827,3 +827,21 @@ body.view-3d .north { display: none; } /* the map can be rotated in 3D: the nort
 /* 5.13: historical image explicitly unavailable (never an empty frame) */
 .hist-na { display: grid; gap: 4px; align-content: center; min-height: 140px; padding: 12px; background: var(--paper-2); border: 1px dashed var(--line-2); color: var(--ink-2); font-size: 12.5px; }
 .ap-empty { font-size: 12.5px; margin-inline-end: 6px; }
+/* 5.15: one card format — title band of two lines, then the map, then everything else underneath; maps in a row share
+   their top and bottom edges (same canvas size, same title band); the grid never puts a legend beside a map */
+.ap-grid { align-items: start; }
+.ap-fig > h3 { min-height: calc(2 * 1.3em); display: flex; align-items: flex-end; overflow-wrap: anywhere; }
+.ap-fig.gap > h3 { min-height: calc(2 * 1.3em); }
+.ap-fig .ap-map canvas { width: 100%; }
+/* 5.15: historical built-up extent box and images in the place popups (compact on every screen) */
+.hx-ext-box { margin: 4px 0 10px; } .hx-ext-box .lg { margin: 4px 0; } .hx-ext-box p { margin: 3px 0; }
+.hx-ext-none { font-size: 13px; color: var(--ink-2); } .hx-ext-none .sw { display: inline-block; width: 18px; border-top: 2px dotted var(--ink-3); margin-inline-end: 6px; vertical-align: middle; }
+.hx-popup .maplibregl-popup-content { max-height: min(70vh, 520px); overflow-y: auto; }
+.hx-pop-fig { margin: 6px 0 6px; } .hx-pop-fig figcaption { font-size: 12px; line-height: 1.4; color: var(--ink-2); margin-top: 4px; }
+.hx-pop-img { display: block; width: 100%; padding: 0; border: 1px solid var(--line); background: var(--paper-2); cursor: zoom-in; }
+.hx-pop-img img { display: block; width: 100%; height: auto; max-height: 190px; object-fit: cover; }
+.hx-pop-tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 0 5px; border: 1px solid var(--ink-3); color: var(--ink-2); }
+.hx-pop-tag.hist { border-color: var(--red); color: var(--red); }
+.hx-pop-noimg { margin: 6px 0; padding: 10px; font-size: 12px; font-style: italic; color: var(--ink-3); background: var(--paper-2); border: 1px dashed var(--line-2); }
+@media (max-width: 600px) { .hx-pop-img img { max-height: 140px; } .hx-popup .maplibregl-popup-content { max-height: 55vh; } }
+.maplibregl-popup.hx-popup { z-index: 5; } /* above the map controls (attribution) on phones */

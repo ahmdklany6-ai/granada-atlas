@@ -333,3 +333,57 @@ The owner asked for one exception to the 5.13 black-mark rule, on the analysis-p
 
 Test: `python3 tests/ui_test_v13.py` (locator in en / ar / he, viewer, PNG / PDF exports, board PDF; spies on `fabricStyle.strokeRing` / `numberAt` per canvas and counts #992B2A pixels in the outputs).
 
+## 18. Build 5.15 (owner requests of 3 Nov 2026)
+
+### A. One card format for every analysis map and export
+Order, always under the map and never beside it: **title → map → legend → key indicators → chart → short interpretation →
+source and method**. One renderer, `GA.boardExport.card` / `cardNeeds` (`js/boardexport.js`), is used by:
+
+| Where | Change |
+| --- | --- |
+| Analysis PDF / section PNGs (`fabric.boardPages`) | The single-card "wide" page (map + sidebar, the construction-period page) is gone. Cards flow across consecutive map sections, two per A3 page; the page title lists the sections on it and each card carries a small section kicker. One export-wide metric set (`boardMetrics`): one column width, one title band, one map height for every card **and** the location map, so maps in a row share top and bottom edges and every map has the same size. A card that would run past the foot is drawn in compact form (fewer finding / method lines) — never clipped. A section PNG stacks all its pages. |
+| Identity page | Location map as a card (title, map, legend, "outside the frame" note, source) in column 1; the area's rationale, key indicators and contents as a text card in column 2. |
+| Enlarged viewer PNG / PDF (`viewer.composed`) | Same card at 1800 px (text × 1.5). |
+| Single-card PNG (`app.exportCardPNG`) | Same card; the map keeps its exact true-scale size. |
+| Print workspace (`printlayout.js`) | Slot titles above their item; a map's legend is drawn directly under the map in columns (`legendUnder`); a separate legend slot is dropped when the page has a map (the others reflow); default slots: map only. |
+| Analysis page (CSS) | Card titles have a fixed two-line band so maps in a grid row align; legend, indicators, chart, findings, source / method stay under each map. |
+
+Not changed (their own poster formats, by design): the Comparison board (`compare.js` — panels are already title → map →
+legend → findings), the Exercise 1.3 Miro sheets (`ex13.js`) and the Studio climate board.
+
+Tests: `tests/ui_test_v14.py` (section A: board in en / ar / he — at most two cards per page, one map size, rows aligned,
+nothing past the foot, a single card keeps the card format, reading-start side; the real PDF is rasterised; viewer card).
+`tests/ui_test_v10.py` updated for the print workspace's default (no legend slot).
+
+### B. Historical Maps page
+**Built-up extent per period** (`data/ref/history_extents.json`, built by `tools/build_history_extras.py`; the selected
+layer maps to ONE outline or to an explicit "no reliable boundary"; the map source is replaced on every switch, never
+accumulated). Red `#992B2A`: dashed = approximate reconstruction from a map / photograph, solid = GHSL. The legend box
+shows the selected layer's own date range, the outline's date, method, area and source, and states that the thin black
+line is today's administrative municipal boundary, not the historical city.
+
+| Layer | Outline | Source and method |
+| --- | --- | --- |
+| Minutas 1870–1950 | none | Granada sheets dated 1895 (GetFeatureInfo): the city is a hatched mass on incomplete, misaligned sheets — not traceable. |
+| MTN50 1st ed. 1875–1968 | 1932 | Sheet 1009 "Granada" (1932; south edge on 1026 "Padul", 1931): urban fill extracted by colour, merged across streets (`tools/hist_extent_mapfill.py`). Approximate. |
+| MTN50 drafts 1910–1970 | 1910–1970 (undated) | Same method on the "catastrones" sheet 1009 — edition year "sin datos", so the range is shown, no year invented. |
+| AMS 1956–1957 | 1956–1957 | Traced by hand on the orthophoto (`tools/hist_extent_ams56_trace.py`, ~50–100 m). Approximate. |
+| 1973–1986, 1981–1986, 1997–1998, 1997–2003, PNOA 2004–2024 | GHSL 1975 / 1990 / 2000 / 2015 / 2020 | JRC GHS-BUILT-S R2023A, 100 m: cells ≥ 20 % built, contiguous with the historic centre, holes filled (`tools/hist_extent_ghsl.py`). 1975/1990/2000 from Landsat of that time; 2015/2020 modelled by GHSL from 2014/2018 observations (said in the legend). Where the epoch is not the layer's date, the legend says "nearest documented epoch". Crosses the municipal line where the city spread. |
+| MTN25 1975–2003 | none | Sheet edition year not recorded here. |
+
+Raw inputs (GHSL tiles, WMS snapshots, GetFeatureInfo dates, Commons candidates) come from
+`tools/verify/hist_extent_fetch.py` on the GitHub runner (job log only; nothing private committed).
+
+**Images in the landmark popups** (`data/ref/place_images.json`): image above the description, with a Historical /
+Present-day tag, caption (ar / he / en), date (c. / before / range), author, licence and Wikimedia Commons link; click →
+the image viewer at 1600 px. Layers before 1990 prefer the historical image, recent layers the present-day one. 7 places
+have a dated historical image (Rijksmuseum albumen prints of the Alhambra, Generalife and Albaicín c. 1850–1900; Doré's
+Sacromonte engraving, 1874; Laurent's cathedral nave, before 1886, and Plaza Nueva, c. 1871); the rest have only the
+article's present-day image (labelled). Almanjáyar has none (its page image is a metro stop not tied to the neighbourhood)
+→ clean note. A failing image is replaced by a note (never a broken image). Popups are capped in height and sit above the
+map controls on phones. Rejected candidate: the "Spain (1895)" book image for the Alcaicería (subject not stated).
+
+Tests: `tests/ui_test_v14.py` sections B/C (data integrity; every switch leaves exactly one or zero outlines and updates
+the period; 13 popups per language at 1440 / 820 / 390 px; viewer; broken-image fallback; no overflow).
+Live: `tools/verify/live_515.py` (workflow_dispatch `script=live_515.py`, parts a = board, b = history).
+

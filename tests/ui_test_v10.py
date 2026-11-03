@@ -121,10 +121,11 @@ try:
         opts = pg.evaluate('[...document.querySelectorAll("select[data-slot=\'2\'] option")].map(o => o.value)'); check(any(o.startswith('section:') for o in opts) and 'legend' in opts and 'map' in opts, 'slot choices: map, legend, saved sections', opts)
         sec = [o for o in opts if o.startswith('section:')][0]; pg.select_option('select[data-slot="2"][data-sk=item]', sec); time.sleep(0.5)
         pg.set_input_files('[data-pl=image]', os.path.join(ROOT, 'tests', 'px.png')); time.sleep(1)
-        check(pg.evaluate('GA.printLayout.st.slots[3].type') == 'image', 'an added image goes into the next free slot')
+        # 5.15: no separate legend slot by default (the legend is drawn under its map), so slot 1 is the next free one
+        check(pg.evaluate('GA.printLayout.st.slots[1].type') == 'image', 'an added image goes into the next free slot')
         pg.fill('[data-img="0"][data-ik=source]', 'Test photo, CC BY 4.0'); pg.press('[data-img="0"][data-ik=source]', 'Tab')
         pg.fill('[data-slot="0"][data-sk=caption]', 'Centro at 1:5,000'); pg.press('[data-slot="0"][data-sk=caption]', 'Tab')
-        pg.click('[data-mv="2:1"]'); time.sleep(0.3); order = pg.evaluate('GA.printLayout.st.slots.slice(0, 4).map(s => s.type)'); check(order == ['map', 'legend', 'image', 'section'], f'slots can be reordered {order}')
+        pg.click('[data-mv="2:1"]'); time.sleep(0.3); order = pg.evaluate('GA.printLayout.st.slots.slice(0, 4).map(s => s.type)'); check(order == ['map', 'image', 'none', 'section'], f'slots can be reordered {order}')
         pg.click('[data-pl-act=preview]'); pg.wait_for_function('document.querySelector("#pl-sheet canvas")', timeout=180000); time.sleep(1); pg.screenshot(path=f'{OUT}/print_arranged_preview.png')
         check('1:5,0' in pg.evaluate('document.querySelector("#pl-msg").innerText'), 'preview reports the measured scale')
         pg.select_option('[data-pl=dpi]', '150')

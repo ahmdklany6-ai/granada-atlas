@@ -13,7 +13,7 @@
   // slots: what goes where. Templates divide the body; each slot holds one item (map, legend, section, analysis card,
   // wind rose, rainfall chart, uploaded image) with its own caption. Maps carry their own scale.
   const st = { paper: 'A3', orient: 'landscape', margin: 12, dpi: 200, title: '', subtitle: '', template: 'side', keepEmpty: false,
-    slots: [{ type: 'map', denom: 5000, caption: '' }, { type: 'legend', caption: '' }, { type: 'none', caption: '' }, { type: 'none', caption: '' }], images: [] };
+    slots: [{ type: 'map', denom: 5000, caption: '' }, { type: 'none', caption: '' }, { type: 'none', caption: '' }, { type: 'none', caption: '' }], images: [] };
   const TEMPLATES = { side: 4, top3: 4, grid: 4, single: 1 };
   const pageMm = () => { const [a, b] = PAPERS[st.paper]; return st.orient === 'landscape' ? [b, a] : [a, b]; };
   const ptOf = (mm) => mm / 25.4 * 72;
@@ -21,7 +21,8 @@
   // 5.13: text scales with the paper so it is readable at the intended print size (A4 body ≈ 9 pt; A1 ≈ 2.8× larger)
   const FS = { A4: 1, A3: 1.41, A2: 2, A1: 2.83 }; const fsOf = () => FS[st.paper] || 1;
   // slots actually used: empty ones are omitted by default and the others take their space (option: keep empty slots)
-  const usedSlots = () => { const n = TEMPLATES[st.template]; const all = st.slots.slice(0, n).map((sl, i) => ({ sl, i })); return st.keepEmpty ? all : all.filter(x => x.sl && x.sl.type !== 'none'); };
+  // 5.15: when the page has a map, its legend is drawn under it — a separate legend slot is dropped (the others reflow)
+  const usedSlots = () => { const n = TEMPLATES[st.template]; const hasMap = st.slots.slice(0, n).some(sl => sl && sl.type === 'map'); const all = st.slots.slice(0, n).map((sl, i) => ({ sl, i })).filter(x => !(hasMap && x.sl && x.sl.type === 'legend')); return st.keepEmpty ? all : all.filter(x => x.sl && x.sl.type !== 'none'); };
   // slot rectangles in mm for the chosen template (gap and caption band scale with the paper)
   function layout() {
     const [W, H] = pageMm(); const m = st.margin; const f = fsOf(); const head = 22 * f, foot = 16 * f; const B = { x: m, y: m + head, w: W - 2 * m, h: H - 2 * m - head - foot }; const g = 6 * Math.sqrt(f); let R;
@@ -74,11 +75,11 @@
     return o.map(([v, l]) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(l)}</option>`).join('');
   }
   const svgImage = (svg) => loadImg('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.includes('xmlns') ? svg : svg.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')));
-  async function drawLegend(g, X, r, F, rtl, f) {
-    const C = P(); const items = legendItems(); const cx = r.x, cw = r.w; const lx = rtl ? cx + cw : cx;
+  async function drawLegend(g, X, r, F, rtl, f, opt) {
+    opt = opt || {}; const C = P(); const items = opt.items || legendItems(); const cx = r.x, cw = r.w; const lx = rtl ? cx + cw : cx;
     // sizes in mm at z = 1 (A4); measured once, then scaled so the legend fills its slot (readable, no wasted space)
     const run = async (z, dry) => { let y = r.y; g.textAlign = rtl ? 'right' : 'left'; const lh = 3.3 * z, sw = 6 * z, sh = 3 * z;
-      g.font = `700 ${X(3.4 * z)}px ${F}`; if (!dry) { g.fillStyle = C.ink; g.fillText(t('lg.title'), X(lx), X(y + 4 * z)); } y += 7 * z;
+      if (!opt.noTitle) { g.font = `700 ${X(3.4 * z)}px ${F}`; if (!dry) { g.fillStyle = C.ink; g.fillText(t('lg.title'), X(lx), X(y + 4 * z)); } y += 7 * z; }
       for (const it of items) {
         if (it.h) { g.font = `600 ${X(2.9 * z)}px ${F}`; if (!dry) { g.fillStyle = C.ink; g.fillText(it.h, X(lx), X(y + 3.4 * z)); } y += 5.2 * z; continue; }
         if (it.img) { const sz = Math.min(cw, 30 * z); if (!dry) { const im = await loadImg(it.img); if (im) g.drawImage(im, X(rtl ? cx + cw - sz : cx), X(y), X(sz), X(sz)); } y += sz + 2 * z; continue; }
@@ -91,7 +92,18 @@
           g.globalAlpha = 1; g.fillStyle = C.ink2; PG.wrap(g, it.text, X(rtl ? cx + cw - sw - 2.5 * z : cx + sw + 2.5 * z), X(y + 3 * z), X(tw), X(lh), 3); }
         y += Math.max(4.6 * z, lines * lh + 1.3 * z); }
       return y - r.y; };
-    const need = await run(1, true); const z = Math.max(0.8 * f, Math.min(1.9 * f, (r.h - 2) / need)); await run(z, false);
+    if (opt.z) { const hh = await run(opt.z, true); if (!opt.dry) await run(opt.z, false); return hh; }
+    const need = await run(1, true); const z = Math.max(0.8 * f, Math.min(1.9 * f, (r.h - 2) / need)); await run(z, false); return need * z;
+  }
+  // 5.15: a map's legend sits directly UNDER its map, in columns across the map's width (never in a slot beside it)
+  async function legendUnder(g, X, r, F, rtl, f, dry, z) {
+    const items = legendItems(); if (!items.length) return 0; z = z || f; const colW = 64 * z; const n = Math.max(1, Math.min(4, Math.floor(r.w / colW))); const w = (r.w - (n - 1) * 4 * f) / n;
+    // columns: split at headings when possible, balanced by item count
+    const per = Math.ceil(items.length / n); const groups = []; let cur = [];
+    items.forEach(it => { if (cur.length >= per && (it.h || cur.length >= per + 2)) { groups.push(cur); cur = []; } cur.push(it); }); if (cur.length) groups.push(cur);
+    let hMax = 0; g.save(); g.font = `700 ${X(3.4 * z)}px ${F}`; g.textAlign = rtl ? 'right' : 'left'; if (!dry) { g.fillStyle = P().ink; g.fillText(t('lg.title'), X(rtl ? r.x + r.w : r.x), X(r.y + 4 * z)); } g.restore();
+    for (let i = 0; i < groups.length && i < n; i++) { const x = rtl ? r.x + r.w - (i + 1) * w - i * 4 * f : r.x + i * (w + 4 * f); const hh = await drawLegend(g, X, { x, y: r.y + 6.5 * z, w, h: 1e6 }, F, rtl, f, { items: groups[i], z, noTitle: true, dry }); hMax = Math.max(hMax, hh); }
+    return hMax + 6.5 * z;
   }
   function scaleBarMm(g, X, r, denom, F, rtl, f) { f = f || 1; const C = P(); const mmPerM = 1000 / denom; const nice = [10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000].filter(v => v * mmPerM <= r.w * 0.3).pop() || 10; const len = nice * mmPerM; const x0 = r.x + 5 * f, y0 = r.y + r.h - 7 * f;
     g.fillStyle = 'rgba(255,255,255,0.88)'; g.fillRect(X(x0 - 2 * f), X(y0 - 8 * f), X(len + 20 * f), X(12 * f)); for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#FFFFFF' : C.ink; g.fillRect(X(x0 + i * len / 4), X(y0), X(len / 4), X(1.4 * f)); } g.strokeStyle = C.ink; g.lineWidth = Math.max(1, X(0.15 * f)); g.strokeRect(X(x0), X(y0), X(len), X(1.4 * f));
@@ -106,8 +118,11 @@
     const maps = []; const srcExtra = [];
     const used = usedSlots();
     for (let q = 0; q < L.rects.length && q < used.length; q++) {
-      const n = used[q].i; const sl = used[q].sl; const R0 = L.rects[q]; if (!sl || sl.type === 'none') continue; const cap = sl.caption ? 6 * f : 0; const r = { x: R0.x, y: R0.y, w: R0.w, h: R0.h - cap };
-      if (sl.type === 'map') { const m = await renderMap(r, preview ? 60 : d, sl.denom || 5000); g.drawImage(m.img, X(r.x), X(r.y), X(r.w), X(r.h)); g.strokeStyle = C.ink; g.lineWidth = Math.max(1, X(0.3)); g.strokeRect(X(r.x), X(r.y), X(r.w), X(r.h));
+      const n = used[q].i; const sl = used[q].sl; const R0 = L.rects[q]; if (!sl || sl.type === 'none') continue; const cap = sl.caption ? 6 * f : 0; const r = { x: R0.x, y: R0.y + cap, w: R0.w, h: R0.h - cap }; // 5.15: title above
+      if (sl.type === 'map') { // map card: map, then its legend directly underneath (same width), never in a side slot
+        let z = f, lh = await legendUnder(g, X, { x: r.x, y: 0, w: r.w }, F, rtl, f, true, z); if (lh > r.h * 0.42) { z = Math.max(0.75 * f, f * r.h * 0.42 / lh); lh = await legendUnder(g, X, { x: r.x, y: 0, w: r.w }, F, rtl, f, true, z); }
+        const lgH = lh ? lh + 3 * f : 0; r.h -= lgH; if (lgH) await legendUnder(g, X, { x: r.x, y: r.y + r.h + 3 * f, w: r.w }, F, rtl, f, false, z);
+        const m = await renderMap(r, preview ? 60 : d, sl.denom || 5000); g.drawImage(m.img, X(r.x), X(r.y), X(r.w), X(r.h)); g.strokeStyle = C.ink; g.lineWidth = Math.max(1, X(0.3)); g.strokeRect(X(r.x), X(r.y), X(r.w), X(r.h));
         PG.northArrow(g, X(r.x + r.w - 8 * f), X(r.y + 4 * f), X(1) / 3.4 * f); scaleBarMm(g, X, r, sl.denom || 5000, F, rtl, f); maps.push({ n: n + 1, denom: sl.denom || 5000, measured: m.measured, mapDpi: m.mapDpi }); }
       else if (sl.type === 'legend') await drawLegend(g, X, r, F, rtl, f);
       else if (sl.type === 'section') { const s = allSections().find(x => x.s.id === sl.ref); if (s) { const prof = await root.GA.section.compute(s.s); const sc = document.createElement('canvas'); const ratio = Math.max(1, d / 96);
@@ -117,7 +132,7 @@
         if (sl.ref === 'wind' && Ly && Ly._url) im = await loadImg(Ly._url); else if (sl.ref === 'rain' && Ly && Ly._st) { const box = document.createElement('div'); box.innerHTML = Ly.legend(); const svg = box.querySelector('svg'); if (svg) im = await svgImage(svg.outerHTML); }
         if (im) { PG.drawImageFit(g, im, X(r.x), X(r.y), X(r.w), X(r.h)); srcExtra.push('ERA5 (ECMWF/Copernicus) via Open-Meteo, CC BY 4.0'); } }
       else if (sl.type === 'image') { const im = st.images[+sl.ref]; if (im && im.img) { PG.drawImageFit(g, im.img, X(r.x), X(r.y), X(r.w), X(r.h)); srcExtra.push(`${im.caption || t('pl.image')}: ${im.source || t('pl.noSource')}`); } }
-      if (cap) { g.fillStyle = C.ink2; g.font = `${X(3.2 * f)}px ${F}`; g.textAlign = al; g.fillText(`${n + 1}. ${sl.caption}`, rtl ? X(R0.x + R0.w) : X(R0.x), X(R0.y + R0.h - 1.4 * f)); }
+      if (cap) { g.fillStyle = C.ink; g.font = `600 ${X(3.6 * f)}px ${F}`; g.textAlign = al; g.fillText(`${n + 1}. ${sl.caption}`, rtl ? X(R0.x + R0.w) : X(R0.x), X(R0.y + 4.2 * f)); }
     }
     const fy = L.H - L.m - L.foot + 4 * f; g.textAlign = al; g.fillStyle = C.ink; g.font = `600 ${X(3 * f)}px ${F}`;
     g.fillText(maps.length ? maps.map(m => t('pl.scaleLine', { n: nf(m.denom), p: st.paper, o: t('pl.' + st.orient), m: nf(m.measured, 0) })).join(' · ') : t('pl.noMap'), tx(L.m), X(fy + 3 * f));

@@ -31,6 +31,6 @@ jobs:
         run: |
           S="${SCRIPT:-$(cat tools/verify/RUN)}"
           for s in $S; do
-            if [ "$s" != "live_site.py" ] && [ "$PART" != "a" ]; then continue; fi
+            if [ "$s" != "live_site.py" ] && [ "$s" != "live_515.py" ] && [ "$PART" != "a" ]; then continue; fi
             echo "##### $s part $PART"; python -u tools/verify/$s || echo "SCRIPT FAILED: $s"
           done
