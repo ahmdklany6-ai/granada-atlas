@@ -27,8 +27,10 @@ print('frame bbox lat/lon', S, Wd, N, E, flush=True)
 import rasterio
 from rasterio.windows import from_bounds
 log = {}
+ONLY = (os.environ.get('ONLY') or (open('tools/verify/ex13_only').read().strip() if os.path.exists('tools/verify/ex13_only') else '') or 'pop,landsat,osm,stats').split(',')
 # ---------- 1. GHS-POP ----------
 try:
+    if 'pop' not in ONLY: raise RuntimeError('skipped')
     mw = [to_mw.transform(*c) for c in corners]; b = (min(p[0] for p in mw) - 300, min(p[1] for p in mw) - 300, max(p[0] for p in mw) + 300, max(p[1] for p in mw) + 300)
     name = 'GHS_POP_E2020_GLOBE_R2023A_54009_100_V1_0_R5_C18'
     z = get(f'https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/GHS_POP_GLOBE_R2023A/GHS_POP_E2020_GLOBE_R2023A_54009_100/V1-0/tiles/{name}.zip', 600)
@@ -40,18 +42,23 @@ try:
 except Exception as e: print('GHS-POP failed', e, flush=True); log['ghspop'] = str(e)
 # ---------- 2. Landsat summer LST ----------
 try:
+    if 'landsat' not in ONLY: raise RuntimeError('skipped')
     q = {'collections': ['landsat-c2-l2'], 'bbox': [Wd, S, E, N], 'datetime': '2024-06-01T00:00:00Z/2026-08-31T23:59:59Z', 'limit': 200,
          'query': {'eo:cloud_cover': {'lt': 40}, 'platform': {'in': ['landsat-8', 'landsat-9']}}}
     r = json.loads(get('https://planetarycomputer.microsoft.com/api/stac/v1/search', 120, json.dumps(q).encode(), {'Content-Type': 'application/json'}))
     items = [it for it in r.get('features', []) if it['properties']['datetime'][5:7] in ('06', '07', '08')]
     print('landsat summer items', len(items), flush=True)
-    tok = json.loads(get('https://planetarycomputer.microsoft.com/api/sas/v1/token/landsat-c2'))['token']
+    toks = {}
+    def signed(href):  # SAS token per storage account / container (Planetary Computer, anonymous)
+        u = urllib.parse.urlparse(href); acct = u.netloc.split('.')[0]; cont = u.path.strip('/').split('/')[0]; k = acct + '/' + cont
+        if k not in toks: toks[k] = json.loads(get(f'https://planetarycomputer.microsoft.com/api/sas/v1/token/{acct}/{cont}'))['token']
+        return href + '?' + toks[k]
     scenes = []; st_list = []; nd_list = []
     for it in sorted(items, key=lambda x: x['properties']['datetime']):
         p = it['properties']; epsg = p.get('proj:epsg') or 32630
         if epsg != 32630: print('skip epsg', epsg); continue
         def rd(asset):
-            href = it['assets'][asset]['href'] + '?' + tok
+            href = signed(it['assets'][asset]['href'])
             with rasterio.open(href) as ds:
                 w = from_bounds(F[0], F[1], F[2], F[3], ds.transform).round_offsets().round_lengths(); return ds.read(1, window=w, boundless=True, fill_value=0)
         try:
@@ -77,7 +84,7 @@ QS = {
   'osm_everyday': f'''[out:json][timeout:300];(nwr["amenity"~"^(marketplace|cafe|library|community_centre|social_centre)$"]({bb});nwr["place"="square"]({bb});way["highway"="pedestrian"]["area"="yes"]({bb});relation["highway"="pedestrian"]({bb});nwr["leisure"~"^(park|playground)$"]({bb});nwr["leisure"="garden"]["access"!~"^(private|no)$"]({bb}););out geom tags;''',
   'osm_heritage': f'''[out:json][timeout:300];(nwr["heritage"]({bb});nwr["boundary"="protected_area"]({bb});nwr["historic"="city_walls"]({bb});nwr["boundary"="historic"]({bb}););out geom tags;''',
 }
-for name, ql in QS.items():
+for name, ql in (QS.items() if 'osm' in ONLY else []):
     d = None
     for ep in ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter']:
         d = get(ep, 400, urllib.parse.urlencode({'data': ql}).encode())
@@ -86,13 +93,13 @@ for name, ql in QS.items():
     else: print('overpass failed', name, flush=True)
     time.sleep(5)
 # ---------- 4. official statistics ----------
-wd = get('https://www.wikidata.org/wiki/Special:EntityData/Q8810.json', 60)
+wd = get('https://www.wikidata.org/wiki/Special:EntityData/Q8810.json', 60) if 'stats' in ONLY else None
 if wd:
     e = json.loads(wd)['entities']['Q8810']['claims']; out = {}
     for P in ['P1082', 'P2046', 'P131', 'P17', 'P772']:
         out[P] = [{'v': c['mainsnak'].get('datavalue', {}).get('value'), 'q': {k: [x.get('datavalue', {}).get('value') for x in vv] for k, vv in c.get('qualifiers', {}).items()}, 'refs': [{k: [x.get('datavalue', {}).get('value') for x in vv] for k, vv in r.get('snaks', {}).items()} for r in c.get('references', [])][:2]} for c in e.get(P, [])]
     emit('wikidata_Q8810.json', json.dumps(out).encode())
-for u in ['https://servicios.ine.es/wstempus/js/ES/DATOS_TABLA/2871?nult=4', 'https://servicios.ine.es/wstempus/js/ES/DATOS_TABLA/2871?tip=AM&nult=4']:
+for u in [] if 'stats' not in ONLY else ['https://servicios.ine.es/wstempus/js/ES/DATOS_TABLA/2871?nult=4', 'https://servicios.ine.es/wstempus/js/ES/DATOS_TABLA/2871?tip=AM&nult=4']:
     d = get(u, 120)
     if d:
         try:
