@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
-      - run: pip install playwright==1.48.0 pillow && python -m playwright install --with-deps chromium
+      - run: pip install playwright==1.48.0 pillow pymupdf && python -m playwright install --with-deps chromium
       - name: run
         env:
           SCRIPT: ${{ github.event.inputs.script || '' }}
@@ -31,6 +31,6 @@ jobs:
         run: |
           S="${SCRIPT:-$(cat tools/verify/RUN)}"
           for s in $S; do
-            if [ "$s" != "live_site.py" ] && [ "$PART" != "a" ]; then continue; fi
+            case "$s" in live_site.py) ;; live_board.py) [ "$PART" = "a" ] || [ "$PART" = "b" ] || continue ;; *) [ "$PART" = "a" ] || continue ;; esac
             echo "##### $s part $PART"; python -u tools/verify/$s || echo "SCRIPT FAILED: $s"
           done
