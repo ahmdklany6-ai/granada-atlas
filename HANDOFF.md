@@ -413,7 +413,7 @@ data year, units and limitations; footer with the frame coordinates. Numbers in 
 | 04 Climate | Landsat 8/9 C2 L2 ST_B10 (USGS), 29 clear scenes JJA 2024–2026 ≈ 11:50 local, QA_PIXEL masking, ≥ 27 obs/pixel. **Land surface, not air.** | 90 m blocks (native 100 m), 7 classes < 40 … ≥ 51 °C; NDVI ≥ 0.4 outline | median 44.8 °C; dense built 47.8 °C; vegetated 40.9 °C; bare unbuilt land 48.4 °C (hottest) |
 | 05 Human dimension | OSM squares/pedestrian areas, parks + named public gardens ≥ 1,000 m², markets, cafés, playgrounds, libraries/community centres; GHS-POP for reach | symbols + areas; inhabited cells > 300 m from a square/park/market in pale blue | 91.9 % of modelled residents within 300 m (straight line); opportunities, **not** observed presence; no pedestrian counts; bus timetable not used (licence not stated) |
 
-**Identity page**: Hebrew / English / Spanish names, country, editable student names (red "not entered yet" until typed —
+**Identity page** (5.17: the population date is localised): Hebrew / English / Spanish names, country, editable student names (red "not entered yet" until typed —
 never invented), population 233,975 (INE Padrón, 1 Jan 2025, via Wikidata Q8810), area 88.02 km²
 (published; our OSM boundary 88.19 km²), density 2,658/km²; the unit is the **municipality
 (INE 18087)**, stated, and kept apart from the frame (≈ 326,000 modelled residents). 16 km locator with the frame;

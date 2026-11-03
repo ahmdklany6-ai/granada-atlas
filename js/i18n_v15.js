@@ -95,6 +95,7 @@
     'x13.country': ['البلد', 'מדינה', 'Country'],
     'x13.spain': ['إسبانيا', 'ספרד', 'Spain'],
     'x13.noStudents': ['أسماء الطلاب — لم تُدخل بعد', 'שמות הסטודנטים — טרם הוזנו', 'Student names — not entered yet'],
+    'x13.popDate': ['1 يناير {y}', '1 בינואר {y}', '1 Jan {y}'],
     'x13.pop': ['السكان', 'אוכלוסייה', 'Population'],
     'x13.area': ['المساحة', 'שטח', 'Area'],
     'x13.avgDen': ['متوسط الكثافة', 'צפיפות ממוצעת', 'Average density'],
