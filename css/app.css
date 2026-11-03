@@ -845,3 +845,13 @@ body.view-3d .north { display: none; } /* the map can be rotated in 3D: the nort
 .hx-pop-noimg { margin: 6px 0; padding: 10px; font-size: 12px; font-style: italic; color: var(--ink-3); background: var(--paper-2); border: 1px dashed var(--line-2); }
 @media (max-width: 600px) { .hx-pop-img img { max-height: 140px; } .hx-popup .maplibregl-popup-content { max-height: 55vh; } }
 .maplibregl-popup.hx-popup { z-index: 5; } /* above the map controls (attribution) on phones */
+/* 5.16: Exercise 1.3 city identity card — six portrait pages, audit table */
+.x13-prev { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 16px; align-items: start; }
+.x13-prev figure { margin: 0; background: var(--white); border: 1px solid var(--line); padding: 6px; }
+.x13-prev .e13-img { display: block; width: 100%; aspect-ratio: 297 / 420; min-height: 0; padding: 0; border: 0; background: var(--paper-2); cursor: zoom-in; }
+.x13-prev .e13-img canvas { display: block; width: 100%; height: auto; }
+.x13-prev figcaption { font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; margin-top: 6px; }
+.x13-frame h3 { font-size: 14px; margin: 8px 0 4px; } .x13-auto { font-style: italic; color: var(--ink-2); margin: 2px 0 6px; }
+.x13-audit summary { cursor: pointer; font-weight: 600; margin-top: 10px; }
+.x13-audit .tbl-wrap { overflow-x: auto; } .x13-tbl { border-collapse: collapse; font-size: 12px; min-width: 640px; } .x13-tbl th, .x13-tbl td { border-bottom: 1px solid var(--line); padding: 4px 6px; text-align: start; vertical-align: top; }
+.x13-prev > p { grid-column: 1 / -1; margin: 0; }

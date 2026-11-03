@@ -108,6 +108,16 @@
   P.periodKey = (k) => OLD_PERIOD[k] || k;
   P.rgba = (hex, a) => { const h = hex.replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16), Math.round((a == null ? 1 : a) * 255)].join(','); };
   P.rgb = (hex) => { const h = hex.replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; };
+  // 5.16 — Exercise 1.3 city identity card: one ramp per topic, all from the mood-board BASE colours. Sequential ramps go
+  // light → dark in one family; chartreuse appears in one class at most. The map and its legend read these arrays.
+  P.ex13 = {
+    paper: '#FFFFFF', frame: BASE.brown, muni: D.warmGrey, accent: RED,
+    density: [BASE.cream, BASE.chartreuse, BASE.khaki, RED, BASE.oxblood, BASE.brown],          // residents / km² classes
+    building: BASE.brown, open: '#FFFFFF', gap: BASE.khaki,                                         // figure-ground
+    centre: [BASE.cream, D.khakiPale, BASE.khaki, RED, BASE.oxblood], centreLine: BASE.brown, hist: RED, whc: BASE.olive, street: D.line,
+    lst: [BASE.blueGrey, BASE.lightBlue, BASE.cream, BASE.khaki, RED, BASE.oxblood, BASE.brown], veg: BASE.olive,   // °C classes (cool → hot)
+    square: RED, park: BASE.olive, market: BASE.oxblood, cafe: BASE.brown, play: BASE.khaki, civic: D.blueDeep, far: D.blueMid, ctx: '#EFEDE6',
+  };
   if (typeof module !== 'undefined' && module.exports) module.exports = P;
   else {
     root.GA = root.GA || {}; root.GA.palette = P;

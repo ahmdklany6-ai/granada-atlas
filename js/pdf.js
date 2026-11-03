@@ -2,7 +2,7 @@
    Used for printable Exercise 1.2 sheets and the combined PDF. Page sizes are in points
    (1 pt = 1/72 inch), so a sheet rendered at a known pixel density prints at true scale. */
 (function (root) {
-  const PAPER = { A3L: [1190.55, 841.89], A4L: [841.89, 595.28], A4P: [595.28, 841.89] };
+  const PAPER = { A3L: [1190.55, 841.89], A3P: [841.89, 1190.55], A4L: [841.89, 595.28], A4P: [595.28, 841.89] };
   function dataURLBytes(u) { const b = atob(u.split(',')[1]); const a = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; }
   // pages: [{ canvas, paper:'A3L', title }]
   function build(pages, meta) {

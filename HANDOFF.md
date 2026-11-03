@@ -387,3 +387,51 @@ Tests: `tests/ui_test_v14.py` sections B/C (data integrity; every switch leaves 
 the period; 13 popups per language at 1440 / 820 / 390 px; viewer; broken-image fallback; no overflow).
 Live: `tools/verify/live_515.py` (workflow_dispatch `script=live_515.py`, parts a = board, b = history).
 
+## 19. Build 5.16 — Exercise 1.3 City Identity Card (owner request of 3 Nov 2026)
+
+`js/ex13.js` was rebuilt. It draws six A3 **portrait** pages (identity + 01–05) from processed layers in `data/ex13/`
+(built by `tools/build_ex13.py`; raw inputs from `tools/verify/ex13_fetch.py` on the GitHub runner;
+independent checks in `tools/check_ex13.py` → `data/ex13/checks.json`). The brief attachment was not received in
+this session; the requirements came from the owner's message and §6.
+
+**Shared frame, stored once** (`data/ex13/frame.json`): EPSG:25830 x 440750–450750, y 4110000–4120000 (10 × 10 km), map
+250 mm → 1:40,000, grid north. Chosen because it holds 98.7 % of the municipality's built-up
+surface (GHSL 2020); 15 km would add the last 1.3 % at 1:60,000, where footprints are unreadable. Every layer is
+anchored to this corner; nothing is auto-fitted (test: same map box on all five pages, deterministic redraw).
+
+**Page layout** (same on every page): number + title + question above; 250 mm square map with north arrow, scale bar
+and scale; legend under the map (swatches = `GA.palette.ex13` arrays used by the map; numeric ranges and units);
+indicators + small stacked chart; one sentence (generated from the data, replaceable by the students' own); sources,
+data year, units and limitations; footer with the frame coordinates. Numbers in Arabic/Hebrew are wrapped in LRM marks
+(Chrome's canvas ignores isolate/embedding controls); open-ended classes use words in RTL ("more than", "below").
+
+| Map | Data (kind) | Representation | Key results |
+| --- | --- | --- | --- |
+| 01 Density | JRC GHS-POP R2023A 2020, 100 m — cells are **counts** (checked), density = count ÷ 0.01 km² (equal-area). **Modelled.** | 100 m cells, 6 classes 0–1,000 … > 30,000 residents/km² | 325,935 residents in the frame; peak 39,785/km²; 64.2 % above 10,000/km²; inside the municipality +4.0 % vs Padrón 2020 (233,648) |
+| 02 Morphology | OSM buildings (23 Oct 2026) 4 m raster; gap check GHS-BUILT-S 2020 | figure-ground, probable gaps hatched (GHSL ≥ 25 % built, OSM < 5 %) | coverage 10.9 %; 94 gap cells (0.94 km²); agreement 96.0 % |
+| 03 City centre | OSM shops, food & drink, banks/pharmacies/post, markets (Overpass 3 Nov 2026); 21 duplicates removed; no coordinate stacks | quartic KDE r = 300 m, 50 m grid, smooth bands (100–≥ 2,000 places/km²), peaks C1–C6 | C1 Centro–Sagrario 2,776/km² (563 places ≤ 300 m), inside the 1932 city; C2 Armilla (outside the municipality) 53 % of C1; Overture cross-check r = 0.97 |
+| 04 Climate | Landsat 8/9 C2 L2 ST_B10 (USGS), 29 clear scenes JJA 2024–2026 ≈ 11:50 local, QA_PIXEL masking, ≥ 27 obs/pixel. **Land surface, not air.** | 90 m blocks (native 100 m), 7 classes < 40 … ≥ 51 °C; NDVI ≥ 0.4 outline | median 44.8 °C; dense built 47.8 °C; vegetated 40.9 °C; bare unbuilt land 48.4 °C (hottest) |
+| 05 Human dimension | OSM squares/pedestrian areas, parks + named public gardens ≥ 1,000 m², markets, cafés, playgrounds, libraries/community centres; GHS-POP for reach | symbols + areas; inhabited cells > 300 m from a square/park/market in pale blue | 91.9 % of modelled residents within 300 m (straight line); opportunities, **not** observed presence; no pedestrian counts; bus timetable not used (licence not stated) |
+
+**Identity page**: Hebrew / English / Spanish names, country, editable student names (red "not entered yet" until typed —
+never invented), population 233,975 (INE Padrón, 1 Jan 2025, via Wikidata Q8810), area 88.02 km²
+(published; our OSM boundary 88.19 km²), density 2,658/km²; the unit is the **municipality
+(INE 18087)**, stated, and kept apart from the frame (≈ 326,000 modelled residents). 16 km locator with the frame;
+synthesis + research question (generated, editable).
+
+**Documented historic core**: the official Conjunto Histórico (BIC) boundary is not available as open data here and OSM
+maps UNESCO property 314 only as a site (Alhambra and Generalife outlines, Albaicín as a point). The centre map compares
+with the built-up city on the 1932 MTN50 sheet (approximate reconstruction, §18) and draws the UNESCO components.
+
+**Cross-checks** (`checks.json`): population area-weighted vs cell centres 0.07 %; coverage vector 10.89 % vs raster
+10.9 %; C1 kernel direct 2775 vs grid 2776; Plaza Nueva LST raw 43.6 °C vs build
+43.6 °C; reach nearest-distance 91.82 % vs buffer 91.9 %. The LST grid orientation was checked against
+building coverage (r = 0.15 normal vs −0.18 transposed; NDVI vs coverage −0.51).
+
+**Exports**: combined PDF (6 × A3 portrait), one PNG per page (2339 × 3307 px, 200 dpi) singly or as a ZIP, GIS ZIP
+(10 GeoJSON layers in EPSG:4326 + README with sources/licences: GHSL CC BY 4.0, OSM ODbL, Landsat public domain).
+Exports are recorded as "exported"; "Uploaded to Miro" is confirmed by hand (`GA.submission`).
+
+Not changed: OSM building data itself (the figure-ground uses the existing 4 m raster). Tests: `tests/ui_test_v15.py`;
+`ui_test_v3.py` / `ui_test_v8.py` updated (1:40,000; only student names can be missing).
+

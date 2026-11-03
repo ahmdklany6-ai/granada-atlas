@@ -212,7 +212,7 @@ def main():
             with pg.expect_download(timeout=180000) as dl: pg.click('#e13-pdf')
             pdf = open(dl.value.path(), 'rb').read(); n = len(re.findall(rb'/Type /Page\b', pdf))
             check('exercise 1.3: identity page + five maps in one PDF', n == 6, n)
-            check('exercise 1.3: same 10 km frame and 1:50,000 on every page', pg.evaluate('GA.lastEx13.den') == 50000)
+            check('exercise 1.3: same 10 km frame and 1:40,000 on every page (5.16: 250 mm square map on A3 portrait)', pg.evaluate('GA.lastEx13.scale') == 40000)
             with pg.expect_download(timeout=180000) as dl: pg.click('#e13-zip')
             z = zipfile.ZipFile(io.BytesIO(open(dl.value.path(), 'rb').read())); check('exercise 1.3: one image per page (ZIP of 6 PNGs)', len(z.namelist()) == 6, z.namelist())
             time.sleep(0.5); pg.screenshot(path=os.path.join(OUT, 'v3_ex13.png'))
