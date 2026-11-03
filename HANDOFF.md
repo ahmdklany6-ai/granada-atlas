@@ -1,4 +1,4 @@
-# Granada Atlas — handoff (state at build 5.13, 3 Nov 2026)
+# Granada Atlas — handoff (state at build 5.18, 3 Nov 2026)
 
 This document lets a new Claude Code session continue the project without the original chat. Short operating rules
 are in `CLAUDE.md`; feature and data documentation is in `README.md`.
@@ -9,12 +9,12 @@ are in `CLAUDE.md`; feature and data documentation is in `README.md`.
 | --- | --- |
 | Repository | `ahmdklany6-ai/granada-atlas` (public), branch `main` |
 | Live site | https://ahmdklany6-ai.github.io/granada-atlas/ (GitHub Pages, deploy from `main`, repo root) |
-| Current build | **5.13** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.13` asset queries) |
+| Current build | **5.18** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.18` asset queries) |
 | Latest feature work | Build 5.9: colour hierarchy, boundary layers, water/runoff, infrastructure, seasonal wind/rain, landmark geometries, print layout (see §13) |
 | Deployment | see §12 (5.8 deployment record) |
 | Data version | `2026-11-02-v8` in `data/manifest.json` (5.11: OSM trees 2 Nov 2026, ERA5 climate snapshot, history place texts) |
 
-Build history (newest first): 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
+Build history (newest first): 5.18 print at full resolution + "Map only" template · 5.17 / 5.16 Exercise 1.3 identity card · 5.15 one card format, historical extents · 5.14 current study area red on the locator · 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
 classified climate rasters, dashed fabric marks, historical red dots explained · 5.5/5.4 smooth building scales and
 street hierarchy at close zoom · 5.3 (v5) analysis page, viewers, unified Comparison, phone/iPad · v4/v3/v2 earlier.
 
@@ -435,3 +435,41 @@ Exports are recorded as "exported"; "Uploaded to Miro" is confirmed by hand (`GA
 Not changed: OSM building data itself (the figure-ground uses the existing 4 m raster). Tests: `tests/ui_test_v15.py`;
 `ui_test_v3.py` / `ui_test_v8.py` updated (1:40,000; only student names can be missing).
 
+
+## 20. Build 5.18 — print layout: no pixelation at 1:50,000, "Map only" template (owner request of 3 Nov 2026)
+
+### Pixelation at 1:50,000 — reproduced, two causes
+Reproduced with `compose()` in the test browser (A3 / A1 landscape, 150 / 300 dpi, 1:5,000 / 1:10,000 / 1:50,000) and an
+instrumented `maplibregl.Map` (requested pixel ratio, container, the canvas really created, the visible layers):
+
+| Cause | Evidence | Fix |
+| --- | --- | --- |
+| **Layer content (scale-dependent, the visible one).** A print map at 1:50,000 renders at zoom ≈ 12.2; below `LITE_Z` (12.5) buildings are the **50 m summary raster** `ly-bld_floors-ov` (`raster-resampling: nearest`) — one 1 mm square per 50 m cell on paper. | Edge profile of the map has a strong spectral peak at the 50 m period: 26–65 × the background before, 1.1–2.1 after. | `layers.js` `printPrepare(z)` + `printStyle(style, z)`: when a print map renders below 12.5, the raster is hidden and the simplified 1 m footprints (`buildings_lite`, citywide) are drawn with the same class colours; their interactive cross-fade (opacity 0 below 12.5) is replaced by the layer's own opacity. Legend unchanged (same classes). The export message says so. |
+| **Resolution cap (every scale, hidden).** MapLibre 4.7's default `maxCanvasSize` is 4096 × 4096: it silently lowered the pixel ratio (A1: canvas 4096 px for a 4825 px frame → ≈ 127 dpi; A3 300 dpi → ≈ 262 dpi) while the footer reported the requested dpi; the page was also capped at 40 Mpx (A1 300 dpi → 225 dpi), and the map was stretched into its frame with smoothing. | Spy: canvas `[4096, 1849]` for css `[3088, 1394]` × 1.5625. | `printlayout.js` `renderMap`: renders the frame at **exactly** its page-pixel size. `maxCanvasSize` = the GPU limit (min of MAX_TEXTURE_SIZE, MAX_RENDERBUFFER_SIZE, MAX_VIEWPORT_DIMS, ≤ 16384); when the frame needs more, it is rendered in overlapping tiles (96 CSS px overlap, containers in multiples of 96 CSS px so every offset is a whole device pixel) at the same zoom and stitched 1:1. A canvas smaller than requested (driver) → smaller tiles, never a lower dpi. The page canvas is probed (write + read a pixel at the far corner) instead of a fixed cap; only a browser that cannot hold it (e.g. iOS Safari ≈ 16.7 Mpx) lowers the dpi, and then the footer, the message and `pl.dpiCapped` say so. The map image is drawn at whole-pixel positions without resampling. |
+
+Scale: re-measured with MapLibre's own `unproject` on the rendered map (ground metres per CSS px × frame width) —
+1:5,006 / 1:10,012 / 1:50,062–50,063 for 1:5,000 / 1:10,000 / 1:50,000; the scale bar is drawn from the nominal scale and
+its length agrees with the measured one within 0.6 % (tested). Footer "resolution" line and message: the real map dpi
+(`wPx ÷ frame width in inches`) and the number of render tiles.
+
+Results in this environment (SwiftShader, GL limit 8192): A1 landscape 300 dpi → page 9933 × 7016 px (300 dpi, was 225),
+map 300 dpi in 2 tiles; A3 300 dpi → map 300 dpi in one 5400 px canvas (was clamped to 4095). On a desktop GPU (limit
+16384) most frames fit one canvas. Seams checked at 100 % (no offset or doubled features). Text labels in the test
+container are stubbed (no glyphs), so label placement across a tile seam has not been seen rendered; tiles overlap by
+96 CSS px so labels near a seam are placed with the same neighbours in both tiles.
+
+### "Map only (no legend or info)" template
+`st.template = 'maponly'` (`pl.tpl.maponly`, ar / he / en in `js/i18n_v16.js`): the page holds the map alone, filling the
+paper inside the margins — no title, legend, text, sources, footer or logos. Its own scale (`st.mo.denom`, default
+1:50,000) and three toggles, default on: north arrow, scale bar, study-area boundaries and numbers (off hides the
+`saved-areas*`, `sel-*`, `fabric-no`, `measure-line` layers in the print map only). PNG and PDF, A4–A1, both orientations,
+same full-resolution renderer. File name `granada_atlas_map_1-<scale>_<paper>_<orientation>`.
+
+**Saved in the browser**: all print options (paper, orientation, margin, dpi, title, subtitle, template, slots with their
+scales and captions, map-only options) persist in `localStorage['granada-atlas.print.v1']`; uploaded images are not stored
+(their slots come back empty).
+
+Test: `tests/ui_test_v16.py` (≈ 15 min): A3 / A1, 150 / 300 dpi, 1:5,000–1:50,000 — page and map at the requested dpi, no
+clamped map canvas, sharpness vs a 2× down/up cycle ≥ 0.9 (upscaled ≈ 0.7), no 50 m periodicity, measured scale ± 0.5 %,
+scale bar = measured scale, PDF embeds the full-size page; map only — page = map, white margins, no text except the scale
+bar / north arrow, toggles, A4–A1 both orientations PNG / PDF, labels ar / he / en, options restored after reload.

@@ -9,15 +9,29 @@
   const P = () => root.GA.palette;
   const PAPERS = { A4: [210, 297], A3: [297, 420], A2: [420, 594], A1: [594, 841] };
   const SCALES = [500, 1000, 2000, 2500, 5000, 10000, 25000, 50000];
-  const MAX_PAGE_PX = 40e6, MAX_TEX = 8000; // browser limits: page canvas area, WebGL map canvas side
+  // 5.18: no fixed page cap. The page canvas is probed at the requested size and lowered only if this browser cannot hold
+  // it (e.g. iOS Safari ≈ 16.7 Mpx); any reduction is stated on the page and in the message — never upscaled silently.
+  const MAX_SIDE = 32767, MAX_AREA = 268e6; // Chromium / Firefox canvas limits (side, area)
   // slots: what goes where. Templates divide the body; each slot holds one item (map, legend, section, analysis card,
   // wind rose, rainfall chart, uploaded image) with its own caption. Maps carry their own scale.
   const st = { paper: 'A3', orient: 'landscape', margin: 12, dpi: 200, title: '', subtitle: '', template: 'side', keepEmpty: false,
-    slots: [{ type: 'map', denom: 5000, caption: '' }, { type: 'none', caption: '' }, { type: 'none', caption: '' }, { type: 'none', caption: '' }], images: [] };
-  const TEMPLATES = { side: 4, top3: 4, grid: 4, single: 1 };
+    slots: [{ type: 'map', denom: 5000, caption: '' }, { type: 'none', caption: '' }, { type: 'none', caption: '' }, { type: 'none', caption: '' }], images: [],
+    mo: { denom: 50000, north: true, scalebar: true, areas: true } }; // 5.18 "map only": the map's own scale and its three marks
+  const TEMPLATES = { side: 4, top3: 4, grid: 4, single: 1, maponly: 1 };
+  // 5.18: the print options are kept in this browser (uploaded images are not stored; slots that held one become empty)
+  const KEY = 'granada-atlas.print.v1';
+  function persist() { try { const o = Object.assign({}, st, { images: undefined, slots: st.slots.map(sl => sl.type === 'image' ? { type: 'none', caption: sl.caption || '' } : Object.assign({}, sl)) }); localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) { } }
+  (function restore() { try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); if (!o) return;
+    ['paper', 'orient', 'margin', 'dpi', 'title', 'subtitle', 'template', 'keepEmpty'].forEach(k => { if (o[k] != null) st[k] = o[k]; });
+    if (!PAPERS[st.paper]) st.paper = 'A3'; if (!TEMPLATES[st.template]) st.template = 'side';
+    if (Array.isArray(o.slots)) st.slots = o.slots.slice(0, 4).map(sl => (sl && sl.type !== 'image' ? sl : { type: 'none', caption: (sl && sl.caption) || '' }));
+    if (o.mo) Object.assign(st.mo, o.mo); } catch (e) { } })();
   const pageMm = () => { const [a, b] = PAPERS[st.paper]; return st.orient === 'landscape' ? [b, a] : [a, b]; };
   const ptOf = (mm) => mm / 25.4 * 72;
-  function effDpi(dpi) { const [w, h] = pageMm(); let d = dpi; while ((w / 25.4 * d) * (h / 25.4 * d) > MAX_PAGE_PX) d -= 25; return Math.max(72, d); }
+  function canHold(w, h) { if (w > MAX_SIDE || h > MAX_SIDE || w * h > MAX_AREA) return false;
+    try { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); if (!g) return false; g.fillStyle = '#123456'; g.fillRect(w - 1, h - 1, 1, 1);
+      const px = g.getImageData(w - 1, h - 1, 1, 1).data; const ok = px[0] === 0x12 && px[2] === 0x56; c.width = c.height = 0; return ok; } catch (e) { return false; } }
+  function effDpi(dpi) { const [w, h] = pageMm(); let d = dpi; while (d > 72 && !canHold(Math.round(w / 25.4 * d), Math.round(h / 25.4 * d))) d -= 25; return Math.max(72, d); }
   // 5.13: text scales with the paper so it is readable at the intended print size (A4 body ≈ 9 pt; A1 ≈ 2.8× larger)
   const FS = { A4: 1, A3: 1.41, A2: 2, A1: 2.83 }; const fsOf = () => FS[st.paper] || 1;
   // slots actually used: empty ones are omitted by default and the others take their space (option: keep empty slots)
@@ -25,7 +39,9 @@
   const usedSlots = () => { const n = TEMPLATES[st.template]; const hasMap = st.slots.slice(0, n).some(sl => sl && sl.type === 'map'); const all = st.slots.slice(0, n).map((sl, i) => ({ sl, i })).filter(x => !(hasMap && x.sl && x.sl.type === 'legend')); return st.keepEmpty ? all : all.filter(x => x.sl && x.sl.type !== 'none'); };
   // slot rectangles in mm for the chosen template (gap and caption band scale with the paper)
   function layout() {
-    const [W, H] = pageMm(); const m = st.margin; const f = fsOf(); const head = 22 * f, foot = 16 * f; const B = { x: m, y: m + head, w: W - 2 * m, h: H - 2 * m - head - foot }; const g = 6 * Math.sqrt(f); let R;
+    const [W, H] = pageMm(); const m = st.margin; const f = fsOf();
+    if (st.template === 'maponly') return { W, H, m, head: 0, foot: 0, f, rects: [{ x: m, y: m, w: W - 2 * m, h: H - 2 * m }], mapOnly: true }; // 5.18: page = map
+    const head = 22 * f, foot = 16 * f; const B = { x: m, y: m + head, w: W - 2 * m, h: H - 2 * m - head - foot }; const g = 6 * Math.sqrt(f); let R;
     const n = usedSlots().length; const tpl = st.keepEmpty || n === TEMPLATES[st.template] ? st.template : n <= 1 ? 'single' : n === 2 ? 'pair' : st.template === 'grid' ? 'grid3' : 'side3';
     if (tpl === 'single') R = [B];
     else if (tpl === 'pair') { const w1 = B.w * 0.72, w2 = B.w - w1 - g; R = [{ x: B.x, y: B.y, w: w1, h: B.h }, { x: B.x + w1 + g, y: B.y, w: w2, h: B.h }]; }
@@ -37,19 +53,65 @@
     return { W, H, m, head, foot, f, rects: R };
   }
   // ---------- the map at a true scale ----------
-  async function renderMap(frameMm, dpi, denom) {
-    const main = root.GA.app.map; const c = main.getCenter(); const cssW = Math.round(frameMm.w / 25.4 * 96), cssH = Math.round(frameMm.h / 25.4 * 96);
-    let pr = dpi / 96; pr = Math.min(pr, MAX_TEX / cssW, MAX_TEX / cssH); const mppCss = denom * 0.0254 / 96; // ground metres per CSS px at 1:N
+  // 5.18: the map is rendered at EXACTLY the page's pixel size for its frame (wPx × hPx at `dpi`) — never at a lower
+  // resolution and stretched. MapLibre caps its canvas (default 4096 px a side; GPUs at MAX_TEXTURE_SIZE / renderbuffer /
+  // viewport limits), so when the frame needs more pixels it is rendered in overlapping tiles at the same zoom and the
+  // tiles' interiors are stitched edge to edge. Each tile canvas is checked: a smaller canvas than requested (driver limit)
+  // makes the tiles smaller, it never lowers the resolution. Tile containers are multiples of 96 CSS px, so every offset is
+  // a whole device pixel at any integer dpi (no resampling at the seams).
+  let GL_LIM = 0;
+  function glLimit() {
+    if (GL_LIM) return GL_LIM;
+    try { const gl = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl');
+      const vp = gl.getParameter(gl.MAX_VIEWPORT_DIMS); GL_LIM = Math.min(gl.getParameter(gl.MAX_TEXTURE_SIZE), gl.getParameter(gl.MAX_RENDERBUFFER_SIZE), vp[0], vp[1]); } catch (e) { GL_LIM = 4096; }
+    GL_LIM = Math.max(1024, Math.min(GL_LIM, 16384)); return GL_LIM;
+  }
+  const WS = (z) => 512 * Math.pow(2, z); // Web Mercator world size in CSS px at zoom z (MapLibre tiles are 512 px)
+  const toWorld = (ll, z) => [(ll[0] + 180) / 360 * WS(z), (1 - Math.log(Math.tan(Math.PI / 4 + ll[1] * Math.PI / 360)) / Math.PI) / 2 * WS(z)];
+  const fromWorld = (p, z) => [p[0] / WS(z) * 360 - 180, Math.atan(Math.sinh(Math.PI * (1 - 2 * p[1] / WS(z)))) * 180 / Math.PI];
+  async function renderMap(frameMm, dpi, denom, opt) {
+    opt = opt || {}; const main = root.GA.app.map; const c = main.getCenter(); const pr = dpi / 96;
+    const wPx = opt.wPx || Math.round(frameMm.w / 25.4 * dpi), hPx = opt.hPx || Math.round(frameMm.h / 25.4 * dpi);
+    const mppCss = denom * 0.0254 / 96; // ground metres per CSS px at 1:N (1 CSS px = 1/96 in on paper)
     const zoom = Math.log2(40075016.686 * Math.cos(c.lat * Math.PI / 180) / (512 * mppCss));
-    const div = document.createElement('div'); div.style.cssText = `position:fixed;left:-20000px;top:0;width:${cssW}px;height:${cssH}px;`; document.body.appendChild(div);
-    const m = new maplibregl.Map({ container: div, style: main.getStyle(), center: c, zoom, bearing: 0, pitch: 0, pixelRatio: pr, interactive: false, preserveDrawingBuffer: true, attributionControl: false, fadeDuration: 0 });
-    m.on('styleimagemissing', (e) => { try { const im = main.style && main.style.getImage && main.style.getImage(e.id); if (im) m.addImage(e.id, im.data, { pixelRatio: im.pixelRatio }); else if (e.id === 'ga-hatch') { const n = 8, d = new Uint8Array(n * n * 4); for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const o = (y * n + x) * 4, on = (x + y) % n === 0; d[o] = d[o + 1] = d[o + 2] = on ? 138 : 255; d[o + 3] = on ? 255 : 230; } m.addImage('ga-hatch', { width: n, height: n, data: d }); } } catch (err) { } });
-    await new Promise((res) => { let done = false; const fin = () => { if (!done) { done = true; res(); } }; m.once('idle', fin); setTimeout(fin, 45000); });
-    // re-measure the scale on the rendered map: ground distance across the frame's middle row / frame width on paper
-    const a = m.unproject([0, cssH / 2]), b = m.unproject([cssW, cssH / 2]); const ground = root.GA.geo.haversine([a.lng, a.lat], [b.lng, b.lat]); const measured = ground * 1000 / frameMm.w;
-    const img = document.createElement('canvas'); img.width = m.getCanvas().width; img.height = m.getCanvas().height; img.getContext('2d').drawImage(m.getCanvas(), 0, 0);
-    m.remove(); div.remove();
-    return { img, measured, mapDpi: pr * 96 }; // metres on the ground per mm on paper
+    const L = root.GA.app.L; if (L && L.printPrepare) await L.printPrepare(zoom);
+    const style = main.getStyle(); const adj = (L && L.printStyle) ? L.printStyle(style, zoom) : {};
+    if (opt.hideAreas) style.layers.forEach(l => { if (/^(saved-areas|sel-|fabric-no|measure-line)/.test(l.id)) l.layout = Object.assign({}, l.layout, { visibility: 'none' }); });
+    const out = document.createElement('canvas'); out.width = wPx; out.height = hPx; const og = out.getContext('2d'); og.imageSmoothingEnabled = false;
+    const M = 96; // CSS px of overlap rendered around every tile (labels near a seam are placed with the same neighbours)
+    const lim = glLimit(); let tiles = 0, mpp = 0;
+    const mk = (cw, ch) => { const div = document.createElement('div'); div.style.cssText = `position:fixed;left:-20000px;top:0;width:${cw}px;height:${ch}px;`; document.body.appendChild(div);
+      const m = new maplibregl.Map({ container: div, style, center: c, zoom, bearing: 0, pitch: 0, pixelRatio: pr, maxCanvasSize: [lim, lim], interactive: false, preserveDrawingBuffer: true, attributionControl: false, fadeDuration: 0, renderWorldCopies: false });
+      m.on('styleimagemissing', (e) => { try { const im = main.style && main.style.getImage && main.style.getImage(e.id); if (im) m.addImage(e.id, im.data, { pixelRatio: im.pixelRatio }); else if (e.id === 'ga-hatch') { const n = 8, d = new Uint8Array(n * n * 4); for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const o = (y * n + x) * 4, on = (x + y) % n === 0; d[o] = d[o + 1] = d[o + 2] = on ? 138 : 255; d[o + 3] = on ? 255 : 230; } m.addImage('ga-hatch', { width: n, height: n, data: d }); } } catch (err) { } });
+      return { m, div }; };
+    const idle = (m) => new Promise((res) => { let done = false; const fin = () => { if (!done) { done = true; res(); } }; m.once('idle', fin); setTimeout(fin, 60000); });
+    const cw0 = toWorld([c.lng, c.lat], zoom);
+    // tile container (CSS px, multiple of 96 → whole device px); one tile when the frame + overlap fits the limit
+    let cap = Math.floor(Math.min(lim, 4096 * Math.max(1, Math.floor(lim / 4096))) / pr / 96) * 96, done = false;
+    for (let attempt = 0; attempt < 4 && !done; attempt++) {
+      const needW = Math.ceil((wPx / pr + 2 * M) / 96) * 96, needH = Math.ceil((hPx / pr + 2 * M) / 96) * 96;
+      const cw = Math.min(needW, cap), ch = Math.min(needH, cap); const inW = Math.round((cw - 2 * M) * pr), inH = Math.round((ch - 2 * M) * pr);
+      const { m, div } = mk(cw, ch); let ok = true;
+      try {
+        if (m.getCanvas().width !== Math.round(cw * pr) || m.getCanvas().height !== Math.round(ch * pr)) { ok = false; }
+        else {
+          for (let oy = 0; oy < hPx && ok; oy += inH) for (let ox = 0; ox < wPx && ok; ox += inW) {
+            // this tile's interior starts at device (ox, oy) of the frame; its container centre in frame CSS px:
+            const ccx = (ox - M * pr) / pr + cw / 2, ccy = (oy - M * pr) / pr + ch / 2;
+            const ll = fromWorld([cw0[0] + ccx - wPx / pr / 2, cw0[1] + ccy - hPx / pr / 2], zoom);
+            const p = idle(m); m.jumpTo({ center: ll }); m.triggerRepaint(); await p;
+            if (!mpp) { const y = ch / 2; mpp = root.GA.geo.haversine(m.unproject([0, y]).toArray(), m.unproject([cw, y]).toArray()) / cw; } // MapLibre's own ground metres per CSS px
+            const sw = Math.min(inW, wPx - ox), sh = Math.min(inH, hPx - oy);
+            og.drawImage(m.getCanvas(), Math.round(M * pr), Math.round(M * pr), sw, sh, ox, oy, sw, sh); tiles++;
+          }
+        }
+      } finally { m.remove(); div.remove(); }
+      if (ok) { done = true; break; } cap = Math.max(384, Math.floor(cap / 2 / 96) * 96); tiles = 0; // the driver gave a smaller canvas: smaller tiles
+    }
+    if (!done) throw new Error(t('v16.renderFail', { d: dpi })); // never a silent upscale
+    // scale re-measured on the frame actually drawn: ground distance across its middle row / its width on paper
+    const widthMm = wPx / dpi * 25.4; const ground = mpp * wPx / pr;
+    return { img: out, measured: ground * 1000 / widthMm, mapDpi: wPx / (widthMm / 25.4), tiles, zoom, liteFootprints: !!adj.liteFootprints }; // measured: metres on the ground per mm on paper
   }
   // ---------- legend read from the live legend markup (same colours as the map) ----------
   function legendItems() {
@@ -109,10 +171,20 @@
     g.fillStyle = 'rgba(255,255,255,0.88)'; g.fillRect(X(x0 - 2 * f), X(y0 - 8 * f), X(len + 20 * f), X(12 * f)); for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#FFFFFF' : C.ink; g.fillRect(X(x0 + i * len / 4), X(y0), X(len / 4), X(1.4 * f)); } g.strokeStyle = C.ink; g.lineWidth = Math.max(1, X(0.15 * f)); g.strokeRect(X(x0), X(y0), X(len), X(1.4 * f));
     g.fillStyle = C.ink; g.font = `${X(2.6 * f)}px ${F}`; g.textAlign = 'left'; g.direction = 'ltr'; g.fillText('0', X(x0), X(y0 - 1 * f)); g.fillText(`${nf(nice)} m`, X(x0 + len + 1 * f), X(y0 + 1.4 * f)); g.font = `600 ${X(2.6 * f)}px ${F}`; g.fillText(`1:${nf(denom)}`, X(x0), X(y0 - 4.6 * f)); g.direction = rtl ? 'rtl' : 'ltr'; }
   // ---------- compose the page ----------
+  // the map frame in whole device pixels of the page, so the map image is drawn 1:1 (no resampling, no stretching)
+  const pxRect = (X, r) => { const x = Math.round(X(r.x)), y = Math.round(X(r.y)); return { x, y, w: Math.round(X(r.x + r.w)) - x, h: Math.round(X(r.y + r.h)) - y }; };
   async function compose(dpi, preview) {
     const L = layout(); const d = preview ? Math.min(dpi, 60) : effDpi(dpi); const k = d / 25.4; const F = PG.font(); const rtl = I.dir() === 'rtl'; const C = P();
     const cv = document.createElement('canvas'); cv.width = Math.round(L.W * k); cv.height = Math.round(L.H * k); const g = cv.getContext('2d'); g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, cv.width, cv.height);
     const X = (mm) => mm * k; const al = rtl ? 'right' : 'left'; const tx = (mm) => rtl ? X(L.W - mm) : X(mm); g.direction = rtl ? 'rtl' : 'ltr';
+    if (L.mapOnly) { // 5.18 "Map only": the map alone, as large as the paper allows; optional north arrow, scale bar, study areas
+      const r = L.rects[0], denom = st.mo.denom || 50000, q = pxRect(X, r); const f = L.f;
+      const m = await renderMap(r, d, denom, { wPx: q.w, hPx: q.h, hideAreas: !st.mo.areas }); g.drawImage(m.img, q.x, q.y);
+      if (st.mo.north) PG.northArrow(g, X(r.x + r.w - 8 * f), X(r.y + 4 * f), X(1) / 3.4 * f);
+      if (st.mo.scalebar) scaleBarMm(g, X, r, denom, F, rtl, f);
+      const maps = [{ n: 1, denom, measured: m.measured, mapDpi: m.mapDpi, tiles: m.tiles, rect: q, liteFootprints: m.liteFootprints }];
+      return { cv, dpi: d, maps, measured: m.measured, mapOnly: true };
+    }
     const f = L.f; g.fillStyle = C.red; g.fillRect(0, 0, cv.width, X(2 * f)); g.textAlign = al; g.fillStyle = C.ink; g.font = `700 ${X(7 * f)}px ${F}`; g.fillText(st.title || t('pl.untitled'), tx(L.m), X(L.m + 9 * f));
     g.font = `${X(3.6 * f)}px ${F}`; g.fillStyle = C.ink2; g.fillText(st.subtitle || '', tx(L.m), X(L.m + 15 * f));
     const maps = []; const srcExtra = [];
@@ -122,8 +194,8 @@
       if (sl.type === 'map') { // map card: map, then its legend directly underneath (same width), never in a side slot
         let z = f, lh = await legendUnder(g, X, { x: r.x, y: 0, w: r.w }, F, rtl, f, true, z); if (lh > r.h * 0.42) { z = Math.max(0.75 * f, f * r.h * 0.42 / lh); lh = await legendUnder(g, X, { x: r.x, y: 0, w: r.w }, F, rtl, f, true, z); }
         const lgH = lh ? lh + 3 * f : 0; r.h -= lgH; if (lgH) await legendUnder(g, X, { x: r.x, y: r.y + r.h + 3 * f, w: r.w }, F, rtl, f, false, z);
-        const m = await renderMap(r, preview ? 60 : d, sl.denom || 5000); g.drawImage(m.img, X(r.x), X(r.y), X(r.w), X(r.h)); g.strokeStyle = C.ink; g.lineWidth = Math.max(1, X(0.3)); g.strokeRect(X(r.x), X(r.y), X(r.w), X(r.h));
-        PG.northArrow(g, X(r.x + r.w - 8 * f), X(r.y + 4 * f), X(1) / 3.4 * f); scaleBarMm(g, X, r, sl.denom || 5000, F, rtl, f); maps.push({ n: n + 1, denom: sl.denom || 5000, measured: m.measured, mapDpi: m.mapDpi }); }
+        const q = pxRect(X, r); const m = await renderMap(r, d, sl.denom || 5000, { wPx: q.w, hPx: q.h }); g.drawImage(m.img, q.x, q.y); g.strokeStyle = C.ink; g.lineWidth = Math.max(1, X(0.3)); g.strokeRect(X(r.x), X(r.y), X(r.w), X(r.h));
+        PG.northArrow(g, X(r.x + r.w - 8 * f), X(r.y + 4 * f), X(1) / 3.4 * f); scaleBarMm(g, X, r, sl.denom || 5000, F, rtl, f); maps.push({ n: n + 1, denom: sl.denom || 5000, measured: m.measured, mapDpi: m.mapDpi, tiles: m.tiles, rect: q, liteFootprints: m.liteFootprints }); }
       else if (sl.type === 'legend') await drawLegend(g, X, r, F, rtl, f);
       else if (sl.type === 'section') { const s = allSections().find(x => x.s.id === sl.ref); if (s) { const prof = await root.GA.section.compute(s.s); const sc = document.createElement('canvas'); const ratio = Math.max(1, d / 96);
         root.GA.section.draw(sc, prof, Object.assign(root.GA.section.optsFor(s.s), { w: Math.round(X(r.w) / ratio), h: Math.round(X(r.h) / ratio), ratio })); g.drawImage(sc, X(r.x), X(r.y), X(r.w), X(r.h)); g.strokeStyle = C.line2; g.lineWidth = 1; g.strokeRect(X(r.x), X(r.y), X(r.w), X(r.h)); srcExtra.push('IGN MDT25 · OSM'); } }
@@ -144,16 +216,20 @@
   // ---------- page ----------
   function form() {
     const opt = (v, cur, l) => `<option value="${v}" ${String(cur) === String(v) ? 'selected' : ''}>${l}</option>`; const n = TEMPLATES[st.template];
-    while (st.slots.length < 4) st.slots.push({ type: 'none', caption: '' });
+    while (st.slots.length < 4) st.slots.push({ type: 'none', caption: '' }); const mo = st.template === 'maponly';
+    const chk = (k, l) => `<label class="chk"><input type="checkbox" data-mo="${k}" ${st.mo[k] ? 'checked' : ''}> ${l}</label>`;
     return `<div class="pl"><form class="pl-form" onsubmit="return false">
-      <label>${t('pl.title')} <input type="text" data-pl="title" value="${esc(st.title)}"></label>
-      <label>${t('pl.subtitle')} <input type="text" data-pl="subtitle" value="${esc(st.subtitle)}"></label>
+      ${mo ? '' : `<label>${t('pl.title')} <input type="text" data-pl="title" value="${esc(st.title)}"></label>
+      <label>${t('pl.subtitle')} <input type="text" data-pl="subtitle" value="${esc(st.subtitle)}"></label>`}
       <div class="pl-row"><label>${t('pl.paper')} <select data-pl="paper">${Object.keys(PAPERS).map(k => opt(k, st.paper, `${k} (${PAPERS[k][0]} × ${PAPERS[k][1]} mm)`)).join('')}</select></label>
       <label>${t('pl.orient')} <select data-pl="orient">${opt('landscape', st.orient, t('pl.landscape'))}${opt('portrait', st.orient, t('pl.portrait'))}</select></label></div>
       <div class="pl-row"><label>${t('pl.margin')} <span class="u"><input type="number" min="5" max="40" step="1" data-pl="margin" value="${st.margin}"> mm</span></label>
       <label>${t('pl.dpi')} <select data-pl="dpi">${[150, 200, 300].map(v => opt(v, st.dpi, v + ' dpi')).join('')}</select></label></div>
       <p class="fine">${t('pl.scaleVsRes')}</p>
       <label>${t('pl.template')} <select data-pl="template">${Object.keys(TEMPLATES).map(k => opt(k, st.template, t('pl.tpl.' + k))).join('')}</select></label>
+      ${mo ? `<fieldset class="pl-mo"><legend>${t('v16.moTitle')}</legend><p class="fine">${t('v16.moNote')}</p>
+        <label class="u">${t('v16.moScale')} 1 : <select data-mo="denom">${SCALES.map(v => opt(v, st.mo.denom, nf(v))).join('')}</select></label>
+        ${chk('north', t('v16.moNorth'))}${chk('scalebar', t('v16.moScalebar'))}${chk('areas', t('v16.moAreas'))}</fieldset>` : `
       <label class="chk"><input type="checkbox" data-pl="keepEmpty" ${st.keepEmpty ? 'checked' : ''}> ${t('v12.keepEmptySlots')}</label>
       <fieldset><legend>${t('pl.slots')}</legend>
         ${st.slots.slice(0, n).map((sl, i) => `<div class="pl-slot"><b class="num">${i + 1}</b><div class="pl-slot-b">
@@ -165,7 +241,7 @@
       <fieldset><legend>${t('pl.images')}</legend>
         ${st.images.map((im, i) => `<div class="pl-img"><b class="num">${t('pl.image')} ${i + 1}</b><input type="text" data-img="${i}" data-ik="caption" value="${esc(im.caption || '')}" placeholder="${esc(t('pl.imgCaption'))}"><input type="text" data-img="${i}" data-ik="source" value="${esc(im.source || '')}" placeholder="${esc(t('pl.imgSourceHint'))}"></div>`).join('')}
         <label>${t('pl.addImage')} <input type="file" accept="image/*" data-pl="image"></label>
-      </fieldset>
+      </fieldset>`}
       <p class="fine">${t('pl.viewNote')} ${t('pl.cardNote')}</p>
       <div class="pl-btns"><button class="btn" data-pl-act="preview">${t('pl.preview')}</button><button class="btn btn-primary" data-pl-act="pdf">${t('pl.pdf')}</button><button class="btn" data-pl-act="png">${t('pl.png')}</button></div>
       <p class="fine" id="pl-msg" role="status"></p></form>
@@ -177,15 +253,18 @@
     const scaleTxt = (r) => r.maps.map(m => nf(m.measured, 0)).join(', ') || '—';
     try {
       if (kind === 'preview') { const r = await compose(60, true); const box = body.querySelector('#pl-sheet'); box.innerHTML = ''; r.cv.style.width = '100%'; r.cv.style.height = 'auto'; r.cv.className = 'pl-canvas'; box.appendChild(r.cv); msg.textContent = t('pl.previewDone', { m: scaleTxt(r) }); root.GA.lastPrint = r; }
-      else { const r = await compose(st.dpi, false); const [W, H] = pageMm(); const name = `granada_atlas_${PG.slug(st.title || 'print')}_${st.paper}_${st.orient}`;
+      else { const r = await compose(st.dpi, false); const [W, H] = pageMm(); const name = r.mapOnly ? `granada_atlas_map_1-${st.mo.denom}_${st.paper}_${st.orient}` : `granada_atlas_${PG.slug(st.title || 'print')}_${st.paper}_${st.orient}`;
         if (kind === 'png') PG.download(await PG.toBlob(r.cv, 'image/png'), name + '.png'); else { const bytes = root.GA.pdf.build([{ canvas: r.cv, paper: [ptOf(W), ptOf(H)], quality: 0.92 }], { title: st.title || 'Granada Atlas print' }); root.GA.lastPrintPDF = bytes; PG.download(new Blob([bytes], { type: 'application/pdf' }), name + '.pdf'); }
-        msg.textContent = t('pl.exported', { d: r.dpi, req: st.dpi, m: scaleTxt(r) }) + (r.dpi < st.dpi ? ' ' + t('pl.dpiCapped') : ''); root.GA.lastPrint = r; }
+        const mr = r.maps.length ? ' ' + t('v16.mapRes', { md: nf(Math.min(...r.maps.map(m => m.mapDpi)), 0), n: r.maps.reduce((a, m) => a + (m.tiles || 1), 0) }) + (r.maps.some(m => m.liteFootprints) ? ' ' + t('v16.liteNote') : '') : '';
+        msg.textContent = t('pl.exported', { d: r.dpi, req: st.dpi, m: scaleTxt(r) }) + mr + (r.dpi < st.dpi ? ' ' + t('pl.dpiCapped') : ''); root.GA.lastPrint = r; }
     } catch (e) { console.error(e); msg.textContent = t('pl.failed') + ' ' + (e.message || e); } finally { busy = false; }
   }
   function render(body) {
     const redraw = () => { const keep = body.querySelector('#pl-sheet') && body.querySelector('#pl-sheet').innerHTML; body.innerHTML = form(); if (keep) body.querySelector('#pl-sheet').innerHTML = keep; };
     redraw();
-    body.onchange = async (e) => { const el = e.target;
+    body.onchange = async (e) => { await change(e); persist(); };
+    const change = async (e) => { const el = e.target;
+      if (el.dataset.mo != null) { const k = el.dataset.mo; st.mo[k] = k === 'denom' ? +el.value : el.checked; return; }
       if (el.dataset.slot != null) { const sl = st.slots[+el.dataset.slot]; const k = el.dataset.sk;
         if (k === 'item') { const [type, ref] = el.value.split(/:(.*)/s); sl.type = type; sl.ref = ref || null; if (type === 'map' && !sl.denom) sl.denom = 5000; redraw(); }
         else if (k === 'denom') sl.denom = +el.value; else sl.caption = el.value; return; }
@@ -194,10 +273,10 @@
       if (k === 'image') { const f = el.files && el.files[0]; if (f) { const img = await loadImg(URL.createObjectURL(f)); if (img) { st.images.push({ img, caption: f.name.replace(/\.[^.]+$/, ''), source: '' }); const free = st.slots.slice(0, TEMPLATES[st.template]).find(x => x.type === 'none'); if (free) { free.type = 'image'; free.ref = String(st.images.length - 1); } } } redraw(); return; }
       if (k === 'keepEmpty') { st.keepEmpty = el.checked; return; }
       st[k] = (k === 'dpi' || k === 'margin') ? +el.value : el.value; if (k === 'template') redraw(); };
-    body.oninput = (e) => { const el = e.target; if (el.dataset.pl === 'title' || el.dataset.pl === 'subtitle') st[el.dataset.pl] = el.value; };
-    body.onclick = (e) => { const mv = e.target.closest('[data-mv]'); if (mv) { const [i, dd] = mv.dataset.mv.split(':').map(Number); const j = i + dd; [st.slots[i], st.slots[j]] = [st.slots[j], st.slots[i]]; redraw(); return; }
+    body.oninput = (e) => { const el = e.target; if (el.dataset.pl === 'title' || el.dataset.pl === 'subtitle') { st[el.dataset.pl] = el.value; persist(); } };
+    body.onclick = (e) => { const mv = e.target.closest('[data-mv]'); if (mv) { const [i, dd] = mv.dataset.mv.split(':').map(Number); const j = i + dd; [st.slots[i], st.slots[j]] = [st.slots[j], st.slots[i]]; persist(); redraw(); return; }
       const b = e.target.closest('[data-pl-act]'); if (b) run(b.dataset.plAct, body); };
   }
   PG.register('print', { plate: () => t('pl.plate'), title: () => t('pl.pageTitle'), render });
-  root.GA.printLayout = { st, compose, layout, PAPERS, effDpi, TEMPLATES };
+  root.GA.printLayout = { st, compose, layout, PAPERS, effDpi, TEMPLATES, renderMap, glLimit, KEY };
 })(window);

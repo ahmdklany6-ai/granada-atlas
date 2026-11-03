@@ -405,6 +405,21 @@
       removeUser(id) { const i = userDefs.findIndex(u => u.id === id); if (i < 0) return; const d = userDefs[i]; d.remove(map); userDefs.splice(i, 1); order = order.filter(x => x !== id); delete S[id]; emit(); },
       refreshUser(id) { const d = userDefs.find(u => u.id === id); if (d && built) { d.restyle && d.restyle(map); applyVis(d); } emit(); },
       DETAIL_Z, CHORO,
+      // 5.18 print: the 50 m building raster is a speed summary for the interactive map; a print map rendered below LITE_Z
+      // (e.g. 1:50,000) draws the simplified 1 m footprints instead, with the same class colours (legend unchanged).
+      async printPrepare(z) { if (z < DETAIL_Z && BLD.some(k => S[k].on)) { try { await ensureLite(); } catch (e) { } } },
+      printStyle(style, z) {
+        const out = { liteFootprints: false }; if (!(z < LITE_Z) || lite.state !== 2) return out;
+        const on = BLD.filter(k => S[k].on); if (!on.length) return out;
+        const lt = new Set([].concat(...on.map(k => byId[k].liteLayers()))), ov = new Set(on.map(k => lid(k, 'ov')));
+        style.layers.forEach(l => {
+          if (ov.has(l.id)) { l.layout = Object.assign({}, l.layout, { visibility: 'none' }); return; }
+          if (!lt.has(l.id)) return; l.minzoom = 0; l.layout = Object.assign({}, l.layout, { visibility: 'visible' });
+          // the interactive cross-fade (opacity 0 below LITE_Z) becomes the layer's full opacity: the value at the last stop
+          Object.keys(l.paint || {}).forEach(p => { const v = l.paint[p]; if (/opacity$/.test(p) && Array.isArray(v) && v[0] === 'interpolate' && JSON.stringify(v[2]) === '["zoom"]') l.paint[p] = v[v.length - 1]; });
+          out.liteFootprints = true; });
+        return out;
+      },
     };
     return api;
   }
