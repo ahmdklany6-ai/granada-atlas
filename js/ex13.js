@@ -245,7 +245,7 @@
     y = para(ctx, `${t('e13.students')}: ${(e.students || '').trim() || t('x13.noStudents')}`, x, y, bw, o(10, { weight: 600, color: (e.students || '').trim() ? PAL().ink : PAL().red }));
     // statistics with source and year, and the unit
     const half = (bw - pt(14)) / 2; const lx = rtl ? x + half + pt(14) : x, rx = rtl ? x : x + half + pt(14); let ly = y + pt(4), ry = y + pt(4);
-    ly = para(ctx, `${t('x13.pop')}: ${iso(nf(S0.pop))} (${iso(S0.pop_date)})`, lx, ly, half, o(9.5, { weight: 700 }));
+    ly = para(ctx, `${t('x13.pop')}: ${iso(nf(S0.pop))} (${t('x13.popDate', { y: iso(S0.pop_year) })})`, lx, ly, half, o(9.5, { weight: 700 }));
     ly = para(ctx, `${t('x13.area')}: ${iso(nf(S0.area_km2, 2) + ' km²')}`, lx, ly, half, o(9.5, { weight: 700 }));
     ly = para(ctx, `${t('x13.avgDen')}: ${iso(nf(S0.density) + ' /km²')}`, lx, ly, half, o(9.5, { weight: 700 }));
     ly = para(ctx, t('x13.unitStmt', { code: iso(S0.ine_code) }), lx, ly + pt(2), half, o(8, { color: PAL().ink2 }));
