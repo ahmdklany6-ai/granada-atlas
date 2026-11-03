@@ -141,12 +141,16 @@
   }
 
   // ---------- location map: the fabric within Granada, with neighbourhoods, landmarks and the other saved fabrics ----------
-  const locLegend = () => [{ line: P.mark.boundary, w: 3.4, dash: true, label: t('v5.locThis') }, { line: P.mark.boundary, w: 2.2, dash: true, label: t('v5.locOthers') }, { line: GA.palette.grey, w: 1, dash: true, label: t('v5.locMuni') }, { line: GA.palette.line2, w: 1, label: t('v5.locBarrios') }, { dot: GA.palette.ink, label: t('v5.locLandmark') }, { line: GA.palette.blue, w: 2, label: t('v5.locRiver') }];
+  /* 5.14: the current study area is the one exception to the black marks: thicker red dashes and a larger red number */
+  const LOC_CUR = { color: P.red, width: 4.2, dash: [11, 6] }; const LOC_NUM = Math.round(22 * 1.36);
+  const locLegend = () => [{ line: LOC_CUR.color, w: LOC_CUR.width, dash: true, label: t('v13.locCurrent') }, { line: P.mark.boundary, w: 2.2, dash: true, label: t('v13.locOthers') }, { line: GA.palette.grey, w: 1, dash: true, label: t('v5.locMuni') }, { line: GA.palette.line2, w: 1, label: t('v5.locBarrios') }, { dot: GA.palette.ink, label: t('v5.locLandmark') }, { line: GA.palette.blue, w: 2, label: t('v5.locRiver') }];
   let locCache = null;
   async function locData() {
     if (!locCache) locCache = Promise.all([D.single('streets_major').catch(() => null), D.single('admin').catch(() => null), D.single('water').catch(() => null)]);
     return locCache;
   }
+  function locNumbers(a) { const all = root.GA.fabricStyle.numbered(); const cur = all.filter(x => x.id === a.id).map(x => Object.assign({}, x, { color: LOC_CUR.color, size: LOC_NUM, current: true }));
+    return cur.concat(all.filter(x => x.id !== a.id).map(x => Object.assign({}, x, { color: P.mark.number }))); }
   async function locCard(a) {
     const [maj, adm, water] = await locData(); const muni = adm && adm.features.find(f => f.properties.kind === 'municipio'); const barrios = adm ? adm.features.filter(f => f.properties.kind === 'barrio') : [];
     const others = store.get().areas.filter(x => x.id !== a.id).map(x => CMP.ringOf(x.spec)).filter(Boolean);
@@ -158,9 +162,9 @@
           { type: 'line', items: water ? water.features.filter(f => f.properties.ww === 'river').map(f => ({ g: f.geometry, stroke: GA.palette.blue, width: 1.8 })) : [] },
           { type: 'line', items: muni ? [{ g: { type: 'MultiLineString', coordinates: lines(muni.geometry) }, stroke: GA.palette.grey, width: 0.9, dash: [4, 3] }] : [] },
           { type: 'line', items: others.map(r => ({ g: { type: 'LineString', coordinates: r }, stroke: '#FFFFFF', width: 4, alpha: 0.8 })) }, // white under-stroke
-          { type: 'line', items: others.map(r => ({ g: { type: 'LineString', coordinates: r }, stroke: P.mark.boundary, width: 2.2, dash: [7, 4] })) },
-          { type: 'fill', items: [{ g: { type: 'Polygon', coordinates: [CMP.ringOf(a.spec)] }, fill: P.red, alpha: 0.06 }] }],
-        labels, fadeOutside: 0, fabricNumbers: root.GA.fabricStyle.numbered() } };
+          { type: 'line', items: others.map(r => ({ g: { type: 'LineString', coordinates: r }, stroke: P.mark.boundary, width: 2.2, dash: [7, 4] })) }],
+        /* interiors stay transparent; the current area's number is drawn last (on top) in red and larger, the others black */
+        labels, fadeOutside: 0, fabricNumbers: locNumbers(a) } };
   }
   // 5.13: "Show all areas" (default on) frames every saved study area, so every boundary and number is on the map; off, the
   // map shows the 3.6 km around this area and names the areas that fall outside it (never silently dropped)
@@ -169,7 +173,7 @@
   function outsideFrame(a, b, f, w, h) { const out = []; root.GA.fabricStyle.numbered().forEach(x => { const U = MC.ringUTM(x.ring); const inside = U.some(p => Math.abs(p[0] - f.center[0]) <= w / 2 * f.mpp && Math.abs(p[1] - f.center[1]) <= h / 2 * f.mpp); if (!inside) out.push(x.no); }); return out; }
   async function drawLoc(cv, a, w, h, ratio) {
     const b = board(a.id); const card = await locCard(a); const ring = CMP.ringOf(a.spec); const f = MC.fit(locFrame(a, b), w, h, 0.09); // room for the numbers above the top-right corners
-    GAL.drawCard(cv, { ring, style: { width: 3.4 } }, card, { center: f.center, mpp: f.mpp, w, h, ratio }); card.outside = outsideFrame(a, b, f, w, h); card.frame = f; return card;
+    GAL.drawCard(cv, { ring, style: LOC_CUR }, card, { center: f.center, mpp: f.mpp, w, h, ratio }); card.outside = outsideFrame(a, b, f, w, h); card.frame = f; return card;
   }
 
   // ---------- painting (lazily, when each figure scrolls into view) ----------
@@ -228,7 +232,7 @@
     if (btn.dataset.libOpen) return root.GA.library.openEditor(btn.dataset.libOpen);
     if (btn.dataset.ref) return root.GA.library.openRef(btn.dataset.ref);
     if (btn.dataset.apCard) { const c = state.cards.find(x => x.id === btn.dataset.apCard); return root.GA.viewer.map({ card: c, X: state.X, ring: state.X.ring, title: c.title, subtitle: a.name, slug: c.id + '_' + PG.slug(a.name) }); }
-    if (btn.dataset.apLoc != null) { const card = await locCard(a); return root.GA.viewer.map({ card, X: state.X, ring: CMP.ringOf(a.spec), style: { width: 3.4 }, title: t('v5.locTitle'), subtitle: a.name, slug: 'location_' + PG.slug(a.name), mpp: null }); }
+    if (btn.dataset.apLoc != null) { const card = await locCard(a); return root.GA.viewer.map({ card, X: state.X, ring: CMP.ringOf(a.spec), style: LOC_CUR, fitRings: locFrame(a, board(a.id)), title: t('v5.locTitle'), subtitle: a.name, slug: 'location_' + PG.slug(a.name), mpp: null }); }
     if (btn.dataset.apChart) { const c = state.cards.find(x => x.id === btn.dataset.apChart); return root.GA.viewer.html({ title: c.title, subtitle: a.name, html: `<div class="ch-big">${GAL.chartSVG(c.chart)}</div><ul class="find">${(c.find || []).map(f => `<li>${f}</li>`).join('')}</ul>` }); }
     if (btn.dataset.apSec) return root.GA.sectionView.open(a.id, btn.dataset.apSec);
     if (btn.dataset.apHist) { const s = state.hist && state.hist[btn.dataset.apHist]; if (!s || !s.canvas) return; const H = X.HIST.find(x => x.id === btn.dataset.apHist); return root.GA.viewer.image({ title: t('hist.' + H.id), subtitle: histDate(H, s.info) + ' · IGN', src: s.canvas.toDataURL('image/jpeg', 0.92), meta: `<p class="fine">${t('fb.histNote')}</p>` }); }

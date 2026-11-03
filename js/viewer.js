@@ -82,7 +82,7 @@
     const stage = sh.el.querySelector('.vw-stage'), cv = sh.el.querySelector('.vw-cv'), pin = sh.el.querySelector('.vw-pin'), info = sh.el.querySelector('.vw-info');
     const rings = o.rings || [{ ring: o.ring, style: o.style }];
     let st = { cx: 0, cy: 0, mpp: 1 }, fit0 = null; const size = () => [stage.clientWidth, stage.clientHeight];
-    function reset() { const [w, h] = size(); const f = MC.fit(rings.map(r => r.ring), w, h, 0.08); fit0 = f; st = { cx: f.center[0], cy: f.center[1], mpp: o.mpp || f.mpp }; draw(); }
+    function reset() { const [w, h] = size(); const f = MC.fit(o.fitRings || rings.map(r => r.ring), w, h, 0.08); /* 5.14: o.fitRings frames more (locator: every saved area) */ fit0 = f; st = { cx: f.center[0], cy: f.center[1], mpp: o.mpp || f.mpp }; draw(); }
     function draw() {
       const [w, h] = size(); if (!w || !h) return; cv.style.transform = '';
       GAL.drawCard(cv, { ring: rings[0].ring, style: rings[0].style }, card, { center: [st.cx, st.cy], mpp: st.mpp, w, h, overlays: (o.overlays || []).concat(rings.slice(1).map(r => ({ coords: r.ring, color: (r.style && r.style.color) || GA.palette.red, width: 2, dash: r.style && r.style.dash }))) });
