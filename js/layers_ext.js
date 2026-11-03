@@ -18,7 +18,7 @@
     const legImg = (url, alt) => `<img class="lg-img" src="${esc(url)}" alt="${esc(alt || '')}" loading="lazy" onerror="this.replaceWith(document.createTextNode(''))">`;
     // classified rasters: tiles and legend come from the same class table (js/rasterclass.js)
     const RC = root.GA.rasterClass; RC.register();
-    const rcLegend = (scheme, opts) => `<ul class="lg">${RC.legendItems(scheme, opts).map(i => i.hatch ? `<li><i class="sw hatch"></i><span>${i.label}</span></li>` : i.line ? swl(i.line, i.w || 2, i.label) : sw(i.sw, i.label)).join('')}</ul>`;
+    const rcLegend = (scheme, opts) => `<ul class="lg">${RC.legendItems(scheme, opts).map(i => i.hatch ? `<li><i class="sw hatch"></i><span>${i.label}</span></li>` : i.line ? swl(i.line, i.w || 2, i.label) : sw(i.sw, i.label, i.border ? 'bd' : '')).join('')}</ul>`;
     const kv = (rows) => `<table>${rows.filter(r => r[1] != null && r[1] !== '').map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>`;
     const defs = [];
 

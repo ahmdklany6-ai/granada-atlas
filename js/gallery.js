@@ -178,7 +178,7 @@
   function legendHTML(items) {
     return `<ul class="lg">${items.map(i => {
       let sw = '';
-      if (i.hatch) sw = '<i class="sw hatch"></i>'; else if (i.sw) sw = `<i class="sw" style="background:${i.sw}${i.alpha != null ? `;opacity:${i.alpha}` : ''}"></i>`; // swatch drawn at the map's opacity
+      if (i.hatch) sw = '<i class="sw hatch"></i>'; else if (i.sw) sw = `<i class="sw" style="background:${i.sw}${i.alpha != null ? `;opacity:${i.alpha}` : ''}${i.border ? `;box-shadow:inset 0 0 0 1px ${GA.palette.line2}` : ''}"></i>`; // swatch drawn at the map's opacity
       else if (i.line) sw = `<i class="sw ln" style="border-top:${Math.max(1, i.w || 1)}px ${i.dash ? 'dashed' : 'solid'} ${i.line}"></i>`;
       else if (i.dot) sw = `<i class="sw dot ${i.shape || ''}" style="background:${i.dot}"></i>`;
       else if (i.ramp) sw = `<i class="sw ramp" style="background:linear-gradient(90deg,rgb(${i.ramp[0].slice(0, 3)}),rgb(${i.ramp[1].slice(0, 3)}))"></i>`;
@@ -188,7 +188,7 @@
   function chartSVG(ch) {
     if (!ch || !ch.items.length) return '';
     if (ch.kind === 'stack') {
-      let x = 0; const segs = ch.items.filter(i => i.v > 0.0005).map(i => { const w = i.v * 100; const s = `<rect x="${x}" y="0" width="${w}" height="10" fill="${i.col}" ${i.key ? `data-hl="${esc(i.key)}"` : ''}><title>${esc(i.label.replace(/<[^>]+>/g, ''))}: ${pct(i.v, 1)}</title></rect>`; x += w; return s; }).join('');
+      let x = 0; const segs = ch.items.filter(i => i.v > 0.0005).map(i => { const w = i.v * 100; const s = `<rect x="${x}" y="0" width="${w}" height="10" fill="${i.col}" stroke="${GA.palette.line2}" stroke-width="0.15" ${i.key ? `data-hl="${esc(i.key)}"` : ''}><title>${esc(i.label.replace(/<[^>]+>/g, ''))}: ${pct(i.v, 1)}</title></rect>`; x += w; return s; }).join('');
       return `<figure class="ch"><svg viewBox="0 0 100 10" preserveAspectRatio="none" class="stack" role="img">${segs}</svg></figure>`;
     }
     const max = Math.max(...ch.items.map(i => i.v), 1e-9);

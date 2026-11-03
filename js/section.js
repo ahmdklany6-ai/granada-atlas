@@ -431,9 +431,9 @@
     const u = prof.pts.map(U); const sgn = prof.look === 'right' ? -1 : 1; const off = (dd) => u.map((p, i) => { const a = u[Math.max(0, i - 1)], b = u[Math.min(u.length - 1, i + 1)]; const L0 = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; return [p[0] - (b[1] - a[1]) / L0 * sgn * dd, p[1] + (b[0] - a[0]) / L0 * sgn * dd]; });
     pt.path(u.concat(off(prof.depth || 40).reverse()).map(P), { fill: SP.locBand, alpha: 0.55, close: true });
     // study areas: dashed outline, plain number
-    (o.areas || []).forEach(ar => { const R = ar.ring.map(U).map(P); pt.path(R, { stroke: GA.palette.ink2, lw: 1.1, dash: [4, 3], close: true }); // number centred above the top edge, plain red with a white halo (same numbering as every other map)
-      const top = Math.min(...R.map(q => q[1])); const tx = GA.fabricStyle.topCentre(R.map(q => q[0]), R.map(q => -q[1]));
-      pt.text(String(ar.no), tx, top - 4, { font, size: fs, weight: 700, align: 'center', color: RED, halo: '#FFFFFF' }); });
+    (o.areas || []).forEach(ar => { const R = ar.ring.map(U).map(P); pt.path(R, { stroke: '#FFFFFF', lw: 3.4, alpha: 0.85, close: true }); pt.path(R, { stroke: GA.palette.mark.boundary, lw: 2, dash: [6, 4], close: true });
+      // 5.13: black dashed boundary; plain bold number just above its top-right corner (same numbering as every other map)
+      const c = GA.fabricStyle.topRight(R); pt.text(String(ar.no), Math.min(box.x + box.w - fs, c.x), Math.max(box.y + fs * 1.2, c.y - 4), { font, size: Math.round(fs * 1.3), weight: 800, align: 'center', color: GA.palette.mark.number, halo: '#FFFFFF' }); });
     const L = u.map(P); pt.path(L, { stroke: INK, lw: 2.2, cap: 'round' });
     // street detail: the part of the line shown in the drawing, in red
     if (prof.window) { const plw = polyline(prof.pts); const seg = []; for (let k = 0; k <= 40; k++) seg.push(P(at(plw, prof.window.r0 + (prof.window.r1 - prof.window.r0) * k / 40))); pt.path(seg, { stroke: RED, lw: 5, cap: 'round' }); }

@@ -62,7 +62,8 @@
           <p class="fine">${shapeLabel(a)} · <span dir="ltr">${(G.ringArea(X0.ring) / 1e4).toFixed(2)} ha</span>${X0.extPending ? ` · <span class="spin"></span> ${t('v4.extPending')}` : ''}</p>
         </div>
         <figure class="ap-loc"><button type="button" class="ap-map ap-locmap" data-ap-loc aria-label="${esc(t('v5.enlargeMap') + ': ' + t('v5.locTitle'))}"><canvas id="ap-loc"></canvas><span class="enl" aria-hidden="true">⤢ ${t('v5.enlargeMap')}</span></button>
-          <figcaption><ul class="lg">${locLegend().map(i => GAL.legendHTML([i]).replace(/^<ul class="lg">|<\/ul>$/g, '')).join('')}</ul></figcaption></figure>
+          <figcaption><ul class="lg">${locLegend().map(i => GAL.legendHTML([i]).replace(/^<ul class="lg">|<\/ul>$/g, '')).join('')}</ul>
+            <label class="chk"><input type="checkbox" data-fb-locall ${b.locAll !== false ? 'checked' : ''}> ${t('v12.showAll')}</label><p class="fine" id="ap-loc-out" role="status"></p></figcaption></figure>
       </header>
       <nav class="ap-toc" aria-label="${esc(t('v5.sections'))}">${visible.map(k => `<a href="#ap-${k}" data-toc="${k}">${t('v5.th.' + k)}</a>`).join('')}</nav>`;
     visible.forEach((k, i) => {
@@ -140,7 +141,7 @@
   }
 
   // ---------- location map: the fabric within Granada, with neighbourhoods, landmarks and the other saved fabrics ----------
-  const locLegend = () => [{ line: P.red, w: 2.6, dash: true, label: t('v5.locThis') }, { line: GA.palette.ink3, w: 1.5, dash: true, label: t('v5.locOthers') }, { line: GA.palette.grey, w: 1, dash: true, label: t('v5.locMuni') }, { line: GA.palette.line2, w: 1, label: t('v5.locBarrios') }, { dot: GA.palette.ink, label: t('v5.locLandmark') }, { line: GA.palette.blue, w: 2, label: t('v5.locRiver') }];
+  const locLegend = () => [{ line: P.mark.boundary, w: 3.4, dash: true, label: t('v5.locThis') }, { line: P.mark.boundary, w: 2.2, dash: true, label: t('v5.locOthers') }, { line: GA.palette.grey, w: 1, dash: true, label: t('v5.locMuni') }, { line: GA.palette.line2, w: 1, label: t('v5.locBarrios') }, { dot: GA.palette.ink, label: t('v5.locLandmark') }, { line: GA.palette.blue, w: 2, label: t('v5.locRiver') }];
   let locCache = null;
   async function locData() {
     if (!locCache) locCache = Promise.all([D.single('streets_major').catch(() => null), D.single('admin').catch(() => null), D.single('water').catch(() => null)]);
@@ -156,13 +157,19 @@
         layers: [{ type: 'line', items: barrios.map(f => ({ g: { type: 'MultiLineString', coordinates: lines(f.geometry) }, stroke: GA.palette.line2, width: 0.8 })) },
           { type: 'line', items: water ? water.features.filter(f => f.properties.ww === 'river').map(f => ({ g: f.geometry, stroke: GA.palette.blue, width: 1.8 })) : [] },
           { type: 'line', items: muni ? [{ g: { type: 'MultiLineString', coordinates: lines(muni.geometry) }, stroke: GA.palette.grey, width: 0.9, dash: [4, 3] }] : [] },
-          { type: 'line', items: others.map(r => ({ g: { type: 'LineString', coordinates: r }, stroke: GA.palette.ink3, width: 1.4, dash: [3, 2] })) },
+          { type: 'line', items: others.map(r => ({ g: { type: 'LineString', coordinates: r }, stroke: '#FFFFFF', width: 4, alpha: 0.8 })) }, // white under-stroke
+          { type: 'line', items: others.map(r => ({ g: { type: 'LineString', coordinates: r }, stroke: P.mark.boundary, width: 2.2, dash: [7, 4] })) },
           { type: 'fill', items: [{ g: { type: 'Polygon', coordinates: [CMP.ringOf(a.spec)] }, fill: P.red, alpha: 0.06 }] }],
         labels, fadeOutside: 0, fabricNumbers: root.GA.fabricStyle.numbered() } };
   }
+  // 5.13: "Show all areas" (default on) frames every saved study area, so every boundary and number is on the map; off, the
+  // map shows the 3.6 km around this area and names the areas that fall outside it (never silently dropped)
+  function locFrame(a, b) { const ring = CMP.ringOf(a.spec); const c = G.centroidLL(ring); const rings = [G.square(c, 3600)];
+    if (!b || b.locAll !== false) store.get().areas.forEach(x => { const r = CMP.ringOf(x.spec); if (r) rings.push(r); }); return rings; }
+  function outsideFrame(a, b, f, w, h) { const out = []; root.GA.fabricStyle.numbered().forEach(x => { const U = MC.ringUTM(x.ring); const inside = U.some(p => Math.abs(p[0] - f.center[0]) <= w / 2 * f.mpp && Math.abs(p[1] - f.center[1]) <= h / 2 * f.mpp); if (!inside) out.push(x.no); }); return out; }
   async function drawLoc(cv, a, w, h, ratio) {
-    const card = await locCard(a); const ring = CMP.ringOf(a.spec); const c = G.centroidLL(ring); const f = MC.fit([G.square(c, 3600)], w, h, 0.02);
-    GAL.drawCard(cv, { ring, style: { color: P.red, width: 3 } }, card, { center: f.center, mpp: f.mpp, w, h, ratio }); return card;
+    const b = board(a.id); const card = await locCard(a); const ring = CMP.ringOf(a.spec); const f = MC.fit(locFrame(a, b), w, h, 0.09); // room for the numbers above the top-right corners
+    GAL.drawCard(cv, { ring, style: { width: 3.4 } }, card, { center: f.center, mpp: f.mpp, w, h, ratio }); card.outside = outsideFrame(a, b, f, w, h); card.frame = f; return card;
   }
 
   // ---------- painting (lazily, when each figure scrolls into view) ----------
@@ -172,27 +179,43 @@
     const jobs = [];
     body.querySelectorAll('canvas[data-ap-cv]').forEach(cv => jobs.push([cv, () => { const c = state.cards.find(k => k.id === cv.dataset.apCv); try { GAL.drawCard(cv, { ring: X0.ring }, c, { center: v.center, mpp: v.mpp, w: cw, h: ch }); } catch (e) { } }]));
     body.querySelectorAll('canvas[data-ap-seccv]').forEach(cv => jobs.push([cv, () => { const s = (a.sections || []).find(x => x.id === cv.dataset.apSeccv); if (!s) return; SEC.compute(s, { floorH: s.floorH || 3 }).then(p => SEC.draw(cv, p, Object.assign({ w: Math.min(1400, body.clientWidth - 40), h: Math.min(560, Math.round((body.clientWidth - 40) * 0.42)) }, SEC.optsFor(s)))).catch(e => { cv.replaceWith(Object.assign(document.createElement('p'), { className: 'note', textContent: e.message })); }); }]));
-    const loc = body.querySelector('#ap-loc'); if (loc) { const fw = loc.parentElement.parentElement.clientWidth || 560; drawLoc(loc, a, Math.max(280, fw), Math.max(260, Math.round(Math.max(280, fw) * 0.72)), undefined).catch(() => { }); }
+    const loc = body.querySelector('#ap-loc'); if (loc) { const fw = loc.parentElement.parentElement.clientWidth || 560; drawLoc(loc, a, Math.max(280, fw), Math.max(260, Math.round(Math.max(280, fw) * 0.72)), undefined).then(card => { const o = body.querySelector('#ap-loc-out'); if (o) o.textContent = card.outside && card.outside.length ? t('v12.outside', { n: card.outside.join(', ') }) : ''; }).catch(() => { }); }
     const done = new WeakSet(); const run = (cv) => { if (done.has(cv)) return; done.add(cv); const j = jobs.find(x => x[0] === cv); j && j[1](); };
     if ('IntersectionObserver' in root) { const io = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { run(e.target); io.unobserve(e.target); } }), { rootMargin: '400px 0px' }); jobs.forEach(([cv]) => io.observe(cv)); state.io = io; }
     else jobs.forEach(([cv]) => run(cv));
     state.paintAllNow = () => jobs.forEach(([cv]) => run(cv)); state.view = { center: v.center, mpp: v.mpp };
   }
+  // 5.13: historical snapshots are loaded once (also by the PDF export, which waits for them) and every image is checked:
+  // IGN answers PNOA2024 and PNOA2023 over Granada with a plain white JPEG (no flight coverage — checked 3 Nov 2026), so a
+  // blank image is never shown or exported as a photograph. PNOA falls back to the most recent flight that has imagery
+  // here (named with its real year); any other blank or failed image becomes an explicit "image unavailable" frame.
+  const PNOA_CHAIN = ['PNOA2024', 'PNOA2023', 'PNOA2022', 'PNOA2021', 'PNOA2020', 'PNOA2019'];
+  function blankness(im) { // null when the pixels cannot be read (cross-origin); true when one colour / transparent
+    try { const c = document.createElement('canvas'); c.width = 48; c.height = 48; const g = c.getContext('2d'); g.drawImage(im, 0, 0, 48, 48); const d = g.getImageData(0, 0, 48, 48).data;
+      let n = 0, s1 = 0, s2 = 0, a = 0; for (let i = 0; i < d.length; i += 4) { const L = 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2]; s1 += L; s2 += L * L; a += d[i + 3]; n++; }
+      const sd = Math.sqrt(Math.max(0, s2 / n - (s1 / n) * (s1 / n))); return a / n < 8 || sd < 1.5; } catch (e) { return null; }
+  }
+  function histBox() { const U = state.X.ring.map(p => PJ.EPSG25830.forward(p)); const pad = 60; return { U, x0: Math.min(...U.map(p => p[0])) - pad, x1: Math.max(...U.map(p => p[0])) + pad, y0: Math.min(...U.map(p => p[1])) - pad, y1: Math.max(...U.map(p => p[1])) + pad }; }
+  async function loadHistOne(hk) {
+    const H = X.HIST.find(x => x.id === hk); const B = histBox(); const { x0, x1, y0, y1, U } = B; const w = 640, hh = Math.round(w * (y1 - y0) / (x1 - x0)); const c = G.centroidLL(state.X.ring);
+    const url = (layer) => `${H.url}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=${layer}&STYLES=&SRS=EPSG:25830&BBOX=${[x0, y0, x1, y1].map(v => v.toFixed(1)).join(',')}&WIDTH=${w}&HEIGHT=${hh}&FORMAT=${encodeURIComponent(H.fmt)}`;
+    const chain = hk === 'pnoa2024' ? PNOA_CHAIN : [H.layer]; const skipped = []; let im = null, used = null, err = null;
+    for (const layer of chain) { try { const m = await X.loadImage(url(layer), 40000); if (blankness(m) === true) { skipped.push(layer); continue; } im = m; used = layer; break; } catch (e) { err = e.message; skipped.push(layer); } }
+    const info = await X.histInfo(H, c).catch(() => ({}));
+    const s = { info, box: { x0, y0, x1, y1 }, used, skipped, w, hh };
+    if (!im) { s.unavailable = skipped.length && !err ? t('v12.histBlank', { l: skipped.join(', ') }) : t('v12.histFailed', { e: err || '—' }); return s; }
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = hh; const ctx = cv.getContext('2d'); ctx.drawImage(im, 0, 0);
+    root.GA.fabricStyle.strokeRing(ctx, U.map(p => [(p[0] - x0) / (x1 - x0) * w, (y1 - p[1]) / (y1 - y0) * hh]), { width: 3 }); // black dashed over a white under-stroke (legible on photographs)
+    s.canvas = cv; if (used !== H.layer) { s.year = used.replace(/\D/g, ''); s.note = t('v12.pnoaFallback', { y: s.year, l: skipped.join(', ') }); }
+    return s;
+  }
+  async function ensureHistory() { if (!state.hist) state.hist = {}; await Promise.all(HIST_SNAP.map(async hk => { if (!state.hist[hk]) state.hist[hk] = loadHistOne(hk); state.hist[hk] = await state.hist[hk]; })); return state.hist; }
   async function loadHistory(a, body) {
-    const U = state.X.ring.map(p => PJ.EPSG25830.forward(p)); const pad = 60;
-    const x0 = Math.min(...U.map(p => p[0])) - pad, x1 = Math.max(...U.map(p => p[0])) + pad, y0 = Math.min(...U.map(p => p[1])) - pad, y1 = Math.max(...U.map(p => p[1])) + pad;
-    const w = 640, hh = Math.round(w * (y1 - y0) / (x1 - x0)); const c = G.centroidLL(state.X.ring);
-    if (!state.hist) state.hist = {};
-    await Promise.all(HIST_SNAP.map(async hk => {
-      const H = X.HIST.find(x => x.id === hk); const fig = body.querySelector(`[data-hist="${hk}"]`); if (!fig) return;
-      try {
-        if (!state.hist[hk]) { const url = `${H.url}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=${H.layer}&STYLES=&SRS=EPSG:25830&BBOX=${[x0, y0, x1, y1].map(v => v.toFixed(1)).join(',')}&WIDTH=${w}&HEIGHT=${hh}&FORMAT=${encodeURIComponent(H.fmt)}`; const [im, info] = await Promise.all([X.loadImage(url, 40000), X.histInfo(H, c).catch(() => ({}))]); state.hist[hk] = { im, info, box: { x0, y0, x1, y1 } }; }
-        const s = state.hist[hk]; const cv = document.createElement('canvas'); cv.width = w; cv.height = hh; const ctx = cv.getContext('2d'); ctx.drawImage(s.im, 0, 0);
-        ctx.strokeStyle = P.red; ctx.lineWidth = 2.5; ctx.beginPath(); U.forEach((p, i) => { const q = [(p[0] - x0) / (x1 - x0) * w, (y1 - p[1]) / (y1 - y0) * hh]; i ? ctx.lineTo(...q) : ctx.moveTo(...q); }); ctx.closePath(); ctx.stroke();
-        s.canvas = cv; const slot = fig.querySelector('.hist-img'); slot.innerHTML = ''; slot.appendChild(cv); slot.insertAdjacentHTML('beforeend', `<span class="enl" aria-hidden="true">⤢ ${t('v5.enlargeImage')}</span>`);
-        fig.querySelector('.hist-date').textContent = histDate(H, s.info);
-      } catch (e) { const slot = fig.querySelector('.hist-img'); if (slot) slot.innerHTML = `<p class="note">${esc(e.message)}</p>`; }
-    }));
+    await ensureHistory();
+    HIST_SNAP.forEach(hk => { const H = X.HIST.find(x => x.id === hk); const fig = body.querySelector(`[data-hist="${hk}"]`); if (!fig) return; const s = state.hist[hk]; const slot = fig.querySelector('.hist-img'); if (!slot) return;
+      if (!s.canvas) { slot.innerHTML = `<div class="hist-na" role="note"><b>${t('v12.imgUnavailable')}</b><span>${esc(s.unavailable || '')}</span></div>`; fig.querySelector('.hist-date').textContent = histDate(H, s.info); return; }
+      slot.innerHTML = ''; slot.appendChild(s.canvas); slot.insertAdjacentHTML('beforeend', `<span class="enl" aria-hidden="true">⤢ ${t('v5.enlargeImage')}</span>`);
+      fig.querySelector('.hist-date').textContent = (s.year ? 'PNOA ' + s.year : histDate(H, s.info)); if (s.note) { const n = fig.querySelector('.hist-note') || fig.appendChild(Object.assign(document.createElement('p'), { className: 'fine hist-note' })); n.textContent = s.note; } });
   }
   const histDate = (H, info) => { info = info || {}; if (H.kind === 'photo') return (info.flights && info.flights.length ? t('fb.flight') + ' ' + info.flights.filter(y => H.period.includes(y) || (y >= H.period.slice(0, 4) && y <= H.period.slice(-4))).join(', ') : '') || H.period; return (info.year ? t('fb.edition') + ' ' + info.year : H.period) + (info.sheet ? ' · ' + t('ly3.sheet') + ' ' + info.sheet : ''); };
 
@@ -205,7 +228,7 @@
     if (btn.dataset.libOpen) return root.GA.library.openEditor(btn.dataset.libOpen);
     if (btn.dataset.ref) return root.GA.library.openRef(btn.dataset.ref);
     if (btn.dataset.apCard) { const c = state.cards.find(x => x.id === btn.dataset.apCard); return root.GA.viewer.map({ card: c, X: state.X, ring: state.X.ring, title: c.title, subtitle: a.name, slug: c.id + '_' + PG.slug(a.name) }); }
-    if (btn.dataset.apLoc != null) { const card = await locCard(a); return root.GA.viewer.map({ card, X: state.X, ring: CMP.ringOf(a.spec), style: { color: P.red, width: 3 }, title: t('v5.locTitle'), subtitle: a.name, slug: 'location_' + PG.slug(a.name), mpp: null }); }
+    if (btn.dataset.apLoc != null) { const card = await locCard(a); return root.GA.viewer.map({ card, X: state.X, ring: CMP.ringOf(a.spec), style: { width: 3.4 }, title: t('v5.locTitle'), subtitle: a.name, slug: 'location_' + PG.slug(a.name), mpp: null }); }
     if (btn.dataset.apChart) { const c = state.cards.find(x => x.id === btn.dataset.apChart); return root.GA.viewer.html({ title: c.title, subtitle: a.name, html: `<div class="ch-big">${GAL.chartSVG(c.chart)}</div><ul class="find">${(c.find || []).map(f => `<li>${f}</li>`).join('')}</ul>` }); }
     if (btn.dataset.apSec) return root.GA.sectionView.open(a.id, btn.dataset.apSec);
     if (btn.dataset.apHist) { const s = state.hist && state.hist[btn.dataset.apHist]; if (!s || !s.canvas) return; const H = X.HIST.find(x => x.id === btn.dataset.apHist); return root.GA.viewer.image({ title: t('hist.' + H.id), subtitle: histDate(H, s.info) + ' · IGN', src: s.canvas.toDataURL('image/jpeg', 0.92), meta: `<p class="fine">${t('fb.histNote')}</p>` }); }
@@ -226,6 +249,7 @@
     const el = e.target;
     if (el.dataset.fbCap) { b.captions[el.dataset.fbCap] = el.value; store.save(); }
     if (el.dataset.fbTxt) { b[el.dataset.fbTxt] = el.value; store.save(); }
+    if (el.dataset.fbLocall != null) { b.locAll = el.checked; store.save(); render(body, a.id, true); }
     if (el.dataset.apTopic) { const [th, tp] = el.dataset.apTopic.split(':'); const off = b.off[th] || []; b.off[th] = el.checked ? off.filter(x => x !== tp) : off.concat([tp]); store.save(); render(body, a.id, true); }
     if (el.dataset.fbQ != null) { b.questions[+el.dataset.fbQ][el.dataset.f] = el.value; store.save(); }
     if (el.dataset.fbR != null) { b.responses[+el.dataset.fbR][el.dataset.f] = el.value; store.save(); }
@@ -238,42 +262,111 @@
   function setEdit(on) { edit = !!on; if (state && state.body) render(state.body, state.id, true); const btn = document.getElementById('ap-edit'); if (btn) { btn.setAttribute('aria-pressed', String(edit)); btn.textContent = edit ? t('v5.doneEditing') : t('v5.editMode'); } }
   function compare(id) { const p = store.get(); p.compare = p.compare || { ids: [] }; if (!p.compare.ids.includes(id)) p.compare.ids.push(id); store.save(); PG.close(); root.GA.app && root.GA.app.openWorkspace && root.GA.app.openWorkspace('compare'); }
 
-  // ---------- composed A3 pages for export ----------
+  // ---------- composed A3 pages for export (5.13) ----------
+  // Each result map is exported as a complete panel: map at print resolution (with its scale bar, north arrow, study-area
+  // boundary and number), the legend from the same card definition the map uses, units and indicators, the chart, the
+  // short findings, the source and date, and the method / limits. Two panels per A3 page. Text is never below ~9 pt.
+  // Sections and topics without content are omitted unless "Include empty sections" is ticked; the identity page lists
+  // what was omitted and why.
   const DPI = 150; const A3 = [420, 297];
-  async function blockCanvas(k, a, b) {
-    const S = PG.sheet(A3[0], A3[1], DPI); const { cv, ctx, W, H } = S; const F = PG.font(); const rtl = I.dir() === 'rtl'; const M = 60;
-    const title = k === 'identity' ? a.name : `${a.name} — ${t('v5.th.' + k)}`;
-    let y = PG.header(ctx, W, title, b.captions[k] || (k === 'identity' ? (b.summary || t('v5.analysisOf')) : t('fb.boardSub')));
-    const X0 = state.X; const TX = rtl ? W - M : M; const al = rtl ? 'right' : 'left';
-    const text = (s, x, yy, size, maxW, lines, weight, color) => { ctx.font = `${weight || 400} ${size}px ${F}`; ctx.fillStyle = color || GA.palette.ink; ctx.textAlign = al; ctx.direction = rtl ? 'rtl' : 'ltr'; return PG.wrap(ctx, s, x, yy, maxW, size * 1.4, lines); };
-    const cardPanel = (c, x, yy, w, h, mpp, center) => { if (!c || c.gapOnly) { text(c ? String(c.gapOnly).replace(/<[^>]+>/g, '') : t('nodata'), rtl ? x + w : x, yy + 30, 15, w); return; } const off = document.createElement('canvas'); GAL.drawCard(off, { ring: X0.ring }, c, { center, mpp, w, h, ratio: 1 }); ctx.drawImage(off, x, yy); ctx.font = `600 18px ${F}`; ctx.fillStyle = GA.palette.ink; ctx.textAlign = al; ctx.fillText(String(c.title).replace(/<[^>]+>/g, ''), rtl ? x + w : x, yy - 8); let z = yy + h + 22; (c.find || []).slice(0, 2).forEach(f => { z = text(String(f).replace(/<[^>]+>/g, ''), rtl ? x + w : x, z, 14, w, 3, 400, GA.palette.ink2); }); };
-    if (k === 'identity') {
-      const off = document.createElement('canvas'); await drawLoc(off, a, 1000, 860, 1); ctx.drawImage(off, rtl ? W - M - 1000 : M, y + 20);
-      const tx = rtl ? W - M - 1060 : M + 1060; const tw = W - 2 * M - 1060; let yy = y + 40; const ind = state.ind;
-      yy = text((X0.parsed.admin || []).map(x => x.name).reverse().join(' · '), tx, yy, 20, tw, 2, 600, GA.palette.ink2);
-      yy = text(t('fb.rationale'), tx, yy + 20, 22, tw, 1, 700); yy = text(b.rationale || '—', tx, yy + 4, 18, tw, 10);
-      yy += 20; ['buildings', 'gsi', 'median_floors', 'places_per_km2', 'canopy_mean', 'bus_sched', 'flood_t100_share', 'relief_m'].forEach(key => { const row = CMP.IND_ROWS.find(r => r[0] === key); const v = row ? CMP.fmtInd(row, ind[key]) : null; yy = text(`${t(row[1]).replace(/<[^>]+>/g, '')}: ${v == null ? CMP.whyLabel((ind._why || {})[key]) : v}`, tx, yy, 17, tw, 1); });
-    } else {
-      const th = THEMES.find(x => x.id === k);
-      if (th && th.topics) { const off2 = b.off[k] || []; const cs = th.topics.filter(tp => !off2.includes(tp)).map(id => state.cards.find(c => c.id === id)).filter(Boolean); const cols = 3, gap = 40; const pw = Math.floor((W - 2 * M - (cols - 1) * gap) / cols), ph = Math.round(pw * 0.66); const v = MC.fit([X0.ring], pw, ph, 0.06); cs.slice(0, 6).forEach((c, i) => { const col = i % cols, row = Math.floor(i / cols); const x = rtl ? W - M - (col + 1) * pw - col * gap : M + col * (pw + gap); cardPanel(c, x, y + 40 + row * (ph + 150), pw, ph, v.mpp, v.center); }); }
-      else if (k === 'sections') { let yy = y + 20; for (const s of (a.sections || []).slice(0, 2)) { try { const p = await SEC.compute(s, { floorH: s.floorH || 3 }); const off = document.createElement('canvas'); SEC.draw(off, p, Object.assign({ w: W - 2 * M, h: 720, ratio: 1 }, SEC.optsFor(s))); ctx.drawImage(off, M, yy); yy += 740; } catch (e) { } } if (!(a.sections || []).length) text(t('ex.c.sectionMissing'), TX, y + 60, 20, W - 2 * M); }
-      else if (k === 'history') { const ks = HIST_SNAP.filter(hk => state.hist && state.hist[hk] && state.hist[hk].canvas); const gap = 30, pw = Math.floor((W - 2 * M - 3 * gap) / 4); ks.forEach((hk, i) => { const s = state.hist[hk]; const x = rtl ? W - M - (i + 1) * pw - i * gap : M + i * (pw + gap); const ph = Math.round(pw * s.canvas.height / s.canvas.width); ctx.drawImage(s.canvas, x, y + 40, pw, ph); text(`${t('hist.' + hk)} · ${histDate(X.HIST.find(q => q.id === hk), s.info)}`, rtl ? x + pw : x, y + 60 + ph, 15, pw, 2); });
-        const ph = ((a.analysis && a.analysis.result && a.analysis.result.photos) || []).filter(p => p.thumb).slice(0, 5); const pw2 = Math.floor((W - 2 * M - 4 * gap) / 5), phh = Math.round(pw2 * 0.7); for (let i = 0; i < ph.length; i++) { const p = ph[i]; const x = rtl ? W - M - (i + 1) * pw2 - i * gap : M + i * (pw2 + gap), yy = H - 160 - phh; try { const im = await new Promise((r, j) => { const q = new Image(); q.crossOrigin = 'anonymous'; q.onload = () => r(q); q.onerror = j; q.src = p.thumb; }); ctx.drawImage(im, x, yy, pw2, phh); } catch (e) { } text(`${p.author || ''} · ${p.license || ''} · ${root.GA.dates.label(p.date)}`, rtl ? x + pw2 : x, yy + phh + 20, 12, pw2, 2, 400, GA.palette.ink2); } }
-      else if (k === 'research') { let yy = y + 30; if (b.findings) yy = text(b.findings, TX, yy, 20, W - 2 * M, 6); yy = text(t('fb.questions'), TX, yy + 16, 24, W - 2 * M, 1, 700); b.questions.forEach((q, i) => { yy = text(`${i + 1}. ${q.q}`, TX, yy + 10, 20, W - 2 * M, 3, 600); yy = text(`${t('fb.evidence')}: ${q.ev || '—'}`, TX, yy, 16, W - 2 * M, 3); yy = text(`${t('fb.gap')}: ${q.gap || '—'}`, TX, yy, 16, W - 2 * M, 2, 400, GA.palette.base.khaki); }); yy = text(t('fb.responses'), TX, yy + 20, 24, W - 2 * M, 1, 700); b.responses.forEach(r => { yy = text(`• ${r.title}${r.desc ? ' — ' + r.desc : ''}`, TX, yy + 6, 18, W - 2 * M, 3); }); }
-      else if (k === 'attachments') { const items = state.lib; let i = 0; const cols = 5, gap = 20, pw = Math.floor((W - 2 * M - 4 * gap) / cols); for (const it of items.slice(0, 15)) { const x = rtl ? W - M - (i % cols + 1) * pw - (i % cols) * gap : M + (i % cols) * (pw + gap), yy = y + 30 + Math.floor(i / cols) * (pw + 80); if (it.thumb) { try { const im = await new Promise((r, j) => { const q = new Image(); q.onload = () => r(q); q.onerror = j; q.src = it.thumb; }); ctx.drawImage(im, x, yy, pw, Math.round(pw * im.height / im.width)); } catch (e) { } } text(it.title, rtl ? x + pw : x, yy + pw + 20, 15, pw, 2, 600); i++; } if (!items.length) text(t('fb.noAttach'), TX, y + 60, 18, W - 2 * M); }
+  const BE = () => root.GA.boardExport;
+  function newPage(a, b, title, sub) { const S = PG.sheet(A3[0], A3[1], DPI); const y = PG.header(S.ctx, S.W, title, sub, { scale: 1.3 }); return Object.assign(S, { y: y + 26, M: 70, F: PG.font(), rtl: I.dir() === 'rtl' }); }
+  function endPage(S) { PG.footer(S.ctx, S.W, S.H, `Granada Atlas · ${t('fb.footer')} · ${new Date().toISOString().slice(0, 10)} · EPSG:25830`, 1.5); return S.cv; }
+  const isEmptyCard = (c) => !c || !!c.gapOnly;
+  // one result panel in a column [x, x + w] between y and bottom
+  function panel(S, c, x, y, w, bottom) { // eslint-disable-line no-param-reassign
+    const { ctx, F, rtl } = S; const B = BE(); const o = (size, extra) => Object.assign({ size, F, rtl }, extra || {});
+    let yy = B.para(ctx, c.title, x, y, w, o(32, { weight: 700, lines: 2 }));
+    if (isEmptyCard(c)) { B.para(ctx, t('v12.noData') + ' ' + B.clean(c ? c.gapOnly : ''), x, yy + 10, w, o(22, { color: GA.palette.ink2, lines: 8 })); return; }
+    const body = (dry, y0) => { let z = y0;
+      z = B.legend(ctx, c.legend || [], x, z, w, o(21, { dry }));
+      if ((c.ind || []).length) { z += 10; (c.ind || []).forEach(r => { z = B.para(ctx, `${B.clean(r[0])}: ${B.clean(r[1])}${r[2] === 'est' ? ' (' + t('st.est') + ')' : ''}`, x, z, w, o(22, { dry, weight: 600, lines: 2 })); }); }
+      if (c.chart) { z += 14; z = B.chart(ctx, c.chart, x, z + 20, w, o(20, { dry })); }
+      const finds = (c.find || []).map(B.clean).filter(Boolean).slice(0, 3); if (finds.length) { z += 10; finds.forEach(f => { z = B.para(ctx, '• ' + f, x, z, w, o(21, { dry, lines: 3, color: GA.palette.ink2 })); }); }
+      if (c.src) { z += 8; z = B.para(ctx, `${t('src.label')} ${B.clean(c.src.name)} · ${B.clean(c.src.detail || '')} · ${B.clean(c.src.license || '')}`, x, z, w, o(19, { dry, lines: 2, color: GA.palette.ink3 })); }
+      if (c.method) { const m = B.clean(c.method); z = B.para(ctx, `${t('g.method')}: ${m.length > 330 ? m.slice(0, 330).replace(/\s+\S*$/, '') + ' …' : m}`, x, z + 4, w, o(19, { dry, lines: 4, color: GA.palette.ink3 })); }
+      return z; };
+    const drawMap = (mx, my, mw, mh) => { const off = document.createElement('canvas'); const v = MC.fit([state.X.ring], mw / 2, mh / 2, 0.08); GAL.drawCard(off, { ring: state.X.ring }, c, { center: v.center, mpp: v.mpp, w: mw / 2, h: mh / 2, ratio: 2 }); ctx.drawImage(off, mx, my, mw, mh); };
+    if (S.wide) { // a single panel on the page: map and its legend/chart/text side by side, filling the page
+      const mw = Math.round(w * 0.6), tw = w - mw - 60, mh = Math.min(bottom - yy - 10, Math.round(mw * 0.85)); const mx = rtl ? x + w - mw : x, bx = rtl ? x : x + mw + 60;
+      drawMap(mx, yy + 10, mw, mh); const save = { x, w }; x = bx; w = tw; body(false, yy + 10); x = save.x; w = save.w; return; }
+    const need = body(true, 0) + 24; const mapH = Math.max(320, Math.min(Math.round(w * 0.95), bottom - yy - 14 - need));
+    drawMap(x, yy + 10, w, mapH);
+    body(false, yy + 10 + mapH + 16);
+  }
+  function emptyNote(S, msg) { BE().para(S.ctx, msg, S.M, S.y + 20, S.W - 2 * S.M, { size: 26, F: S.F, rtl: S.rtl, color: GA.palette.ink2 }); }
+  // which parts of the board have content (empty ones are omitted by default)
+  function sectionContent(k, a, b) {
+    const th = THEMES.find(x => x.id === k);
+    if (th && th.topics) { const off2 = b.off[k] || []; const cs = th.topics.filter(tp => !off2.includes(tp)).map(id => state.cards.find(c => c.id === id)).filter(Boolean); return { cards: cs, full: cs.filter(c => !isEmptyCard(c)), empty: cs.filter(isEmptyCard) }; }
+    if (k === 'sections') return { empty: !(a.sections || []).length };
+    if (k === 'research') return { empty: !(b.findings || '').trim() && !b.questions.some(q => q.q) && !b.responses.some(r => r.title) };
+    if (k === 'attachments') return { empty: !(state.lib || []).length };
+    return { empty: false };
+  }
+  async function boardPages(a, b, opts) {
+    opts = opts || {}; const incEmpty = opts.includeEmpty != null ? opts.includeEmpty : !!b.pdfEmpty; const keys = opts.keys || b.order.filter(k => !b.hidden.includes(k));
+    const pages = []; const omitted = [];
+    // plan: which topic cards and sections go in
+    const plan = keys.map(k => { const sc = sectionContent(k, a, b); const th = THEMES.find(x => x.id === k);
+      if (th && th.topics) { if (!incEmpty) sc.empty.forEach(c => omitted.push(`${B_t(c.title)} — ${BE().clean(c.gapOnly)}`)); const list = incEmpty ? sc.cards : sc.full; if (!list.length) { if (!incEmpty) omitted.push(t('v5.th.' + k)); return null; } return { k, list }; }
+      if (sc.empty && !incEmpty) { omitted.push(t('v5.th.' + k)); return null; } return { k, empty: sc.empty }; }).filter(Boolean);
+    if (!opts.keys || opts.keys.includes('identity')) pages.push(await identityPage(a, b, plan, omitted));
+    for (const pl of plan) { const k = pl.k; const sub = b.captions[k] || t('fb.boardSub');
+      if (pl.list) { for (let i = 0; i < pl.list.length; i += 2) { const S = newPage(a, b, `${a.name} — ${t('v5.th.' + k)}`, sub); const G = 70, cw = (S.W - 2 * S.M - G) / 2, bottom = S.H - 90;
+          const two = pl.list.slice(i, i + 2); if (two.length === 1) { S.wide = true; panel(S, two[0], S.M, S.y, S.W - 2 * S.M, bottom); }
+          else two.forEach((c, j) => { const x = S.rtl ? S.W - S.M - (j + 1) * cw - j * G : S.M + j * (cw + G); panel(S, c, x, S.y, cw, bottom); }); pages.push({ canvas: endPage(S), k }); } continue; }
+      const S = newPage(a, b, `${a.name} — ${t('v5.th.' + k)}`, sub); const W = S.W, M = S.M, ctx = S.ctx; const B = BE(); const o = (size, extra) => Object.assign({ size, F: S.F, rtl: S.rtl }, extra || {});
+      if (pl.empty) { emptyNote(S, t('v12.sectionEmpty')); pages.push({ canvas: endPage(S), k }); continue; }
+      if (k === 'sections') { let first = true; for (const s of (a.sections || []).slice(0, 4)) { const P2 = first ? S : newPage(a, b, `${a.name} — ${t('v5.th.' + k)}`, s.name || sub); first = false;
+          try { const p = await SEC.compute(s, { floorH: s.floorH || 3 }); const off = document.createElement('canvas'); const w = (P2.W - 2 * P2.M) / 2, h = (P2.H - 110 - P2.y) / 2; SEC.draw(off, p, Object.assign({ w, h, ratio: 2 }, SEC.optsFor(s))); P2.ctx.drawImage(off, P2.M, P2.y, w * 2, h * 2); }
+          catch (e) { emptyNote(P2, t('v12.sectionFail', { e: e.message })); } pages.push({ canvas: endPage(P2), k }); } continue; }
+      if (k === 'history') { await ensureHistory(); const gap = 40, cols = 4, pw = Math.floor((W - 2 * M - (cols - 1) * gap) / cols); let maxBottom = S.y;
+        HIST_SNAP.forEach((hk, i) => { const s = state.hist[hk] || {}; const Hh = X.HIST.find(q => q.id === hk); const x = S.rtl ? W - M - (i + 1) * pw - i * gap : M + i * (pw + gap); const ph = s.canvas ? Math.round(pw * s.canvas.height / s.canvas.width) : Math.round(pw * 0.8);
+          if (s.canvas) ctx.drawImage(s.canvas, x, S.y, pw, ph); else B.unavailable(ctx, x, S.y, pw, ph, t('v12.imgUnavailable'), s.unavailable || t('v12.histFailed', { e: '—' }), o(20));
+          let yy = B.para(ctx, t('hist.' + hk), x, S.y + ph + 8, pw, o(24, { weight: 700, lines: 2 })); yy = B.para(ctx, s.year ? 'PNOA ' + s.year : histDate(Hh, s.info), x, yy, pw, o(21, { lines: 2 })); if (s.note) yy = B.para(ctx, s.note, x, yy, pw, o(19, { lines: 4, color: GA.palette.ink3 }));
+          yy = B.para(ctx, 'IGN · CC BY 4.0', x, yy, pw, o(19, { color: GA.palette.ink3 })); maxBottom = Math.max(maxBottom, yy); });
+        B.para(ctx, t('fb.histNote'), M, maxBottom + 16, W - 2 * M, o(20, { lines: 3, color: GA.palette.ink2 }));
+        const ph = ((a.analysis && a.analysis.result && a.analysis.result.photos) || []).filter(p => p.thumb).slice(0, 5); const pw2 = Math.floor((W - 2 * M - 4 * 30) / 5), phh = Math.round(pw2 * 0.66); const py = S.H - 110 - phh - 70;
+        if (ph.length && py > maxBottom + 90) for (let i = 0; i < ph.length; i++) { const p = ph[i]; const x = S.rtl ? W - M - (i + 1) * pw2 - i * 30 : M + i * (pw2 + 30); try { const im = await new Promise((r, j) => { const q = new Image(); q.crossOrigin = 'anonymous'; q.onload = () => r(q); q.onerror = j; q.src = p.thumb; }); PG.drawImageFit(ctx, im, x, py, pw2, phh, true); } catch (e) { B.unavailable(ctx, x, py, pw2, phh, t('v12.imgUnavailable'), '', o(19)); } B.para(ctx, `${p.author || ''} · ${p.license || ''} · ${root.GA.dates.label(p.date)}`, x, py + phh + 4, pw2, o(19, { lines: 2, color: GA.palette.ink2 })); }
+        pages.push({ canvas: endPage(S), k }); continue; }
+      if (k === 'research') { let yy = S.y; const w = W - 2 * M; if (b.findings) yy = B.para(ctx, b.findings, M, yy, w, o(24, { lines: 8 })); yy = B.para(ctx, t('fb.questions'), M, yy + 20, w, o(30, { weight: 700 }));
+        b.questions.filter(q => q.q).forEach((q, i) => { yy = B.para(ctx, `${i + 1}. ${q.q}`, M, yy + 10, w, o(25, { weight: 600, lines: 3 })); yy = B.para(ctx, `${t('fb.evidence')}: ${q.ev || '—'}`, M, yy, w, o(22, { lines: 3 })); yy = B.para(ctx, `${t('fb.gap')}: ${q.gap || '—'}`, M, yy, w, o(22, { lines: 2, color: GA.palette.ink2 })); });
+        if (b.responses.some(r => r.title)) { yy = B.para(ctx, t('fb.responses'), M, yy + 24, w, o(30, { weight: 700 })); b.responses.filter(r => r.title).forEach(r => { yy = B.para(ctx, `• ${r.title}${r.desc ? ' — ' + r.desc : ''}`, M, yy + 6, w, o(23, { lines: 3 })); }); }
+        pages.push({ canvas: endPage(S), k }); continue; }
+      if (k === 'attachments') { const items = state.lib; const cols = 5, gap = 30, pw = Math.floor((W - 2 * M - 4 * gap) / cols); let i = 0;
+        for (const it of items.slice(0, 10)) { const x = S.rtl ? W - M - (i % cols + 1) * pw - (i % cols) * gap : M + (i % cols) * (pw + gap), yy = S.y + Math.floor(i / cols) * (pw * 0.75 + 130); if (it.thumb) { try { const im = await new Promise((r, j) => { const q = new Image(); q.onload = () => r(q); q.onerror = j; q.src = it.thumb; }); PG.drawImageFit(ctx, im, x, yy, pw, pw * 0.75, true); } catch (e) { } } B.para(ctx, it.title, x, yy + pw * 0.75 + 4, pw, o(21, { weight: 600, lines: 2 })); i++; }
+        pages.push({ canvas: endPage(S), k }); continue; }
     }
-    PG.footer(ctx, W, H, `Granada Atlas · ${t('fb.footer')} · ${new Date().toISOString().slice(0, 10)}`);
-    return cv;
+    return pages;
   }
-  async function exportPDF(id) {
+  const B_t = (s) => BE().clean(s);
+  async function identityPage(a, b, plan, omitted) {
+    const S = newPage(a, b, a.name, b.summary || t('v5.analysisOf')); const { ctx, W, H, M, F, rtl } = S; const B = BE(); const o = (size, extra) => Object.assign({ size, F, rtl }, extra || {});
+    const mw = 1280, mh = Math.min(1180, H - S.y - 300); const mx = rtl ? W - M - mw : M; const off = document.createElement('canvas'); const card = await drawLoc(off, a, mw / 2, mh / 2, 2); ctx.drawImage(off, mx, S.y, mw, mh);
+    let ly = B.legend(ctx, card.legend, mx, S.y + mh + 14, mw, o(21)); if (card.outside && card.outside.length) ly = B.para(ctx, t('v12.outside', { n: card.outside.join(', ') }), mx, ly + 4, mw, o(20, { color: GA.palette.ink2 }));
+    B.para(ctx, `${t('src.label')} ${card.src.name} · ${card.src.detail} · ${card.src.license}`, mx, ly + 2, mw, o(19, { color: GA.palette.ink3, lines: 2 }));
+    const tx = rtl ? M : M + mw + 70, tw = W - 2 * M - mw - 70; let yy = S.y; const ind = state.ind; const X0 = state.X;
+    yy = B.para(ctx, (X0.parsed.admin || []).map(x => x.name).reverse().join(' · '), tx, yy, tw, o(24, { weight: 600, color: GA.palette.ink2, lines: 2 }));
+    yy = B.para(ctx, t('fb.rationale'), tx, yy + 18, tw, o(28, { weight: 700 })); yy = B.para(ctx, b.rationale || '—', tx, yy + 2, tw, o(22, { lines: 8 }));
+    yy = B.para(ctx, t('v12.keyInd'), tx, yy + 22, tw, o(28, { weight: 700 }));
+    ['buildings', 'gsi', 'median_floors', 'places_per_km2', 'canopy_mean', 'bus_sched', 'flood_t100_share', 'relief_m'].forEach(key => { const row = CMP.IND_ROWS.find(r => r[0] === key); if (!row) return; const v = CMP.fmtInd(row, ind[key]); yy = B.para(ctx, `${B.clean(t(row[1]))}: ${v == null ? CMP.whyLabel((ind._why || {})[key]) : B.clean(v)}`, tx, yy + 2, tw, o(22, { lines: 2 })); });
+    yy = B.para(ctx, t('v12.contents'), tx, yy + 22, tw, o(28, { weight: 700 })); yy = B.para(ctx, plan.map(p => t('v5.th.' + p.k)).join(' · ') || '—', tx, yy + 2, tw, o(22, { lines: 4 }));
+    if (omitted.length) { yy = B.para(ctx, t('v12.omitted'), tx, yy + 18, tw, o(24, { weight: 700, color: GA.palette.ink2 })); omitted.slice(0, 10).forEach(m => { yy = B.para(ctx, '• ' + m, tx, yy + 2, tw, o(19, { lines: 2, color: GA.palette.ink3 })); }); }
+    return { canvas: endPage(S), k: 'identity' };
+  }
+  // one section of the board as an image (the PNG button on the page): its first page
+  async function blockCanvas(k, a, b) { if (k === 'identity') { const p = await boardPages(a, b, { keys: ['identity'] }); return p[0].canvas; } const pages = await boardPages(a, b, { keys: [k], includeEmpty: true }); return (pages[0] || {}).canvas; }
+  async function exportPDF(id, opts) {
     const a = areaOf(id); const b = board(id); if (!state || state.id !== id) return; root.GA.toast && root.GA.toast(t('ex.building'));
-    const keys = ['identity'].concat(b.order.filter(k => !b.hidden.includes(k)));
-    const pages = []; for (const k of keys) { try { pages.push({ canvas: await blockCanvas(k, a, b), paper: 'A3L' }); } catch (e) { console.warn(k, e); } }
-    const bytes = root.GA.pdf.build(pages, { title: 'Granada Atlas — ' + a.name }); PG.download(new Blob([bytes], { type: 'application/pdf' }), `analysis_${PG.slug(a.name)}.pdf`); root.GA.lastFabricPDF = { pages: pages.length };
+    if (state.paintAllNow) state.paintAllNow(); await ensureHistory().catch(() => { }); // export readiness: every image loaded (or explicitly unavailable)
+    const pages = (await boardPages(a, b, opts)).map(p => ({ canvas: p.canvas, paper: 'A3L' }));
+    const bytes = root.GA.pdf.build(pages, { title: 'Granada Atlas — ' + a.name }); PG.download(new Blob([bytes], { type: 'application/pdf' }), `analysis_${PG.slug(a.name)}.pdf`); root.GA.lastFabricPDF = { pages: pages.length, bytes };
   }
+  function setIncludeEmpty(id, on) { const b = board(id); b.pdfEmpty = !!on; store.save(); }
 
   const page = { plate: () => t('v5.analysisPlate'), title: (id) => { const a = areaOf(id); return a ? a.name : t('fb.noArea'); }, heroTitle: true, nav, afterClose: (id) => { root.GA.app && root.GA.app.openArea && root.GA.app.openArea(id); },
-    actions: (id) => `<button class="btn btn-small" onclick="GA.fabric.compare('${id}')">${t('v5.compare')}</button><button class="btn btn-small" id="ap-edit" aria-pressed="${edit}" onclick="GA.fabric.setEdit(!GA.fabric.editing)">${edit ? t('v5.doneEditing') : t('v5.editMode')}</button><button class="btn btn-small btn-primary" onclick="GA.fabric.exportPDF('${id}')">${t('v5.exportPDF')}</button>`, render };
+    actions: (id) => `<button class="btn btn-small" onclick="GA.fabric.compare('${id}')">${t('v5.compare')}</button><button class="btn btn-small" id="ap-edit" aria-pressed="${edit}" onclick="GA.fabric.setEdit(!GA.fabric.editing)">${edit ? t('v5.doneEditing') : t('v5.editMode')}</button><label class="chk ap-empty"><input type="checkbox" ${board(id).pdfEmpty ? 'checked' : ''} onchange="GA.fabric.setIncludeEmpty('${id}', this.checked)"> ${t('v12.includeEmpty')}</label><button class="btn btn-small btn-primary" onclick="GA.fabric.exportPDF('${id}')">${t('v5.exportPDF')}</button>`, render };
   PG.register('fabric', page); PG.register('analysis', page);
-  root.GA.fabric = { exportPDF, board, blockCanvas, THEMES, setEdit, compare, get editing() { return edit; }, get state() { return state; } };
+  root.GA.fabric = { exportPDF, boardPages, setIncludeEmpty, ensureHistory, board, blockCanvas, THEMES, setEdit, compare, get editing() { return edit; }, get state() { return state; } };
 })(window);

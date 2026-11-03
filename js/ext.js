@@ -127,8 +127,12 @@
     const hist = [0, 0, 0, 0, 0]; v.forEach(x => hist[x === 0 ? 0 : x < 30 ? 1 : x < 60 ? 2 : x < 80 ? 3 : 4]++);
     return { n: v.length, mean, any, dense, hist };
   }
-  const TCD_CLASSES = [{ k: '0', max: 0, col: [255, 255, 255, 0] }, { k: '1-29', max: 29, col: [205, 228, 190, 255] }, { k: '30-59', max: 59, col: [140, 190, 120, 255] }, { k: '60-79', max: 79, col: [76, 140, 70, 255] }, { k: '80-100', max: 100, col: [30, 90, 40, 255] }];
-  const tcdColour = (v) => { if (v == null || v < 0) return null; const c = TCD_CLASSES.find(x => v <= x.max); return c && c.col[3] ? c.col : null; };
+  // 5.13: classes unchanged (0 / 1–29 / 30–59 / 60–79 / 80–100 %), colours from the palette (cream → olive); the same table
+  // draws the live raster, analysis cards, comparison, exports and every legend. Missing values: tcdHatch (diagonal lines).
+  const PC = root.GA.palette; const rgb = (h) => PC.rgb(h);
+  const TCD_CLASSES = [{ k: '0', max: 0, col: rgb(PC.canopyZero).concat([150]), zero: true }].concat([['1-29', 29], ['30-59', 59], ['60-79', 79], ['80-100', 100]].map(([k, max], i) => ({ k, max, col: rgb(PC.canopy[i]).concat([255]) })));
+  const tcdColour = (v) => { if (v == null || v < 0 || v > 100) return null; const c = TCD_CLASSES.find(x => v <= x.max); return c ? c.col : null; };
+  const tcdHatch = (i, j) => ((i + j) % 6 === 0 ? rgb(PC.canopyMissing).concat([210]) : null);
 
   // ---------- OpenStreetMap trees via Overpass (by 1 km EPSG:25830 cell) ----------
   // Mapped trees: a dated static snapshot of OSM natural=tree / tree_row inside the municipality (data/vec/trees_osm.json,
@@ -195,6 +199,6 @@
     { id: 'noise', file: 'Granada_Noise_Maps_English.pdf', kind: 'noise', title: 'Strategic noise map 2022 (Phase 4) — Lden, Ld, Le, Ln; overview + 13 sheets each', publisher: 'Ayuntamiento de Granada, Servicio de Protección Ambiental — Phase 4 strategic noise map (titles translated)', dataYear: '2022', reportYear: '2022', type: 'modelled noise levels (strategic noise mapping), dB(A)', unit: 'dB(A); Lden = day-evening-night, Ln = night', coverage: 'Granada municipality, 1:40,000 overview, EPSG:25830', data: 'the 2022 maps are a PDF; the national SICA service shows the Granada agglomeration from an earlier phase (3rd), connected live for orientation only', url: 'https://sicaweb.cedex.es/' },
   ];
 
-  const api = { SVC, FLOOD, LST_DATE, HIST, DOCS, wmsTiles, wmsURL, loadImage, warp3857, merc, imerc, floodExposure, floodWFS, tcdGrid, tcdStats, TCD_CLASSES, tcdColour, trees, treeFeatures, treeTs, histInfo };
+  const api = { SVC, FLOOD, LST_DATE, HIST, DOCS, wmsTiles, wmsURL, loadImage, warp3857, merc, imerc, floodExposure, floodWFS, tcdGrid, tcdStats, TCD_CLASSES, tcdColour, tcdHatch, trees, treeFeatures, treeTs, histInfo };
   root.GA = root.GA || {}; root.GA.ext = api;
 })(window);

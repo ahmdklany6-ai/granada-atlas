@@ -113,10 +113,10 @@
     if (R.trees || R.canopy) {
       const T = R.trees, C = R.canopy;
       insertAfter('places', { id: 'trees', title: t('g3.trees'), mainLayer: 'canopy', src: { name: 'Copernicus HRL Tree Cover Density + OpenStreetMap', detail: `TCD 2018 · 10 m · OSM ${T && T.ts ? T.ts.slice(0, 10) : '—'}`, license: 'Copernicus (free, full and open) · ODbL' },
-        spec: { raster: ext.tcd ? { grid: ext.tcd, nearest: true, colour: X.tcdColour } : null, rasterStep: 1, context: { buildings: ctxB, buildingColor: 'rgba(34,36,40,.16)' }, layers: [{ type: 'point', items: T ? T.pts.map(p => ({ g: { type: 'Point', coordinates: p.ll }, fill: GA.palette.trees, stroke: '#FFFFFF', width: 0.8, r: 2.4 })) : [] }] },
-        legend: X.TCD_CLASSES.slice(1).map(c => ({ sw: `rgb(${c.col.slice(0, 3).join(',')})`, label: `${c.k.replace('-', '–')} % ${t('g3.tcd')}` })).concat([{ dot: GA.palette.trees, label: t('ly3.treePt') }]),
+        spec: { raster: ext.tcd ? { grid: ext.tcd, nearest: true, colour: X.tcdColour, missing: X.tcdHatch } : null, rasterStep: 1, context: { buildings: ctxB, buildingColor: 'rgba(34,36,40,.16)' }, layers: [{ type: 'point', items: T ? T.pts.map(p => ({ g: { type: 'Point', coordinates: p.ll }, fill: GA.palette.trees, stroke: '#FFFFFF', width: 0.8, r: 2.4 })) : [] }] },
+        legend: GA.rasterClass.canopyLegend().concat([{ dot: GA.palette.trees, label: t('ly3.treePt') }]),
         ind: [[t('g3.canopy'), C ? pct(C.mean / 100) : '—', 'est'], [t('g3.treesMapped'), T ? nf(T.n) : '—'], [t('g3.treesHa'), T ? u(nf(T.perHa, 1), 'perha') : '—', 'est']],
-        chart: C ? { kind: 'stack', items: [{ label: t('g3.tcd0'), v: C.hist[0] / C.n, col: GA.palette.paper }].concat(X.TCD_CLASSES.slice(1).map((c, i) => ({ label: c.k + ' %', v: C.hist[i + 1] / C.n, col: `rgb(${c.col.slice(0, 3).join(',')})` }))) } : null,
+        chart: C ? { kind: 'stack', items: [{ label: t('g3.tcd0'), v: C.hist[0] / C.n, col: GA.palette.canopyZero }].concat(X.TCD_CLASSES.slice(1).map((c, i) => ({ label: c.k + ' %', v: C.hist[i + 1] / C.n, col: `rgb(${c.col.slice(0, 3).join(',')})` }))) } : null,
         find: [C ? t('g3.fCanopy', { m: pct(C.mean / 100), a: pct(C.any), d: pct(C.dense) }) : gapMsg('tcd', st), T ? t('g3.fTrees', { n: nf(T.n), s: nf(T.speciesTagged), r: nf(T.rowLen) }) : t('g3.failed', { s: 'Overpass', e: esc((st.trees && st.trees.error) || '') }), t('g3.treesCaveat')],
         method: t('g3.mTrees') });
     } else insertAfter('places', gap('trees', t('g3.trees'), 'tcd'));

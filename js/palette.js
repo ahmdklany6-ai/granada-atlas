@@ -70,8 +70,9 @@
     slopeAlpha: [0, 150, 175, 195, 210, 225, 235],
     elevRamp: [[560, '#EEEEE6'], [650, '#E2E3D3'], [700, '#E2DCC0'], [800, '#D3C6A0'], [950, '#BBA67F'], [1200, '#A08066'], [1600, '#83655A'], [1860, '#F2F1EC']],
     // trees (5.11): restrained olives; recorded size darkest, unknown species neutral (generic model)
-    tree3d: { recorded: BASE.olive, known: D.oliveMid, leaf: BASE.khaki, unknown: D.warmGrey2, trunk: BASE.burgundy },
-    contour: '#8C7A55', trees: RED, waterLine: D.blueDeep, blueDark: D.blueDark,
+    // 5.13: trees use the approved cream-to-olive sequence (recorded size darkest); unknown species stays neutral
+    tree3d: { recorded: BASE.olive, known: BASE.khaki, leaf: BASE.chartreuse, unknown: D.warmGrey2, trunk: BASE.burgundy },
+    contour: '#8C7A55', trees: BASE.olive, waterLine: D.blueDeep, blueDark: D.blueDark,
     // water and runoff (water keeps the blue family): terrain flow paths by upslope area, small → large; mapped ditches
     flow: [D.bluePale, BASE.blueGrey, D.blueDeep, D.blueDark], drain: D.blueMid,
     // seasonal wind rose speed classes (0.5–2, 2–4, 4–6, ≥ 6 m/s): light → dark red
@@ -83,7 +84,9 @@
     lst: ['#4F6E80', BASE.blueGrey, BASE.cream, '#DCC3B5', '#C08572', BASE.burgundy, BASE.wine], // < 30 … ≥ 55 °C, diverging around cream
     noise: ['#F6ECE9', '#E8C9C1', '#D49E93', '#B8645A', RED, BASE.oxblood],     // 50 … 75 dB(A): pale → dark red, clearly ordered
     flood: { q10: D.blueDark, q50: D.blueDeep, q100: BASE.blueGrey, q500: D.bluePale }, arpsi: BASE.brown,
-    canopy: ['#EFEEE4', '#DCD8B6', '#B9B27A', D.oliveMid, BASE.olive],                // tree-cover density, sequential olive
+    // tree-cover density (5.13): the approved cream → chartreuse → khaki → dark olive sequence for 1–29 / 30–59 / 60–79 /
+    // 80–100 %; 0 % (measured, no tree cover) is a white veil; missing values are hatched (never drawn as a class)
+    canopy: [BASE.cream, BASE.chartreuse, BASE.khaki, BASE.olive], canopyZero: '#FFFFFF', canopyMissing: D.warmGrey,
     // charts (cards, sheets, climate board): neutral bar, highlight bar, and two topic colours
     chart: { bar: D.warmGrey, barSoft: D.stone, hi: RED, flood: D.blueDeep, green: D.oliveMid, grid: D.line, axis: D.ink3 },
     // street sections: architectural drawing tones
@@ -95,7 +98,8 @@
     // documented materials drawn in sections (only when the user records them with a source)
     material: { tiles: '#B5654A', slate: '#5B5F66', metal: '#8A9097', green: D.oliveMid, membrane: '#A8A8A8', render: '#D9D3C7', brick: '#B9785C', stone: '#BFB6A4', concrete: '#B3B5B8', glass: BASE.lightBlue, timber: '#A07A52' },
     // study areas, comparison and locator marks
-    mark: { area: RED, other: D.ink3, mask: D.paper, section: D.ink, sectionBg: D.ink3, corridor: BASE.olive },
+    // 5.13: study-area boundaries and their numbers are near-black (owner request); red stays for thematic content
+    mark: { boundary: '#161616', number: '#161616', area: RED, other: D.ink3, mask: D.paper, section: D.ink, sectionBg: D.ink3, corridor: BASE.olive },
     basemap: { land: '#F4F3EE', block: '#ECEAE3', green: D.olivePale, agri: '#EFEEE2', water: '#D6E2E8', waterLine: BASE.lightBlue, bld: '#E3DFD6', bldLine: '#CFC9BD', road: '#FFFFFF', casing: '#D8D3C8', casingMajor: '#BAB3A6', rail: D.warmGrey, label: '#3A2C27', labelSoft: '#6F625C', halo: '#F4F3EE', boundary: '#A9A096', boundaryCountry: D.warmGrey, seaLabel: D.blueMid, waterLabel: D.blueDeep },
   };
   // Old saved analyses used en dashes and Arabic period labels as keys.
