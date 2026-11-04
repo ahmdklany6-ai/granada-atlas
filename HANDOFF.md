@@ -1,4 +1,4 @@
-# Granada Atlas — handoff (state at build 5.18, 3 Nov 2026)
+# Granada Atlas — handoff (state at build 5.19, 4 Nov 2026)
 
 This document lets a new Claude Code session continue the project without the original chat. Short operating rules
 are in `CLAUDE.md`; feature and data documentation is in `README.md`.
@@ -9,12 +9,12 @@ are in `CLAUDE.md`; feature and data documentation is in `README.md`.
 | --- | --- |
 | Repository | `ahmdklany6-ai/granada-atlas` (public), branch `main` |
 | Live site | https://ahmdklany6-ai.github.io/granada-atlas/ (GitHub Pages, deploy from `main`, repo root) |
-| Current build | **5.18** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.18` asset queries) |
+| Current build | **5.19** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.19` asset queries) |
 | Latest feature work | Build 5.9: colour hierarchy, boundary layers, water/runoff, infrastructure, seasonal wind/rain, landmark geometries, print layout (see §13) |
 | Deployment | see §12 (5.8 deployment record) |
 | Data version | `2026-11-02-v8` in `data/manifest.json` (5.11: OSM trees 2 Nov 2026, ERA5 climate snapshot, history place texts) |
 
-Build history (newest first): 5.18 print at full resolution + "Map only" template · 5.17 / 5.16 Exercise 1.3 identity card · 5.15 one card format, historical extents · 5.14 current study area red on the locator · 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
+Build history (newest first): 5.19 print up to 700 dpi built in strips · 5.18 print at full resolution + "Map only" template · 5.17 / 5.16 Exercise 1.3 identity card · 5.15 one card format, historical extents · 5.14 current study area red on the locator · 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
 classified climate rasters, dashed fabric marks, historical red dots explained · 5.5/5.4 smooth building scales and
 street hierarchy at close zoom · 5.3 (v5) analysis page, viewers, unified Comparison, phone/iPad · v4/v3/v2 earlier.
 
@@ -473,3 +473,69 @@ Test: `tests/ui_test_v16.py` (≈ 15 min): A3 / A1, 150 / 300 dpi, 1:5,000–1:5
 clamped map canvas, sharpness vs a 2× down/up cycle ≥ 0.9 (upscaled ≈ 0.7), no 50 m periodicity, measured scale ± 0.5 %,
 scale bar = measured scale, PDF embeds the full-size page; map only — page = map, white margins, no text except the scale
 bar / north arrow, toggles, A4–A1 both orientations PNG / PDF, labels ar / he / en, options restored after reload.
+
+## 21. Build 5.19 — print layout up to 700 dpi (owner request of 4 Nov 2026)
+
+**Request**: 400 / 500 / 600 / 700 dpi besides 150 / 200 / 300, every paper size, both orientations, PDF and PNG, "Map only"
+included; the chosen dpi must be the real dpi; render in tiles within browser limits, matching edges, labels placed once,
+no giant canvas; memory freed per tile; progress, Cancel; wait for tiles; exact scale; warn before very large exports.
+
+**How** (`js/printlayout.js`, `js/pdf.js` `buildStrips`, new `js/pngstream.js`, strings `js/i18n_v17.js`):
+- `plan()` lays the page out once (legend sizes, map frames in whole page pixels, section image), then the page is painted in
+  full-width **strips** (≤ 24 Mpx each, a multiple of 16 rows, never taller than a map region). Text, legend and frames are
+  redrawn in each strip (the canvas clips them); each strip goes to a sink and is freed. No canvas ever holds the page
+  (A1 at 700 dpi = 23,150 × 16,370 px = 379 Mpx).
+- `mapRenderer()`: one offscreen MapLibre map per map frame, reused for every region; container = largest region + 192 CSS px
+  overlap on every side, in multiples of 96 CSS px (whole device pixels at any integer dpi); all regions share one pixel grid
+  (same zoom, centre offsets in exact CSS px), so neighbours meet without resampling. Region ≤ GPU limit (min of
+  MAX_TEXTURE_SIZE, renderbuffer, viewport; capped at 8192). Each region is captured only after `settle()`: a frame drawn with
+  style, sources and tiles loaded, checked twice a frame apart (polled — waiting for MapLibre's `idle` event stalled for 180 s
+  per region when a move needed nothing new). Tiles not loaded within 3 min → the export stops with that reason.
+- **Labels at seams**: MapLibre places labels per viewport, so labels cannot be "placed once" for a frame larger than one GPU
+  canvas. Mitigation + proof: the 192 px overlap means labels near a seam are placed with the same neighbours in both
+  regions, and after every region the labels placed in each shared seam band (`queryRenderedFeatures` on the symbol layers)
+  are compared with the neighbouring region's; the export message reports "Labels at tile edges match (n checked)" or names
+  the edges where a label differs. In this test container glyphs are stubbed (no labels render), so the check is only
+  meaningful with real fonts — see the real-basemap run below.
+- **PDF** (`pdf.buildStrips`): one JPEG (q 0.92) per strip, placed at exactly the chosen ppi; each strip carries 16 extra rows
+  that the next strip covers (no hairline between images in viewers); the file is a Blob of parts (no single byte array).
+- **PNG** (`pngStream`): rows streamed through `CompressionStream('deflate')` into IDAT chunks (RGB, 8 bit) — any page size;
+  a browser without CompressionStream gets an explicit "use PDF" message. Unit test `tests/pngstream.test.js`.
+- **Never a lower dpi**: `effDpi()` returns the requested dpi; the footer resolution line and the message state it. A device
+  whose GPU cannot hold one region (+ overlap) at that dpi, or a canvas the browser refuses, stops the export with the
+  reason (`v17.gpuSmall`, `v17.canvasRefused`).
+- **UI**: dpi 150–700; progress "Rendering: tile i of n (strip s of S)…"; Cancel (no file; offscreen maps removed); above
+  100 Mpx a warning with the page size, estimated MB and minutes, "Don't ask again" (saved in
+  `localStorage['granada-atlas.print.v1'].noLargeWarn`) and a "Warn before very large exports" checkbox to turn it back on.
+- **PDF geometry**: the strip images' pixel grid is scaled to the exact paper size (Wpt / Wpx, Hpt / Hpx — paper sizes are not
+  whole pixels, so this differs from 72 / dpi by < 0.01 %): a viewer at the chosen dpi maps each image pixel onto one device
+  pixel. Placing strips at exactly 72 / dpi made `pdftoppm` resample by 3,508 → 3,507.9 rows and softened the raster
+  (sharpness 0.90 vs 1.02 on the embedded pixels); `pdfimages -list` reports the chosen ppi either way.
+
+**Results** (this environment, SwiftShader software GL; a desktop GPU is several times faster):
+
+| Export (landscape) | Page px | Strips | Map regions | PDF size | Time |
+| --- | --- | --- | --- | --- | --- |
+| A2 600 dpi 1:50,000 / 1:10,000 | 14,031 × 9,921 | 6 | 15 | 7.4 / 9.1 MB | 80 / 105 s |
+| A2 700 dpi 1:50,000 / 1:10,000 | 16,370 × 11,575 | 8 | 20 | 9.2 / 11.0 MB | 122 / 149 s |
+| A1 600 dpi 1:50,000 / 1:10,000 | 19,866 × 14,031 | 12 | 32 | 9.6 / 14.3 MB | 129 / 197 s |
+| A1 700 dpi 1:50,000 / 1:10,000 | 23,177 × 16,370 | 16 | 55 | 12.0 / 17.4 MB | 197 / 280 s |
+
+Every strip image is at the chosen ppi; measured scale 1:50,061 / 1:10,012; the 16 rows each pair of strips renders twice
+are the same picture (mean difference 0.02–0.05 of 255, i.e. JPEG noise); no step across any tile edge in 100 % crops; no
+blank region. With the **real OpenFreeMap basemap and label fonts** (tiles z12–14 and glyphs fetched on a GitHub runner by
+`tools/verify/fetch_tiles_print.py`, served locally to the identical code) A2 600 dpi at 1:50,000 and 1:10,000 report
+"Labels at tile edges match (22 edges checked)"; 100 % crops across a strip seam through "SAN MATÍAS" and a column seam in
+the centre show whole, single labels.
+
+**Live verification**: the runner's software WebGL cannot render the page with the real basemap (5.18's `live_518.py`
+waited 75 min in boot — same as §15), so the live check is `tools/verify/live_files.py` (every file the public page loads
+byte-identical to `main`) plus the real-basemap render above made locally from those same files.
+
+**Not done / limits**: labels are checked and reported at seams, not forced (MapLibre has no global placement across separate
+canvases); the check needs a feature's layer + properties to identify it. PNG pages above a few hundred megapixels open
+slowly or not at all in many viewers (the warning says so; PDF recommended). Strip height (24 Mpx) and the 8192 px
+region cap bound memory to ≈ 100 MB (strip) + ≈ 256 MB (GPU canvas).
+
+Tests: `tests/ui_test_v17.py` (≈ 45 min here; `QUICK=1` A2 600 dpi only, `CASES=` picks exports), `tests/pngstream.test.js`;
+`ui_test_v16.py`, `ui_test_v10.py`, `ui_test_v4.py` and the node tests pass.

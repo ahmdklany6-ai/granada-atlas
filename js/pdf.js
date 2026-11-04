@@ -30,6 +30,33 @@
     const out = new Uint8Array(len); let o = 0; chunks.forEach(c => { out.set(c, o); o += c.length; }); return out;
   }
 
+  // 5.19: one page assembled from JPEG image strips (or tiles), never from one giant canvas. Each strip is placed at
+  // exactly `dpi` pixels per inch: x/y/w/h in page pixels → points (× 72 / dpi); later strips are drawn over earlier ones,
+  // so strips that overlap by a few rows leave no hairline between them in any viewer.
+  // strips: [{ bytes: Uint8Array (JPEG), w, h, x, y }] (pixels); paper: [Wpt, Hpt]
+  // pagePx: the page in pixels — the pixel grid is scaled to the exact paper size (Wpt / Wpx, Hpt / Hpx; differs from 72 / dpi
+  // by < 0.01 % because paper sizes are not whole pixels), so a viewer at `dpi` maps each image pixel onto one device pixel.
+  function buildStrips(strips, paper, dpi, meta, pagePx) {
+    const enc = new TextEncoder(); const chunks = []; let len = 0; const offsets = [];
+    const push = (x) => { const b = typeof x === 'string' ? enc.encode(x) : x; chunks.push(b); len += b.length; };
+    const obj = (n, body) => { offsets[n] = len; push(`${n} 0 obj\n`); body.forEach(push); push('\nendobj\n'); };
+    push('%PDF-1.4\n%xxxx\n');
+    const [W, H] = paper; const sx = pagePx ? W / pagePx[0] : 72 / dpi, sy = pagePx ? H / pagePx[1] : 72 / dpi; const f = (v) => (Math.round(v * 1e6) / 1e6).toString();
+    obj(1, ['<< /Type /Catalog /Pages 2 0 R >>']);
+    obj(2, ['<< /Type /Pages /Count 1 /Kids [4 0 R] >>']);
+    const esc = (x) => String(x || '').replace(/[^\x20-\x7E]/g, '?').replace(/([()\\])/g, '\\$1');
+    obj(3, [`<< /Producer (Granada Atlas) /Title (${esc(meta && meta.title)}) /CreationDate (D:${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)}Z) >>`]);
+    const xo = strips.map((p, i) => `/Im${i} ${6 + i} 0 R`).join(' ');
+    const content = strips.map((p, i) => `q ${f(p.w * sx)} 0 0 ${f(p.h * sy)} ${f(p.x * sx)} ${f(H - (p.y + p.h) * sy)} cm /Im${i} Do Q`).join('\n');
+    obj(4, [`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W.toFixed(2)} ${H.toFixed(2)}] /Resources << /XObject << ${xo} >> >> /Contents 5 0 R >>`]);
+    obj(5, [`<< /Length ${content.length} >>\nstream\n${content}\nendstream`]);
+    strips.forEach((p, i) => obj(6 + i, [`<< /Type /XObject /Subtype /Image /Width ${p.w} /Height ${p.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${p.bytes.length} >>\nstream\n`, p.bytes, '\nendstream']));
+    const total = 6 + strips.length; const xref = len;
+    let x = `xref\n0 ${total}\n0000000000 65535 f \n`; for (let i = 1; i < total; i++) x += String(offsets[i]).padStart(10, '0') + ' 00000 n \n';
+    push(x); push(`trailer\n<< /Size ${total} /Root 1 0 R /Info 3 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+    return new Blob(chunks, { type: 'application/pdf' }); // a Blob of parts: no single giant byte array
+  }
+
   // ---------- vector pages ----------
   // A painter with the same interface as the section's canvas/SVG painters. Shapes become PDF paths; text in the PDF
   // standard fonts (Helvetica, WinAnsi) when it is Latin; other scripts (Arabic, Hebrew, symbols) are rendered by the
@@ -97,5 +124,5 @@
       },
     };
   }
-  root.GA.pdf = { build, PAPER, vectorPainter };
+  root.GA.pdf = { build, buildStrips, PAPER, vectorPainter };
 })(window);
