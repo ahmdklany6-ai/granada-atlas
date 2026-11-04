@@ -539,3 +539,7 @@ region cap bound memory to ≈ 100 MB (strip) + ≈ 256 MB (GPU canvas).
 
 Tests: `tests/ui_test_v17.py` (≈ 45 min here; `QUICK=1` A2 600 dpi only, `CASES=` picks exports), `tests/pngstream.test.js`;
 `ui_test_v16.py`, `ui_test_v10.py`, `ui_test_v4.py` and the node tests pass.
+
+**5.19 deployment record**: `main` `622616e`; "pages build and deployment" run 41771170217 succeeded; live-check run
+41771256706 (`live_files.py` on a GitHub runner): 78 files the public page loads byte-identical to `main` `622616e`
+(incl. `js/pngstream.js`, `js/i18n_v17.js`, `version.json` = 5.19).
