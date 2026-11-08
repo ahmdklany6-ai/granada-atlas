@@ -18,7 +18,7 @@
   function E() { const p = store.get(); const e = p.ex13 = p.ex13 || {}; e.frameKm = 10; e.maps = e.maps || {}; TOPICS.forEach(k => e.maps[k] = e.maps[k] || { finding: '', surprise: '' }); return e; }
   // 5.22: the morphology map can be drawn in the architectural (figure-ground) or the artistic (notation) language; saved per project
   // 5.23: the city centre too. Each topic keeps its own choice.
-  const ART_TOPICS = ['morphology', 'centre'];
+  const ART_TOPICS = ['density', 'morphology', 'centre'];
   const artOn = (k) => ART_TOPICS.includes(k) && !!root.GA.ex13art && (E().maps[k] || {}).style === 'art';
 
   // ---------- data (loaded once) ----------
@@ -49,7 +49,9 @@
       const tmp = document.createElement('canvas'); tmp.width = tmp.height = S; const tc = tmp.getContext('2d'); tc.fillStyle = '#FFFFFF'; tc.fillRect(0, 0, S, S); tc.imageSmoothingEnabled = true; tc.imageSmoothingQuality = 'high'; tc.drawImage(DATA.fgImg, sx, sy, sw, sw, 0, 0, S, S); /* the raster is black buildings on a transparent ground */
       tc.globalCompositeOperation = 'lighten'; tc.fillStyle = col; tc.fillRect(0, 0, S, S); ctx.drawImage(tmp, x, y); };
     const hatch = (x0, y0, w, h, col, step, lw) => { ctx.save(); ctx.beginPath(); ctx.rect(x0, y0, w, h); ctx.clip(); ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); for (let q = -h; q < w + h; q += step) { ctx.moveTo(x0 + q, y0 + h); ctx.lineTo(x0 + q + h, y0); } ctx.stroke(); ctx.restore(); };
-    if (k === 'density') {
+    if (k === 'density' && artOn(k)) {
+      root.GA.ex13art.drawDensity(ctx, DATA, x, y, S, opts);
+    } else if (k === 'density') {
       const d = DATA.density; const cx = d.corners.x, cy = d.corners.y; const br = d.breaks; const cols = c.density;
       d.pop.forEach((row, r) => row.forEach((p, q) => { if (!p || p <= 0) return; const v = p * 100; const ci = br.filter(b => v > b).length;
         ctx.beginPath(); ctx.moveTo(X(cx[r][q]), Y(cy[r][q])); ctx.lineTo(X(cx[r][q + 1]), Y(cy[r][q + 1])); ctx.lineTo(X(cx[r + 1][q + 1]), Y(cy[r + 1][q + 1])); ctx.lineTo(X(cx[r + 1][q]), Y(cy[r + 1][q])); ctx.closePath();
@@ -110,6 +112,7 @@
     ctx.restore();
     // frame, north arrow, scale bar (same on every map)
     ctx.save(); ctx.strokeStyle = c.frame; ctx.lineWidth = 1.6 * s; ctx.strokeRect(x + 0.5, y + 0.5, S - 1, S - 1);
+    if (k === 'density' && artOn(k)) { ctx.restore(); return; } // the oblique view draws its own north, east–west scale and reference needle
     const nx = x + S - 34 * s, ny = y + 22 * s; ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(nx - 16 * s, ny - 8 * s, 32 * s, 58 * s); PG.northArrow(ctx, nx, ny, 1.25 * s);
     const bx = x + 18 * s, by = y + S - 34 * s, km = 1000 / mpp; ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(bx - 8 * s, by - 26 * s, 2 * km + 120 * s, 46 * s);
     ctx.fillStyle = PAL().ink; ctx.fillRect(bx, by, km, 6 * s); ctx.strokeStyle = PAL().ink; ctx.lineWidth = 1.2 * s; ctx.strokeRect(bx, by, 2 * km, 6 * s);
@@ -122,7 +125,7 @@
   function legendItems(k) {
     const c = C(); const L = [];
     if (k === 'density') { const lab = ranges(DATA.density.breaks, t('x13.perKm2'), 0); c.density.forEach((col, i) => L.push({ sw: col, label: lab[i] })); L.push({ sw: '#FFFFFF', label: t('x13.lg.noRes') }, { line: c.muni, dash: true, label: t('x13.lg.muni') }); }
-    if (artOn(k)) return k === 'centre' ? root.GA.ex13art.centreLegend(t) : root.GA.ex13art.legendItems(t, DATA);
+    if (artOn(k)) return k === 'centre' ? root.GA.ex13art.centreLegend(t) : k === 'density' ? root.GA.ex13art.densityLegend(t, DATA) : root.GA.ex13art.legendItems(t, DATA);
     if (k === 'morphology') L.push({ sw: c.building, label: t('x13.lg.building') }, { sw: '#FFFFFF', label: t('x13.lg.open') }, { hatch: c.gap, label: t('x13.lg.gap') }, { line: PAL().red, dash: true, label: t('x13.lg.muni') });
     if (k === 'centre') { const br = DATA.centre.breaks; c.centre.forEach((col, i) => L.push({ sw: col, label: i < br.length - 1 ? iso(`${nf(br[i])}–${nf(br[i + 1])}`) + ' ' + t('x13.placesKm2') : t('x13.atLeast', { v: iso(nf(br[i])) }) + ' ' + t('x13.placesKm2') }));
       L.push({ peak: true, label: t('x13.lg.peak') }, { line: c.hist, dash: true, w: 2.6, label: t('x13.lg.hist') }, { line: c.whc, w: 2, label: t('x13.lg.whc') }, { line: c.street, w: 1.2, label: t('x13.lg.streets') }, { line: c.muni, dash: true, label: t('x13.lg.muni') }); }
@@ -150,6 +153,7 @@
         if (it.line) { ctx.strokeStyle = it.line; ctx.lineWidth = Math.max(1.5, (it.w || 1.3) * fs / 14); ctx.setLineDash(it.dash ? [fs * 0.45, fs * 0.28] : []); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + sw, cy); ctx.stroke(); ctx.setLineDash([]); }
         if (it.edge) { ctx.strokeStyle = it.edge; ctx.lineWidth = Math.max(2, fs * 0.22); ctx.lineJoin = 'round'; ctx.strokeRect(cx + 1, cy - sh / 2 + 1, sw - 2, sh - 2); }
         if (it.lattice) { ctx.save(); ctx.beginPath(); ctx.rect(cx, cy - sh / 2, sw, sh); ctx.clip(); ctx.strokeStyle = it.lattice; ctx.lineWidth = Math.max(1, fs * 0.07); ctx.beginPath(); const st = Math.max(4, fs * 0.42); for (let q = -sh; q < sw + sh; q += st) { ctx.moveTo(cx + q, cy + sh / 2); ctx.lineTo(cx + q + sh, cy - sh / 2); ctx.moveTo(cx + q, cy - sh / 2); ctx.lineTo(cx + q + sh, cy + sh / 2); } ctx.stroke(); ctx.restore(); ctx.strokeStyle = it.lattice; ctx.lineWidth = 1; ctx.strokeRect(cx + 0.5, cy - sh / 2 + 0.5, sw - 1, sh - 1); }
+        if (it.needles) { ctx.strokeStyle = it.needles; ctx.lineWidth = Math.max(1.5, fs * 0.14); [0.15, 0.38, 0.62, 0.85].forEach((q, n) => { const hh = sh * (n % 2 ? 0.95 : 0.6); ctx.beginPath(); ctx.moveTo(cx + sw * q, cy + sh / 2); ctx.lineTo(cx + sw * q, cy + sh / 2 - hh); ctx.stroke(); }); }
         if (it.patch) { ctx.drawImage(it.patch.img, it.patch.sx, it.patch.sy, it.patch.s, it.patch.s * sh / sw, cx, cy - sh / 2, sw, sh); ctx.strokeStyle = 'rgba(41,16,12,.35)'; ctx.lineWidth = 1; ctx.strokeRect(cx + 0.5, cy - sh / 2 + 0.5, sw - 1, sh - 1); }
         if (it.cross) { const r = sh * 0.42, ccx = it.text ? cx + sh * 0.5 : cx + sw / 2; ctx.strokeStyle = it.cross; ctx.lineWidth = Math.max(1.5, fs * 0.16); ctx.beginPath(); ctx.moveTo(ccx - r, cy); ctx.lineTo(ccx + r, cy); ctx.moveTo(ccx, cy - r); ctx.lineTo(ccx, cy + r); ctx.stroke();
           if (it.text) { ctx.save(); ctx.font = `700 ${Math.round(fs * 0.8)}px ${o.F}`; ctx.direction = 'ltr'; ctx.textAlign = 'left'; ctx.fillStyle = it.cross; ctx.fillText(it.text, ccx + r + 2, cy); ctx.restore(); } }
@@ -178,7 +182,9 @@
       out.ind = [[t('x13.i.popFrame'), iso(nf(s.pop_frame)) + ' ' + t('x13.modelled')], [t('x13.i.peak'), iso(nf(s.peak)) + ' ' + t('x13.perKm2')], [t('x13.i.median'), iso(nf(s.median_inhabited)) + ' ' + t('x13.perKm2')], [t('x13.i.dense'), iso(nf(s.share_dense, 1) + ' %')], [t('x13.i.check'), iso((s.diff_pct > 0 ? '+' : '') + nf(s.diff_pct, 1) + ' %') + ' ' + t('x13.i.checkVs', { p: iso(nf(s.pop_muni_padron_2020)) })]];
       out.chartTitle = t('x13.c.density'); out.chart = s.share_by_class.map((v, i) => ({ v, col: c.density[i] }));
       out.sentence = t('x13.s.density', { peak: iso(nf(s.peak)), dense: iso(nf(s.share_dense, 0) + ' %'), pop: iso(nf(Math.round(s.pop_frame / 1000) * 1000)) });
-      out.src = [t('x13.src.density'), t('x13.lim.density', { d: iso((s.diff_pct > 0 ? '+' : '') + nf(s.diff_pct, 1) + ' %') })]; }
+      out.src = [t('x13.src.density'), t('x13.lim.density', { d: iso((s.diff_pct > 0 ? '+' : '') + nf(s.diff_pct, 1) + ' %') })];
+      if (artOn(k)) { const Nd = root.GA.ex13art.densityStats(d); const cols = PAL().ex13art.needles; const pop = [0, 0, 0, 0, 0]; Nd.list.forEach(n => pop[n.k] += n.v / 100);
+        out.chartTitle = t('x22.c.shares'); out.chart = pop.map((v, i) => ({ v, col: cols[i] })); out.chartKey = null; out.src.push(t('x22.src.art')); } } // the legend beside the top view already names the colours
     if (k === 'morphology') { const s = d.morphology.stats;
       out.ind = [[t('x13.i.cov'), iso(nf(s.coverage_frame_pct, 1) + ' %')], [t('x13.i.covMuni'), iso(nf(s.coverage_muni_pct, 1) + ' %')], [t('x13.i.gaps'), iso(nf(s.gap_cells) + ' × 1 ha = ' + nf(s.gap_area_km2, 2) + ' km²')], [t('x13.i.agree'), iso(nf(s.agree_pct, 0) + ' %')]];
       out.sentence = t('x13.s.morphology', { cov: iso(nf(s.coverage_frame_pct, 1) + ' %'), gaps: iso(nf(s.gap_area_km2, 2) + ' km²') });
@@ -230,7 +236,11 @@
     drawMap(pk, ctx, mx, my, G.mapS, opts);
     // under the map: legend · indicators + chart · sentence · sources
     const bx = mx, bw = G.mapS; let yy = my + G.mapS + pt(10);
-    yy = legend(ctx, legendItems(pk), bx, yy, bw, o(8.6, { cols: pk === 'human' || pk === 'centre' || artOn(pk) ? 2 : pk === 'climate' ? 4 : 3 })) + pt(4);
+    let topBox = null;
+    if (pk === 'density' && artOn(pk)) { const ts = Math.round(G.mapS * 0.2), gap = pt(10); const tx = rtl ? bx + bw - ts : bx; root.GA.ex13art.drawDensityTop(ctx, DATA, tx, yy, ts, opts); topBox = { x: tx, y: yy, s: ts };
+      const capY = para(ctx, t('x22.topCap'), tx, yy + ts + pt(1), ts, o(7, { color: PAL().ink3 }));
+      const ly = legend(ctx, legendItems(pk), rtl ? bx : bx + ts + gap, yy, bw - ts - gap, o(7.6, { cols: 1 })); yy = Math.max(ly, capY) + pt(3); }
+    else yy = legend(ctx, legendItems(pk), bx, yy, bw, o(8.6, { cols: pk === 'human' || pk === 'centre' || artOn(pk) ? 2 : pk === 'climate' ? 4 : 3 })) + pt(4);
     const cn = content(pk); const half = (bw - pt(14)) / 2;
     const indX = rtl ? bx + half + pt(14) : bx, chX = rtl ? bx : bx + half + pt(14); let iy = yy, cy = yy;
     cn.ind.forEach(r => { iy = para(ctx, `${r[0]}: ${r[1]}`, indX, iy, half, o(8.8, { weight: 600, lh: 1.3 })); });
@@ -240,7 +250,7 @@
     yy = para(ctx, cn.sentence, rtl ? bx : bx + pt(10), yy, bw - pt(10), o(10.5, { weight: 600, lh: 1.32 })) + pt(5);
     cn.src.forEach(sline => { yy = para(ctx, sline, bx, yy, bw, o(7.4, { color: PAL().ink3, lh: 1.3 })); });
     footer(ctx, G, o, pt);
-    cv.__layout = { mapX: mx, mapY: my, mapS: G.mapS, bottom: yy, H: G.H, footerY: G.H - pt(16) };
+    cv.__layout = { mapX: mx, mapY: my, mapS: G.mapS, bottom: yy, H: G.H, footerY: G.H - pt(16), top: topBox };
     return cv;
   }
   function footer(ctx, G, o, pt) { const F = FR(); para(ctx, t('x13.footer', { x0: iso(nf(F.x0)), x1: iso(nf(F.x1)), y0: iso(nf(F.y0)), y1: iso(nf(F.y1)), s: iso('1:' + nf(F.scale)), d: iso(new Date().toISOString().slice(0, 10)) }), G.M, G.H - pt(22), G.W - 2 * G.M, o(7, { color: PAL().ink3 })); }
@@ -333,9 +343,9 @@
     for (const k of PAGES) await prev(k);
     // 5.22 / 5.23 layer player (artistic maps): each layer alone (the others faint), then the map built up layer after layer —
     // drawn straight into the preview's map box, so squares can fade in smoothly — then all; loops until stopped
-    const PL = {}; const DUR = { centre: [1200, 2800, 1000, 1100, 700], morphology: [900, 900, 900, 900, 900] };
+    const PL = {}; const DUR = { centre: [1200, 2800, 1000, 1100, 700], morphology: [900, 900, 900, 900, 900], density: [800, 800, 800, 1300, 1300, 1300, 1300, 1300, 800] };
     const mapBox = (k) => { const c = body.querySelector(`[data-e13="${k}"] .e13-img canvas`); return c && c.__layout ? c : null; };
-    const paintMap = (k, o) => { const c = mapBox(k); if (!c) return; const L = c.__layout; const x = c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); drawMap(k, x, L.mapX, L.mapY, L.mapS, o); };
+    const paintMap = (k, o) => { const c = mapBox(k); if (!c) return; const L = c.__layout; const x = c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); drawMap(k, x, L.mapX, L.mapY, L.mapS, o); if (L.top && k === 'density') root.GA.ex13art.drawDensityTop(x, DATA, L.top.x, L.top.y, L.top.s, o); };
     const stopPlay = (k) => { const P = PL[k]; if (!P) return; P.playing = false; cancelAnimationFrame(P.raf); };
     function paintPlayer(k, cur) { const el = body.querySelector(`[data-x20player="${k}"]`); if (!el) return; const on = artOn(k); el.hidden = !on; if (!on) { stopPlay(k); return; } const P = PL[k] = PL[k] || { playing: false, focus: null };
       const items = legendItems(k).filter(i => i.layer != null); cur = cur == null ? -1 : cur;
@@ -371,7 +381,7 @@
     } catch (er) { (root.GA.toast || alert)(t('x13.exportFail') + ' ' + er.message); console.error(er); } finally { b.disabled = false; } };
   }
   function styleHTML(k) { const art = artOn(k); const nm = 'x20-style-' + k;
-    return `<div class="x20-style" role="radiogroup" aria-label="${esc(t('x20.style'))}"><span>${t('x20.style')}</span><label><input type="radio" name="${nm}" value="arch"${art ? '' : ' checked'}> ${t('x20.arch')}</label><label><input type="radio" name="${nm}" value="art"${art ? ' checked' : ''}> ${t('x20.art')}</label></div><p class="fine">${t(k === 'centre' ? 'x21.styleHint' : 'x20.styleHint')}</p>`; }
+    return `<div class="x20-style" role="radiogroup" aria-label="${esc(t('x20.style'))}"><span>${t('x20.style')}</span><label><input type="radio" name="${nm}" value="arch"${art ? '' : ' checked'}> ${t('x20.arch')}</label><label><input type="radio" name="${nm}" value="art"${art ? ' checked' : ''}> ${t('x20.art')}</label></div><p class="fine">${t(k === 'centre' ? 'x21.styleHint' : k === 'density' ? 'x22.styleHint' : 'x20.styleHint')}</p>`; }
   async function layersZip(k) { // one full-resolution page per layer (that layer full, the others faint), then the whole map
     const keys = root.GA.ex13art.keys(k); await root.GA.ex13art.ready(k); const files = []; const add = async (o, name) => { const c = await pageCanvas(k, DPI_FULL, o); const bl = await PG.toBlob(c); files.push({ name, data: new Uint8Array(await bl.arrayBuffer()) }); };
     for (let i = 0; i < keys.length; i++) await add({ focus: i }, `${fileOf(k)}_${i + 1}_${keys[i]}.png`);

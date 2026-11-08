@@ -122,6 +122,8 @@
   // compact fabric, squares as a lattice. The map, its legend, the stacked bar and the layer player read these entries.
   P.ex13art = {
     paper: D.paper, sparse: D.khakiPale, medium: D.rose, compact: RED, compactAlpha: 0.62, edge: BASE.wine, square: D.blueDeep, context: BASE.brown, muni: D.warmGrey,
+    // 5.24 density needles: five classes (< 5,000 · 5–10,000 · 10–20,000 · 20–30,000 · > 30,000 residents/km²), distinct and ordered light → dark
+    needles: [BASE.blueGrey, D.blueDeep, BASE.khaki, RED, BASE.brown], needleBreaks: [5000, 10000, 20000, 30000],
   };
   // 5.20 — southern axis layers (metro extension, 1931 tram, Escúzar estate). The map paint and the legends read these entries.
   P.south = {

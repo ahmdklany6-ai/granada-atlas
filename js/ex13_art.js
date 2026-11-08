@@ -127,5 +127,68 @@
       { sw: '#C7C1B5', alpha: 0.34, label: t('x21.lg.around') },
     ];
   }
-  root.GA.ex13art = { KEYS, CKEYS, CELL, prepare, draw, legendItems, loadCentre, ready, keys, drawCentre, centreLegend, get centre() { return CA; }, get grid() { return G; } };
+
+  // ---------- 5.24: density — one needle per inhabited 100 m cell (JRC GHS-POP 2020), length ∝ residents/km², coloured by
+  // class, seen from the south-west across the city's NW–SE axis; built-up Granada full, outside faded; a top view of the
+  // same cells drawn beside the map. Uses the city shape of the centre assets. ----------
+  const DKEYS = ['grid', 'streets', 'edge', 'c1', 'c2', 'c3', 'c4', 'c5', 'labels'];
+  const OB = { a: 0.72, b: 0.42, c: 0.5, ox: 20, oy: 330 }; // per 1000 px of map: x' = ox + a·x + b·y, y' = oy + c·y (x, y in frame px)
+  const HMAX = 250, VMAX = 40000; const hOf = (v) => Math.min(v, VMAX) / VMAX * HMAX;
+  let DN = null;
+  function needles(D) {
+    if (DN && DN.src === D && DN.ca === CA) return DN; const F = D.frame, mpp = (F.x1 - F.x0) / 1000; const cx = D.density.corners.x, cy = D.density.corners.y; const br = GA.palette.ex13art.needleBreaks; const out = [];
+    const inCity = (x, y) => { if (!CA) return true; const n = CA.m.frame_px, i = Math.floor(x / 1000 * n), j = Math.floor(y / 1000 * n); return i >= 0 && j >= 0 && i < n && j < n && CA.bits[j * n + i] === 1; };
+    D.density.pop.forEach((row, r) => row.forEach((p, q) => { if (!p || p <= 0) return; const u = (cx[r][q] + cx[r][q + 1] + cx[r + 1][q] + cx[r + 1][q + 1]) / 4, w = (cy[r][q] + cy[r][q + 1] + cy[r + 1][q] + cy[r + 1][q + 1]) / 4; const x = (u - F.x0) / mpp, y = (F.y1 - w) / mpp;
+      if (x < 0 || y < 0 || x > 1000 || y > 1000) return; const v = p * 100; const qd = [[r, q], [r, q + 1], [r + 1, q + 1], [r + 1, q]].map(([a, b]) => [(cx[a][b] - F.x0) / mpp, (F.y1 - cy[a][b]) / mpp]); out.push({ x, y, v, qd, k: br.filter(b => v >= b).length, city: inCity(x, y) }); }));
+    out.sort((a, b) => a.y - b.y || a.x - b.x); const top = out.reduce((m, n) => n.v > m.v ? n : m, out[0]); const count = [0, 0, 0, 0, 0]; out.forEach(n => count[n.k]++);
+    return (DN = { src: D, ca: CA, list: out, top, count });
+  }
+  const layerAlpha = (o, i) => o.focus != null ? (i === o.focus ? 1 : 0.1) : o.upTo != null ? (i < o.upTo ? 1 : 0) : 1;
+  const layerT = (o, i) => o.upTo != null && o.t != null && i === o.upTo - 1 ? o.t : 1;
+  function drawDensity(ctx, D, x, y, S, o) {
+    o = o || {}; const Nd = needles(D), F = D.frame, mpp = (F.x1 - F.x0) / 1000, s = S / 1000, P = GA.palette, cols = P.ex13art.needles; const font = (sz, w) => `${w || 700} ${Math.round(sz * s)}px ${root.GA.pages.font()}`;
+    const PR = (gx, gy) => [(OB.ox + OB.a * gx + OB.b * gy) * s, (OB.oy + OB.c * gy) * s]; const vis = (i) => layerAlpha(o, i) > 0.005 && layerT(o, i) > 0;
+    const ground = (fn) => { ctx.save(); ctx.transform(OB.a * s, 0, OB.b * s, OB.c * s, OB.ox * s, OB.oy * s); fn(); ctx.restore(); };
+    const FX = (u) => (u - F.x0) / mpp, FY = (v) => (F.y1 - v) / mpp;
+    ctx.save(); ctx.translate(x, y); ctx.beginPath(); ctx.rect(0, 0, S, S); ctx.clip(); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, S, S);
+    const L = [
+      (t) => { ctx.strokeStyle = P.line; ctx.lineWidth = 0.8 * s; ctx.beginPath(); for (let k = -40; k <= 60; k++) { const p = k * 50; let [a1, b1] = PR(p, -2000), [a2, b2] = PR(p, 3000); ctx.moveTo(a1, b1); ctx.lineTo(a2, b2); [a1, b1] = PR(-3000, p); [a2, b2] = PR(4000, p); ctx.moveTo(a1, b1); ctx.lineTo(a2, b2); } ctx.globalAlpha *= t; ctx.stroke(); },
+      (t) => ground(() => { ctx.globalAlpha *= t; ctx.strokeStyle = P.ink; ctx.lineWidth = 0.55; D.streets.forEach(ls => { ctx.beginPath(); ls.forEach(l => l.forEach((p, i) => i ? ctx.lineTo(FX(p[0]), FY(p[1])) : ctx.moveTo(FX(p[0]), FY(p[1])))); ctx.stroke(); });
+        ctx.beginPath(); D.muni.forEach(r => r.forEach((p, i) => i ? ctx.lineTo(FX(p[0]), FY(p[1])) : ctx.moveTo(FX(p[0]), FY(p[1])))); ctx.strokeStyle = P.grey; ctx.lineWidth = 0.7; ctx.setLineDash([5, 4]); ctx.stroke(); ctx.setLineDash([]); }),
+      (t) => { if (CA) ground(() => { ctx.globalAlpha *= t; const e = document.createElement('canvas'); e.width = e.height = 1000; const ex = e.getContext('2d'); ex.drawImage(CA.e, 0, 0, 1000, 1000); ex.globalCompositeOperation = 'source-in'; ex.fillStyle = P.ink; ex.fillRect(0, 0, 1000, 1000); ctx.drawImage(e, 0, 0); }); },
+    ];
+    for (let k = 0; k < 5; k++) L.push((t) => { const a0 = ctx.globalAlpha; ctx.lineWidth = 1.1 * s; ctx.strokeStyle = cols[k];
+      Nd.list.forEach(n => { if (n.k !== k) return; const g = t >= 1 ? 1 : Math.max(0, Math.min(1, (t - (1 - n.y / 1000) * 0.5) / 0.5)); if (!g) return; const [sx, sy] = PR(n.x, n.y); ctx.globalAlpha = a0 * (n.city ? 1 : 0.3); ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx, sy - hOf(n.v) * s * g); ctx.stroke(); }); ctx.globalAlpha = a0; });
+    L.push((t) => { if (t <= 0) return; ctx.globalAlpha *= t; const [sx, sy] = PR(Nd.top.x, Nd.top.y); const ty = sy - hOf(Nd.top.v) * s; ctx.strokeStyle = P.ink; ctx.lineWidth = 0.8 * s; ctx.beginPath(); ctx.moveTo(sx, ty); ctx.lineTo(sx + 60 * s, ty - 30 * s); ctx.lineTo(sx + 170 * s, ty - 30 * s); ctx.stroke();
+      ctx.font = font(17); ctx.direction = 'ltr'; ctx.textAlign = 'left'; ctx.fillStyle = P.ink; ctx.fillText(Math.round(Nd.top.v).toLocaleString('en-US') + ' /km²', sx + 64 * s, ty - 36 * s);
+      D.centre.whc.filter(w => w.name !== 'Generalife').forEach(w => { const gm = w.geometry; let q; if (gm.type === 'Point') q = gm.coordinates; else { const r = gm.type === 'Polygon' ? gm.coordinates[0] : gm.coordinates[0][0]; q = [r.reduce((a, p) => a + p[0], 0) / r.length, r.reduce((a, p) => a + p[1], 0) / r.length]; }
+        const [px, py] = PR(FX(q[0]), FY(q[1])); ctx.font = font(14); ctx.lineJoin = 'round'; ctx.lineWidth = 3 * s; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(String(w.name).toUpperCase(), px + 6 * s, py + 16 * s); ctx.fillStyle = P.ink; ctx.fillText(String(w.name).toUpperCase(), px + 6 * s, py + 16 * s); }); });
+    const f = o.focus; L.forEach((fn, i) => { if (i === f || !vis(i)) return; ctx.save(); ctx.globalAlpha = layerAlpha(o, i); fn(layerT(o, i)); ctx.restore(); }); if (f != null) { ctx.save(); L[f](1); ctx.restore(); }
+    // reference needle, east–west scale (true in this view), north along the view
+    ctx.save(); ctx.direction = 'ltr'; const rx = 60 * s, ry = 940 * s, h = hOf(10000) * s; ctx.strokeStyle = P.red; ctx.lineWidth = 2 * s; ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx, ry - h); ctx.stroke();
+    ctx.font = font(14, 500); ctx.fillStyle = P.ink; ctx.textAlign = 'left'; ctx.fillText('= 10,000 /km²', rx + 8 * s, ry - h + 10 * s);
+    const km = 100 * OB.a * s, bx = 640 * s, by = 950 * s; ctx.fillRect(bx, by, km, 5 * s); ctx.strokeStyle = P.ink; ctx.lineWidth = 1 * s; ctx.strokeRect(bx, by, 2 * km, 5 * s); ctx.textAlign = 'center'; ctx.fillText('0', bx, by - 6 * s); ctx.fillText('1', bx + km, by - 6 * s); ctx.fillText('2 km', bx + 2 * km, by - 6 * s); ctx.textAlign = 'left'; ctx.fillText('E–W', bx + 2 * km + 12 * s, by + 6 * s);
+    ctx.translate(930 * s, 55 * s); ctx.rotate(Math.atan2(-OB.b, OB.c)); ctx.fillStyle = P.ink; ctx.beginPath(); ctx.moveTo(0, -15 * s); ctx.lineTo(9 * s, 15 * s); ctx.lineTo(0, 9 * s); ctx.lineTo(-9 * s, 15 * s); ctx.closePath(); ctx.fill(); ctx.rotate(-Math.atan2(-OB.b, OB.c)); ctx.font = font(15); ctx.textAlign = 'center'; ctx.fillText('N', 0, 36 * s); ctx.restore();
+    ctx.restore(); return true;
+  }
+  // the same cells from above (true plan, same frame), following the same layer state
+  function drawDensityTop(ctx, D, x, y, S, o) {
+    o = o || {}; const Nd = needles(D), P = GA.palette, cols = P.ex13art.needles; const s = S / 1000;
+    const al = [0, 1, 2, 3, 4].map(k => layerAlpha(o, 3 + k) * (layerT(o, 3 + k) > 0 ? 1 : 0));
+    ctx.save(); ctx.translate(x, y); ctx.beginPath(); ctx.rect(0, 0, S, S); ctx.clip(); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, S, S);
+    for (let k = 0; k < 5; k++) { if (!al[k]) continue; ctx.globalAlpha = al[k]; ctx.fillStyle = cols[k]; ctx.strokeStyle = cols[k]; ctx.lineWidth = 0.6 * s; // each GHS-POP cell as its own quadrilateral (the grid is not aligned with UTM)
+      ctx.beginPath(); Nd.list.forEach(n => { if (n.k !== k) return; n.qd.forEach((p, i) => i ? ctx.lineTo(p[0] * s, p[1] * s) : ctx.moveTo(p[0] * s, p[1] * s)); ctx.closePath(); }); ctx.fill(); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(41,16,12,.18)'; ctx.lineWidth = Math.max(0.5, s); ctx.beginPath(); for (let q = 1; q < 20; q++) { ctx.moveTo(q * 50 * s, 0); ctx.lineTo(q * 50 * s, S); ctx.moveTo(0, q * 50 * s); ctx.lineTo(S, q * 50 * s); } ctx.stroke();
+    if (CA) ctx.drawImage(CA.e, 0, 0, S, S); ctx.strokeStyle = P.ink; ctx.lineWidth = Math.max(1, 1.6 * s); ctx.strokeRect(0.5, 0.5, S - 1, S - 1);
+    root.GA.pages.northArrow(ctx, S - 30 * s, 16 * s, 1.6 * s); ctx.restore();
+  }
+  function densityLegend(t, D) {
+    const P = GA.palette, cols = P.ex13art.needles, Nd = needles(D); const R = ['x22.c1', 'x22.c2', 'x22.c3', 'x22.c4', 'x22.c5'];
+    return [{ line: P.line, w: 1.2, label: t('x22.lg.grid'), layer: 0 }, { line: P.ink, w: 1, label: t('x22.lg.streets'), layer: 1 }, { edge: P.ink, label: t('x22.lg.edge', { a: '‎' + (CA ? CA.m.city_km2 : '—') + ' km²‎' }), layer: 2 }]
+      .concat(cols.map((col, k) => ({ needles: col, label: t(R[k], { n: '‎' + Nd.count[k].toLocaleString('en-US') + '‎' }), layer: 3 + k })))
+      .concat([{ text: 'A', cross: P.ink, label: t('x22.lg.labels', { v: '‎' + Math.round(Nd.top.v).toLocaleString('en-US') + '‎' }), layer: 8 }]);
+  }
+  root.GA.ex13art = { KEYS, CKEYS, DKEYS, CELL, prepare, draw, legendItems, loadCentre, ready: (k) => (k === 'centre' || k === 'density') ? loadCentre() : Promise.resolve(), keys: (k) => k === 'centre' ? CKEYS : k === 'density' ? DKEYS : KEYS,
+    drawCentre, centreLegend, drawDensity, drawDensityTop, densityLegend, densityStats: (D) => needles(D), get centre() { return CA; }, get grid() { return G; } };
 })(window);

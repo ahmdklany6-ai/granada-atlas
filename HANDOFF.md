@@ -635,3 +635,20 @@ Granada; Albaicín and Alhambra for orientation. No circles, no belt of intermed
   squares fade in smoothly; PNG per layer (ZIP) works for both topics.
 - Strings `js/i18n_v21.js`. Tests: `tests/ui_test_v21.py`; `ui_test_v20.py` updated (per-topic radio names);
   `ui_test_v15.py`, `ui_test_v4.py`, node tests pass.
+
+## 26. Build 5.24 — Exercise 1.3 density in the artistic map language (owner request of 8 Nov 2026)
+
+Approved after previews (red needles on a line drawing; 200 m simplified version rejected — "back as it was"; then a
+clearer angle, distinct colours, a top view beside the map, the grid over the whole map):
+- One needle per inhabited 100 m GHS-POP cell inside the frame (6,558), length ∝ residents/km² (250 px per 40,000 per
+  1000 px of map; the red reference needle = 10,000), coloured by class with `palette.ex13art.needles` = blue-grey,
+  blue-deep, khaki, red, dark brown at 5,000 / 10,000 / 20,000 / 30,000 (`needleBreaks`); needles outside built-up
+  Granada (the centre's city shape) at 30 %.
+- View from the south-west across the city's NW–SE axis (`OB` in `js/ex13_art.js`: x' = 20 + 0.72x + 0.42y,
+  y' = 330 + 0.5y per 1000 px); the scale bar is east–west only and says so; north arrow along the view; the standard
+  north/scale of `drawMap` is skipped for this page only. Ground: 500 m grid over the whole map, main streets,
+  municipality, city edge. Labels: tallest needle (39,785/km²), Albaicín, Alhambra.
+- **Top view** of the same cells (each GHS-POP cell as its own quadrilateral — the grid is not aligned with UTM) under
+  the map beside the legend (20 % of the map width so the A3 page fits; `cv.__layout.top`); it follows the player.
+- Bar "Residents by density class" in the needle colours (no separate key — the legend names them).
+- Strings `js/i18n_v22.js`. Test `tests/ui_test_v22.py`; v21, v20, v15, v4 and node tests pass.
