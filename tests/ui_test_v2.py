@@ -14,7 +14,8 @@ def check(name, cond, extra=''):
 # Build 5.8 starts every visit with the three panels closed. The older suites were written for the sidebars that were
 # open by default, so this hook opens them after load (desktop: all three; narrow screens: Study area, as before).
 # tests/ui_test_v9.py sets window.__noPanelHook to test the real default.
-PANEL_HOOK = "document.addEventListener('DOMContentLoaded', () => { try { if (window.__noPanelHook) return; if (innerWidth >= 1000) ['analysis', 'study', 'layers'].forEach(k => GA.panels.set(k, true)); else GA.panels.set('study', true); } catch (e) { } });"
+# 5.25: Layers is the ☰ menu (an overlay) — the old "all panels open" start opens Analysis and Study area only
+PANEL_HOOK = "document.addEventListener('DOMContentLoaded', () => { try { if (window.__noPanelHook) return; if (innerWidth >= 1000) ['analysis', 'study'].forEach(k => GA.panels.set(k, true)); else GA.panels.set('study', true); } catch (e) { } });"
 def stub(pg):
     pg.add_init_script(PANEL_HOOK)
     pg.add_init_script('window.__gaLegacyView = window.__gaLegacyView !== false;')  # 5.25: older suites keep the pre-atlas opening view (v23 opts out)

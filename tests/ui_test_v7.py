@@ -41,6 +41,7 @@ try:
         # ================= desktop, Arabic =================
         ctx, pg, errs = boot(b, {'width': 1440, 'height': 900})
         # ---- 1. street-layer control ----
+        pg.evaluate('GA.panels.set("layers", true)'); time.sleep(0.4)  # 5.25: Layers lives in the ☰ menu
         check(pg.evaluate('!!document.querySelector("#panel-layers input[data-ly=streets]")'), 'Layers panel has the street-hierarchy row')
         pg.evaluate('document.querySelector("#panel-layers input[data-ly=streets]").scrollIntoView()')
         if not pg.evaluate('GA.app.L.S.streets.on'): pg.click('#panel-layers input[data-ly=streets]'); time.sleep(0.8)
@@ -51,6 +52,7 @@ try:
         check(pg.evaluate('!GA.app.L.S.streets.on && ["ly-streets-maj","ly-streets","ly-streets-ped"].every(l => GA.app.map.getLayoutProperty(l, "visibility") === "none")'), 'unchecking hides every street layer')
         check(pg.evaluate('document.querySelector("#panel-layers input[data-ly=streets]").checked') is False, 'checkbox reflects the map state')
         pg.click('#panel-layers input[data-ly=streets]'); time.sleep(0.5)
+        pg.evaluate('GA.panels.set("layers", false)'); time.sleep(0.3)  # close the ☰ menu before working on the map
         op = pg.evaluate('JSON.stringify(GA.app.map.getPaintProperty("ly-streets-ped", "line-opacity"))')
         check(op.startswith('["interpolate"') and 'pedestrian' in op, 'pedestrian opacity grows with zoom (progressive reveal)')
         # pedestrian clutter at 14.5 vs 17
