@@ -612,3 +612,26 @@ the centre shown through a second map such as the aerial photo).
   whole map, for Miro or to assemble a GIF by hand. There is no animated GIF export yet.
 - Strings `js/i18n_v20.js` (ar / he / en). Test: `tests/ui_test_v20.py`; `ui_test_v15.py`, `ui_test_v4.py` and node
   tests pass.
+
+## 25. Build 5.23 — Exercise 1.3 city centre in the artistic map language (owner request of 8 Nov 2026)
+
+After previews (aerial "window", animated grid of tiles, municipality-only and city-only cuts) the owner approved:
+a 500 m grid over the **whole** map (stronger lines and dark dots inside Granada, light outside), the whole frame shown
+with **built-up Granada at full strength and its surroundings faded**, and the centre as **black-and-white aerial
+squares** that fade in one after another, densest first; crosses on the corners of the centre squares; peaks C1–C6 inside
+Granada; Albaicín and Alhambra for orientation. No circles, no belt of intermediate cells (both rejected).
+
+- Switch **Map language** now in both 02 Morphology and 03 City centre; saved per topic (`ex13.maps.<topic>.style`).
+- Assets (built once, in the repo): `tools/build_ex13_art.py` → `data/ex13/art/centre_base.jpg` (grey street map of the
+  frame: tones by built share smoothed over 250 m, OSM footprints, parks lighter, every OSM street white),
+  `centre_aerial.jpg` (PNOA orthophoto from the IGN WMS, CC BY 4.0, grayscale + contrast, main streets white),
+  `centre_city.png` / `centre_edge.png` (built city = smoothed built share ≥ 12 % inside the municipality, largest piece,
+  19.6 km²), `centre_art.json` (18 squares of 500 m whose kernel reaches ≥ 500 places/km² and touch the city; method and
+  sources). C2 (Armilla) is outside the municipality and is not drawn — said in the limits line. Re-run the tool if the
+  frame, buildings, streets or kernel change. `dataVersion` bumped.
+- `js/ex13_art.js`: `loadCentre`, `drawCentre(ctx, D, x, y, S, {focus | upTo, t})`, `centreLegend`, `keys(topic)`,
+  `ready(topic)`. Legend items gained `patch` (image swatch) and `cross` (+ optional text) in `ex13.legend()`.
+- The preview **player** is now generic (one per artistic topic) and draws straight into the preview's map box, so
+  squares fade in smoothly; PNG per layer (ZIP) works for both topics.
+- Strings `js/i18n_v21.js`. Tests: `tests/ui_test_v21.py`; `ui_test_v20.py` updated (per-topic radio names);
+  `ui_test_v15.py`, `ui_test_v4.py`, node tests pass.

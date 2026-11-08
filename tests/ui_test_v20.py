@@ -61,8 +61,8 @@ try:
         c = pg.evaluate('GA.ex13.content("morphology")'); check(c['chart'] and len(c['chart']) == 3 and not any('gap' in r[0].lower() for r in c['ind']), 'page: built-share bar; no data-gap indicators in the artistic version')
         # page, player
         pg.evaluate('GA.i18n.setLang("en")'); pg.evaluate('GA.pages.go("ex13")'); pg.wait_for_function('document.querySelectorAll(".x13-prev canvas").length === 6', timeout=180000); time.sleep(1)
-        check(pg.evaluate('document.querySelector("input[name=x20-style][value=art]").checked'), 'page: switch shows the saved choice')
-        check(pg.evaluate('!document.querySelector("[data-x20player]").hidden && document.querySelectorAll(".x20-chip").length') == 5, 'player: visible with five layer buttons')
+        check(pg.evaluate('document.querySelector("input[name=x20-style-morphology][value=art]").checked'), 'page: switch shows the saved choice')
+        check(pg.evaluate('!document.querySelector("[data-x20player=morphology]").hidden && document.querySelectorAll(".x20-chip").length') == 5, 'player: visible with five layer buttons')
         pg.click('.x20-chip[data-x20layer="2"]'); time.sleep(1.2); check(pg.evaluate('document.querySelector(".x20-chip[data-x20layer=\\"2\\"]").classList.contains("on")'), 'player: clicking a layer highlights it')
         pg.click('[data-x20play]'); time.sleep(4); check('❚❚' in pg.evaluate('document.querySelector("[data-x20play]").textContent'), 'player: plays')
         pg.click('[data-x20play]'); time.sleep(0.8); check('▶' in pg.evaluate('document.querySelector("[data-x20play]").textContent'), 'player: stops')
@@ -79,7 +79,7 @@ try:
         pg.evaluate('GA.pages.go("ex13")'); pg.wait_for_function('document.querySelectorAll(".x13-prev canvas").length === 6', timeout=180000); time.sleep(0.5)
         check(pg.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1'), 'en: no horizontal overflow')
         # switch back: the architectural map is exactly what it was
-        pg.click('input[name=x20-style][value=arch]'); time.sleep(0.5)
+        pg.click('input[name=x20-style-morphology][value=arch]'); time.sleep(0.5)
         check(pg.evaluate('GA.app.store.get().ex13.maps.morphology.style') == 'arch', 'switching back saved')
         arch2 = pg.evaluate(MAP + '()'); b64img(arch).save(f'{OUT}/arch_before.png'); b64img(arch2).save(f'{OUT}/arch_after.png')
         from PIL import ImageChops, ImageStat
@@ -89,7 +89,7 @@ try:
         d0, d1 = dark(b64img(arch)), dark(b64img(arch2))
         check(abs(d0 - d1) < 0.02 and near(b64img(arch2), hexrgb(A['edge']), 6) < 50, f'switching back: architectural figure-ground as before (dark share {d0:.3f} vs {d1:.3f}), no artistic marks')
         check(pg.evaluate('GA.ex13.legendItems("morphology").length') == legA, 'switching back: architectural legend unchanged')
-        check(pg.evaluate('document.querySelector("[data-x20player]").hidden'), 'player hidden for the architectural map')
+        check(pg.evaluate('document.querySelector("[data-x20player=morphology]").hidden'), 'player hidden for the architectural map')
         check(pg.evaluate('GA.app.store.get().ex13.students') == 'Keep Me' and pg.evaluate('GA.ex13.content("density").sentence') == 'Our own density sentence.', 'saved work kept')
         check(not errs, 'no page errors', errs[:3])
         ctx.close()

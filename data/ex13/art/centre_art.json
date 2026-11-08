@@ -1,0 +1,117 @@
+{
+ "frame_px": 2000,
+ "cell_m": 500,
+ "grid_n": 20,
+ "tiles": [
+  [
+   11,
+   11,
+   2776
+  ],
+  [
+   11,
+   10,
+   2652
+  ],
+  [
+   12,
+   11,
+   2450
+  ],
+  [
+   12,
+   10,
+   2252
+  ],
+  [
+   10,
+   11,
+   1110
+  ],
+  [
+   10,
+   10,
+   1055
+  ],
+  [
+   12,
+   12,
+   985
+  ],
+  [
+   11,
+   12,
+   951
+  ],
+  [
+   10,
+   12,
+   916
+  ],
+  [
+   9,
+   10,
+   869
+  ],
+  [
+   10,
+   7,
+   738
+  ],
+  [
+   9,
+   9,
+   734
+  ],
+  [
+   10,
+   8,
+   716
+  ],
+  [
+   12,
+   14,
+   702
+  ],
+  [
+   12,
+   13,
+   698
+  ],
+  [
+   10,
+   9,
+   563
+  ],
+  [
+   9,
+   7,
+   510
+  ],
+  [
+   13,
+   13,
+   508
+  ]
+ ],
+ "tiles_outside_city": [
+  [
+   9,
+   17,
+   1484
+  ]
+ ],
+ "city_km2": 19.6,
+ "method": {
+  "city": "built share of OSM footprints (4 m raster) per 50 m cell, box-smoothed twice over 250 m; >= 12 % inside the municipality; largest connected piece",
+  "tiles": "500 m cells whose commercial kernel (r = 300 m, data/ex13/centre.json) reaches >= 500 places/km2 somewhere inside the cell and that touch the city; densest first",
+  "base": "tones by smoothed built share, OSM footprints, OSM parks lighter, every OSM street white",
+  "aerial": "PNOA orthophoto, grayscale, contrast 1.45, brightness 0.82, main OSM streets in white"
+ },
+ "sources": {
+  "aerial": "PNOA (Plan Nacional de Ortofotografía Aérea), © Instituto Geográfico Nacional — WMS pnoa-ma, CC BY 4.0",
+  "streets": "OpenStreetMap (43858 ways in the frame), ODbL 1.0",
+  "buildings": "OpenStreetMap buildings (figure-ground raster, 23 Oct 2026), ODbL 1.0"
+ },
+ "built": "2026-11-08"
+}
