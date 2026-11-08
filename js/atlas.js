@@ -43,7 +43,7 @@
     const lp = $('#panel-layers'); if (lp) { $('#atl-sec-layers').appendChild(lp); lp.classList.add('atl-layers'); }
     // the floating Layers panel is now the sidebar section; its old API opens the section
     const P0 = root.GA.panels; if (P0 && !P0.__atlas) { const set0 = P0.set, isOpen0 = P0.isOpen;
-      root.GA.panels = Object.assign({}, P0, { __atlas: true, set: (k, o) => k === 'layers' ? (o ? showSection('layers') : closeSide()) : set0(k, o), isOpen: (k) => k === 'layers' ? (!side.hidden && !!open.layers) : isOpen0(k), toggle: (k) => root.GA.panels.set(k, !root.GA.panels.isOpen(k)) }); }
+      root.GA.panels = Object.assign({}, P0, { __atlas: true, set: (k, o) => k === 'layers' ? (o ? showSection('layers') : closeSide()) : (o && closeSide(), set0(k, o)), /* a floating panel never opens under the menu */ isOpen: (k) => k === 'layers' ? (!side.hidden && !!open.layers) : isOpen0(k), toggle: (k) => root.GA.panels.set(k, !root.GA.panels.isOpen(k)) }); }
     btn.addEventListener('click', () => side.hidden ? openSide() : closeSide());
     $('#atl-side-x').addEventListener('click', closeSide);
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !side.hidden && !document.querySelector('.vw, .modal:not([hidden])')) closeSide(); });
