@@ -1,4 +1,4 @@
-# Granada Atlas — handoff (state at build 5.19, 4 Nov 2026)
+# Granada Atlas — handoff (state at build 5.20, 8 Nov 2026)
 
 This document lets a new Claude Code session continue the project without the original chat. Short operating rules
 are in `CLAUDE.md`; feature and data documentation is in `README.md`.
@@ -9,12 +9,12 @@ are in `CLAUDE.md`; feature and data documentation is in `README.md`.
 | --- | --- |
 | Repository | `ahmdklany6-ai/granada-atlas` (public), branch `main` |
 | Live site | https://ahmdklany6-ai.github.io/granada-atlas/ (GitHub Pages, deploy from `main`, repo root) |
-| Current build | **5.19** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.19` asset queries) |
+| Current build | **5.20** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.20` asset queries) |
 | Latest feature work | Build 5.9: colour hierarchy, boundary layers, water/runoff, infrastructure, seasonal wind/rain, landmark geometries, print layout (see §13) |
 | Deployment | see §12 (5.8 deployment record) |
-| Data version | `2026-11-02-v8` in `data/manifest.json` (5.11: OSM trees 2 Nov 2026, ERA5 climate snapshot, history place texts) |
+| Data version | `2026-11-08-v11` in `data/manifest.json` (5.20: southern-axis layers `south_metro`, `tram_1931`, `escuzar_pole`) |
 
-Build history (newest first): 5.19 print up to 700 dpi built in strips · 5.18 print at full resolution + "Map only" template · 5.17 / 5.16 Exercise 1.3 identity card · 5.15 one card format, historical extents · 5.14 current study area red on the locator · 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
+Build history (newest first): 5.20 southern-axis essentials layers (metro extension, 1931 tram, Escúzar / IFMIF-DONES) on by default · 5.19 print up to 700 dpi built in strips · 5.18 print at full resolution + "Map only" template · 5.17 / 5.16 Exercise 1.3 identity card · 5.15 one card format, historical extents · 5.14 current study area red on the locator · 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
 classified climate rasters, dashed fabric marks, historical red dots explained · 5.5/5.4 smooth building scales and
 street hierarchy at close zoom · 5.3 (v5) analysis page, viewers, unified Comparison, phone/iPad · v4/v3/v2 earlier.
 
@@ -543,3 +543,34 @@ Tests: `tests/ui_test_v17.py` (≈ 45 min here; `QUICK=1` A2 600 dpi only, `CASE
 **5.19 deployment record**: `main` `622616e`; "pages build and deployment" run 41771170217 succeeded; live-check run
 41771256706 (`live_files.py` on a GitHub runner): 78 files the public page loads byte-identical to `main` `622616e`
 (incl. `js/pngstream.js`, `js/i18n_v17.js`, `version.json` = 5.19).
+
+## 22. Build 5.20 — "Essentials: southern axis" layers (owner request of 8 Nov 2026)
+
+**Request** (from the team's research on the southern metro and the Escúzar accelerator): add the train line and the
+"factory" to the site as essential layers that are on as soon as the site opens.
+
+**What** (`js/layers_south.js`, strings `js/i18n_v18.js`, colours `palette.south`, data `tools/build_south_axis.py`):
+- Group `south` ("Essentials: southern axis"), first in `GROUPS` (`js/app.js`); three layers with `def.on: true`, so they are on
+  for a first visit and for returning visitors whose saved layer state predates 5.20 (new ids get their defaults and go on top
+  of the drawing order; a visitor who switches them off keeps that choice).
+- `south_metro` — the metro line 1 extension as mapped in OSM while under construction (one track, 4,719 m), the current
+  end (Armilla station node) and the end of the new track (Las Gabias, Plaza Estación de Tranvías). Stations are not in OSM
+  yet → not drawn (legend says so). Re-run the tool when they are mapped / the line opens.
+- `tram_1931` — the Granada–Gabia tram traced from the IGN MTN50 1st edition sheet 1026 (1931) + the two printed stations;
+  approximate (±100 m). An earlier draft mistook the straight tree-lined Carretera de Alhama for the tram; the 1931 map
+  settled it (the tram runs further north, past the south edge of Churriana).
+- `escuzar_pole` — CITAI estate outline (393 ha), IFMIF-DONES (UGR-DONES plot only), Lidl, Amazon, Knauf plots with the
+  operators' announced figures in the popups, Escúzar village (826, INE 2025) and the 10.7 km straight-line gap from the
+  metro terminus. "Show on the map" / "Show the whole axis" buttons in each layer row.
+- **MapLibre 4.7.1 gotcha**: a `symbol` layer with `symbol-placement: 'line-center'` (used for a "10.7 km" label on the gap
+  line) made every tile of its GeoJSON source come out empty in the test browser — all features sharing that source vanished
+  (popups and fills too). The label was removed (the distance is in the legend) and the Escúzar features use four small
+  sources (estate, plots, village, gap). Do not add `line-center` labels to these sources without re-running
+  `tests/ui_test_v18.py`.
+
+**Tests**: `tests/ui_test_v18.py` (data + manifest, on at first visit and for an old save, group first, panels closed,
+paint = legend = palette, legends ar/he/en, fit, popups) passes; `ui_test_v4.py` (build agreement), `ui_test_v9.py`,
+`ui_test_v10.py`, `ui_test_v11.py` and the node tests pass.
+
+**Open**: the seven station positions (add when mapped or published); the CTAGR bus line 0256C (2 runs each way on weekdays,
+timetable from 6 Oct 2025) is cited in the research notes but not drawn; no isochrones yet.

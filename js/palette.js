@@ -118,6 +118,11 @@
     lst: [BASE.blueGrey, BASE.lightBlue, BASE.cream, BASE.khaki, RED, BASE.oxblood, BASE.brown], veg: BASE.olive,   // °C classes (cool → hot)
     square: RED, park: BASE.olive, market: BASE.oxblood, cafe: BASE.brown, play: BASE.khaki, civic: D.blueDeep, far: D.blueMid, ctx: '#EFEDE6',
   };
+  // 5.20 — southern axis layers (metro extension, 1931 tram, Escúzar estate). The map paint and the legends read these entries.
+  P.south = {
+    metro: RED, metroCasing: '#FFFFFF', station: BASE.brown, tram: BASE.oxblood, trunk: BASE.khaki, tramStation: BASE.oxblood,
+    estate: BASE.burgundy, science: RED, logistics: BASE.khaki, industry: D.warmGrey, village: BASE.brown, gap: BASE.brown,
+  };
   if (typeof module !== 'undefined' && module.exports) module.exports = P;
   else {
     root.GA = root.GA || {}; root.GA.palette = P;
