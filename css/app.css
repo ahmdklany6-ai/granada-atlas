@@ -889,6 +889,7 @@ body.atlas.atl-nolegend #legend { display: none !important; }
 [dir="rtl"] .atl-side { animation-name: atl-in-rtl; } @keyframes atl-in-rtl { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .atl-side { animation: none; } }
 .atl-side[hidden] { display: none; }
+.atl-side-h #atl-side-x { min-width: 40px; min-height: 40px; font-size: 18px; }
 .atl-side-h { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); }
 .atl-side-h b { font: 700 13px/1 var(--f-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--ink3, var(--ink-3)); }
 .atl-side-b { overflow-y: auto; flex: 1 1 auto; }

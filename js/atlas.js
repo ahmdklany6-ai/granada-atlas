@@ -158,7 +158,11 @@
     add({ id: 'atl-mask', type: 'fill', source: 'atl-mask', layout: { visibility: 'none' }, paint: { 'fill-color': '#FFFFFF', 'fill-opacity': 0.64 } });
   }
   // keep the atlas layers on top of every other layer (a layer switched on later is added above them otherwise)
-  function raise() { if (!map) return; ['atl-veil'].concat(...TOPICS.map(topicLayerIds), ['atl-mask', 'atl-corr', 'atl-frame', 'atl-growth-fill', 'atl-growth-line', 'atl-hl-glow', 'atl-hl-line']).forEach(id => { if (has(id)) map.moveLayer(id); }); }
+  // keeps the atlas layers on top, in this order. Moves layers ONLY when the order is wrong: moveLayer fires 'styledata',
+  // which calls raise() again — an unconditional move would loop forever and the map would never become idle/loaded.
+  function raise() { if (!map || !map.style) return; const want = ['atl-veil'].concat(...TOPICS.map(topicLayerIds), ['atl-mask', 'atl-corr', 'atl-frame', 'atl-growth-fill', 'atl-growth-line', 'atl-hl-glow', 'atl-hl-line']).filter(has);
+    const ids = map.getStyle().layers.map(l => l.id); if (JSON.stringify(ids.slice(ids.length - want.length)) === JSON.stringify(want)) return;
+    want.forEach(id => map.moveLayer(id)); }
 
   // -- topic layers, built once per topic from data/ex13 (same classes and colours as the Exercise 1.3 maps) --
   function imgFromCanvas(cv) { return cv.toDataURL('image/png'); }
