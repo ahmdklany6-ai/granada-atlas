@@ -52,8 +52,9 @@
     nav && nav.addEventListener('click', (e) => { if (e.target.closest('.tb-btn')) closeSide(); });
     renderSide();
   }
-  function openSide() { const s = $('#atl-side'); s.hidden = false; $('#atl-burger').setAttribute('aria-expanded', 'true'); document.body.classList.add('atl-menu'); const f = s.querySelector('.atl-sec-h'); f && f.focus({ preventScroll: true }); }
-  function closeSide() { const s = $('#atl-side'); if (!s) return; s.hidden = true; $('#atl-burger').setAttribute('aria-expanded', 'false'); document.body.classList.remove('atl-menu'); }
+  function openSide() { const s = $('#atl-side'); s.hidden = false; $('#atl-burger').setAttribute('aria-expanded', 'true'); document.body.classList.add('atl-menu'); relayout(); const f = s.querySelector('.atl-sec-h'); f && f.focus({ preventScroll: true }); }
+  const relayout = () => dispatchEvent(new Event('ga:relayout')); // the map legend moves clear of the menu and the panel
+  function closeSide() { const s = $('#atl-side'); if (!s) return; s.hidden = true; $('#atl-burger').setAttribute('aria-expanded', 'false'); document.body.classList.remove('atl-menu'); relayout(); }
   function showSection(k) { open[k] = true; renderSide(); openSide(); const el = $(`.atl-sec[data-sec="${k}"]`); el && el.scrollIntoView({ block: 'nearest' }); }
   function renderSide() {
     const side = $('#atl-side'); if (!side) return; $('[data-i18n="v23.menu"]', side).textContent = t('v23.menu'); $('#atl-side-x').setAttribute('aria-label', t('close'));
@@ -401,7 +402,7 @@
   // ---------- start ----------
   function buildOverlay() {
     const st = $('.stage');
-    const panel = document.createElement('section'); panel.id = 'atl-panel'; panel.className = 'atl-panel'; panel.setAttribute('aria-live', 'polite'); st.appendChild(panel); panel.addEventListener('click', onPanelClick);
+    const panel = document.createElement('section'); panel.id = 'atl-panel'; panel.className = 'atl-panel'; panel.setAttribute('aria-live', 'polite'); st.appendChild(panel); panel.addEventListener('click', onPanelClick); if (root.ResizeObserver) new ResizeObserver(relayout).observe(panel);
     const back = document.createElement('button'); back.type = 'button'; back.id = 'atl-back'; back.className = 'atl-back'; back.hidden = true; st.appendChild(back); back.addEventListener('click', () => setArea('city'));
   }
   function relabel() { const b = $('#atl-back'); if (b) b.textContent = '← ' + t('v23.back'); const bg = $('#atl-burger'); if (bg) bg.setAttribute('aria-label', t('v23.menu')); renderSide(); renderPanel(); markers(); }

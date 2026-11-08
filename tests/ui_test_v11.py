@@ -50,6 +50,8 @@ try:
                 for combo in COMBOS:
                     pg.evaluate('["analysis", "study", "layers"].forEach(k => GA.panels.set(k, false))'); [pg.evaluate(f'GA.panels.set("{k}", true)') for k in combo]; time.sleep(0.5)
                     r = pg.evaluate(LEG); name = '+'.join(combo) or 'none'
+                    if tag == 'phone' and 'layers' in combo:  # 5.25: on phones "layers" is the near full-screen ☰ menu (a modal), which may cover the legend
+                        check(r['vis'] and r['inView'], f'{tag} {lang} [{name}]: legend kept (under the open menu)', r); continue
                     check(r['vis'] and r['onTop'] and r['inView'] and not r['hit'], f'{tag} {lang} [{name}]: legend visible, on top, clear of panels and map controls{" (collapsed button)" if r["min"] else ""}', r)
                     if mob and combo and r['min']:
                         pg.click('#legend-toggle'); time.sleep(0.4); r2 = pg.evaluate(LEG); sc = pg.evaluate('(() => { const L = document.querySelector("#legend"); return [L.scrollHeight, L.clientHeight, getComputedStyle(L).overflowY]; })()')
