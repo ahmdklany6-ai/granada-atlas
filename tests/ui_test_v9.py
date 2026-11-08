@@ -193,7 +193,7 @@ try:
         check(lay['col'] == lay['line'] == pg.evaluate('GA.palette.mark.boundary') and lay['anchor'] == 'bottom' and lay['overlap'] is True and lay['ignore'] is True and lay['dash'], 'main map: black dashed boundaries; bold number above the corner, never removed by label collisions', lay)
         check(pg.evaluate('GA.app.map.getLayoutProperty("fabric-no", "visibility") !== "none" && GA.app.map.getLayer("fabric-no").type === "symbol"'), 'main map: fabric-number layer present and visible')
         pg.screenshot(path=f'{OUT}/fabric_numbers_main_map.png')
-        pg.evaluate('(ids) => { const p = GA.app.store.get(); p.compare = { ids, unified: true }; GA.app.store.save(); }', [a3, a1]); pg.click('#tb-compare')
+        pg.evaluate('(ids) => { const p = GA.app.store.get(); p.compare = { ids, unified: true }; GA.app.store.save(); }', [a3, a1]); pg.evaluate('document.querySelector("#tb-compare").click()')
         pg.wait_for_function('GA.app.CMP.lastXs && GA.app.CMP.lastXs.length === 2', timeout=180000); time.sleep(1.5)
         cn = pg.evaluate('GA.app.CMP.lastXs.map(x => x.no)')
         check(cn == [1, 3], f'Comparison uses the same fabric numbers (selected 3 then 1 → listed 1, 3) {cn}')
