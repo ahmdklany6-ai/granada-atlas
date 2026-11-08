@@ -585,3 +585,30 @@ Show on the map (closes the page, switches the board's layers on, fits the axis)
 Hebrew and English are the same pages with translated strings (`tools/boards/boards_i18n.py`); how the backgrounds were
 fetched is in `tools/boards/README.md`. Board images are static: if the data changes (stations mapped, metro opened),
 re-render them. Test: `tests/ui_test_v19.py`; `ui_test_v4.py` (1024 px nav, build agreement), `ui_test_v18.py`, node tests pass.
+
+## 24. Build 5.22 — Exercise 1.3 morphology in an artistic map language (owner request of 8 Nov 2026)
+
+The owner wanted the Exercise 1.3 maps "more artistic than architectural, simple, readable at a glance", each map with
+its own language, and maps that can be played like a GIF (each layer lit alone, then built up one after another) with
+a click on a legend item to highlight it. Several rounds of previews (private artifacts, not in the repo) led to the
+morphology map as a **notation on a 250 m grid**; the owner approved it ("put it on the site"). The other four maps
+are still architectural; the centre map is the next one to design (owner: grey base with white streets, a line grid,
+the centre shown through a second map such as the aerial photo).
+
+- Switch **Map language: Architectural / Artistic** in the 02 Morphology box of `#/ex13`; saved per project in
+  `ex13.maps.morphology.style` (`'arch'` default, `'art'`). Map, legend, bar chart, sentence, limits and every export
+  (page PNG, PDF, PNG ZIP) follow it. Switching back restores the figure-ground map unchanged.
+- `js/ex13_art.js` (`GA.ex13art`): reads the same 4 m figure-ground raster at its own pixels (nearest, so the count does
+  not depend on browser resampling) → built share per 250 m cell (40 × 40) → tone: sparse < 15 %, medium 15–35 %,
+  compact > 35 %; a solid dark-brown line (palette `ex13art.edge` = wine #452928, 3.6 px per 1000 px) around contiguous
+  compact cells; OSM squares / pedestrian areas as a blue lattice; real footprints underneath at 7 %; municipality
+  line. Shares of the built area: 14.6 % sparse · 44.5 % medium · 41.0 % compact (338 / 310 / 183 cells). Data gaps are
+  not drawn in this version; the limits line says so and gives their area. Colours: `GA.palette.ex13art`.
+- Owner decisions during the rounds: no probable-gap layer, no street direction, no small-building / large-block
+  symbols, no green in morphology; edge line solid (not dashed), dark brown, medium width.
+- **Layer player** under the morphology preview (artistic only): Play layers (each layer alone 1.6 s with the others at
+  10 %, then built up 0.9 s per layer, then all 2.8 s, loops), All, and one button per layer (click = highlight, click
+  again = all). **PNG per layer (ZIP)** in the large viewer: one A3 page per layer (that layer full, others faint) + the
+  whole map, for Miro or to assemble a GIF by hand. There is no animated GIF export yet.
+- Strings `js/i18n_v20.js` (ar / he / en). Test: `tests/ui_test_v20.py`; `ui_test_v15.py`, `ui_test_v4.py` and node
+  tests pass.

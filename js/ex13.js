@@ -16,6 +16,8 @@
   const nf = (v, d) => (v == null || !isFinite(v)) ? '—' : Number(v).toLocaleString('en-US', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 });
   const POP = { v: 233975, year: '1 Jan 2025', src: 'INE — Padrón municipal', url: 'https://www.ine.es/dynt3/inebase/index.htm?padre=517' }; // kept for older callers; the page reads frame.json
   function E() { const p = store.get(); const e = p.ex13 = p.ex13 || {}; e.frameKm = 10; e.maps = e.maps || {}; TOPICS.forEach(k => e.maps[k] = e.maps[k] || { finding: '', surprise: '' }); return e; }
+  // 5.22: the morphology map can be drawn in the architectural (figure-ground) or the artistic (notation) language; saved per project
+  const artOn = (k) => k === 'morphology' && !!root.GA.ex13art && (E().maps.morphology || {}).style === 'art';
 
   // ---------- data (loaded once) ----------
   let DATA = null;
@@ -35,7 +37,7 @@
   const FR = () => DATA.frame;
 
   // ---------- one map, drawn in the shared frame at (x, y), S px square ----------
-  function drawMap(k, ctx, x, y, S) {
+  function drawMap(k, ctx, x, y, S, opts) {
     const F = FR(); const mpp = (F.x1 - F.x0) / S; const s = S / 1000; const c = C();
     const X = (u) => x + (u - F.x0) / mpp, Y = (v) => y + (F.y1 - v) / mpp;
     ctx.save(); ctx.beginPath(); ctx.rect(x, y, S, S); ctx.clip(); ctx.fillStyle = c.paper; ctx.fillRect(x, y, S, S);
@@ -51,6 +53,8 @@
         ctx.beginPath(); ctx.moveTo(X(cx[r][q]), Y(cy[r][q])); ctx.lineTo(X(cx[r][q + 1]), Y(cy[r][q + 1])); ctx.lineTo(X(cx[r + 1][q + 1]), Y(cy[r + 1][q + 1])); ctx.lineTo(X(cx[r + 1][q]), Y(cy[r + 1][q])); ctx.closePath();
         ctx.fillStyle = cols[ci]; ctx.fill(); ctx.strokeStyle = cols[ci]; ctx.lineWidth = 0.6; ctx.stroke(); }));
       muni();
+    } else if (artOn(k)) {
+      root.GA.ex13art.draw(ctx, DATA, x, y, S, opts);
     } else if (k === 'morphology') {
       figureGround(c.building);
       const m = DATA.morphology; const cs = m.grid.cell / mpp;
@@ -115,6 +119,7 @@
   function legendItems(k) {
     const c = C(); const L = [];
     if (k === 'density') { const lab = ranges(DATA.density.breaks, t('x13.perKm2'), 0); c.density.forEach((col, i) => L.push({ sw: col, label: lab[i] })); L.push({ sw: '#FFFFFF', label: t('x13.lg.noRes') }, { line: c.muni, dash: true, label: t('x13.lg.muni') }); }
+    if (artOn(k)) return root.GA.ex13art.legendItems(t, DATA);
     if (k === 'morphology') L.push({ sw: c.building, label: t('x13.lg.building') }, { sw: '#FFFFFF', label: t('x13.lg.open') }, { hatch: c.gap, label: t('x13.lg.gap') }, { line: PAL().red, dash: true, label: t('x13.lg.muni') });
     if (k === 'centre') { const br = DATA.centre.breaks; c.centre.forEach((col, i) => L.push({ sw: col, label: i < br.length - 1 ? iso(`${nf(br[i])}–${nf(br[i + 1])}`) + ' ' + t('x13.placesKm2') : t('x13.atLeast', { v: iso(nf(br[i])) }) + ' ' + t('x13.placesKm2') }));
       L.push({ peak: true, label: t('x13.lg.peak') }, { line: c.hist, dash: true, w: 2.6, label: t('x13.lg.hist') }, { line: c.whc, w: 2, label: t('x13.lg.whc') }, { line: c.street, w: 1.2, label: t('x13.lg.streets') }, { line: c.muni, dash: true, label: t('x13.lg.muni') }); }
@@ -140,6 +145,8 @@
         if (it.sw) { ctx.globalAlpha = it.alpha || 1; ctx.fillStyle = it.sw; ctx.fillRect(cx, cy - sh / 2, sw, sh); ctx.globalAlpha = 1; ctx.strokeStyle = 'rgba(41,16,12,.35)'; ctx.lineWidth = 1; ctx.strokeRect(cx + 0.5, cy - sh / 2 + 0.5, sw - 1, sh - 1); }
         if (it.hatch) { ctx.save(); ctx.strokeStyle = it.hatch; ctx.lineWidth = 1.4; ctx.strokeRect(cx, cy - sh / 2, sw, sh); ctx.beginPath(); ctx.rect(cx, cy - sh / 2, sw, sh); ctx.clip(); ctx.beginPath(); for (let q = -sh; q < sw + sh; q += 6) { ctx.moveTo(cx + q, cy + sh / 2); ctx.lineTo(cx + q + sh, cy - sh / 2); } ctx.stroke(); ctx.restore(); }
         if (it.line) { ctx.strokeStyle = it.line; ctx.lineWidth = Math.max(1.5, (it.w || 1.3) * fs / 14); ctx.setLineDash(it.dash ? [fs * 0.45, fs * 0.28] : []); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + sw, cy); ctx.stroke(); ctx.setLineDash([]); }
+        if (it.edge) { ctx.strokeStyle = it.edge; ctx.lineWidth = Math.max(2, fs * 0.22); ctx.lineJoin = 'round'; ctx.strokeRect(cx + 1, cy - sh / 2 + 1, sw - 2, sh - 2); }
+        if (it.lattice) { ctx.save(); ctx.beginPath(); ctx.rect(cx, cy - sh / 2, sw, sh); ctx.clip(); ctx.strokeStyle = it.lattice; ctx.lineWidth = Math.max(1, fs * 0.07); ctx.beginPath(); const st = Math.max(4, fs * 0.42); for (let q = -sh; q < sw + sh; q += st) { ctx.moveTo(cx + q, cy + sh / 2); ctx.lineTo(cx + q + sh, cy - sh / 2); ctx.moveTo(cx + q, cy - sh / 2); ctx.lineTo(cx + q + sh, cy + sh / 2); } ctx.stroke(); ctx.restore(); ctx.strokeStyle = it.lattice; ctx.lineWidth = 1; ctx.strokeRect(cx + 0.5, cy - sh / 2 + 0.5, sw - 1, sh - 1); }
         if (it.peak) { ctx.beginPath(); ctx.arc(cx + sw / 2, cy, sh * 0.55, 0, Math.PI * 2); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.strokeStyle = c.centreLine; ctx.lineWidth = 2; ctx.stroke(); ctx.beginPath(); ctx.arc(cx + sw / 2, cy, 2, 0, Math.PI * 2); ctx.fillStyle = c.centreLine; ctx.fill(); }
         if (it.mk === 'market') { ctx.fillStyle = c.market; ctx.fillRect(cx + sw / 2 - sh * 0.45, cy - sh * 0.45, sh * 0.9, sh * 0.9); }
         if (it.mk === 'cafe') { ctx.beginPath(); ctx.arc(cx + sw / 2, cy, sh * 0.22, 0, Math.PI * 2); ctx.fillStyle = c.cafe; ctx.fill(); }
@@ -169,7 +176,14 @@
     if (k === 'morphology') { const s = d.morphology.stats;
       out.ind = [[t('x13.i.cov'), iso(nf(s.coverage_frame_pct, 1) + ' %')], [t('x13.i.covMuni'), iso(nf(s.coverage_muni_pct, 1) + ' %')], [t('x13.i.gaps'), iso(nf(s.gap_cells) + ' × 1 ha = ' + nf(s.gap_area_km2, 2) + ' km²')], [t('x13.i.agree'), iso(nf(s.agree_pct, 0) + ' %')]];
       out.sentence = t('x13.s.morphology', { cov: iso(nf(s.coverage_frame_pct, 1) + ' %'), gaps: iso(nf(s.gap_area_km2, 2) + ' km²') });
-      out.src = [t('x13.src.morphology'), t('x13.lim.morphology')]; }
+      out.src = [t('x13.src.morphology'), t('x13.lim.morphology')];
+      if (artOn(k)) { const A = PAL().ex13art; const Gd = root.GA.ex13art.prepare(d); const sh = Gd.shares; const p = (v) => iso(nf(v, 0) + ' %');
+        out.ind = out.ind.filter(r => r[0] !== t('x13.i.gaps') && r[0] !== t('x13.i.agree'));
+        out.ind.push([t('x20.i.cells'), t('x20.i.cellsV', { s: iso(nf(Gd.cells[1])), m: iso(nf(Gd.cells[2])), c: iso(nf(Gd.cells[3])) })]);
+        out.chartTitle = t('x20.c.shares'); out.chart = [{ v: sh[0], col: A.sparse }, { v: sh[1], col: A.medium }, { v: sh[2], col: A.compact }];
+        out.chartKey = [[t('x20.k.sparse'), A.sparse], [t('x20.k.medium'), A.medium], [t('x20.k.compact'), A.compact]];
+        out.sentence = t('x20.s.morphology', { c: p(sh[2]), m: p(sh[1]), s: p(sh[0]) });
+        out.src = [t('x13.src.morphology'), t('x20.lim.art', { g: iso(nf(s.gap_area_km2, 2) + ' km²') })]; } }
     if (k === 'centre') { const s = d.centre.stats; const P = d.centre.peaks; const p1 = P[0], p2 = P[1]; const bc = s.by_cat;
       out.ind = [[t('x13.i.places'), iso(nf(s.in_frame)) + ' — ' + t('x13.i.byCat', { r: iso(nf(bc.retail)), f: iso(nf(bc.food)), s: iso(nf(bc.service)), m: iso(nf(bc.market)) })],
         [t('x13.i.c1'), t('x13.i.c1v', { v: iso(nf(p1.v)), n: iso(nf(p1.n300)) })], [t('x13.i.c2'), t('x13.i.c2v', { r: iso(nf(p2.rel) + ' %'), d: iso(nf(p2.dist_hist_m / 1000, 1) + ' km') })], [t('x13.i.dup'), iso(nf(s.duplicates))], [t('x13.i.ov'), iso('r = ' + nf(s.overture_corr, 2))]];
@@ -194,7 +208,7 @@
   // ---------- A3 portrait page ----------
   const DPI_FULL = 200, PAGE = [297, 420], MAP_MM = 250;
   function pageGeom(dpi) { const k = dpi / 25.4; return { W: Math.round(PAGE[0] * k), H: Math.round(PAGE[1] * k), M: Math.round(23.5 * k), mapS: Math.round(MAP_MM * k), k }; }
-  async function pageCanvas(pk, dpi) {
+  async function pageCanvas(pk, dpi, opts) {
     await load(); dpi = dpi || DPI_FULL; const G = pageGeom(dpi); const cv = document.createElement('canvas'); cv.width = G.W; cv.height = G.H; const ctx = cv.getContext('2d');
     const rtl = I.dir() === 'rtl'; const F = PG.font(); const pt = (v) => Math.round(v / 72 * dpi); const x = G.M, w = G.W - 2 * G.M; const o = (size, ex) => Object.assign({ size: pt(size), F, rtl }, ex || {});
     ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, G.W, G.H); ctx.fillStyle = C().accent; ctx.fillRect(0, 0, G.W, Math.round(4 * G.k));
@@ -206,10 +220,10 @@
     y = para(ctx, pk === 'identity' ? t('x13.q.identity') : t('x13.q.' + pk), x, y + pt(36), w, o(10, { color: PAL().ink2 }));
     const my = Math.max(y + pt(6), Math.round(48 * G.k)); const mx = Math.round((G.W - G.mapS) / 2);
     if (pk === 'identity') return identity(ctx, G, mx, my, o, pt), cv;
-    drawMap(pk, ctx, mx, my, G.mapS);
+    drawMap(pk, ctx, mx, my, G.mapS, opts);
     // under the map: legend · indicators + chart · sentence · sources
     const bx = mx, bw = G.mapS; let yy = my + G.mapS + pt(10);
-    yy = legend(ctx, legendItems(pk), bx, yy, bw, o(8.6, { cols: pk === 'human' || pk === 'centre' ? 2 : pk === 'climate' ? 4 : 3 })) + pt(4);
+    yy = legend(ctx, legendItems(pk), bx, yy, bw, o(8.6, { cols: pk === 'human' || pk === 'centre' || artOn(pk) ? 2 : pk === 'climate' ? 4 : 3 })) + pt(4);
     const cn = content(pk); const half = (bw - pt(14)) / 2;
     const indX = rtl ? bx + half + pt(14) : bx, chX = rtl ? bx : bx + half + pt(14); let iy = yy, cy = yy;
     cn.ind.forEach(r => { iy = para(ctx, `${r[0]}: ${r[1]}`, indX, iy, half, o(8.8, { weight: 600, lh: 1.3 })); });
@@ -297,24 +311,42 @@
     body.innerHTML = `<div class="e13 x13"><aside class="e13-form"><p class="fine">${t('x13.lead')}</p><div id="e13-sub" class="sub-box"></div>
       <section class="x13-frame"><h3>${t('x13.frameH')}</h3><p class="fine">${t('x13.frameWhy', { c: iso(nf(F.why.coverage_pct, 1) + ' %'), s: iso('1:' + nf(F.scale)), s15: iso('1:' + nf(F.why.alt15.scale)) })}</p><p class="fine" dir="ltr">EPSG:25830 · x ${nf(F.x0)}–${nf(F.x1)} · y ${nf(F.y0)}–${nf(F.y1)} · 250 mm · 1:${nf(F.scale)}</p></section>
       <label class="name"><span>${t('e13.students')}</span><input dir="auto" data-e="students" value="${esc(e.students || '')}" placeholder="${esc(t('x13.studentsPh'))}"></label>
-      ${TOPICS.map((k, i) => `<fieldset class="e13-t"><legend>${String(i + 1).padStart(2, '0')} · ${t('e13.t.' + k)}</legend><p class="fine">${t('x13.auto')}</p><p class="fine x13-auto">${esc(content(k).sentence)}</p><textarea dir="auto" rows="2" data-em="${k}" data-f="finding" placeholder="${esc(t('x13.ownPh'))}">${esc(e.maps[k].finding)}</textarea></fieldset>`).join('')}
+      ${TOPICS.map((k, i) => `<fieldset class="e13-t"><legend>${String(i + 1).padStart(2, '0')} · ${t('e13.t.' + k)}</legend><p class="fine">${t('x13.auto')}</p><p class="fine x13-auto">${esc(content(k).sentence)}</p><textarea dir="auto" rows="2" data-em="${k}" data-f="finding" placeholder="${esc(t('x13.ownPh'))}">${esc(e.maps[k].finding)}</textarea>${k === 'morphology' ? styleHTML() : ''}</fieldset>`).join('')}
       <label class="name"><span>${t('x13.synthH')}</span><textarea dir="auto" rows="4" data-e="synthesis" placeholder="${esc(synthesis())}">${esc(e.synthesis || '')}</textarea></label>
       <div class="actions"><button class="btn btn-primary" id="e13-pdf">${t('e13.pdf')}</button><button class="btn" id="e13-zip">${t('e13.pngs')}</button><button class="btn" id="e13-gis">${t('x13.gis')}</button></div>
       <p class="fine">${t('x13.miroNote')}</p>
       <details class="x13-audit"><summary>${t('x13.auditH')}</summary>${auditHTML()}</details></aside>
       <div class="e13-prev x13-prev"><p class="fine">${t('x13.prevHint')}</p>${PAGES.map(k => `<figure data-e13="${k}"><button type="button" class="e13-img" data-e13open="${k}" aria-label="${esc(t('v7.openLarge'))}: ${esc(k === 'identity' ? t('x13.idTitle') : t('e13.t.' + k))}"><span class="spin"></span></button><figcaption><b>${k === 'identity' ? '00 · ' + t('x13.idTitle') : String(TOPICS.indexOf(k) + 1).padStart(2, '0') + ' · ' + t('e13.t.' + k)}</b> <button class="btn btn-tiny" data-e13open="${k}">⤢ ${t('v7.openLarge')}</button> <button class="btn btn-tiny" data-e13png="${k}">PNG</button></figcaption></figure>`).join('')}</div></div>`;
+    const morphFig = body.querySelector('[data-e13="morphology"]'); if (morphFig) morphFig.insertAdjacentHTML('beforeend', '<div class="x20-player" data-x20player hidden></div>');
     const subBox = body.querySelector('#e13-sub');
     const renderSub = () => { const miss = []; if (!(e.students || '').trim()) miss.push({ label: t('v7.m.students'), go: '[data-e="students"]' });
       subBox.innerHTML = SUB.strip(e, { tools: true, done: 7 - miss.length, total: 7, missing: miss, miroField: true }); };
     renderSub(); SUB.bind(subBox, () => e, () => store.save(), renderSub);
-    const prev = async (k) => { const fig = body.querySelector(`[data-e13="${k}"] .e13-img`); try { const c = await pageCanvas(k, 72); c.style.width = '100%'; c.style.height = 'auto'; fig.innerHTML = ''; fig.appendChild(c); } catch (er) { fig.innerHTML = `<p class="error">${esc(er.message)}</p>`; } };
+    const prev = async (k, opts) => { const fig = body.querySelector(`[data-e13="${k}"] .e13-img`); try { const c = await pageCanvas(k, 72, opts); c.style.width = '100%'; c.style.height = 'auto'; fig.innerHTML = ''; fig.appendChild(c); } catch (er) { fig.innerHTML = `<p class="error">${esc(er.message)}</p>`; } };
     for (const k of PAGES) await prev(k);
+    // 5.22 layer player (artistic morphology): each layer alone (the others faint), then built up one after another, then all
+    let playT = null, playing = false, focus = null; const player = body.querySelector('[data-x20player]');
+    const stopPlay = () => { playing = false; clearTimeout(playT); playT = null; };
+    const show = (o) => { focus = o && o.focus != null ? o.focus : null; paintPlayer(o); return prev('morphology', o); };
+    function paintPlayer(o) { if (!player) return; const on = artOn('morphology'); player.hidden = !on; if (!on) { stopPlay(); return; }
+      const items = legendItems('morphology').filter(i => i.layer != null); const cur = o && o.focus != null ? o.focus : o && o.upTo ? o.upTo - 1 : -1;
+      player.innerHTML = `<button type="button" class="btn btn-small btn-primary" data-x20play>${playing ? '❚❚ ' + t('x20.stop') : '▶ ' + t('x20.play')}</button><button type="button" class="btn btn-small" data-x20all>${t('x20.all')}</button>`
+        + `<span class="x20-chips">${items.map(i => `<button type="button" class="x20-chip${i.layer === cur ? ' on' : ''}" data-x20layer="${i.layer}" aria-pressed="${i.layer === cur}">${esc(i.label)}</button>`).join('')}</span>`; }
+    function play() { stopPlay(); playing = true; const nL = root.GA.ex13art.KEYS.length; const seq = [];
+      for (let i = 0; i < nL; i++) seq.push([{ focus: i }, 1600]); for (let i = 1; i <= nL; i++) seq.push([{ upTo: i }, 900]); seq.push([null, 2800]);
+      let i = 0; const step = async () => { if (!playing || !body.isConnected) return stopPlay(); const [o, ms] = seq[i++ % seq.length]; await show(o); if (playing) playT = setTimeout(step, ms); }; step(); }
+    paintPlayer(null);
+    if (player) player.onclick = (ev) => { const b = ev.target.closest('button'); if (!b) return; ev.stopPropagation();
+      if (b.dataset.x20play != null) { if (playing) { stopPlay(); show(null); } else play(); return; }
+      stopPlay(); if (b.dataset.x20all != null) return show(null); const L = +b.dataset.x20layer; show(focus === L ? null : { focus: L }); };
     const openSheet = async (k) => { const c = await pageCanvas(k); const url = URL.createObjectURL(await PG.toBlob(c)); const title = k === 'identity' ? t('x13.idTitle') : t('e13.t.' + k);
-      const sh = root.GA.viewer.image({ title, subtitle: t('e13.title'), src: url, notGIS: true, kind: 'vw-sheet', tools: `<button class="btn btn-small" data-vtool="png">PNG</button><button class="btn btn-small" data-vtool="pdf">PDF</button>`,
-        onTool: async (tool, btn) => { btn.disabled = true; try { if (tool === 'png') PG.download(await PG.toBlob(c), fileOf(k) + '.png'); else PG.download(new Blob([root.GA.pdf.build([{ canvas: c, paper: 'A3P' }], { title: 'Granada 1.3 - ' + title })], { type: 'application/pdf' }), fileOf(k) + '.pdf'); SUB.exported(e, tool + ':' + k); store.save(); renderSub(); } finally { btn.disabled = false; } } });
+      const sh = root.GA.viewer.image({ title, subtitle: t('e13.title'), src: url, notGIS: true, kind: 'vw-sheet', tools: `<button class="btn btn-small" data-vtool="png">PNG</button><button class="btn btn-small" data-vtool="pdf">PDF</button>${artOn(k) ? `<button class="btn btn-small" data-vtool="layers">${t('x20.layersZip')}</button>` : ''}`,
+        onTool: async (tool, btn) => { btn.disabled = true; try { if (tool === 'layers') { PG.download(await layersZip(k), fileOf(k) + '_layers_png.zip'); SUB.exported(e, 'layers:' + k); store.save(); renderSub(); return; } if (tool === 'png') PG.download(await PG.toBlob(c), fileOf(k) + '.png'); else PG.download(new Blob([root.GA.pdf.build([{ canvas: c, paper: 'A3P' }], { title: 'Granada 1.3 - ' + title })], { type: 'application/pdf' }), fileOf(k) + '.pdf'); SUB.exported(e, tool + ':' + k); store.save(); renderSub(); } finally { btn.disabled = false; } } });
       const c0 = sh.close; sh.close = (q) => { URL.revokeObjectURL(url); c0(q); }; };
     let tm; const later = (k) => { clearTimeout(tm); tm = setTimeout(() => { prev(k); if (k !== 'identity') { const a = body.querySelector(`[data-em="${k}"]`); if (a) a.closest('fieldset').querySelector('.x13-auto').textContent = content(k).sentence; } }, 400); };
-    body.oninput = (ev) => { const el = ev.target; if (el.dataset.e) { e[el.dataset.e] = el.value; store.save(); renderSub(); later('identity'); } if (el.dataset.em) { e.maps[el.dataset.em][el.dataset.f] = el.value; store.save(); later(el.dataset.em); } };
+    body.onchange = (ev) => { const el = ev.target; if (el.name !== 'x20-style') return; stopPlay(); e.maps.morphology.style = el.value === 'art' ? 'art' : 'arch'; store.save();
+      const a = body.querySelector('[data-em="morphology"]'); if (a) a.closest('fieldset').querySelector('.x13-auto').textContent = content('morphology').sentence; paintPlayer(null); prev('morphology'); };
+    body.oninput = (ev) => { const el = ev.target; if (el.name === 'x20-style') return; if (el.dataset.e) { e[el.dataset.e] = el.value; store.save(); renderSub(); later('identity'); } if (el.dataset.em) { e.maps[el.dataset.em][el.dataset.f] = el.value; store.save(); later(el.dataset.em); } };
     body.onclick = async (ev) => { const b = ev.target.closest('button'); if (!b || !body.contains(b)) return; if (!(b.dataset.e13open || b.dataset.e13png || ['e13-pdf', 'e13-zip', 'e13-gis'].includes(b.id))) return; b.disabled = true; try {
       if (b.dataset.e13open) { await openSheet(b.dataset.e13open); return; }
       if (b.dataset.e13png) { const c = await pageCanvas(b.dataset.e13png); PG.download(await PG.toBlob(c), fileOf(b.dataset.e13png) + '.png'); SUB.exported(e, 'png:' + b.dataset.e13png); store.save(); renderSub(); }
@@ -323,11 +355,18 @@
       if (b.id === 'e13-gis') { const enc = new TextEncoder(); const files = gisFiles().map(f => ({ name: 'granada_1-3_gis/' + f.name, data: enc.encode(f.text) })); PG.download(new Blob([root.GA.zip.zip(files, new Date())], { type: 'application/zip' }), 'granada_1-3_gis_layers.zip'); SUB.exported(e, 'gis'); store.save(); renderSub(); }
     } catch (er) { (root.GA.toast || alert)(t('x13.exportFail') + ' ' + er.message); console.error(er); } finally { b.disabled = false; } };
   }
+  function styleHTML() { const art = artOn('morphology');
+    return `<div class="x20-style" role="radiogroup" aria-label="${esc(t('x20.style'))}"><span>${t('x20.style')}</span><label><input type="radio" name="x20-style" value="arch"${art ? '' : ' checked'}> ${t('x20.arch')}</label><label><input type="radio" name="x20-style" value="art"${art ? ' checked' : ''}> ${t('x20.art')}</label></div><p class="fine">${t('x20.styleHint')}</p>`; }
+  async function layersZip(k) { // one full-resolution page per layer (that layer full, the others faint), then the whole map
+    const keys = root.GA.ex13art.KEYS; const files = []; const add = async (o, name) => { const c = await pageCanvas(k, DPI_FULL, o); const bl = await PG.toBlob(c); files.push({ name, data: new Uint8Array(await bl.arrayBuffer()) }); };
+    for (let i = 0; i < keys.length; i++) await add({ focus: i }, `${fileOf(k)}_${i + 1}_${keys[i]}.png`);
+    await add(null, `${fileOf(k)}_${keys.length + 1}_all.png`);
+    return new Blob([root.GA.zip.zip(files, new Date())], { type: 'application/zip' }); }
   function auditHTML() {
     const d = DATA; const v = { d: iso((d.density.stats.diff_pct > 0 ? '+' : '') + nf(d.density.stats.diff_pct, 1) + ' %'), g: iso(nf(d.morphology.stats.gap_cells)), a: iso(nf(d.morphology.stats.agree_pct, 0) + ' %'), r: iso('r = ' + nf(d.centre.stats.overture_corr, 2)), n: iso(String(d.climate.stats.scenes)) };
     const rows = TOPICS.concat(['identity']).map(k => `<tr><th scope="row">${k === 'identity' ? t('x13.idTitle') : t('e13.t.' + k)}</th><td>${t('x13.a.src.' + k)}</td><td>${t('x13.a.date.' + k, v)}</td><td>${t('x13.a.unit.' + k)}</td><td>${t('x13.a.res.' + k)}</td><td>${t('x13.a.kind.' + k)}</td><td>${t('x13.a.lim.' + k, v)}</td></tr>`).join('');
     return `<div class="tbl-wrap"><table class="x13-tbl"><thead><tr><th></th><th>${t('x13.a.h.src')}</th><th>${t('x13.a.h.date')}</th><th>${t('x13.a.h.unit')}</th><th>${t('x13.a.h.res')}</th><th>${t('x13.a.h.kind')}</th><th>${t('x13.a.h.lim')}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
   PG.register('ex13', { plate: () => t('e13.plate'), title: () => t('e13.title'), render });
-  root.GA.ex13 = { pageCanvas, drawMap, legendItems, content, gisFiles, load, TOPICS, PAGES, POP, E, get data() { return DATA; } };
+  root.GA.ex13 = { pageCanvas, drawMap, legendItems, content, gisFiles, load, layersZip, artOn, TOPICS, PAGES, POP, E, get data() { return DATA; } };
 })(window);

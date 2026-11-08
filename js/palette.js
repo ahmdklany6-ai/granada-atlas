@@ -118,6 +118,11 @@
     lst: [BASE.blueGrey, BASE.lightBlue, BASE.cream, BASE.khaki, RED, BASE.oxblood, BASE.brown], veg: BASE.olive,   // °C classes (cool → hot)
     square: RED, park: BASE.olive, market: BASE.oxblood, cafe: BASE.brown, play: BASE.khaki, civic: D.blueDeep, far: D.blueMid, ctx: '#EFEDE6',
   };
+  // 5.22 — Exercise 1.3 morphology, artistic notation (250 m cells): cell tone by built share, the edge of contiguous
+  // compact fabric, squares as a lattice. The map, its legend, the stacked bar and the layer player read these entries.
+  P.ex13art = {
+    paper: D.paper, sparse: D.khakiPale, medium: D.rose, compact: RED, compactAlpha: 0.62, edge: BASE.wine, square: D.blueDeep, context: BASE.brown, muni: D.warmGrey,
+  };
   // 5.20 — southern axis layers (metro extension, 1931 tram, Escúzar estate). The map paint and the legends read these entries.
   P.south = {
     metro: RED, metroCasing: '#FFFFFF', station: BASE.brown, tram: BASE.oxblood, trunk: BASE.khaki, tramStation: BASE.oxblood,
