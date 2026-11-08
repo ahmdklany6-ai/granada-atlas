@@ -416,6 +416,10 @@
       map.on('styledata', () => { if (map.getLayer('atl-veil')) raise(); }); APP.L.onChange(() => setTimeout(raise, 0)); };
     if (map.loaded()) go(); else map.once('load', go);
     I.onChange(relabel);
+    // while a map drawing tool is active (section, polygon — the mode banner is shown), the atlas panel folds to its title
+    // bar so the map and the Finish / Undo buttons are free; it unfolds again when drawing ends (if it was open before)
+    const mb = $('#mode-banner'); let foldedForDraw = false;
+    if (mb && root.MutationObserver) new MutationObserver(() => { if (!mb.hidden && !S.min) { S.min = foldedForDraw = true; renderPanel(); } else if (mb.hidden && foldedForDraw) { foldedForDraw = false; S.min = false; renderPanel(); } }).observe(mb, { attributes: true, attributeFilter: ['hidden'] });
     addEventListener('resize', () => { const P = root.GA.panels; if (innerWidth < 700 && !$('#atl-side').hidden && (P.isOpen('analysis') || P.isOpen('study'))) closeSide(); }); // phones: one full-screen view at a time
     addEventListener('hashchange', () => { if (/^#\/./.test(location.hash)) closeSide(); }); // any page that opens (menu, link, code) closes the menu
   }
