@@ -43,7 +43,7 @@
     const lp = $('#panel-layers'); if (lp) { $('#atl-sec-layers').appendChild(lp); lp.classList.add('atl-layers'); }
     // the floating Layers panel is now the sidebar section; its old API opens the section
     const P0 = root.GA.panels; if (P0 && !P0.__atlas) { const set0 = P0.set, isOpen0 = P0.isOpen;
-      root.GA.panels = Object.assign({}, P0, { __atlas: true, set: (k, o) => k === 'layers' ? (o ? showSection('layers') : closeSide()) : (o && closeSide(), set0(k, o)), /* a floating panel never opens under the menu */ isOpen: (k) => k === 'layers' ? (!side.hidden && !!open.layers) : isOpen0(k), toggle: (k) => root.GA.panels.set(k, !root.GA.panels.isOpen(k)) }); }
+      root.GA.panels = Object.assign({}, P0, { __atlas: true, set: (k, o) => k === 'layers' ? (o ? showSection('layers') : closeSide()) : (o && closeSide(), o && k === 'analysis' && !S.min && (S.min = true, renderPanel()), set0(k, o)), /* a floating panel never opens under the menu; the study-area workspace gets the map (the atlas panel folds to its title bar) */ isOpen: (k) => k === 'layers' ? (!side.hidden && !!open.layers) : isOpen0(k), toggle: (k) => root.GA.panels.set(k, !root.GA.panels.isOpen(k)) }); }
     btn.addEventListener('click', () => side.hidden ? openSide() : closeSide());
     $('#atl-side-x').addEventListener('click', closeSide);
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !side.hidden && !document.querySelector('.vw, .modal:not([hidden])')) closeSide(); });
@@ -408,7 +408,7 @@
   }
   function relabel() { const b = $('#atl-back'); if (b) b.textContent = '← ' + t('v23.back'); const bg = $('#atl-burger'); if (bg) bg.setAttribute('aria-label', t('v23.menu')); renderSide(); renderPanel(); markers(); }
   async function init() {
-    APP = root.GA.app; map = APP.map; buildShell(); buildOverlay(); relabel();
+    APP = root.GA.app; map = APP.map; buildShell(); if (root.GA.panels.isOpen('analysis')) S.min = true; buildOverlay(); relabel();
     const go = async () => { buildBase(); await loadAll(); ready = true; relabel(); markers();
       const legacy = !!root.__gaLegacyView; // test hook only: the pre-5.25 suites keep their old opening view (no city fit, no animation)
       if (!PG.current && !legacy) map.fitBounds(CITY_BB, { padding: pad(40), duration: 0 }); // the city first, never inside a study area
