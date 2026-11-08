@@ -79,6 +79,7 @@
     if (b.dataset.atlPage) { closeSide(); PG.go(b.dataset.atlPage); return; }
     if (b.dataset.atlGo) { const nb = document.querySelector(`.tb-btn[data-drawer="${b.dataset.atlGo}"]`); closeSide(); nb && nb.click(); return; }
     if (b.dataset.atlClick) { const nb = document.querySelector(b.dataset.atlClick); closeSide(); nb && nb.click(); return; }
+    if (b.closest('#atl-tools') && b.classList.contains('tb-btn')) { closeSide(); return; } // the moved navigation keeps its own handlers; the menu gets out of the way
     if (b.dataset.atlReset === 'layers') { resetLayers(); return; }
     if (b.dataset.atlReset === 'topic') { applyTopicLayers(S.topic, true); return; }
     if (b.dataset.atlLegend != null) { const lg = $('#legend'); if (lg) document.body.classList.toggle('atl-nolegend'); return; }
