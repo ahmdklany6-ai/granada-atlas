@@ -415,6 +415,7 @@
       map.on('styledata', () => { if (map.getLayer('atl-veil')) raise(); }); APP.L.onChange(() => setTimeout(raise, 0)); };
     if (map.loaded()) go(); else map.once('load', go);
     I.onChange(relabel);
+    addEventListener('hashchange', () => { if (/^#\/./.test(location.hash)) closeSide(); }); // any page that opens (menu, link, code) closes the menu
   }
   root.GA.atlas = { init, setArea, setTopic, get state() { return { area: S.area, topic: S.topic, revealing: !!S.reveal.timer, growing: !!S.growth.timer, ready }; }, coverage: (a) => coverage(a), indicators: (k) => areaIndicators(k), topicLayers: (k) => topicLayerIds(k), corridor: () => corridor() };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(init, 0)); else setTimeout(init, 0);
