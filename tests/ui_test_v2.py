@@ -70,7 +70,7 @@ def main():
                 pg.evaluate(f'GA.i18n.setLang("{lang}")'); time.sleep(0.4)
                 r = pg.evaluate('''() => { const g = (s) => document.querySelector(s).getBoundingClientRect(); return { l: g('#col-left'), r: g('#col-right'), m: g('#map'), W: innerWidth, dir: document.documentElement.dir, sel: g('#panel-select'), lay: g('#panel-layers') }; }''')
                 # 5.8: floating panels over a full-width map (12 px gutter); Layers stacked under Study area
-                ok = abs(r['l']['left'] - 12) < 1 and abs(r['r']['right'] - (r['W'] - 12)) < 1 and abs(r['m']['left']) < 1 and abs(r['m']['right'] - r['W']) < 1 and r['l']['right'] < r['r']['left'] and r['lay']['top'] >= r['sel']['bottom'] - 1
+                ok = abs(r['l']['left'] - 12) < 1 and abs(r['r']['right'] - (r['W'] - 12)) < 1 and abs(r['m']['left']) < 1 and abs(r['m']['right'] - r['W']) < 1 and r['l']['right'] < r['r']['left']  # 5.25: Layers moved into the ☰ menu, no longer stacked under Study area
                 check(f'layout fixed ({lang}, dir={r["dir"]}): analysis left, study+layers right, map between', ok, f"left {r['l']['left']:.0f}-{r['l']['right']:.0f}, map {r['m']['left']:.0f}-{r['m']['right']:.0f}, right {r['r']['left']:.0f}-{r['r']['right']:.0f}")
                 pg.screenshot(path=os.path.join(OUT, f'v2_layout_{lang}.png'))
             pg.evaluate('GA.i18n.setLang("en")')
