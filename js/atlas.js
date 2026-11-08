@@ -52,7 +52,7 @@
     nav && nav.addEventListener('click', (e) => { if (e.target.closest('.tb-btn')) closeSide(); });
     renderSide();
   }
-  function openSide() { const s = $('#atl-side'); s.hidden = false; $('#atl-burger').setAttribute('aria-expanded', 'true'); document.body.classList.add('atl-menu'); relayout(); const f = s.querySelector('.atl-sec-h'); f && f.focus({ preventScroll: true }); }
+  function openSide() { const s = $('#atl-side'); if (innerWidth < 1000) ['analysis', 'study'].forEach(k => root.GA.panels.isOpen(k) && root.GA.panels.set(k, false)); /* tablets and phones: one side view at a time */ s.hidden = false; $('#atl-burger').setAttribute('aria-expanded', 'true'); document.body.classList.add('atl-menu'); relayout(); const f = s.querySelector('.atl-sec-h'); f && f.focus({ preventScroll: true }); }
   const relayout = () => dispatchEvent(new Event('ga:relayout')); // the map legend moves clear of the menu and the panel
   function closeSide() { const s = $('#atl-side'); if (!s) return; s.hidden = true; $('#atl-burger').setAttribute('aria-expanded', 'false'); document.body.classList.remove('atl-menu'); relayout(); }
   function showSection(k) { open[k] = true; renderSide(); openSide(); const el = $(`.atl-sec[data-sec="${k}"]`); el && el.scrollIntoView({ block: 'nearest' }); }
@@ -424,7 +424,7 @@
     // bar so the map and the Finish / Undo buttons are free; it unfolds again when drawing ends (if it was open before)
     const mb = $('#mode-banner'); let foldedForDraw = false;
     if (mb && root.MutationObserver) new MutationObserver(() => { if (!mb.hidden && !S.min) { S.min = foldedForDraw = true; renderPanel(); } else if (mb.hidden && foldedForDraw) { foldedForDraw = false; S.min = false; renderPanel(); } }).observe(mb, { attributes: true, attributeFilter: ['hidden'] });
-    addEventListener('resize', () => { const P = root.GA.panels; if (innerWidth < 700 && !$('#atl-side').hidden && (P.isOpen('analysis') || P.isOpen('study'))) closeSide(); }); // phones: one full-screen view at a time
+    addEventListener('resize', () => { const P = root.GA.panels; if (innerWidth < 1000 && !$('#atl-side').hidden && (P.isOpen('analysis') || P.isOpen('study'))) closeSide(); }); // tablets and phones: one side view at a time
     addEventListener('hashchange', () => { if (/^#\/./.test(location.hash)) closeSide(); }); // any page that opens (menu, link, code) closes the menu
   }
   root.GA.atlas = { init, setArea, setTopic, get state() { return { area: S.area, topic: S.topic, revealing: !!S.reveal.timer, growing: !!S.growth.timer, ready }; }, coverage: (a) => coverage(a), indicators: (k) => areaIndicators(k), topicLayers: (k) => topicLayerIds(k), corridor: () => corridor() };
