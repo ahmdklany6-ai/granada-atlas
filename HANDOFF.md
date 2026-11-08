@@ -1,4 +1,4 @@
-# Granada Atlas — handoff (state at build 5.20, 8 Nov 2026)
+# Granada Atlas — handoff (state at build 5.21, 8 Nov 2026)
 
 This document lets a new Claude Code session continue the project without the original chat. Short operating rules
 are in `CLAUDE.md`; feature and data documentation is in `README.md`.
@@ -9,12 +9,12 @@ are in `CLAUDE.md`; feature and data documentation is in `README.md`.
 | --- | --- |
 | Repository | `ahmdklany6-ai/granada-atlas` (public), branch `main` |
 | Live site | https://ahmdklany6-ai.github.io/granada-atlas/ (GitHub Pages, deploy from `main`, repo root) |
-| Current build | **5.20** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.20` asset queries) |
+| Current build | **5.21** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.21` asset queries) |
 | Latest feature work | Build 5.9: colour hierarchy, boundary layers, water/runoff, infrastructure, seasonal wind/rain, landmark geometries, print layout (see §13) |
 | Deployment | see §12 (5.8 deployment record) |
-| Data version | `2026-11-08-v11` in `data/manifest.json` (5.20: southern-axis layers `south_metro`, `tram_1931`, `escuzar_pole`) |
+| Data version | `2026-11-08-v12` in `data/manifest.json` (5.21: `boards` entry for the two Southern-axis boards; 5.20: southern-axis layers `south_metro`, `tram_1931`, `escuzar_pole`) |
 
-Build history (newest first): 5.20 southern-axis essentials layers (metro extension, 1931 tram, Escúzar / IFMIF-DONES) on by default · 5.19 print up to 700 dpi built in strips · 5.18 print at full resolution + "Map only" template · 5.17 / 5.16 Exercise 1.3 identity card · 5.15 one card format, historical extents · 5.14 current study area red on the locator · 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
+Build history (newest first): 5.21 Southern axis page with the two research boards · 5.20 southern-axis essentials layers (metro extension, 1931 tram, Escúzar / IFMIF-DONES) on by default · 5.19 print up to 700 dpi built in strips · 5.18 print at full resolution + "Map only" template · 5.17 / 5.16 Exercise 1.3 identity card · 5.15 one card format, historical extents · 5.14 current study area red on the locator · 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
 classified climate rasters, dashed fabric marks, historical red dots explained · 5.5/5.4 smooth building scales and
 street hierarchy at close zoom · 5.3 (v5) analysis page, viewers, unified Comparison, phone/iPad · v4/v3/v2 earlier.
 
@@ -574,3 +574,14 @@ paint = legend = palette, legends ar/he/en, fit, popups) passes; `ui_test_v4.py`
 
 **Open**: the seven station positions (add when mapped or published); the CTAGR bus line 0256C (2 runs each way on weekdays,
 timetable from 6 Oct 2025) is cited in the research notes but not drawn; no isochrones yet.
+
+## 23. Build 5.21 — "Southern axis" page with the two research boards (owner request of 8 Nov 2026)
+
+The owner wanted the two boards made in the research chat (Escúzar estate / accelerator; metro 2026 vs the 1931 tram)
+"as they are" on the site. New page `#/south` (`js/south_page.js`, nav button `v19.nav` "محور الجنوب", strings
+`js/i18n_v19.js`, styles `.sb-*` in `css/app.css`): each board full width in the interface language
+(`data/boards/south_<escuzar|metro_tram>_<ar|he|en>.jpg`, 4200 px wide), Open large (`GA.viewer.image`), Download image,
+Show on the map (closes the page, switches the board's layers on, fits the axis). The Arabic boards are the originals;
+Hebrew and English are the same pages with translated strings (`tools/boards/boards_i18n.py`); how the backgrounds were
+fetched is in `tools/boards/README.md`. Board images are static: if the data changes (stations mapped, metro opened),
+re-render them. Test: `tests/ui_test_v19.py`; `ui_test_v4.py` (1024 px nav, build agreement), `ui_test_v18.py`, node tests pass.
