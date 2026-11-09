@@ -210,6 +210,9 @@
   function renderLegend() {
     const el = $('#legend'); let h = (GA.regional ? GA.regional.legendHTML() : '') + (GA.view3d && GA.view3d.legendHTML ? GA.view3d.legendHTML() : '') + L.legendHTML();
     if (run && sel.info().ring) h += `<h4>${t('lg.study')}</h4><ul class="lg"><li><i class="sw ln" style="border-top:2px solid ${PAL.red}"></i><span>${t('lg.studyArea')}</span></li></ul>`;
+    // 5.26: with an atlas research topic active, its classes lead and the other layers fold under "also on the map"
+    const topicLg = GA.atlas && GA.atlas.mapLegendHTML ? GA.atlas.mapLegendHTML() : '';
+    if (topicLg) { const n = L.order.filter(id => L.S[id] && L.S[id].on).length; h = topicLg + (h ? `<details class="lg-also"><summary>${t('v24.also', { n: `<span class="num">${n}</span>` })}</summary>${h}</details>` : ''); }
     el.hidden = !h; if (!h) return;
     el.innerHTML = `<button class="legend-t" id="legend-toggle">${t('lg.title')} <span></span></button><div class="legend-b">${h}</div>`;
     placeLegend();
@@ -228,11 +231,17 @@
     else { const sh = [...document.querySelectorAll('#col-left, #pn-study, #pn-layers')].find(vis); if (sh) bottom = Math.min(bottom, R(sh).top - st.top - 8); }
     // 5.25 atlas shell: the ☰ menu (full height, on the ☰ side) and the analysis panel (bottom-left / bottom sheet) are obstacles too
     const side = $('#atl-side'); if (vis(side) && !phone()) { const q = R(side); if (q.left - st.left > W / 2) right = Math.min(right, q.left - st.left - 12); else left = Math.max(left, q.right - st.left + 12); }
-    const ap = $('#atl-panel'); if (vis(ap)) { const q = R(ap); if (phone() || q.right - st.left > Math.max(left, right - 260)) bottom = Math.min(bottom, q.top - st.top - 8); }
     // the zoom / draw-section column (top right of the free map): the legend never rises above its bottom where they meet
     const ctl = $('.maplibregl-ctrl-top-right'); if (vis(ctl)) { const c = R(ctl); if (c.left - st.left < right) top = Math.max(top, c.bottom - st.top + 8); }
     const sc = $('.maplibregl-ctrl-bottom-left'); if (vis(sc)) { const c = R(sc); if (c.right - st.left > right - 260) bottom = Math.min(bottom, c.top - st.top - 6); }
-    const fw = right - left, fh = bottom - top; const tight = fw < 200 || fh < 170 || phone(); // phones: the legend starts as its button so it never covers the map you tap on
+    // 5.26: keep clear of the analysed area (atlas frame / corridor / estate): beside it if there is room, else the button
+    let blocked = false; const av = GA.atlas && GA.atlas.legendAvoid ? GA.atlas.legendAvoid() : null;
+    if (av && av.right > left && av.left < right && av.bottom > top && av.top < bottom) {
+      if (right - (av.right + 12) >= 200) left = av.right + 12; else if ((av.left - 12) - left >= 200) right = av.left - 12;
+      else if ((av.top - 8) - top >= 170) bottom = av.top - 8; else if (bottom - (av.bottom + 8) >= 170) top = av.bottom + 8; else blocked = true; }
+    // the atlas panel (bottom-left; bottom sheet on phones): checked after the frame rule, which may have moved the legend left
+    const ap = $('#atl-panel'); if (vis(ap)) { const q = R(ap); if (phone() || q.right - st.left > Math.max(left, right - 260)) bottom = Math.min(bottom, q.top - st.top - 8); }
+    const fw = right - left, fh = bottom - top; const tight = fw < 200 || fh < 170 || phone() || blocked; // phones: the legend starts as its button so it never covers the map you tap on
     const min = tight ? !legendOpenTight : !!ui.legendMin;
     el.classList.toggle('min', min); el.classList.toggle('tight', tight);
     Object.assign(el.style, { left: 'auto', top: 'auto', right: Math.max(0, W - right) + 'px', bottom: Math.max(0, H - bottom) + 'px', maxWidth: Math.max(120, Math.min(260, fw)) + 'px', maxHeight: Math.max(44, Math.min(fh, tight ? fh : H * 0.46)) + 'px' });
@@ -241,7 +250,9 @@
   $('#legend').addEventListener('click', (e) => { const rb = e.target.closest('[data-ly-retry]'); if (rb) { L.retry(rb.dataset.lyRetry); return; } const zb = e.target.closest('[data-ly-zoomto]'); if (zb) { L.zoomTo(zb.dataset.lyZoomto); return; }
     if (e.target.closest('#legend-toggle')) { if ($('#legend').classList.contains('tight')) legendOpenTight = !legendOpenTight; else ui.legendMin = !ui.legendMin; placeLegend(); } });
   addEventListener('resize', () => setTimeout(placeLegend, 60));
-  addEventListener('ga:relayout', () => requestAnimationFrame(placeLegend)); // 5.25: the atlas menu / panel changed
+  addEventListener('ga:relayout', () => requestAnimationFrame(placeLegend));
+  addEventListener('ga:legend', () => renderLegend()); // 5.26: the atlas topic / area changed
+  $('#legend').addEventListener('toggle', () => placeLegend(), true); // "also on the map" opened or closed // 5.25: the atlas menu / panel changed
 
   // mask outside study areas when the scope is "study areas"
   function updateMask() { const rings = store.get().areas.map(a => GA.compare.ringOf(a.spec)).filter(Boolean); const r = sel.ring(); if (r) rings.push(r); L.setMaskRings(rings); drawSavedAreas(); }

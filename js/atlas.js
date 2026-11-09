@@ -105,7 +105,7 @@
   const bboxOf = (coords) => { let a = [180, 90, -180, -90]; const add = (c) => { if (typeof c[0] === 'number') a = [Math.min(a[0], c[0]), Math.min(a[1], c[1]), Math.max(a[2], c[0]), Math.max(a[3], c[1])]; else c.forEach(add); }; add(coords); return [[a[0], a[1]], [a[2], a[3]]]; };
   const frameLL = () => { const F = X13.frame; return [L([F.x0, F.y1]), L([F.x1, F.y1]), L([F.x1, F.y0]), L([F.x0, F.y0])]; }; // tl, tr, br, bl (image source order)
   // padding that keeps the fitted area clear of the context panel (left on desktop, bottom sheet on phones) and the legend
-  function pad(p) { const pn = $('#atl-panel'); const w = innerWidth; if (w < 700) return { top: p, left: p, right: p, bottom: Math.min(innerHeight * 0.45, (pn && !S.min ? pn.offsetHeight : 40) + p) }; return { top: p + 20, bottom: p, left: (pn && !S.min ? pn.offsetWidth + 24 : 0) + p, right: p + (w > 1100 ? 120 : 0) }; }
+  function pad(p) { const pn = $('#atl-panel'); const w = innerWidth; if (w < 700) return { top: p, left: p, right: p, bottom: Math.min(innerHeight * 0.45, (pn && !S.min ? pn.offsetHeight : 40) + p) }; return { top: p + 20, bottom: p, left: (pn && !S.min ? pn.offsetWidth + 24 : 0) + p, right: p + (w > 1100 && !document.body.classList.contains('atl-nolegend') ? 290 : 0) }; } // wide screens: room for the map legend beside the analysed area
   const frameBB = () => { const c = frameLL(); return bboxOf(c); };
   // metro corridor: everything within 600 m of the new track. The track is several OSM pieces that are not in sequence,
   // so distances are measured per piece, and the corridor is drawn by stroking each piece at the true width (round joins
@@ -267,6 +267,7 @@
     if (!opts.noFly) map.fitBounds(bb, { padding: pad(a === 'city' ? 40 : 70), duration: REDUCED ? 0 : 1800, maxZoom: a === 'city' ? 12 : 15, essential: true });
     applyMask(); markers(); renderSide(); renderPanel(); $('#atl-back').hidden = a === 'city';
     if (a === 'city' && !S.topic && S.growth.on) startGrowth(); else stopGrowth(false);
+    legendChanged();
   }
   async function setTopic(k) {
     await loadAll(); S.topic = TOPICS.includes(k) ? k : null; S.min = false; closeSide(); stopGrowth(false);
@@ -274,7 +275,7 @@
     else { stopReveal(); TOPICS.forEach(o => topicLayerIds(o).forEach(id => setVis(id, false))); setVis('atl-veil', false); setVis('atl-frame', false); if (S.area === 'city' && S.growth.on) startGrowth(); }
     // a topic chosen at city scale frames the analysis extent; inside a study area the zoom is kept
     if (S.topic && S.area === 'city') map.fitBounds(frameBB(), { padding: pad(40), duration: REDUCED ? 0 : 1400, maxZoom: 13 });
-    applyMask(); renderSide(); renderPanel();
+    applyMask(); renderSide(); renderPanel(); legendChanged();
   }
   // outside the selected study area the analysis is faded (metro corridor); the factory has no analysis data
   function applyMask() {
@@ -410,7 +411,7 @@
     const panel = document.createElement('section'); panel.id = 'atl-panel'; panel.className = 'atl-panel'; panel.setAttribute('aria-live', 'polite'); st.appendChild(panel); panel.addEventListener('click', onPanelClick); if (root.ResizeObserver) new ResizeObserver(relayout).observe(panel);
     const back = document.createElement('button'); back.type = 'button'; back.id = 'atl-back'; back.className = 'atl-back'; back.hidden = true; st.appendChild(back); back.addEventListener('click', () => setArea('city'));
   }
-  function relabel() { const b = $('#atl-back'); if (b) b.textContent = '← ' + t('v23.back'); const bg = $('#atl-burger'); if (bg) bg.setAttribute('aria-label', t('v23.menu')); renderSide(); renderPanel(); markers(); }
+  function relabel() { const b = $('#atl-back'); if (b) b.textContent = '← ' + t('v23.back'); const bg = $('#atl-burger'); if (bg) bg.setAttribute('aria-label', t('v23.menu')); renderSide(); renderPanel(); markers(); if (ready) legendChanged(); }
   async function init() {
     APP = root.GA.app; map = APP.map; buildShell(); if (root.GA.panels.isOpen('analysis')) S.min = true; buildOverlay(); relabel();
     const go = async () => { buildBase(); await loadAll(); ready = true; relabel(); markers();
@@ -419,7 +420,7 @@
       if (S.growth.on && !legacy) startGrowth(); else growthFrame(GROWTH.length - 1);
       map.on('styledata', () => { if (map.getLayer('atl-veil')) raise(); }); APP.L.onChange(() => setTimeout(raise, 0)); };
     if (map.loaded()) go(); else map.once('load', go);
-    I.onChange(relabel);
+    I.onChange(relabel); map.on('moveend', relayout);
     // while a map drawing tool is active (section, polygon — the mode banner is shown), the atlas panel folds to its title
     // bar so the map and the Finish / Undo buttons are free; it unfolds again when drawing ends (if it was open before)
     const mb = $('#mode-banner'); let foldedForDraw = false;
@@ -427,6 +428,14 @@
     addEventListener('resize', () => { const P = root.GA.panels; if (innerWidth < 1000 && !$('#atl-side').hidden && (P.isOpen('analysis') || P.isOpen('study'))) closeSide(); }); // tablets and phones: one side view at a time
     addEventListener('hashchange', () => { if (/^#\/./.test(location.hash)) closeSide(); }); // any page that opens (menu, link, code) closes the menu
   }
-  root.GA.atlas = { init, setArea, setTopic, get state() { return { area: S.area, topic: S.topic, revealing: !!S.reveal.timer, growing: !!S.growth.timer, ready }; }, coverage: (a) => coverage(a), indicators: (k) => areaIndicators(k), topicLayers: (k) => topicLayerIds(k), corridor: () => corridor() };
+  // 5.26: the MAP legend follows what is shown. With a topic active (and data for the area) the topic classes come
+  // first (the same legendHTML as the panel and the map paint); every other layer that is on is folded under "also on
+  // the map". legendAvoid() is the screen box of the analysed area (frame / corridor / estate) that the legend keeps clear of.
+  function mapLegendHTML() { if (!ready || !S.topic || !coverage(S.area).ok) return ''; return `<h4><span class="num">${String(TOPICS.indexOf(S.topic) + 1).padStart(2, '0')}</span> ${t('e13.t.' + S.topic)}</h4>${legendHTML(S.topic)}`; }
+  function analysedBB() { if (S.area === 'metro') return corridor().ll; if (S.area === 'factory') return bboxOf(estate().geometry.coordinates); return frameBB(); }
+  function legendAvoid() { if (!ready || !S.topic || !map) return null; const bb = analysedBB(); const a = map.project(bb[0]), b = map.project(bb[1]);
+    return { left: Math.min(a.x, b.x), right: Math.max(a.x, b.x), top: Math.min(a.y, b.y), bottom: Math.max(a.y, b.y) }; }
+  const legendChanged = () => { document.body.classList.toggle('atl-maplg', !!mapLegendHTML()); dispatchEvent(new Event('ga:legend')); };
+  root.GA.atlas = { init, setArea, setTopic, mapLegendHTML, legendAvoid, get state() { return { area: S.area, topic: S.topic, revealing: !!S.reveal.timer, growing: !!S.growth.timer, ready }; }, coverage: (a) => coverage(a), indicators: (k) => areaIndicators(k), topicLayers: (k) => topicLayerIds(k), corridor: () => corridor() };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(init, 0)); else setTimeout(init, 0);
 })(window);

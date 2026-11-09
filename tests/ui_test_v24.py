@@ -1,5 +1,6 @@
 """v24 — build 5.26 fixes, one section per item:
   1. no letter-spacing / upper-casing on Arabic or Hebrew text (CSS everywhere + map labels).
+  2. the map legend follows the atlas topic (topic classes first, other layers folded) and keeps clear of the analysed area.
 Usage: python3 tests/ui_test_v24.py  (OUT=/dir)  [items: ITEMS=1,2,... to run a subset]"""
 import sys, os, time, json, subprocess, warnings
 sys.path.insert(0, os.path.dirname(__file__))
@@ -52,6 +53,31 @@ try:
                     check(all(v == 0 for v in ls), f'{lang}: map sea / country names without tracking {ls}')
                     if lang == 'ar': pg.screenshot(path=f'{OUT}/i1_ar_panel.png')
                 check(not errs, f'{lang}: no page errors', errs[:3]); ctx.close()
+        # ---------- 2. map legend follows the topic ----------
+        if '2' in ITEMS:
+            LEG = r'''() => { const L = document.querySelector('#legend'); const r = L.getBoundingClientRect(); const av = GA.atlas.legendAvoid();
+              const h4 = L.querySelector('.legend-b > h4'); const cols = [...L.querySelectorAll('.legend-b > ul.lg li i.sw')].map(i => getComputedStyle(i).backgroundColor);
+              const also = L.querySelector('.lg-also'); const ov = av ? Math.max(0, Math.min(r.right, av.right) - Math.max(r.left, av.left)) * Math.max(0, Math.min(r.bottom, av.bottom) - Math.max(r.top, av.top)) : 0;
+              const south = [...L.querySelectorAll('.legend-b > h4')].some(e => /Esc|tram|1931/i.test(e.textContent));
+              const mid = document.elementFromPoint((r.left + r.right) / 2, r.top + 12); const onTop = !!(mid && mid.closest('#legend'));
+              return { onTop, first: h4 ? h4.textContent.trim() : '', cols, also: !!also, alsoOpen: also ? also.open : null, min: L.classList.contains('min'), ov, area: r.width * r.height, south, vis: !L.hidden && r.width > 0 }; }'''
+            rgb = lambda h: 'rgb(%d, %d, %d)' % tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
+            for tag, vp, mob, lang in [('desktop', {'width': 1440, 'height': 900}, False, 'en'), ('desktop', {'width': 1280, 'height': 800}, False, 'ar'), ('tablet', {'width': 820, 'height': 1180}, True, 'he'), ('phone', {'width': 390, 'height': 844}, True, 'ar')]:
+                ctx, pg, errs = boot(vp, mob, lang)
+                pg.evaluate('GA.atlas.setTopic("density")'); time.sleep(5)
+                r = pg.evaluate(LEG); name = pg.evaluate('GA.i18n.t("e13.t.density")'); pal = [rgb(c) for c in pg.evaluate('GA.palette.ex13.density')]
+                check(r['vis'] and name in r['first'] and r['cols'][:6] == pal, f'{tag} {lang}: map legend starts with the topic ({r["first"]}) in the palette classes', (r['first'], r['cols'][:6]))
+                check(r['also'] and r['alsoOpen'] is False and not r['south'], f'{tag} {lang}: other layers (Escúzar, 1931 tram, …) folded under "also on the map"', r)
+                check(r['min'] or r['ov'] == 0, f'{tag} {lang}: the legend does not cover the analysis frame (overlap {r["ov"]:.0f} px², collapsed={r["min"]})', r)
+                check(r['onTop'], f'{tag} {lang}: the legend is not hidden behind a panel', r)
+                if tag == 'phone': check(r['min'], 'phone: legend starts as its button')
+                pg.screenshot(path=f'{OUT}/i2_{tag}_{lang}_city.png')
+                pg.evaluate('GA.atlas.setArea("metro")'); time.sleep(3.5); r = pg.evaluate(LEG)
+                check(name in r['first'] and (r['min'] or r['ov'] == 0), f'{tag} {lang}: metro corridor — topic legend, clear of the corridor (overlap {r["ov"]:.0f})', r)
+                pg.screenshot(path=f'{OUT}/i2_{tag}_{lang}_metro.png')
+                pg.evaluate('GA.atlas.setTopic(null)'); time.sleep(1.5); r = pg.evaluate(LEG)
+                check(not r['also'] and not (name in r['first']), f'{tag} {lang}: no topic → the ordinary layer legend again', r)
+                check(not errs, f'{tag} {lang}: no page errors', errs[:3]); ctx.close()
 finally:
     srv.terminate()
 print('\n' + ('ALL PASSED' if not fails else f'{len(fails)} FAILED:\n  ' + '\n  '.join(fails)))

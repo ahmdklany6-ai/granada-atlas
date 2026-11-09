@@ -947,3 +947,8 @@ body.atlas.atl-nolegend #legend { display: none !important; }
    ("أ ط ل س"), in Hebrew they only spread the word — so both are switched off for RTL pages and for any element
    marked as Arabic or Hebrew inside an English page. */
 html[dir="rtl"] *, :lang(ar), :lang(ar) *, :lang(he), :lang(he) * { letter-spacing: 0 !important; text-transform: none !important; }
+/* 5.26: the map legend leads with the atlas topic; other layers fold under "also on the map". On tablets and desktops
+   the topic legend is then shown once (in the map legend), not twice; on phones the panel keeps it. */
+.legend .lg-also { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 6px; }
+.legend .lg-also > summary { cursor: pointer; font-size: 12px; color: var(--ink-2, #555); list-style-position: inside; }
+@media (min-width: 700px) { body.atl-maplg:not(.atl-nolegend) #atl-panel .atl-lg { display: none; } }
