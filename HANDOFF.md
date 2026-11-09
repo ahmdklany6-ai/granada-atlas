@@ -699,4 +699,5 @@ Restructure (not a rebuild) of the opening view into a full-screen research map 
 - Tests: `tests/ui_test_v23.py` (new). Old suites adjusted where controls moved (v2, v3, v4, v5, v7, v9, v10, v11, v19).
   Failures that are identical on `main` (5.24) and not caused by 5.25: v3 times out at the analysis-page historical
   snapshots; v5 analysis-page headings/KPI check and its PDF page count (11 vs 9); v7 multi-segment section after
-  Undo, reopened-section handles, iPad Finish button; the rtl-text plugin cannot load from unpkg in the sandbox.
+  Undo, reopened-section handles, iPad Finish button; v17 tile-seam ratio at A1 600–700 dpi (1.8–2.0 ×); the
+  rtl-text plugin cannot load from unpkg in the sandbox.
