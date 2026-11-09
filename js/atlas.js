@@ -364,7 +364,7 @@
     const popIn = cells.filter(c => c.dd === 0).reduce((s, c) => s + c.p, 0), pop1 = cells.reduce((s, c) => s + c.p, 0);
     const res = (v) => nf(Math.round(v / 10) * 10) + ' ' + t('x13.modelled');
     if (k === 'density') { const top = (den.stats.by_municipality || []).slice().sort((a, b) => b.pop_ghs - a.pop_ghs).slice(0, 3).map(m => `${esc(m.name)} ${nf(Math.round(m.pop_ghs / 10) * 10)}`).join(' · ');
-      out.push([t('v24.i.estRes'), res(popIn)], [t('v24.i.est1km'), res(pop1)], [t('v24.i.frameRes'), res(den.stats.pop_frame)], [t('v24.i.muniTop'), top || '—']); }
+      out.push([t('v24.i.estRes'), res(popIn)], [t('v24.i.est1km'), res(pop1)], [t('v24.i.frameRes'), res(den.stats.pop_frame)]); if (top) out.push([t('v24.i.muniTop'), top]); }
     if (k === 'morphology') { const s = d.morphology.stats; out.push([t('v24.i.estCov'), nf(s.coverage_estate_pct, 1) + ' %'], [t('v24.i.vsFactoryFrame'), nf(s.coverage_frame_pct, 1) + ' %'], [t('x13.i.gaps'), nf(s.gap_area_km2, 2) + ' km²'], [t('v24.i.buildings'), nf(d.morphology.source.buildings)]); }
     if (k === 'centre') { const pts = d.centre.points; const inE = pts.filter(p => estDist(p[0], p[1]) === 0), in1 = pts.filter(p => estDist(p[0], p[1]) <= 1000); const by = {}; in1.forEach(p => by[p[2]] = (by[p[2]] || 0) + 1);
       const pk = d.centre.peaks.map(p => ({ p, dd: estDist(p.x, p.y) })).sort((a, b) => a.dd - b.dd)[0];
