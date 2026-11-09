@@ -687,5 +687,16 @@ Restructure (not a rebuild) of the opening view into a full-screen research map 
   `data/ref/history_extents.json` (MTN50 1932, AMS 1956, GHSL 1975–2020) with their dates — real temporal data only.
 - Open: factory frame data; metro station positions are not mapped (only the track); the brief for the five
   requirements should be checked against the assumption above.
-- Tests: `tests/ui_test_v23.py` (new). Old suites adjusted where controls moved (v2, v4, v5, v9, v10, v19: header
-  buttons are clicked programmatically or the Layers section is opened first).
+- Shell behaviour worth knowing: opening a floating panel or any page closes the ☰ menu; under 1000 px the menu and the
+  side panels show one at a time; the atlas panel folds to its title bar while the study-area Analysis workspace is
+  open and while a section / polygon is being drawn (unfolds after); the map legend (`placeLegend` in `js/app.js`) avoids
+  the menu and the atlas panel (`ga:relayout` event). `raise()` keeps the atlas layers on top and moves layers ONLY when
+  the order is wrong — an unconditional move re-fires `styledata` and loops forever (the map never becomes idle, so saved
+  study-area boundaries/numbers were never drawn; fixed before release).
+- Test hook: `window.__gaLegacyView` (set by `tests/ui_test_v2.py` `stub()`; v23 sets it false) keeps the pre-5.25
+  opening view (no city fit, no growth animation) for the older suites. The old "all panels open" hook no longer opens
+  Layers (the ☰ menu is an overlay).
+- Tests: `tests/ui_test_v23.py` (new). Old suites adjusted where controls moved (v2, v3, v4, v5, v7, v9, v10, v11, v19).
+  Failures that are identical on `main` (5.24) and not caused by 5.25: v3 times out at the analysis-page historical
+  snapshots; v5 analysis-page headings/KPI check and its PDF page count (11 vs 9); v7 multi-segment section after
+  Undo, reopened-section handles, iPad Finish button; the rtl-text plugin cannot load from unpkg in the sandbox.
