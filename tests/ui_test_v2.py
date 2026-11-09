@@ -55,7 +55,7 @@ def main():
             b = p.chromium.launch(args=['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'])
             ctx = b.new_context(viewport={'width': 1500, 'height': 920}, accept_downloads=True)
             pg = ctx.new_page(); errors = []
-            pg.on('pageerror', lambda e: errors.append(str(e)))
+            pg.on('pageerror', lambda e: 'rtl-text' not in str(e) and errors.append(str(e)))  # the RTL text plugin comes from unpkg, which the test sandbox cannot reach (same filter as v11–v23)
             stub(pg)
             base = f'http://127.0.0.1:{PORT}/index.html'
 

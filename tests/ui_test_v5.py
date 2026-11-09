@@ -60,7 +60,7 @@ def main():
         with sync_playwright() as p:
             b = p.chromium.launch(args=['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'])
             ctx = b.new_context(viewport={'width': 1440, 'height': 900}, accept_downloads=True); pg = ctx.new_page(); errors = []
-            pg.on('pageerror', lambda e: errors.append(str(e))); pg.on('dialog', lambda d: d.accept()); stub5(pg)
+            pg.on('pageerror', lambda e: 'rtl-text' not in str(e) and errors.append(str(e))); pg.on('dialog', lambda d: d.accept()); stub5(pg)  # the RTL text plugin comes from unpkg, which the test sandbox cannot reach (same filter as v11–v23)
             pg.goto(f'http://127.0.0.1:{PORT}/index.html'); wait(pg, 'window.GA && GA.app && GA.app.map.isStyleLoaded()')
             old = json.load(open(os.path.join(ROOT, 'tests', 'fixtures', 'project_v1.json')))
             pg.evaluate('(p) => { localStorage.clear(); localStorage.setItem("granada-atlas.project.v1", JSON.stringify(p)); }', old)
@@ -111,7 +111,7 @@ def main():
             ap = json.loads(pg.evaluate('''JSON.stringify({ name: document.querySelector(".ap-name").innerText, nameSize: parseFloat(getComputedStyle(document.querySelector(".ap-name")).fontSize), loc: (() => { const c = document.querySelector("#ap-loc"); return c && c.width > 400; })(),
               heads: [...document.querySelectorAll(".ap-sec h2")].map(h => h.innerText), toc: document.querySelectorAll(".ap-toc a").length, kpis: document.querySelectorAll(".ap-kpis div").length, lg: document.querySelector(".ap-loc figcaption").innerText,
               actions: [...document.querySelectorAll(".pg-h .actions button")].map(b => b.innerText) })'''))
-            check('analysis page: large name, large location map with legend, key indicators', ap['name'] == 'Centro' and ap['nameSize'] >= 30 and ap['loc'] and ap['kpis'] == 6 and 'This fabric' in ap['lg'] and 'Landmark' in ap['lg'], ap)
+            check('analysis page: large name, large location map with legend, key indicators', ap['name'] == 'Centro' and ap['nameSize'] >= 30 and ap['loc'] and ap['kpis'] == 6 and 'Current study area' in ap['lg'] and 'Other study areas' in ap['lg'] and 'Landmark' in ap['lg'], ap)  # 5.14 (owner): legend reads Current / Other study areas (HANDOFF §17)
             want = ['Urban form and buildings', 'Streets and mobility', 'Activities and services', 'Trees, climate and environment', 'History and photographs', 'Architectural sections', 'Findings, research questions and design implications']
             check('analysis page: results under the seven required headings + navigation', all(w in ap['heads'] for w in want) and ap['toc'] == 8, ap['heads'])
             check('analysis page: Back to map, Compare and export actions', any('Back to map' in x for x in ap['actions']) and 'Compare' in ap['actions'] and 'Export PDF' in ap['actions'], ap['actions'])
@@ -122,7 +122,11 @@ def main():
             pg.click('[data-ap-card=flood]'); wait(pg, 'document.querySelector(".vw-map .vw-cv")', 10000); check('analysis page maps open in the viewer', True); pg.keyboard.press('Escape')
             pg.evaluate('GA.fabric.setEdit(true)'); time.sleep(1.5); check('Edit mode reveals captions and editing tools', pg.evaluate('document.querySelectorAll("#page .ap textarea[data-fb-cap]").length') >= 7); pg.evaluate('GA.fabric.setEdit(false)'); time.sleep(1)
             with pg.expect_download(timeout=240000) as dl: pg.evaluate(f'GA.fabric.exportPDF("{a1}")')
-            n, ink, _ = open_pdf(save(dl, 'analysis.pdf')); check('analysis page composed PDF downloads and opens (identity + 8 headings)', n == 9 and ink, n)
+            # 5.15 (owner): cards flow two per A3 page across the sections (HANDOFF §18) — the PDF has the identity page plus the
+            # card pages the app planned, not one page per heading; the planned pages must all be in the file
+            n, ink, _ = open_pdf(save(dl, 'analysis.pdf')); planned = pg.evaluate('GA.lastFabricPDF && GA.lastFabricPDF.pages')
+            ncards = pg.evaluate('document.querySelectorAll("#page .ap [data-ap-card]").length')
+            check(f'analysis page composed PDF downloads and opens (identity + {planned - 1 if planned else "?"} pages of at most two cards for {ncards} map cards)', ink and n == planned and n >= 1 + (ncards + 1) // 2, (n, planned, ncards))
 
             # ---------- sections: touch controls, enlarged view, evidence vs illustrative, annotations ----------
             pg.evaluate('GA.pages.close()'); time.sleep(0.5); pg.click('[data-ltab="sections"]'); pg.click('#sec-draw')
