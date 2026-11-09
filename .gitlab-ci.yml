@@ -1,0 +1,12 @@
+# GitLab Pages: publish the static site as-is (no build step). Tests and tools are not published.
+pages:
+  stage: deploy
+  image: alpine:latest
+  script:
+    - mkdir -p /tmp/site && cp -r . /tmp/site/ && rm -rf /tmp/site/.git /tmp/site/tests /tmp/site/tools /tmp/site/.github
+    - mv /tmp/site public
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
