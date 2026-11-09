@@ -77,9 +77,13 @@ def main():
             b = p.chromium.launch(args=['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'])
             ctx = b.new_context(viewport={'width': 1500, 'height': 920}, accept_downloads=True)
             pg = ctx.new_page(); errors = []
-            pg.on('pageerror', lambda e: errors.append(str(e)))
+            pg.on('pageerror', lambda e: 'rtl-text' not in str(e) and errors.append(str(e)))  # the RTL text plugin comes from unpkg, which the test sandbox cannot reach (same filter as v11–v23)
             pg.on('dialog', lambda d: d.accept())
             stub3(pg)
+            # historical maps / photos (IGN WMS GetMap): a real, non-uniform picture. Since 5.12 the app treats a uniform image
+            # as "no coverage here" (blank-tile check) and shows the area as unavailable — the 1-pixel stub never draws a snapshot.
+            hist_img = open(os.path.join(ROOT, 'data', 'ref', 'heat_fig2_vulnerability_exposure.jpg'), 'rb').read()
+            pg.route('https://www.ign.es/**', lambda r: r.fulfill(status=200, body=hist_img, content_type='image/jpeg') if 'GetMap' in r.request.url else r.fallback())
             base = f'http://127.0.0.1:{PORT}/index.html'
 
             # old projects still load (v1 fixture)
@@ -175,7 +179,10 @@ def main():
             time.sleep(3); pg.screenshot(path=os.path.join(OUT, 'v3_fabric.png'), full_page=False)
             with pg.expect_download(timeout=180000) as dl: pg.evaluate(f'GA.fabric.exportPDF("{aid}")')
             pdf = open(dl.value.path(), 'rb').read(); pages = len(re.findall(rb'/Type /Page\b', pdf))
-            check('analysis page: composed A3 PDF, identity + one page per visible heading', pdf.startswith(b'%PDF') and pages == 9, pages)
+            # 5.15 (owner): cards flow two per A3 page across the visible sections (HANDOFF §18), so the file holds the identity
+            # page plus the pages the app planned — not one page per heading
+            planned = pg.evaluate('GA.lastFabricPDF && GA.lastFabricPDF.pages'); ncards = pg.evaluate('document.querySelectorAll("#page .ap [data-ap-card]").length')
+            check(f'analysis page: composed A3 PDF, identity + the planned pages of at most two cards ({pages} pages, {ncards} map cards)', pdf.startswith(b'%PDF') and pages == planned and pages >= 1 + (ncards + 1) // 2, (pages, planned, ncards))
             pg.evaluate('GA.fabric.setEdit(false)')
 
             # ---------- historical explorer ----------
