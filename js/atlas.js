@@ -430,7 +430,7 @@
     // while a map drawing tool is active (section, polygon — the mode banner is shown), the atlas panel folds to its title
     // bar so the map and the Finish / Undo buttons are free; it unfolds again when drawing ends (if it was open before)
     const mb = $('#mode-banner'); let foldedForDraw = false;
-    if (mb && root.MutationObserver) new MutationObserver(() => { if (!mb.hidden && !S.min) { S.min = foldedForDraw = true; renderPanel(); } else if (mb.hidden && foldedForDraw) { foldedForDraw = false; S.min = false; renderPanel(); } }).observe(mb, { attributes: true, attributeFilter: ['hidden'] });
+    if (mb && root.MutationObserver) new MutationObserver(() => { relayout(); if (!mb.hidden && !S.min) { S.min = foldedForDraw = true; renderPanel(); } else if (mb.hidden && foldedForDraw) { foldedForDraw = false; S.min = false; renderPanel(); } }).observe(mb, { attributes: true, attributeFilter: ['hidden'] });
     addEventListener('resize', () => { const P = root.GA.panels; if (innerWidth < 1000 && !$('#atl-side').hidden && (P.isOpen('analysis') || P.isOpen('study'))) closeSide(); }); // tablets and phones: one side view at a time
     addEventListener('hashchange', () => { if (/^#\/./.test(location.hash)) closeSide(); }); // any page that opens (menu, link, code) closes the menu
   }

@@ -241,7 +241,9 @@
       else if ((av.top - 8) - top >= 170) bottom = av.top - 8; else if (bottom - (av.bottom + 8) >= 170) top = av.bottom + 8; else blocked = true; }
     // the atlas panel (bottom-left; bottom sheet on phones): checked after the frame rule, which may have moved the legend left
     const ap = $('#atl-panel'); if (vis(ap)) { const q = R(ap); if (phone() || q.right - st.left > Math.max(left, right - 260)) bottom = Math.min(bottom, q.top - st.top - 8); }
-    const fw = right - left, fh = bottom - top; const tight = fw < 200 || fh < 170 || phone() || blocked; // phones: the legend starts as its button so it never covers the map you tap on
+    // 5.26: while a section / polygon is being drawn the map is for clicking: the legend folds to its button (opens on demand)
+    const drawing = !!($('#mode-banner') && !$('#mode-banner').hidden);
+    const fw = right - left, fh = bottom - top; const tight = fw < 200 || fh < 170 || phone() || blocked || drawing; // phones: the legend starts as its button so it never covers the map you tap on
     const min = tight ? !legendOpenTight : !!ui.legendMin;
     el.classList.toggle('min', min); el.classList.toggle('tight', tight);
     Object.assign(el.style, { left: 'auto', top: 'auto', right: Math.max(0, W - right) + 'px', bottom: Math.max(0, H - bottom) + 'px', maxWidth: Math.max(120, Math.min(260, fw)) + 'px', maxHeight: Math.max(44, Math.min(fh, tight ? fh : H * 0.46)) + 'px' });
