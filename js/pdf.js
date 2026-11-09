@@ -43,7 +43,8 @@
     const push = (x) => { const b = typeof x === 'string' ? enc.encode(x) : x; chunks.push(b); len += b.length; };
     const obj = (n, body) => { offsets[n] = len; push(`${n} 0 obj\n`); body.forEach(push); push('\nendobj\n'); };
     push('%PDF-1.4\n%xxxx\n');
-    const W = pagePx ? pagePx[0] * 72 / dpi : paper[0], H = pagePx ? pagePx[1] * 72 / dpi : paper[1]; const sx = 72 / dpi * (1 - 1e-7), sy = sx; // 1 − 1e-7: poppler draws an image at exactly 1:1 through a softer path; 0.002 px over an A1 page keeps the pixel grid const f = (v) => (Math.round(v * 1e6) / 1e6).toString();
+    const W = pagePx ? pagePx[0] * 72 / dpi : paper[0], H = pagePx ? pagePx[1] * 72 / dpi : paper[1]; const sx = 72 / dpi * (1 - 1e-7), sy = sx; const f = (v) => (Math.round(v * 1e6) / 1e6).toString();
+    // sx: 1 − 1e-7 because poppler draws an image at exactly 1:1 through a softer path; 0.002 px over an A1 page keeps the pixel grid
     obj(1, ['<< /Type /Catalog /Pages 2 0 R >>']);
     obj(2, ['<< /Type /Pages /Count 1 /Kids [4 0 R] >>']);
     const esc = (x) => String(x || '').replace(/[^\x20-\x7E]/g, '?').replace(/([()\\])/g, '\\$1');
