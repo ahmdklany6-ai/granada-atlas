@@ -6,7 +6,7 @@ Screenshots are printed as base64 JPEG between ===IMG name=== / ===END=== (job l
 import base64, io, json, os, time, urllib.request
 from playwright.sync_api import sync_playwright
 from PIL import Image
-SITE = 'https://ahmdklany6-ai.github.io/granada-atlas/'
+SITE = os.environ.get('SITE') or 'https://ahmdklany6-ai.github.io/granada-atlas/'
 EXPECT = os.environ.get('EXPECT_BUILD') or json.load(open('version.json'))['build']
 if os.environ.get('PART', 'a') != 'a': raise SystemExit(0)
 res = []
