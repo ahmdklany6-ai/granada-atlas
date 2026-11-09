@@ -124,6 +124,9 @@
     paper: D.paper, sparse: D.khakiPale, medium: D.rose, compact: RED, compactAlpha: 0.62, edge: BASE.wine, square: D.blueDeep, context: BASE.brown, muni: D.warmGrey,
     // 5.24 density needles: five classes (< 5,000 · 5–10,000 · 10–20,000 · 20–30,000 · > 30,000 residents/km²), distinct and ordered light → dark
     needles: [BASE.blueGrey, D.blueDeep, BASE.khaki, RED, BASE.brown], needleBreaks: [5000, 10000, 20000, 30000],
+    // 5.26 human dimension objects: residents (light → deep blue), commercial peaks (chartreuse columns, olive labels), shop streets
+    // (red walls, oxblood edge), bus stops (dark brown poles), squares / parks / markets, hotels (burgundy cubes)
+    human: { res: [BASE.lightBlue, D.blueMid, D.blueDeep], gold: BASE.chartreuse, goldLabel: D.oliveMid, street: RED, streetEdge: BASE.oxblood, stop: D.ink2, square: D.blueDeep, park: D.oliveMid, market: BASE.oxblood, hotel: BASE.burgundy },
   };
   // 5.20 — southern axis layers (metro extension, 1931 tram, Escúzar estate). The map paint and the legends read these entries.
   P.south = {

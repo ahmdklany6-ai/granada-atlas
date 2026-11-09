@@ -701,3 +701,20 @@ Restructure (not a rebuild) of the opening view into a full-screen research map 
   snapshots; v5 analysis-page headings/KPI check and its PDF page count (11 vs 9); v7 multi-segment section after
   Undo, reopened-section handles, iPad Finish button; v17 tile-seam ratio at A1 600–700 dpi (1.8–2.0 ×); the
   rtl-text plugin cannot load from unpkg in the sandbox.
+
+## 27. Build 5.26 — Exercise 1.3 human dimension in the artistic map language (owner request of 9 Nov 2026)
+
+After previews (flat layer player; then an axonometric drawing inspired by an owner reference where every layer is a 3D
+object; labels in one ordered column; a simplified version was rejected — "back as it was"):
+- 05 Human dimension box: **Map language** switch. The artistic map is a line drawing of the frame seen from the
+  south-west (`K = 0.56`, ground diamond at the bottom of the square) with six objects: residents (GHS-POP 100 m cells
+  > 15,000/km² as prisms floating above their place), commerce (chartreuse columns on peaks C1–C6, height ∝ shops/km²,
+  300 m ring), shop streets (the six densest named streets as red walls, height ∝ shops per 100 m), buses (the 20 busiest
+  stops as poles, height ∝ trips/day, schedule of 26 Oct 2026), meeting places (squares / parks as slabs, markets as
+  blocks), visitors (251 hotels as cubes floating above their place). Labels sit in one column on the right, ordered by
+  the height of their anchors so leaders do not cross. Top view of the same layers under the map (16 % of the map width
+  so the A3 page fits). Heights are scales, stated; what has no data (time of day, walking routes, who uses places,
+  informal activity) is named in the limits line.
+- Data built once: `tools/build_ex13_human.py` → `data/ex13/art/human_ground.png`, `human_art.json` (run after
+  `tools/build_ex13_art.py`). Colours `palette.ex13art.human`. Strings `js/i18n_v24.js`. Test `tests/ui_test_v24.py`.
+- Not yet on the site: the climate "stacked layers on the terrain" preview (approved look, not integrated).

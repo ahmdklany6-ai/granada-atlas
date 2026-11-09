@@ -18,7 +18,7 @@
   function E() { const p = store.get(); const e = p.ex13 = p.ex13 || {}; e.frameKm = 10; e.maps = e.maps || {}; TOPICS.forEach(k => e.maps[k] = e.maps[k] || { finding: '', surprise: '' }); return e; }
   // 5.22: the morphology map can be drawn in the architectural (figure-ground) or the artistic (notation) language; saved per project
   // 5.23: the city centre too. Each topic keeps its own choice.
-  const ART_TOPICS = ['density', 'morphology', 'centre'];
+  const ART_TOPICS = ['density', 'morphology', 'centre', 'human'];
   const artOn = (k) => ART_TOPICS.includes(k) && !!root.GA.ex13art && (E().maps[k] || {}).style === 'art';
 
   // ---------- data (loaded once) ----------
@@ -51,6 +51,8 @@
     const hatch = (x0, y0, w, h, col, step, lw) => { ctx.save(); ctx.beginPath(); ctx.rect(x0, y0, w, h); ctx.clip(); ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); for (let q = -h; q < w + h; q += step) { ctx.moveTo(x0 + q, y0 + h); ctx.lineTo(x0 + q + h, y0); } ctx.stroke(); ctx.restore(); };
     if (k === 'density' && artOn(k)) {
       root.GA.ex13art.drawDensity(ctx, DATA, x, y, S, opts);
+    } else if (k === 'human' && artOn(k)) {
+      if (!root.GA.ex13art.drawHuman(ctx, DATA, x, y, S, opts)) { ctx.fillStyle = PAL().gray1; ctx.fillRect(x, y, S, S); }
     } else if (k === 'density') {
       const d = DATA.density; const cx = d.corners.x, cy = d.corners.y; const br = d.breaks; const cols = c.density;
       d.pop.forEach((row, r) => row.forEach((p, q) => { if (!p || p <= 0) return; const v = p * 100; const ci = br.filter(b => v > b).length;
@@ -112,7 +114,7 @@
     ctx.restore();
     // frame, north arrow, scale bar (same on every map)
     ctx.save(); ctx.strokeStyle = c.frame; ctx.lineWidth = 1.6 * s; ctx.strokeRect(x + 0.5, y + 0.5, S - 1, S - 1);
-    if (k === 'density' && artOn(k)) { ctx.restore(); return; } // the oblique view draws its own north, east–west scale and reference needle
+    if ((k === 'density' || k === 'human') && artOn(k)) { ctx.restore(); return; } // the oblique view draws its own north, east–west scale and reference needle
     const nx = x + S - 34 * s, ny = y + 22 * s; ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(nx - 16 * s, ny - 8 * s, 32 * s, 58 * s); PG.northArrow(ctx, nx, ny, 1.25 * s);
     const bx = x + 18 * s, by = y + S - 34 * s, km = 1000 / mpp; ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(bx - 8 * s, by - 26 * s, 2 * km + 120 * s, 46 * s);
     ctx.fillStyle = PAL().ink; ctx.fillRect(bx, by, km, 6 * s); ctx.strokeStyle = PAL().ink; ctx.lineWidth = 1.2 * s; ctx.strokeRect(bx, by, 2 * km, 6 * s);
@@ -125,7 +127,7 @@
   function legendItems(k) {
     const c = C(); const L = [];
     if (k === 'density') { const lab = ranges(DATA.density.breaks, t('x13.perKm2'), 0); c.density.forEach((col, i) => L.push({ sw: col, label: lab[i] })); L.push({ sw: '#FFFFFF', label: t('x13.lg.noRes') }, { line: c.muni, dash: true, label: t('x13.lg.muni') }); }
-    if (artOn(k)) return k === 'centre' ? root.GA.ex13art.centreLegend(t) : k === 'density' ? root.GA.ex13art.densityLegend(t, DATA) : root.GA.ex13art.legendItems(t, DATA);
+    if (artOn(k)) return k === 'centre' ? root.GA.ex13art.centreLegend(t) : k === 'density' ? root.GA.ex13art.densityLegend(t, DATA) : k === 'human' ? root.GA.ex13art.humanLegend(t) : root.GA.ex13art.legendItems(t, DATA);
     if (k === 'morphology') L.push({ sw: c.building, label: t('x13.lg.building') }, { sw: '#FFFFFF', label: t('x13.lg.open') }, { hatch: c.gap, label: t('x13.lg.gap') }, { line: PAL().red, dash: true, label: t('x13.lg.muni') });
     if (k === 'centre') { const br = DATA.centre.breaks; c.centre.forEach((col, i) => L.push({ sw: col, label: i < br.length - 1 ? iso(`${nf(br[i])}–${nf(br[i + 1])}`) + ' ' + t('x13.placesKm2') : t('x13.atLeast', { v: iso(nf(br[i])) }) + ' ' + t('x13.placesKm2') }));
       L.push({ peak: true, label: t('x13.lg.peak') }, { line: c.hist, dash: true, w: 2.6, label: t('x13.lg.hist') }, { line: c.whc, w: 2, label: t('x13.lg.whc') }, { line: c.street, w: 1.2, label: t('x13.lg.streets') }, { line: c.muni, dash: true, label: t('x13.lg.muni') }); }
@@ -213,7 +215,8 @@
       out.ind = [[t('x13.i.reach'), iso(nf(s.reach_pct, 1) + ' %')], [t('x13.i.hAreas'), t('x13.i.hAreasV', { q: iso(nf(s.squares)), p: iso(nf(s.parks)), m: iso(nf(s.markets)) })], [t('x13.i.hPts'), t('x13.i.hPtsV', { c: iso(nf(s.cafes)), p: iso(nf(s.playgrounds)), l: iso(nf(s.civic)) })], [t('x13.i.far'), iso(nf(s.far_cells)) + ' × 1 ha']];
       out.chartTitle = t('x13.c.human'); out.chart = [{ v: s.reach_pct, col: c.park }, { v: 100 - s.reach_pct, col: c.far }];
       out.sentence = t('x13.s.human', { reach: iso(nf(s.reach_pct, 0) + ' %') });
-      out.src = [t('x13.src.human', { date: iso(String(d.human.source.date).slice(0, 10)) }), t('x13.lim.human')]; }
+      out.src = [t('x13.src.human', { date: iso(String(d.human.source.date).slice(0, 10)) }), t('x13.lim.human')];
+      if (artOn(k)) out.src.push(t('x24.src.art')); }
     if ((e.maps[k] || {}).finding && e.maps[k].finding.trim()) out.sentence = e.maps[k].finding.trim();
     return out;
   }
@@ -237,8 +240,8 @@
     // under the map: legend · indicators + chart · sentence · sources
     const bx = mx, bw = G.mapS; let yy = my + G.mapS + pt(10);
     let topBox = null;
-    if (pk === 'density' && artOn(pk)) { const ts = Math.round(G.mapS * 0.2), gap = pt(10); const tx = rtl ? bx + bw - ts : bx; root.GA.ex13art.drawDensityTop(ctx, DATA, tx, yy, ts, opts); topBox = { x: tx, y: yy, s: ts };
-      const capY = para(ctx, t('x22.topCap'), tx, yy + ts + pt(1), ts, o(7, { color: PAL().ink3 }));
+    if ((pk === 'density' || pk === 'human') && artOn(pk)) { const ts = Math.round(G.mapS * (pk === 'human' ? 0.16 : 0.2)), gap = pt(10); const tx = rtl ? bx + bw - ts : bx; root.GA.ex13art[pk === 'human' ? 'drawHumanTop' : 'drawDensityTop'](ctx, DATA, tx, yy, ts, opts); topBox = { x: tx, y: yy, s: ts };
+      const capY = para(ctx, t(pk === 'human' ? 'x24.topCap' : 'x22.topCap'), tx, yy + ts + pt(1), ts, o(7, { color: PAL().ink3 }));
       const ly = legend(ctx, legendItems(pk), rtl ? bx : bx + ts + gap, yy, bw - ts - gap, o(7.6, { cols: 1 })); yy = Math.max(ly, capY) + pt(3); }
     else yy = legend(ctx, legendItems(pk), bx, yy, bw, o(8.6, { cols: pk === 'human' || pk === 'centre' || artOn(pk) ? 2 : pk === 'climate' ? 4 : 3 })) + pt(4);
     const cn = content(pk); const half = (bw - pt(14)) / 2;
@@ -343,9 +346,9 @@
     for (const k of PAGES) await prev(k);
     // 5.22 / 5.23 layer player (artistic maps): each layer alone (the others faint), then the map built up layer after layer —
     // drawn straight into the preview's map box, so squares can fade in smoothly — then all; loops until stopped
-    const PL = {}; const DUR = { centre: [1200, 2800, 1000, 1100, 700], morphology: [900, 900, 900, 900, 900], density: [800, 800, 800, 1300, 1300, 1300, 1300, 1300, 800] };
+    const PL = {}; const DUR = { centre: [1200, 2800, 1000, 1100, 700], morphology: [900, 900, 900, 900, 900], human: [1700, 1700, 1700, 1700, 1700, 1700], density: [800, 800, 800, 1300, 1300, 1300, 1300, 1300, 800] };
     const mapBox = (k) => { const c = body.querySelector(`[data-e13="${k}"] .e13-img canvas`); return c && c.__layout ? c : null; };
-    const paintMap = (k, o) => { const c = mapBox(k); if (!c) return; const L = c.__layout; const x = c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); drawMap(k, x, L.mapX, L.mapY, L.mapS, o); if (L.top && k === 'density') root.GA.ex13art.drawDensityTop(x, DATA, L.top.x, L.top.y, L.top.s, o); };
+    const paintMap = (k, o) => { const c = mapBox(k); if (!c) return; const L = c.__layout; const x = c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); drawMap(k, x, L.mapX, L.mapY, L.mapS, o); if (L.top && (k === 'density' || k === 'human')) root.GA.ex13art[k === 'human' ? 'drawHumanTop' : 'drawDensityTop'](x, DATA, L.top.x, L.top.y, L.top.s, o); };
     const stopPlay = (k) => { const P = PL[k]; if (!P) return; P.playing = false; cancelAnimationFrame(P.raf); };
     function paintPlayer(k, cur) { const el = body.querySelector(`[data-x20player="${k}"]`); if (!el) return; const on = artOn(k); el.hidden = !on; if (!on) { stopPlay(k); return; } const P = PL[k] = PL[k] || { playing: false, focus: null };
       const items = legendItems(k).filter(i => i.layer != null); cur = cur == null ? -1 : cur;
@@ -381,7 +384,7 @@
     } catch (er) { (root.GA.toast || alert)(t('x13.exportFail') + ' ' + er.message); console.error(er); } finally { b.disabled = false; } };
   }
   function styleHTML(k) { const art = artOn(k); const nm = 'x20-style-' + k;
-    return `<div class="x20-style" role="radiogroup" aria-label="${esc(t('x20.style'))}"><span>${t('x20.style')}</span><label><input type="radio" name="${nm}" value="arch"${art ? '' : ' checked'}> ${t('x20.arch')}</label><label><input type="radio" name="${nm}" value="art"${art ? ' checked' : ''}> ${t('x20.art')}</label></div><p class="fine">${t(k === 'centre' ? 'x21.styleHint' : k === 'density' ? 'x22.styleHint' : 'x20.styleHint')}</p>`; }
+    return `<div class="x20-style" role="radiogroup" aria-label="${esc(t('x20.style'))}"><span>${t('x20.style')}</span><label><input type="radio" name="${nm}" value="arch"${art ? '' : ' checked'}> ${t('x20.arch')}</label><label><input type="radio" name="${nm}" value="art"${art ? ' checked' : ''}> ${t('x20.art')}</label></div><p class="fine">${t(k === 'centre' ? 'x21.styleHint' : k === 'density' ? 'x22.styleHint' : k === 'human' ? 'x24.styleHint' : 'x20.styleHint')}</p>`; }
   async function layersZip(k) { // one full-resolution page per layer (that layer full, the others faint), then the whole map
     const keys = root.GA.ex13art.keys(k); await root.GA.ex13art.ready(k); const files = []; const add = async (o, name) => { const c = await pageCanvas(k, DPI_FULL, o); const bl = await PG.toBlob(c); files.push({ name, data: new Uint8Array(await bl.arrayBuffer()) }); };
     for (let i = 0; i < keys.length; i++) await add({ focus: i }, `${fileOf(k)}_${i + 1}_${keys[i]}.png`);
