@@ -729,8 +729,12 @@ Hosting moved to GitLab Pages while the GitHub account is suspended (see §1). E
    its top, so the visible join lies inside both images. A1 600 dpi 1:50,000: 1.82 → 1.58; A1 700 dpi 1:10,000: 2.00 → 1.12.
    Note: poppler (the reference renderer of the test) itself renders some strips about one grey level away from its own
    decode of the same image; that part is the renderer's, not the file's.
-9. **Climate / Human in the artistic language** — previews only (isotherms; 300 m reach rings), sent for approval; not on
-   the site until approved.
+   v16 (sharpness): an exactly 1:1 image makes poppler use a softer path (0.889 < 0.9), so placement is 72/dpi × (1 − 1e-7);
+   `tests/pdfstrips.test.js` checks the strip PDF content stream.
+9. **Climate / Human in the artistic language** — previews approved by the owner (9 Nov 2026) and on the site:
+   `js/ex13_art.js` `drawClimate` (isotherms of the Landsat summer median, σ 1.4 smoothing, 38–56 °C; hot/cool points;
+   7 layers) and `drawHuman` (buildings faint, shops/services, 300 m reach rings, places far from any; 6 layers). Both
+   have the Architectural / Artistic switch, the layer player, PNG per layer (ZIP) and the GIF.
 10. **GIF of the layer player** — `js/gif.js` (own GIF89a encoder: per-frame 256-colour table from the frame's pixels,
     LZW) and `GA.ex13.layersGif(k)`: each layer alone (1.4 s), then built up (0.9 s), then the whole map (3 s), looping;
     button "Animated GIF of the layers" next to "PNG per layer (ZIP)" in the viewer. `tests/gif.test.js` decodes it with Pillow.
@@ -741,10 +745,11 @@ Hosting moved to GitLab Pages while the GitHub account is suspended (see §1). E
     layers per frame (factory ids end in `~f`), uses rectangular grids (`grid.nx/ny`), and computes the factory indicators
     live inside the estate and within 1 km (`factoryIndicators`). Values as built: 13,245 modelled residents in the frame,
     ~240 inside the estate (GHS-POP, modelled), 85 shops/services (1 inside the estate), summer surface median 48.9 °C
-    (estate 47.8 °C), 3,073 OSM buildings (0.9 % coverage; 0.61 km² probable gaps vs GHSL). City data (data/ex13) unchanged.
+    (estate 47.8 °C), 3,073 OSM buildings (0.9 % coverage; 0.61 km² probable gaps vs GHSL). City data (data/ex13) unchanged. Municipal
+    boundaries could not be fetched (Overpass overloaded), so the per-municipality row is hidden, not shown as zero.
 13. **Metro stations** — searched 9 Nov 2026 (tools/verify/stations_search.py, osm_track.py on the runner): the Junta de
     Andalucía names seven stops (San Cayetano, La Paz, Churriana de la Vega, Arabuleila, La Gloria, Los Chopos, Las Gabias)
     but no source publishes positions with a reuse licence; OSM still maps the extension as under construction (6 ways, no
     stops). Stations are named in the metro legend and panel with the sources searched, never placed; the track is unchanged.
-Tests: `tests/ui_test_v24.py` (items 1, 2, 3, 4, 10, 12, 13), `tests/gif.test.js`; v3, v5, v7, v17 fixed; v2/v3/v5 ignore
+Tests: `tests/ui_test_v24.py` (items 1, 2, 3, 4, 9, 10, 12, 13), `tests/pdfstrips.test.js`, `tests/gif.test.js`; v3, v5, v7, v17 fixed; v2/v3/v5 ignore
 only the sandbox-blocked RTL text plugin error.
