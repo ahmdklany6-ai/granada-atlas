@@ -53,7 +53,12 @@
     renderSide();
   }
   function openSide() { const s = $('#atl-side'); if (innerWidth < 1000) ['analysis', 'study'].forEach(k => root.GA.panels.isOpen(k) && root.GA.panels.set(k, false)); /* tablets and phones: one side view at a time */ s.hidden = false; $('#atl-burger').setAttribute('aria-expanded', 'true'); document.body.classList.add('atl-menu'); relayout(); const f = s.querySelector('.atl-sec-h'); f && f.focus({ preventScroll: true }); }
-  const relayout = () => dispatchEvent(new Event('ga:relayout')); // the map legend moves clear of the menu and the panel
+  const relayout = () => dispatchEvent(new Event('ga:relayout'));
+  // 5.26: the north arrow sits under the map control column (zoom, draw section, 3D) whatever its height, centred on it —
+  // fixed offsets put it on the 3D button on phones
+  function placeNorth() { const n = $('.north'), c = $('.maplibregl-ctrl-top-right'), st = $('.stage'); if (!n || !c || !st) return;
+    const r = c.getBoundingClientRect(), s = st.getBoundingClientRect(); if (!r.height) return; const w = n.offsetWidth || 16;
+    n.style.top = Math.round(r.bottom - s.top + 10) + 'px'; n.style.right = Math.round(s.right - (r.left + r.right) / 2 - w / 2) + 'px'; } // the map legend moves clear of the menu and the panel
   function closeSide() { const s = $('#atl-side'); if (!s) return; s.hidden = true; $('#atl-burger').setAttribute('aria-expanded', 'false'); document.body.classList.remove('atl-menu'); relayout(); }
   function showSection(k) { open[k] = true; renderSide(); openSide(); const el = $(`.atl-sec[data-sec="${k}"]`); el && el.scrollIntoView({ block: 'nearest' }); }
   function renderSide() {
@@ -421,6 +426,7 @@
       map.on('styledata', () => { if (map.getLayer('atl-veil')) raise(); }); APP.L.onChange(() => setTimeout(raise, 0)); };
     if (map.loaded()) go(); else map.once('load', go);
     I.onChange(relabel); map.on('moveend', relayout);
+    const pn = () => requestAnimationFrame(placeNorth); addEventListener('resize', pn); addEventListener('ga:relayout', pn); new MutationObserver(pn).observe(document.body, { attributes: true, attributeFilter: ['class'] }); if (root.ResizeObserver) new ResizeObserver(pn).observe($('.maplibregl-ctrl-top-right') || document.body); pn();
     // while a map drawing tool is active (section, polygon — the mode banner is shown), the atlas panel folds to its title
     // bar so the map and the Finish / Undo buttons are free; it unfolds again when drawing ends (if it was open before)
     const mb = $('#mode-banner'); let foldedForDraw = false;

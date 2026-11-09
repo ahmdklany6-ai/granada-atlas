@@ -1,5 +1,6 @@
 """v24 — build 5.26 fixes, one section per item:
   1. no letter-spacing / upper-casing on Arabic or Hebrew text (CSS everywhere + map labels).
+  3. phone/tablet/desktop chrome: title kept, north arrow and map controls never overlap (375–1280 px, ar/he/en).
   2. the map legend follows the atlas topic (topic classes first, other layers folded) and keeps clear of the analysed area.
 Usage: python3 tests/ui_test_v24.py  (OUT=/dir)  [items: ITEMS=1,2,... to run a subset]"""
 import sys, os, time, json, subprocess, warnings
@@ -78,6 +79,25 @@ try:
                 pg.evaluate('GA.atlas.setTopic(null)'); time.sleep(1.5); r = pg.evaluate(LEG)
                 check(not r['also'] and not (name in r['first']), f'{tag} {lang}: no topic → the ordinary layer legend again', r)
                 check(not errs, f'{tag} {lang}: no page errors', errs[:3]); ctx.close()
+        # ---------- 3. title and control stack at every width ----------
+        if '3' in ITEMS:
+            CH = r'''() => { const R = (e) => { if (!e || !(e.offsetWidth || e.offsetHeight) || getComputedStyle(e).visibility === 'hidden') return null; const r = e.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom }; };
+              const ov = (a, b) => a && b && Math.min(a.r, b.r) - Math.max(a.l, b.l) > 1 && Math.min(a.b, b.b) - Math.max(a.t, b.t) > 1;
+              const name = document.querySelector('.brand-name'); const nr = R(name); const north = R(document.querySelector('.north'));
+              const ctls = [...document.querySelectorAll('.maplibregl-ctrl-top-right .maplibregl-ctrl, .maplibregl-ctrl-top-right button')].map(R).filter(Boolean);
+              const top = [...document.querySelectorAll('.topbar > *')].map(R).filter(Boolean); let topOv = 0; for (let i = 0; i < top.length; i++) for (let j = i + 1; j < top.length; j++) if (ov(top[i], top[j])) topOv++;
+              return { title: nr ? name.textContent.trim() : '', titleW: nr ? nr.r - nr.l : 0, clipped: name ? name.scrollWidth > name.clientWidth + 1 : true,
+                northHit: north ? ctls.filter(c => ov(c, north)).length : 0, north: !!north, topOv, overflow: document.documentElement.scrollWidth > innerWidth + 1 }; }'''
+            for w in [375, 390, 768, 1024, 1280]:
+                for lang in ['ar', 'he', 'en']:
+                    mob = w < 1000; ctx, pg, errs = boot({'width': w, 'height': 844 if w < 700 else 1000 if mob else 800}, mob, lang)
+                    for st in ['start', 'topic']:
+                        if st == 'topic': pg.evaluate('GA.atlas.setTopic("climate")'); time.sleep(4)
+                        r = pg.evaluate(CH)
+                        check(r['title'] and r['titleW'] > 40 and not r['clipped'], f'{w}px {lang} {st}: site title shown in full ("{r["title"]}")', r)
+                        check(r['northHit'] == 0 and r['topOv'] == 0 and not r['overflow'], f'{w}px {lang} {st}: north arrow clear of the map controls, top bar without overlaps, no horizontal scroll', r)
+                    if w in (375, 768) and lang == 'ar': pg.screenshot(path=f'{OUT}/i3_{w}_{lang}.png')
+                    check(not errs, f'{w}px {lang}: no page errors', errs[:3]); ctx.close()
 finally:
     srv.terminate()
 print('\n' + ('ALL PASSED' if not fails else f'{len(fails)} FAILED:\n  ' + '\n  '.join(fails)))

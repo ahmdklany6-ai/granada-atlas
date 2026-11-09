@@ -952,3 +952,5 @@ html[dir="rtl"] *, :lang(ar), :lang(ar) *, :lang(he), :lang(he) * { letter-spaci
 .legend .lg-also { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 6px; }
 .legend .lg-also > summary { cursor: pointer; font-size: 12px; color: var(--ink-2, #555); list-style-position: inside; }
 @media (min-width: 700px) { body.atl-maplg:not(.atl-nolegend) #atl-panel .atl-lg { display: none; } }
+/* 5.26: phones keep the site title (the language buttons that needed the room live in the ☰ menu now) */
+@media (max-width: 480px) { body.atlas .brand-name { display: block; font-size: 15px; overflow: hidden; text-overflow: ellipsis; max-width: calc(100vw - 96px); } }
