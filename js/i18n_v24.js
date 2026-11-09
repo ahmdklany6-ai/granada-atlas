@@ -25,6 +25,18 @@
     'v24.missing': ['لا توجد بيانات', 'אין נתונים', 'no data'],
     'v24.lg.frameF': ['امتداد بيانات التحليل (إطار ⁦12 × 10⁩ كم حول المصنع)', 'היקף נתוני הניתוח (מסגרת ⁦12 × 10⁩ ק״מ סביב המפעל)', 'extent of the analysis data (12 × 10 km frame around the factory)'],
     'v24.fr.note': ['إطار تحليل ثانٍ (⁦12 × 10⁩ كم) حول منطقة Escúzar والفجوة حتى آخر محطة مترو، بالمصادر والطرق والفئات نفسها لإطار المدينة. حيث تقلّ الأشياء فعلًا (سكان، محلات) تُظهر الأرقام ذلك كما هو.', 'מסגרת ניתוח שנייה (⁦12 × 10⁩ ק״מ) סביב אזור Escúzar והפער עד תחנת המטרו האחרונה, באותם מקורות, שיטות ומחלקות כמו מסגרת העיר. היכן שבאמת יש מעט (תושבים, חנויות) המספרים מראים זאת כפי שהוא.', 'A second analysis frame (12 × 10 km) around the Escúzar estate and the gap to the metro terminus, with the same sources, methods and classes as the city frame. Where the area genuinely has little (residents, shops) the numbers show it as it is.'],
+    'x24.styleHint.climate': ['الفنية: حرارة سطح الأرض صيفًا كخطوط حرارة متساوية (خط لكل درجة، مُنعَّمة)، الأسخن أعرض وأغمق؛ النقاط الخضراء نباتات.', 'אמנותית: טמפרטורת פני השטח בקיץ כקווי טמפרטורה שווה (קו לכל מעלה, מוחלקים), החמים עבים וכהים יותר; הנקודות הירוקות צמחייה.', 'Artistic: summer surface temperature as isotherms (one line per degree, smoothed), hotter lines wider and darker; green dots are vegetation.'],
+    'x24.styleHint.human': ['الفنية: دائرة 300 م حول كل ساحة وحديقة وسوق؛ النقاط الحمراء سكان خارج كل الدوائر.', 'אמנותית: עיגול של 300 מ׳ סביב כל כיכר, פארק ושוק; הנקודות האדומות הן תושבים מחוץ לכל העיגולים.', 'Artistic: a 300 m ring around every square, park and market; red dots are residents outside every ring.'],
+    'x24.lg.base': ['شبكة ⁦500⁩ م، الشوارع الرئيسية', 'רשת ⁦500⁩ מ׳, רחובות ראשיים', '500 m grid, main streets'],
+    'x24.lg.cool': ['خطوط أقل من ⁦43 °C⁩', 'קווים מתחת ל-⁦43 °C⁩', 'isotherms below 43 °C'],
+    'x24.lg.warm': ['خطوط ⁦43–47 °C⁩', 'קווים ⁦43–47 °C⁩', 'isotherms 43–47 °C'],
+    'x24.lg.hot': ['خطوط ⁦47–49 °C⁩', 'קווים ⁦47–49 °C⁩', 'isotherms 47–49 °C'],
+    'x24.lg.hottest': ['⁦49 °C⁩ فأكثر (مع تظليل)', '⁦49 °C⁩ ומעלה (עם הצללה)', '49 °C and above (tinted)'],
+    'x24.lg.veg': ['نباتات (NDVI صيفي ≥ ⁦0.4⁩)', 'צמחייה (NDVI קיצי ≥ ⁦0.4⁩)', 'vegetation (summer NDVI ≥ 0.4)'],
+    'x24.lg.marks': ['الأسخن {h} · الأبرد {c} (بعد التنعيم)', 'החם ביותר {h} · הקר ביותר {c} (אחרי החלקה)', 'hottest {h} · coolest {c} (smoothed field)'],
+    'x24.lg.buildings': ['المباني (OSM، باهتة)', 'מבנים (OSM, בהירים)', 'buildings (OSM, faint)'],
+    'x24.lg.rings': ['دائرة ⁦300⁩ م حول ساحة أو حديقة أو سوق ({n})', 'עיגול ⁦300⁩ מ׳ סביב כיכר, פארק או שוק ({n})', '300 m ring around a square, park or market ({n})'],
+    'x24.lg.far': ['خلايا مأهولة خارج كل الدوائر (الحجم ∝ السكان؛ {n})', 'תאים מאוכלסים מחוץ לכל העיגולים (גודל ∝ תושבים; {n})', 'inhabited cells beyond every ring (size ∝ residents; {n})'],
   });
   // 5.26: numbers, units and coordinates stay left-to-right inside Arabic / Hebrew text. ltrNums(html) wraps each
   // number run (with its sign, range, ×, unit or %) in <span dir="ltr"> (an isolate), only in text — never inside tags —

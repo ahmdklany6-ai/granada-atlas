@@ -18,7 +18,7 @@
   function E() { const p = store.get(); const e = p.ex13 = p.ex13 || {}; e.frameKm = 10; e.maps = e.maps || {}; TOPICS.forEach(k => e.maps[k] = e.maps[k] || { finding: '', surprise: '' }); return e; }
   // 5.22: the morphology map can be drawn in the architectural (figure-ground) or the artistic (notation) language; saved per project
   // 5.23: the city centre too. Each topic keeps its own choice.
-  const ART_TOPICS = ['density', 'morphology', 'centre'];
+  const ART_TOPICS = ['density', 'morphology', 'centre', 'climate', 'human']; // 5.26: climate (isotherms) and human (reach rings) approved
   const artOn = (k) => ART_TOPICS.includes(k) && !!root.GA.ex13art && (E().maps[k] || {}).style === 'art';
 
   // ---------- data (loaded once) ----------
@@ -69,6 +69,8 @@
       muni();
     } else if (artOn(k)) {
       if (k === 'centre') { if (!root.GA.ex13art.drawCentre(ctx, DATA, x, y, S, opts)) { ctx.fillStyle = PAL().gray1; ctx.fillRect(x, y, S, S); } }
+      else if (k === 'climate') root.GA.ex13art.drawClimate(ctx, DATA, x, y, S, opts);
+      else if (k === 'human') root.GA.ex13art.drawHuman(ctx, DATA, x, y, S, opts);
       else root.GA.ex13art.draw(ctx, DATA, x, y, S, opts);
     } else if (k === 'morphology') {
       figureGround(c.building);
@@ -135,7 +137,7 @@
   function legendItems(k) {
     const c = C(); const L = [];
     if (k === 'density') { const lab = ranges(DATA.density.breaks, t('x13.perKm2'), 0); c.density.forEach((col, i) => L.push({ sw: col, label: lab[i] })); L.push({ sw: '#FFFFFF', label: t('x13.lg.noRes') }, { line: c.muni, dash: true, label: t('x13.lg.muni') }); }
-    if (artOn(k)) return k === 'centre' ? root.GA.ex13art.centreLegend(t) : k === 'density' ? root.GA.ex13art.densityLegend(t, DATA) : root.GA.ex13art.legendItems(t, DATA);
+    if (artOn(k)) return k === 'centre' ? root.GA.ex13art.centreLegend(t) : k === 'density' ? root.GA.ex13art.densityLegend(t, DATA) : k === 'climate' ? root.GA.ex13art.climateLegend(t, DATA) : k === 'human' ? root.GA.ex13art.humanLegend(t, DATA) : root.GA.ex13art.legendItems(t, DATA);
     if (k === 'morphology') L.push({ sw: c.building, label: t('x13.lg.building') }, { sw: '#FFFFFF', label: t('x13.lg.open') }, { hatch: c.gap, label: t('x13.lg.gap') }, { line: PAL().red, dash: true, label: t('x13.lg.muni') });
     if (k === 'centre') { const br = DATA.centre.breaks; c.centre.forEach((col, i) => L.push({ sw: col, label: i < br.length - 1 ? iso(`${nf(br[i])}–${nf(br[i + 1])}`) + ' ' + t('x13.placesKm2') : t('x13.atLeast', { v: iso(nf(br[i])) }) + ' ' + t('x13.placesKm2') }));
       L.push({ peak: true, label: t('x13.lg.peak') }, { line: c.hist, dash: true, w: 2.6, label: t('x13.lg.hist') }, { line: c.whc, w: 2, label: t('x13.lg.whc') }, { line: c.street, w: 1.2, label: t('x13.lg.streets') }, { line: c.muni, dash: true, label: t('x13.lg.muni') }); }
@@ -168,6 +170,8 @@
         if (it.cross) { const r = sh * 0.42, ccx = it.text ? cx + sh * 0.5 : cx + sw / 2; ctx.strokeStyle = it.cross; ctx.lineWidth = Math.max(1.5, fs * 0.16); ctx.beginPath(); ctx.moveTo(ccx - r, cy); ctx.lineTo(ccx + r, cy); ctx.moveTo(ccx, cy - r); ctx.lineTo(ccx, cy + r); ctx.stroke();
           if (it.text) { ctx.save(); ctx.font = `700 ${Math.round(fs * 0.8)}px ${o.F}`; ctx.direction = 'ltr'; ctx.textAlign = 'left'; ctx.fillStyle = it.cross; ctx.fillText(it.text, ccx + r + 2, cy); ctx.restore(); } }
         if (it.peak) { ctx.beginPath(); ctx.arc(cx + sw / 2, cy, sh * 0.55, 0, Math.PI * 2); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.strokeStyle = c.centreLine; ctx.lineWidth = 2; ctx.stroke(); ctx.beginPath(); ctx.arc(cx + sw / 2, cy, 2, 0, Math.PI * 2); ctx.fillStyle = c.centreLine; ctx.fill(); }
+        if (it.ring) { ctx.beginPath(); ctx.arc(cx + sw / 2, cy, sh * 0.48, 0, Math.PI * 2); ctx.strokeStyle = it.ring; ctx.lineWidth = Math.max(1.2, fs * 0.09); ctx.stroke(); }
+        if (it.dot) { ctx.beginPath(); ctx.arc(cx + sw / 2, cy, sh * 0.3, 0, Math.PI * 2); ctx.fillStyle = it.dot; ctx.fill(); }
         if (it.mk === 'market') { ctx.fillStyle = c.market; ctx.fillRect(cx + sw / 2 - sh * 0.45, cy - sh * 0.45, sh * 0.9, sh * 0.9); }
         if (it.mk === 'cafe') { ctx.beginPath(); ctx.arc(cx + sw / 2, cy, sh * 0.22, 0, Math.PI * 2); ctx.fillStyle = c.cafe; ctx.fill(); }
         if (it.mk === 'play') { ctx.beginPath(); ctx.moveTo(cx + sw / 2, cy - sh * 0.45); ctx.lineTo(cx + sw / 2 + sh * 0.42, cy + sh * 0.35); ctx.lineTo(cx + sw / 2 - sh * 0.42, cy + sh * 0.35); ctx.closePath(); ctx.fillStyle = c.play; ctx.fill(); }
@@ -353,7 +357,7 @@
     for (const k of PAGES) await prev(k);
     // 5.22 / 5.23 layer player (artistic maps): each layer alone (the others faint), then the map built up layer after layer —
     // drawn straight into the preview's map box, so squares can fade in smoothly — then all; loops until stopped
-    const PL = {}; const DUR = { centre: [1200, 2800, 1000, 1100, 700], morphology: [900, 900, 900, 900, 900], density: [800, 800, 800, 1300, 1300, 1300, 1300, 1300, 800] };
+    const PL = {}; const DUR = { centre: [1200, 2800, 1000, 1100, 700], morphology: [900, 900, 900, 900, 900], density: [800, 800, 800, 1300, 1300, 1300, 1300, 1300, 800], climate: [800, 1300, 1300, 1300, 1600, 900, 800], human: [800, 900, 900, 1800, 900, 1200] };
     const mapBox = (k) => { const c = body.querySelector(`[data-e13="${k}"] .e13-img canvas`); return c && c.__layout ? c : null; };
     const paintMap = (k, o) => { const c = mapBox(k); if (!c) return; const L = c.__layout; const x = c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); drawMap(k, x, L.mapX, L.mapY, L.mapS, o); if (L.top && k === 'density') root.GA.ex13art.drawDensityTop(x, DATA, L.top.x, L.top.y, L.top.s, o); };
     const stopPlay = (k) => { const P = PL[k]; if (!P) return; P.playing = false; cancelAnimationFrame(P.raf); };
@@ -391,7 +395,7 @@
     } catch (er) { (root.GA.toast || alert)(t('x13.exportFail') + ' ' + er.message); console.error(er); } finally { b.disabled = false; } };
   }
   function styleHTML(k) { const art = artOn(k); const nm = 'x20-style-' + k;
-    return `<div class="x20-style" role="radiogroup" aria-label="${esc(t('x20.style'))}"><span>${t('x20.style')}</span><label><input type="radio" name="${nm}" value="arch"${art ? '' : ' checked'}> ${t('x20.arch')}</label><label><input type="radio" name="${nm}" value="art"${art ? ' checked' : ''}> ${t('x20.art')}</label></div><p class="fine">${t(k === 'centre' ? 'x21.styleHint' : k === 'density' ? 'x22.styleHint' : 'x20.styleHint')}</p>`; }
+    return `<div class="x20-style" role="radiogroup" aria-label="${esc(t('x20.style'))}"><span>${t('x20.style')}</span><label><input type="radio" name="${nm}" value="arch"${art ? '' : ' checked'}> ${t('x20.arch')}</label><label><input type="radio" name="${nm}" value="art"${art ? ' checked' : ''}> ${t('x20.art')}</label></div><p class="fine">${t(k === 'centre' ? 'x21.styleHint' : k === 'density' ? 'x22.styleHint' : k === 'climate' ? 'x24.styleHint.climate' : k === 'human' ? 'x24.styleHint.human' : 'x20.styleHint')}</p>`; }
   async function layersZip(k) { // one full-resolution page per layer (that layer full, the others faint), then the whole map
     const keys = root.GA.ex13art.keys(k); await root.GA.ex13art.ready(k); const files = []; const add = async (o, name) => { const c = await pageCanvas(k, DPI_FULL, o); const bl = await PG.toBlob(c); files.push({ name, data: new Uint8Array(await bl.arrayBuffer()) }); };
     for (let i = 0; i < keys.length; i++) await add({ focus: i }, `${fileOf(k)}_${i + 1}_${keys[i]}.png`);

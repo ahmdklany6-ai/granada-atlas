@@ -5,6 +5,7 @@
   12. the factory has its own analysis frame: all five topics show real values (live, inside / around the estate); the city values did not change.
   13. metro extension: planned stations named with the sources searched, never placed; the track and its two points unchanged.
   10. animated GIF of the Exercise 1.3 layer player: each layer alone, then built up, then the whole map; decodes, loops.
+  9. Exercise 1.3 climate (isotherms) and human dimension (reach rings) in the artistic language: switch, page, legend, layers, GIF.
   2. the map legend follows the atlas topic (topic classes first, other layers folded) and keeps clear of the analysed area.
 Usage: python3 tests/ui_test_v24.py  (OUT=/dir)  [items: ITEMS=1,2,... to run a subset]"""
 import sys, os, time, json, subprocess, warnings
@@ -15,7 +16,7 @@ warnings.filterwarnings('ignore')
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORT = 8824; V3.PORT = PORT; V3.V2.PORT = PORT
 OUT = os.environ.get('OUT', '/tmp/v24shots'); os.makedirs(OUT, exist_ok=True)
-ITEMS = set((os.environ.get('ITEMS') or '1,2,3,4,10,12,13').split(','))
+ITEMS = set((os.environ.get('ITEMS') or '1,2,3,4,9,10,12,13').split(','))
 fails = []
 def check(cond, msg, extra=''):
     print(('ok   ' if cond else 'FAIL ') + msg + (f'  [{extra}]' if extra != '' and not cond else ''), flush=True)
@@ -174,6 +175,25 @@ try:
             btn = pg.evaluate('(() => { document.querySelector(\'[data-e13open="density"]\').click(); return true; })()'); time.sleep(4)
             check(pg.evaluate('!!document.querySelector("[data-vtool=gif]") || !GA.ex13.artOn("density")'), 'the viewer offers the GIF next to "PNG per layer (ZIP)" (artistic language on)')
             check(not errs, 'GIF: no page errors', errs[:3]); ctx.close()
+        # ---------- 9. climate and human in the artistic language ----------
+        if '9' in ITEMS:
+            from PIL import Image, ImageSequence
+            import base64, io
+            for lang in ['en', 'ar']:
+                ctx, pg, errs = boot({'width': 1440, 'height': 900}, False, lang)
+                pg.evaluate('GA.pages.go("ex13")'); pg.wait_for_function('document.querySelectorAll(".x13-prev canvas").length === 6', timeout=600000); time.sleep(1)
+                for k in ['climate', 'human']:
+                    pg.evaluate(f'(() => {{ const r = document.querySelector(\'input[name="x20-style-{k}"][value="art"]\'); r.checked = true; r.dispatchEvent(new Event("change", {{ bubbles: true }})); }})()'); time.sleep(3)
+                    r = pg.evaluate('''async (k) => { const on = GA.ex13.artOn(k); const keys = GA.ex13art.keys(k); const lg = GA.ex13.legendItems(k);
+                      const c = await GA.ex13.pageCanvas(k, 50); const u = c.toDataURL("image/png"); return { on, n: keys.length, lg: lg.length, layers: [...new Set(lg.filter(i => i.layer != null).map(i => i.layer))].length, u, player: !!document.querySelector(`[data-x20player="${k}"]:not([hidden])`) }; }''', k)
+                    im = Image.open(io.BytesIO(base64.b64decode(r['u'].split(',')[1]))); im.save(f'{OUT}/i9_{lang}_{k}.png')
+                    ext = im.convert('L').getextrema()
+                    check(r['on'] and r['player'] and r['layers'] == r['n'] and ext[0] < 80, f'{lang} {k}: artistic map on — player shown, legend covers all {r["n"]} layers, page drawn', r | {'u': ''})
+                    if lang == 'en':
+                        g = pg.evaluate('''async (k) => { const b = await GA.ex13.layersGif(k); const u8 = new Uint8Array(await b.arrayBuffer()); let s = ''; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode(...u8.subarray(i, i + 8192)); return btoa(s); }''', k)
+                        gi = Image.open(io.BytesIO(base64.b64decode(g))); nfr = sum(1 for _ in ImageSequence.Iterator(gi))
+                        check(nfr == 2 * r['n'] + 1, f'{k}: layer GIF has {nfr} frames ({r["n"]} layers alone, built up, whole map)')
+                check(not errs, f'{lang}: no page errors', errs[:3]); ctx.close()
 finally:
     srv.terminate()
 print('\n' + ('ALL PASSED' if not fails else f'{len(fails)} FAILED:\n  ' + '\n  '.join(fails)))
