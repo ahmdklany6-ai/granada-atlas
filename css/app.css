@@ -942,3 +942,8 @@ body.atlas.atl-nolegend #legend { display: none !important; }
   .atl-cards { grid-template-columns: 1fr; }
   .atl-back { top: 8px; }
 }
+
+/* 5.26: letter-spacing and upper-casing are Latin typography. In Arabic they break the joined letters apart
+   ("أ ط ل س"), in Hebrew they only spread the word — so both are switched off for RTL pages and for any element
+   marked as Arabic or Hebrew inside an English page. */
+html[dir="rtl"] *, :lang(ar), :lang(ar) *, :lang(he), :lang(he) * { letter-spacing: 0 !important; text-transform: none !important; }
