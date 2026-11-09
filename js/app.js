@@ -226,6 +226,9 @@
     const attr = $('.maplibregl-ctrl-bottom-right'); if (vis(attr)) bottom = Math.min(bottom, R(attr).top - st.top - 6);
     if (!phone()) { if (vis($('#col-left'))) left = R($('#col-left')).right - st.left + 12; const rp = [...document.querySelectorAll('#pn-study, #pn-layers')].filter(vis); if (rp.length) right = Math.min(...rp.map(e => R(e).left - st.left)) - 12; }
     else { const sh = [...document.querySelectorAll('#col-left, #pn-study, #pn-layers')].find(vis); if (sh) bottom = Math.min(bottom, R(sh).top - st.top - 8); }
+    // 5.25 atlas shell: the ☰ menu (full height, on the ☰ side) and the analysis panel (bottom-left / bottom sheet) are obstacles too
+    const side = $('#atl-side'); if (vis(side) && !phone()) { const q = R(side); if (q.left - st.left > W / 2) right = Math.min(right, q.left - st.left - 12); else left = Math.max(left, q.right - st.left + 12); }
+    const ap = $('#atl-panel'); if (vis(ap)) { const q = R(ap); if (phone() || q.right - st.left > Math.max(left, right - 260)) bottom = Math.min(bottom, q.top - st.top - 8); }
     // the zoom / draw-section column (top right of the free map): the legend never rises above its bottom where they meet
     const ctl = $('.maplibregl-ctrl-top-right'); if (vis(ctl)) { const c = R(ctl); if (c.left - st.left < right) top = Math.max(top, c.bottom - st.top + 8); }
     const sc = $('.maplibregl-ctrl-bottom-left'); if (vis(sc)) { const c = R(sc); if (c.right - st.left > right - 260) bottom = Math.min(bottom, c.top - st.top - 6); }
@@ -238,6 +241,7 @@
   $('#legend').addEventListener('click', (e) => { const rb = e.target.closest('[data-ly-retry]'); if (rb) { L.retry(rb.dataset.lyRetry); return; } const zb = e.target.closest('[data-ly-zoomto]'); if (zb) { L.zoomTo(zb.dataset.lyZoomto); return; }
     if (e.target.closest('#legend-toggle')) { if ($('#legend').classList.contains('tight')) legendOpenTight = !legendOpenTight; else ui.legendMin = !ui.legendMin; placeLegend(); } });
   addEventListener('resize', () => setTimeout(placeLegend, 60));
+  addEventListener('ga:relayout', () => requestAnimationFrame(placeLegend)); // 5.25: the atlas menu / panel changed
 
   // mask outside study areas when the scope is "study areas"
   function updateMask() { const rings = store.get().areas.map(a => GA.compare.ringOf(a.spec)).filter(Boolean); const r = sel.ring(); if (r) rings.push(r); L.setMaskRings(rings); drawSavedAreas(); }

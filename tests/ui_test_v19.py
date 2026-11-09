@@ -29,7 +29,7 @@ try:
         for lang in ('ar', 'he', 'en'):
             pg.evaluate(f'GA.i18n.setLang("{lang}")'); time.sleep(0.4)
             btn = pg.locator('.tb-btn[data-page="south"]'); check(btn.count() == 1 and btn.inner_text().strip() == pg.evaluate('GA.i18n.t("v19.nav")'), f'{lang}: nav button')
-            btn.click(); pg.wait_for_function('document.querySelectorAll(".sb-board img").length === 2', timeout=20000)
+            btn.evaluate("e => e.click()"); pg.wait_for_function('document.querySelectorAll(".sb-board img").length === 2', timeout=20000)
             pg.wait_for_function('[...document.querySelectorAll(".sb-board img")].every(i => i.complete && i.naturalWidth > 3000)', timeout=60000)
             srcs = pg.evaluate('[...document.querySelectorAll(".sb-board img")].map(i => i.getAttribute("src"))')
             check(all(f'_{lang}.jpg' in s for s in srcs), f'{lang}: boards in the interface language', srcs)
@@ -41,7 +41,7 @@ try:
             pg.keyboard.press('Escape'); time.sleep(0.5)
             pg.evaluate('GA.pages.close()'); time.sleep(0.4)
         pg.evaluate('GA.i18n.setLang("ar"); GA.app.L.setOn("escuzar_pole", false)'); time.sleep(0.4)
-        pg.click('.tb-btn[data-page="south"]'); pg.wait_for_selector('.sb-board[data-board="escuzar"] [data-sb=map]')
+        pg.evaluate('document.querySelector(\'.tb-btn[data-page="south"]\').click()'); pg.wait_for_selector('.sb-board[data-board="escuzar"] [data-sb=map]')
         pg.click('.sb-board[data-board="escuzar"] [data-sb=map]'); time.sleep(2.5)
         check(pg.evaluate('!GA.pages.current'), 'Show on the map closes the page')
         check(pg.evaluate('GA.app.L.S.escuzar_pole.on && GA.app.L.S.south_metro.on'), 'Show on the map switches the board layers on')

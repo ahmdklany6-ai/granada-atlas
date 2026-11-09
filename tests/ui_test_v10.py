@@ -96,6 +96,7 @@ try:
         on('wind'); pg.wait_for_function('GA.app.L.S.wind.status === "ok"', timeout=30000); time.sleep(1)
         lg = leg(); check('Winter' in lg and 'from): W' in lg and 'not a forecast' in lg and '25 km' in lg and 'street-level' in lg, 'winter wind rose: prevailing direction, climatology statement, resolution, not street-level', lg[:300])
         check(pg.evaluate('GA.app.map.hasImage("ga-wind-rose") && !!GA.app.map.getSource("ly-wind-cell")._data.features.length'), 'rose drawn on the map, model grid cell outlined')
+        pg.evaluate('GA.panels.set("layers", true)'); time.sleep(0.3)
         pg.select_option('#panel-layers select[data-ly-ctl=wind]', 'jja'); time.sleep(1.2); lg = leg(); check('Summer' in lg and 'from): E' in lg, 'season selector switches to summer statistics')
         pg.evaluate('GA.app.map.jumpTo({ center: [-3.5986, 37.1773], zoom: 11.5 })'); time.sleep(2); pg.screenshot(path=f'{OUT}/wind_summer.png')
         off('wind'); on('rain'); pg.wait_for_function('GA.app.L.S.rain.status === "ok"', timeout=30000); time.sleep(1)

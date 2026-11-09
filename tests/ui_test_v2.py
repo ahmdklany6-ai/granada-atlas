@@ -14,9 +14,11 @@ def check(name, cond, extra=''):
 # Build 5.8 starts every visit with the three panels closed. The older suites were written for the sidebars that were
 # open by default, so this hook opens them after load (desktop: all three; narrow screens: Study area, as before).
 # tests/ui_test_v9.py sets window.__noPanelHook to test the real default.
-PANEL_HOOK = "document.addEventListener('DOMContentLoaded', () => { try { if (window.__noPanelHook) return; if (innerWidth >= 1000) ['analysis', 'study', 'layers'].forEach(k => GA.panels.set(k, true)); else GA.panels.set('study', true); } catch (e) { } });"
+# 5.25: Layers is the ☰ menu (an overlay) — the old "all panels open" start opens Analysis and Study area only
+PANEL_HOOK = "document.addEventListener('DOMContentLoaded', () => { try { if (window.__noPanelHook) return; if (innerWidth >= 1000) ['analysis', 'study'].forEach(k => GA.panels.set(k, true)); else GA.panels.set('study', true); } catch (e) { } });"
 def stub(pg):
     pg.add_init_script(PANEL_HOOK)
+    pg.add_init_script('window.__gaLegacyView = window.__gaLegacyView !== false;')  # 5.25: older suites keep the pre-atlas opening view (v23 opts out)
     def tiles(r):
         if r.request.url.rstrip('/').endswith('/planet'):
             return r.fulfill(json={'tilejson': '3.0.0', 'tiles': ['https://tiles.openfreemap.org/stub/{z}/{x}/{y}.pbf'], 'minzoom': 0, 'maxzoom': 14})
@@ -69,7 +71,7 @@ def main():
                 pg.evaluate(f'GA.i18n.setLang("{lang}")'); time.sleep(0.4)
                 r = pg.evaluate('''() => { const g = (s) => document.querySelector(s).getBoundingClientRect(); return { l: g('#col-left'), r: g('#col-right'), m: g('#map'), W: innerWidth, dir: document.documentElement.dir, sel: g('#panel-select'), lay: g('#panel-layers') }; }''')
                 # 5.8: floating panels over a full-width map (12 px gutter); Layers stacked under Study area
-                ok = abs(r['l']['left'] - 12) < 1 and abs(r['r']['right'] - (r['W'] - 12)) < 1 and abs(r['m']['left']) < 1 and abs(r['m']['right'] - r['W']) < 1 and r['l']['right'] < r['r']['left'] and r['lay']['top'] >= r['sel']['bottom'] - 1
+                ok = abs(r['l']['left'] - 12) < 1 and abs(r['r']['right'] - (r['W'] - 12)) < 1 and abs(r['m']['left']) < 1 and abs(r['m']['right'] - r['W']) < 1 and r['l']['right'] < r['r']['left']  # 5.25: Layers moved into the ☰ menu, no longer stacked under Study area
                 check(f'layout fixed ({lang}, dir={r["dir"]}): analysis left, study+layers right, map between', ok, f"left {r['l']['left']:.0f}-{r['l']['right']:.0f}, map {r['m']['left']:.0f}-{r['m']['right']:.0f}, right {r['r']['left']:.0f}-{r['r']['right']:.0f}")
                 pg.screenshot(path=os.path.join(OUT, f'v2_layout_{lang}.png'))
             pg.evaluate('GA.i18n.setLang("en")')
@@ -161,7 +163,7 @@ def main():
             check('official municipal sources listed', pg.evaluate('!!document.querySelector("#topic-muni a[href*=\\"granada.org\\"]")'))
 
             # ---------- 8: single-area export with a section ----------
-            pg.click('.tb-btn[data-drawer="export"]'); time.sleep(0.3)
+            pg.evaluate('document.querySelector(\'.tb-btn[data-drawer="export"]\').click()'); time.sleep(0.3)
             with pg.expect_download(timeout=90000) as dl:
                 pg.click('#x-go')
             path1 = os.path.join(OUT, 'v2_single.zip'); dl.value.save_as(path1)
@@ -178,7 +180,7 @@ def main():
             areas = pg.evaluate('GA.app.store.get().areas.map(a => [a.id, a.name, a.spec.side])')
             pick = [a[0] for a in areas if a[1] in ('Centro test', 'Albaicín B', 'Camino de Ronda C', 'Zaidín D')]
             check('four 250 m areas saved for comparison', len(pick) == 4, areas)
-            pg.click('#tb-compare'); time.sleep(0.3)
+            pg.evaluate('document.querySelector("#tb-compare").click()'); time.sleep(0.3)
             for n in [2, 3, 4]:
                 pg.evaluate('(ids) => { const p = GA.app.store.get(); p.compare = { ids }; GA.app.store.save(); GA.app.CMP.render(); }', pick[:n])
                 wait(pg, f'document.querySelectorAll("#ws-content canvas[data-cmp]").length === 4 * {n}', 90000); time.sleep(0.8)
@@ -218,7 +220,7 @@ def main():
 
             # ---------- 9: the old v1 project still opens ----------
             old_name = old['areas'][0]['name']
-            pg.click('.tb-btn[data-drawer="areas"]'); time.sleep(0.3)
+            pg.evaluate('document.querySelector(\'.tb-btn[data-drawer="areas"]\').click()'); time.sleep(0.3)
             pg.click(f'#drawer [data-open="{old["areas"][0]["id"]}"]')
             wait(pg, 'GA.app.getRun() && GA.app.getRun().X', 60000); time.sleep(0.5)
             pg.click('[data-ltab="maps"]'); time.sleep(0.8)

@@ -872,3 +872,73 @@ body.view-3d .north { display: none; } /* the map can be rotated in 3D: the nort
 .x20-chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .x20-chip { font: inherit; font-size: 12px; line-height: 1.3; text-align: start; padding: 3px 8px; border: 1px solid var(--line-2); background: var(--white); color: var(--ink); cursor: pointer; max-width: 100%; }
 .x20-chip.on { border-color: var(--red); color: var(--red); font-weight: 600; }
+
+/* =====================================================================================================
+   5.25 — the Atlas shell: one slim bar with ☰, a sidebar for everything else, the map in front.
+   ===================================================================================================== */
+body.atlas { --top: 48px; --pb: 0px; }
+@media (max-width: 1180px) { body.atlas { --top: 48px; } }
+body.atlas .topbar { height: var(--top); flex-wrap: nowrap; gap: 10px; padding-inline: 8px 14px; padding-top: 0; }
+body.atlas .topbar .brand { height: auto; } body.atlas .brand-es { display: none; } body.atlas .tb-menu { display: none !important; }
+body.atlas .pn-tabs, body.atlas #pn-layers, body.atlas .phone-bar { display: none !important; }
+body.atlas.atl-nolegend #legend { display: none !important; }
+.atl-burger { flex: none; width: 40px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); background: var(--white); color: var(--ink); font-size: 20px; line-height: 1; cursor: pointer; }
+.atl-burger:hover, .atl-burger[aria-expanded="true"] { background: var(--ink); color: var(--white); border-color: var(--ink); }
+.atl-side { position: fixed; top: var(--top); inset-inline-start: 0; bottom: 0; width: min(380px, 92vw); background: var(--white); border-inline-end: 1px solid var(--line); z-index: 30; display: flex; flex-direction: column; box-shadow: 18px 0 40px -30px rgba(0, 0, 0, .45); animation: atl-in .22s ease-out; }
+@keyframes atl-in { from { transform: translateX(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
+[dir="rtl"] .atl-side { animation-name: atl-in-rtl; } @keyframes atl-in-rtl { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .atl-side { animation: none; } }
+.atl-side[hidden] { display: none; }
+.atl-side-h #atl-side-x { min-width: 40px; min-height: 40px; font-size: 18px; }
+.atl-side-h { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.atl-side-h b { font: 700 13px/1 var(--f-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--ink3, var(--ink-3)); }
+.atl-side-b { overflow-y: auto; flex: 1 1 auto; }
+.atl-sec { border-bottom: 1px solid var(--line); }
+.atl-sec-h { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 14px; background: none; border: 0; font: 600 15px/1.3 var(--f-ui); color: var(--ink); cursor: pointer; text-align: start; }
+.atl-sec-h:hover { background: var(--paper-2); } .atl-caret { color: var(--ink-3); font-size: 12px; }
+.atl-sec-b { padding: 2px 14px 14px; } .atl-sec-b .fine { margin: 2px 0 8px; }
+.atl-list { display: flex; flex-direction: column; gap: 2px; }
+.atl-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 1px solid transparent; border-inline-start: 3px solid transparent; background: none; font: 500 14px/1.3 var(--f-ui); color: var(--ink); cursor: pointer; text-align: start; }
+.atl-item:hover { background: var(--paper-2); } .atl-item.on { border-inline-start-color: var(--red); background: var(--red-soft, var(--paper-2)); font-weight: 700; }
+.atl-num { font: 700 12px/1 var(--f-ui); color: var(--red); min-width: 20px; } .atl-none .atl-num { color: var(--ink-3); }
+.atl-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--white); box-shadow: 0 0 0 1px var(--line-2); flex: none; }
+.atl-tools .tb { display: flex; flex-direction: column; align-items: stretch; gap: 2px; margin: 8px 0 0; overflow: visible; height: auto; border: 0; padding: 0; }
+.atl-tools .tb-btn { text-align: start; padding: 8px 10px; white-space: normal; border-bottom: 0; } .atl-tools .tb-btn.on { border-inline-start: 3px solid var(--red); }
+.atl-panels, .atl-layers-x { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+#atl-sec-display .lang { display: flex; height: auto; margin: 0 0 8px; }
+.atl-layers .pn-h { display: none; } .atl-layers .block-b { padding: 0; }
+/* the context panel (bottom-left of the map): introduction, analysis, legend, sources */
+.atl-panel { position: absolute; left: calc(var(--lw-eff) + 12px); bottom: 34px; width: min(370px, calc(100% - 24px)); max-height: calc(100% - 110px); overflow-y: auto; background: rgba(255, 255, 255, .97); border: 1px solid var(--line); border-top: 3px solid var(--red); padding: 10px 14px 12px; z-index: 8; box-shadow: 0 14px 34px -24px rgba(0, 0, 0, .6); transition: transform .3s ease, opacity .3s ease; }
+.atl-panel.min { width: auto; max-width: min(370px, calc(100% - 24px)); padding: 6px 10px; }
+.atl-ph { display: flex; align-items: center; justify-content: space-between; gap: 10px; } .atl-ph .plate { margin: 0; } .atl-ph-t { font-size: 14px; }
+.atl-h { font: 700 19px/1.25 var(--f-ui); margin: 4px 0 6px; } .atl-h .num { color: var(--red); margin-inline-end: 4px; }
+.atl-p { font-size: 13.5px; line-height: 1.5; margin: 4px 0 8px; color: var(--ink-2); }
+.atl-area { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-top: 6px; }
+.atl-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; }
+.atl-card { display: flex; flex-direction: column; gap: 4px; padding: 9px 10px; border: 1px solid var(--line); background: var(--white); text-align: start; cursor: pointer; font: 400 12.5px/1.35 var(--f-ui); color: var(--ink-2); transition: border-color .2s, transform .2s; }
+.atl-card b { font-size: 13.5px; color: var(--ink); } .atl-card:hover { border-color: var(--red); transform: translateY(-1px); } .atl-go { color: var(--red); font-weight: 600; }
+.atl-anim { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 6px; } .atl-step { font-size: 13px; margin: 2px 0; min-height: 1.4em; }
+.atl-hint { font-size: 12.5px; color: var(--ink-3); margin: 8px 0 4px; }
+.atl-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.atl-chip { padding: 5px 9px; border: 1px solid var(--line-2); background: var(--white); font: 500 12.5px/1.2 var(--f-ui); color: var(--ink); cursor: pointer; } .atl-chip:hover { border-color: var(--red); color: var(--red); }
+.atl-ind { margin: 6px 0 8px; display: grid; gap: 4px; } .atl-ind div { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; border-bottom: 1px dotted var(--line); padding-bottom: 3px; }
+.atl-ind dt { color: var(--ink-2); } .atl-ind dd { margin: 0; font-weight: 700; text-align: end; }
+.atl-lg .lg { margin: 4px 0 8px; } .atl-lg .lg li { font-size: 12.5px; }
+.atl-ctl { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 6px; }
+.atl-src summary { cursor: pointer; font-size: 12.5px; color: var(--ink-2); } .atl-src p { font-size: 12px; color: var(--ink-3); line-height: 1.45; }
+.atl-na { border-inline-start: 3px solid var(--line-2); padding: 6px 10px; background: var(--paper-2); font-size: 13px; } .atl-na p { margin: 4px 0; }
+.atl-back { position: absolute; top: 12px; left: calc(var(--lw-eff) + (100% - var(--lw-eff) - var(--rw-eff)) / 2); transform: translateX(-50%); z-index: 9; padding: 7px 14px; background: var(--ink); color: var(--white); border: 0; font: 600 13.5px/1.2 var(--f-ui); cursor: pointer; box-shadow: 0 10px 24px -14px rgba(0, 0, 0, .7); }
+.atl-back[hidden] { display: none; } .atl-back:hover { background: var(--red); }
+/* study-area markers on the map */
+.atl-mk { display: flex; flex-direction: column; align-items: center; gap: 2px; background: none; border: 0; padding: 0; cursor: pointer; }
+.atl-mk-t { background: var(--white); border: 1px solid var(--ink); padding: 3px 7px; font: 600 12px/1.2 var(--f-ui); color: var(--ink); white-space: nowrap; box-shadow: 0 6px 16px -10px rgba(0, 0, 0, .6); order: 0; }
+.atl-mk-pin { width: 14px; height: 14px; border-radius: 50%; border: 3px solid var(--white); box-shadow: 0 0 0 1px var(--ink); order: 1; }
+.atl-mk:hover .atl-mk-t, .atl-mk.on .atl-mk-t { background: var(--ink); color: var(--white); }
+@media (prefers-reduced-motion: no-preference) { .atl-mk-pin { animation: atl-pulse 2.4s ease-out infinite; } @keyframes atl-pulse { 0% { box-shadow: 0 0 0 1px var(--ink), 0 0 0 0 rgba(153, 43, 42, .45); } 70% { box-shadow: 0 0 0 1px var(--ink), 0 0 0 12px rgba(153, 43, 42, 0); } 100% { box-shadow: 0 0 0 1px var(--ink), 0 0 0 0 rgba(153, 43, 42, 0); } } }
+/* phones: the context panel is a bottom sheet; the sidebar covers the screen width */
+@media (max-width: 700px) {
+  .atl-panel { left: 0; right: 0; bottom: 0; width: auto; max-height: 48vh; border-left: 0; border-right: 0; }
+  .atl-panel.min { left: 8px; right: auto; bottom: 8px; }
+  .atl-cards { grid-template-columns: 1fr; }
+  .atl-back { top: 8px; }
+}

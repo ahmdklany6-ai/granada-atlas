@@ -652,3 +652,52 @@ clearer angle, distinct colours, a top view beside the map, the grid over the wh
   the map beside the legend (20 % of the map width so the A3 page fits; `cv.__layout.top`); it follows the player.
 - Bar "Residents by density class" in the needle colours (no separate key — the legend names them).
 - Strings `js/i18n_v22.js`. Test `tests/ui_test_v22.py`; v21, v20, v15, v4 and node tests pass.
+
+## 27. Build 5.25 — Atlas shell: interactive research platform (owner request of 8 Nov 2026)
+
+Restructure (not a rebuild) of the opening view into a full-screen research map driven by WHERE × WHAT.
+- **Shell** (`js/atlas.js`, `GA.atlas`; CSS block "5.25 atlas" in `css/app.css`; strings `js/i18n_v23.js`):
+  `body.atlas`, one slim bar with a ☰ (`#atl-burger`); the sidebar `#atl-side` (opens from the ☰ side — right in
+  ar/he, left in en) holds accordion sections: Research requirements · Study areas · Layers · Historical maps ·
+  Tools & pages · Display · Export. Reused, not duplicated: the old header navigation `#tb-nav` (every page and tool
+  button) is *moved* into "Tools & pages", `#lang` into Display, and the whole Layers panel `#panel-layers` (groups,
+  checkboxes, opacity, legends, search) into "Layers"; `GA.panels.set('layers')` now opens that section. New:
+  "Reset layers" (every layer back to its `def.on` / `def.opacity`) and "Restore topic default". The Analysis and
+  Study-area panels still exist and open from the sidebar. The old panel tabs / phone bar are hidden in this shell.
+- **WHERE**: `GA.atlas.setArea('city'|'factory'|'metro')` — smooth `fitBounds` (padded clear of the panel), real
+  boundary highlighted (factory: `data/vec/escuzar_pole.json`, 393 ha; metro: line 1 southern extension track
+  `data/vec/south_metro.json` with a 600 m corridor drawn as an exact canvas stroke buffer per OSM piece), outside
+  faded, markers `.atl-mk-factory` / `.atl-mk-metro`, "Back to Granada" `#atl-back`. No page reload.
+- **WHAT**: the five research requirements = the five Exercise 1.3 topics (density / overcrowding, morphology, city
+  centre ("Centro"), climate, human scale) — an assumption, because the brief was not attached; the two topics the
+  owner named fit it. `GA.atlas.setTopic(k)` adds map layers built from `data/ex13/*` (same data, same palette classes
+  as the A3 pages), veils the rest (never removes it), reveals the layer groups one by one (map-renderer opacity
+  transitions; `prefers-reduced-motion` respected), updates the panel. WHERE and WHAT are independent: switching
+  topic keeps the zoom; switching area keeps the topic.
+- **Panel** `#atl-panel` (bottom-left; a bottom sheet under 700 px; collapsible without turning the analysis off):
+  topic, question, area intro, indicators, legend generated from the palette classes and data breaks, sources,
+  replay. City indicators = the audited frame values; **metro-corridor indicators are computed live** from the same
+  grids/points (residents, peak density, share > 10,000/km², built coverage from the figure-ground raster, places by
+  category, nearest centre peak, median LST, share ≥ 47 °C, residents beyond 300 m of a meeting place). Test v23
+  cross-checks residents and places with shapely.
+- **Factory: no analysis data.** The Escúzar estate lies 8.9–13 km outside the 10 × 10 km frame and outside the
+  20 km OSM extract, so every topic shows "No data for this area", what is missing and how to add it (a second frame
+  through `tools/verify/ex13_fetch.py` + `tools/build_ex13.py`). Nothing is estimated.
+- **City animation**: no GIF exists in the project; the opening animation plays the documented built-up extents from
+  `data/ref/history_extents.json` (MTN50 1932, AMS 1956, GHSL 1975–2020) with their dates — real temporal data only.
+- Open: factory frame data; metro station positions are not mapped (only the track); the brief for the five
+  requirements should be checked against the assumption above.
+- Shell behaviour worth knowing: opening a floating panel or any page closes the ☰ menu; under 1000 px the menu and the
+  side panels show one at a time; the atlas panel folds to its title bar while the study-area Analysis workspace is
+  open and while a section / polygon is being drawn (unfolds after); the map legend (`placeLegend` in `js/app.js`) avoids
+  the menu and the atlas panel (`ga:relayout` event). `raise()` keeps the atlas layers on top and moves layers ONLY when
+  the order is wrong — an unconditional move re-fires `styledata` and loops forever (the map never becomes idle, so saved
+  study-area boundaries/numbers were never drawn; fixed before release).
+- Test hook: `window.__gaLegacyView` (set by `tests/ui_test_v2.py` `stub()`; v23 sets it false) keeps the pre-5.25
+  opening view (no city fit, no growth animation) for the older suites. The old "all panels open" hook no longer opens
+  Layers (the ☰ menu is an overlay).
+- Tests: `tests/ui_test_v23.py` (new). Old suites adjusted where controls moved (v2, v3, v4, v5, v7, v9, v10, v11, v19).
+  Failures that are identical on `main` (5.24) and not caused by 5.25: v3 times out at the analysis-page historical
+  snapshots; v5 analysis-page headings/KPI check and its PDF page count (11 vs 9); v7 multi-segment section after
+  Undo, reopened-section handles, iPad Finish button; v17 tile-seam ratio at A1 600–700 dpi (1.8–2.0 ×); the
+  rtl-text plugin cannot load from unpkg in the sandbox.

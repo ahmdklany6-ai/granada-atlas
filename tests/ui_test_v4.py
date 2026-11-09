@@ -55,6 +55,7 @@ def main():
             pg.evaluate('GA.panels.set("layers", true)'); time.sleep(0.3)
             ids = pg.evaluate('[...document.querySelectorAll("#panel-layers [data-ly]")].map(e => e.dataset.ly)')
             check('Layers panel has checkboxes for places, bus, trees, canopy, flood, noise, LST, history', all(k in ids for k in ['places', 'bus_service', 'trees', 'canopy', 'flood', 'noise', 'lst', 'history']), ids)
+            pg.evaluate('GA.panels.set("layers", true)'); time.sleep(0.3)  # 5.25: the Layers panel is a section of the ☰ menu
             pg.check('#panel-layers [data-ly="places"]'); wait(pg, 'GA.app.L.S.places.status === "ok"', 30000); time.sleep(0.4)
             check('places controls (categories, search) appear in the panel when on', pg.evaluate('!!document.querySelector("#panel-layers [data-ly-ctl=places][data-k=q]") && document.querySelectorAll("#panel-layers [data-ly-ctl=places]").length > 5'))
             pg.check('#panel-layers [data-ly="bus_service"]'); wait(pg, 'GA.app.L.S.bus_service.status === "ok"', 30000); time.sleep(0.4)
