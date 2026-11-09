@@ -1,6 +1,7 @@
 """v24 — build 5.26 fixes, one section per item:
   1. no letter-spacing / upper-casing on Arabic or Hebrew text (CSS everywhere + map labels).
   3. phone/tablet/desktop chrome: title kept, north arrow and map controls never overlap (375–1280 px, ar/he/en).
+  4. numbers with units / percent / ranges stay left-to-right inside Arabic and Hebrew (atlas, legend, 5.20–5.25 pages).
   2. the map legend follows the atlas topic (topic classes first, other layers folded) and keeps clear of the analysed area.
 Usage: python3 tests/ui_test_v24.py  (OUT=/dir)  [items: ITEMS=1,2,... to run a subset]"""
 import sys, os, time, json, subprocess, warnings
@@ -98,6 +99,23 @@ try:
                         check(r['northHit'] == 0 and r['topOv'] == 0 and not r['overflow'], f'{w}px {lang} {st}: north arrow clear of the map controls, top bar without overlaps, no horizontal scroll', r)
                     if w in (375, 768) and lang == 'ar': pg.screenshot(path=f'{OUT}/i3_{w}_{lang}.png')
                     check(not errs, f'{w}px {lang}: no page errors', errs[:3]); ctx.close()
+        # ---------- 4. numbers + units stay LTR in RTL ----------
+        if '4' in ITEMS:
+            BIDI = r'''(sel) => { const R = /(\d[\d.,]*\s?(%|°C|km²|km|m²|ha)(?![A-Za-z]))|([≥≤<>]\s?\d)|(\d[\d.,]*\s?[–-]\s?\d)/; const bad = []; let n = 0;
+              document.querySelectorAll(sel).forEach(root => { const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); while (w.nextNode()) { const t = w.currentNode; const e = t.parentElement;
+                if (!e || !(e.offsetWidth || e.offsetHeight) || e.closest('script, style, canvas, svg')) continue; if (!R.test(t.textContent)) continue; n++;
+                if (!e.closest('[dir="ltr"]')) bad.push(t.textContent.trim().slice(0, 40)); } }); return { n, bad }; }'''
+            for lang in ['ar', 'he']:
+                ctx, pg, errs = boot({'width': 1440, 'height': 900}, False, lang)
+                for name, js, sel in [('city start', None, '#atl-panel'), ('density', 'GA.atlas.setTopic("density")', '#atl-panel, #legend'), ('climate', 'GA.atlas.setTopic("climate")', '#atl-panel, #legend'),
+                                      ('metro human', 'GA.atlas.setArea("metro"); GA.atlas.setTopic("human")', '#atl-panel, #legend'), ('metro density', 'GA.atlas.setTopic("density")', '#atl-panel, #legend'),
+                                      ('factory', 'GA.atlas.setArea("factory")', '#atl-panel, #legend'), ('also on the map', 'document.querySelector("#legend .lg-also") && (document.querySelector("#legend .lg-also").open = true)', '#legend'),
+                                      ('south page', 'GA.pages.go("south")', '#page'), ('ex13 page', 'GA.pages.go("ex13")', '#page')]:
+                    if js: pg.evaluate(js); time.sleep(5 if 'page' in name or name in ('density', 'climate', 'metro human') else 3)
+                    r = pg.evaluate(BIDI, sel)
+                    check((r['n'] > 0 or name == 'south page') and not r['bad'], f'{lang} {name}: {r["n"]} numbers with units in LTR isolation' + (' (the page text has none; its boards are images)' if name == 'south page' and not r['n'] else ''), r['bad'][:5])
+                    if name == 'metro density': pg.screenshot(path=f'{OUT}/i4_{lang}_metro.png')
+                check(not errs, f'{lang}: no page errors', errs[:3]); ctx.close()
 finally:
     srv.terminate()
 print('\n' + ('ALL PASSED' if not fails else f'{len(fails)} FAILED:\n  ' + '\n  '.join(fails)))

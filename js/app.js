@@ -214,7 +214,7 @@
     const topicLg = GA.atlas && GA.atlas.mapLegendHTML ? GA.atlas.mapLegendHTML() : '';
     if (topicLg) { const n = L.order.filter(id => L.S[id] && L.S[id].on).length; h = topicLg + (h ? `<details class="lg-also"><summary>${t('v24.also', { n: `<span class="num">${n}</span>` })}</summary>${h}</details>` : ''); }
     el.hidden = !h; if (!h) return;
-    el.innerHTML = `<button class="legend-t" id="legend-toggle">${t('lg.title')} <span></span></button><div class="legend-b">${h}</div>`;
+    el.innerHTML = `<button class="legend-t" id="legend-toggle">${t('lg.title')} <span></span></button><div class="legend-b">${(GA.ltrNums || String)(h)}</div>`;
     placeLegend();
   }
   // 5.10: the legend lives in the map space the open panels leave free. It is measured from the panels actually on screen
@@ -279,7 +279,7 @@
       if (f) { const H = secHost(); if (H.list.some(x => x.id === f.properties.id)) { activeSection = f.properties.id; GA.sectionView.open(H.area ? H.area.id : null, f.properties.id); return true; } } }
     const hit = L.popupAt(e.point); if (!hit) { rasterInfo(e); return false; }
     if (popup) popup.remove();
-    const ll = [e.lngLat.lng, e.lngLat.lat]; const box = document.createElement('div'); box.innerHTML = hit.html + (info.phase === 'idle' || info.phase === 'pending' ? `<div class="actions" style="margin-top:6px"><button class="btn btn-small btn-primary" data-setc>${t('sel.setCenter')}</button></div>` : '');
+    const ll = [e.lngLat.lng, e.lngLat.lat]; const box = document.createElement('div'); box.innerHTML = (GA.ltrNums || String)(hit.html) + (info.phase === 'idle' || info.phase === 'pending' ? `<div class="actions" style="margin-top:6px"><button class="btn btn-small btn-primary" data-setc>${t('sel.setCenter')}</button></div>` : '');
     const b = box.querySelector('[data-setc]'); if (b) b.addEventListener('click', () => { popup.remove(); sel.setCenterDirect(ll); });
     popup = new maplibregl.Popup({ className: 'atlas-popup', offset: 8, maxWidth: '320px' }).setLngLat(e.lngLat).setDOMContent(box).addTo(map);
     if (hit.feature) L.highlight([{ type: 'Feature', properties: {}, geometry: hit.feature.geometry }]);

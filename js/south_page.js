@@ -20,7 +20,7 @@
         <button type="button" class="sb-img" data-sb="open" aria-label="${esc(t('v19.open') + ': ' + t(b.title))}"><img src="${src(b)}" width="${b.w}" height="${b.h}" alt="${esc(t(b.title))}" loading="lazy" decoding="async"></button>
         <p class="sb-note">${t(b.note)}</p>
       </figure>`).join('')}
-      <p class="sb-src">${t('v19.src')}</p></div>`;
+      <p class="sb-src">${t('v19.src')}</p></div>`; (root.GA.ltrNumsDOM || (() => {}))(body); // 5.26: numbers and units stay LTR in RTL
     body.onclick = (e) => {
       const a = e.target.closest('[data-sb]'); if (!a) return; const fig = a.closest('[data-board]'); const b = BOARDS.find(x => x.id === fig.dataset.board); if (!b) return;
       if (a.dataset.sb === 'open') { e.preventDefault(); root.GA.viewer.image({ src: src(b), title: t(b.title), subtitle: t('v19.plate'), alt: t(b.title), notGIS: true }); }

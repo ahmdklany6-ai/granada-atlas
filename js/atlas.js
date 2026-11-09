@@ -375,11 +375,11 @@
     if (a === 'metro') { const tr = track(); facts = t('v23.intro.metro', { km: `<span class="num">${nf(tr && tr.properties.len_m / 1000, 1)}</span>` }); }
     return `<div class="atl-area">${dot(a)}<b>${t('v23.area.' + a)}</b></div><p class="atl-p">${facts}</p>`;
   }
-  function renderStep() { const el = $('#atl-step'); if (!el) return; el.innerHTML = S.topic ? '' : growthLabel(); }
+  function renderStep() { const el = $('#atl-step'); if (!el) return; el.innerHTML = S.topic ? '' : (root.GA.ltrNums || String)(growthLabel()); }
   function renderPanel() {
     const box = $('#atl-panel'); if (!box || !X13) return; box.classList.toggle('min', S.min);
     const head = `<div class="atl-ph"><span class="plate">${S.topic ? t('v23.analysis') : t('v23.atlas')}</span><button type="button" class="icon-btn" data-atl-min aria-expanded="${!S.min}" aria-label="${esc(t(S.min ? 'v23.expand' : 'v23.collapse'))}">${S.min ? '▴' : '▾'}</button></div>`;
-    if (S.min) { box.innerHTML = head.replace('</div>', `<b class="atl-ph-t">${S.topic ? esc(t('e13.t.' + S.topic)) : esc(t('v23.area.' + S.area))}</b></div>`); return; }
+    if (S.min) { box.innerHTML = (root.GA.ltrNums || String)(head.replace('</div>', `<b class="atl-ph-t">${S.topic ? esc(t('e13.t.' + S.topic)) : esc(t('v23.area.' + S.area))}</b></div>`)); return; }
     let h = head;
     if (!S.topic) {
       if (S.area === 'city') {
@@ -388,7 +388,7 @@
         h += `<div class="atl-anim"><p class="fine">${t('v23.growthLead')}</p><p class="atl-step" id="atl-step">${growthLabel()}</p><p><button type="button" class="btn btn-tiny" data-atl-growth>${t(S.growth.timer ? 'v23.growthPause' : 'v23.growthPlay')}</button></p></div>`;
       } else h += areaHTML();
       h += `<p class="atl-hint">${t('v23.pickTopic')}</p><div class="atl-chips">${TOPICS.map((k, i) => `<button type="button" class="atl-chip" data-topic="${k}">${String(i + 1).padStart(2, '0')} ${t('e13.t.' + k)}</button>`).join('')}</div>`;
-      box.innerHTML = h; return;
+      box.innerHTML = (root.GA.ltrNums || String)(h); return;
     }
     const k = S.topic, cov = coverage(S.area);
     h += `<h2 class="atl-h"><span class="num">${String(TOPICS.indexOf(k) + 1).padStart(2, '0')}</span> ${t('e13.t.' + k)}</h2><p class="atl-p">${t('x13.q.' + k)}</p>${areaHTML()}`;
@@ -398,7 +398,7 @@
     h += `<div class="atl-lg">${legendHTML(k)}</div>`;
     h += `<div class="atl-ctl"><button type="button" class="btn btn-tiny" data-atl-play>${t(S.reveal.timer ? 'v23.playing' : 'v23.replay')}</button> <button type="button" class="btn btn-tiny" data-atl-page="ex13">${t('v23.openPage')}</button> <button type="button" class="btn btn-tiny" data-topic="">${t('v23.clearTopic')}</button></div>`;
     h += `<details class="atl-src"><summary>${t('v23.sources')}</summary><p>${t('x13.src.' + k, k === 'climate' ? { n: String(X13.climate.stats.scenes) } : { date: String((k === 'human' ? X13.human.source.date : X13.centre.source.date) || '').slice(0, 10), n: nf(X13.centre.stats.in_frame), dup: nf(X13.centre.stats.duplicates) })}</p><p>${t('x13.lim.' + k, { d: (X13.density.stats.diff_pct > 0 ? '+' : '') + nf(X13.density.stats.diff_pct, 1) + ' %', r: 'r = ' + nf(X13.centre.stats.overture_corr, 2), min: String(X13.climate.stats.min_obs) })}</p>${S.area === 'metro' ? `<p>${t('v23.corrNote')}</p>` : ''}</details>`;
-    box.innerHTML = h;
+    box.innerHTML = (root.GA.ltrNums || String)(h);
   }
   function onPanelClick(e) {
     const b = e.target.closest('button'); if (!b) return;
