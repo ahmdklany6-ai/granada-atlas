@@ -11,14 +11,22 @@ pages:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
 
-# Live check of the published site (run on demand: Build → Pipelines → Run pipeline, or the API). Screenshots go to the job log as base64.
-verify:
+# On-demand jobs (Build → Pipelines → Run pipeline, or the API): runs every script named in tools/verify/RUN_GL on a
+# runner with internet — the live check of the published site (live_atlas.py), data fetches, source searches. Their
+# results (and screenshots / files as base64 blocks) are in the job log.
+run:
   stage: test
   image: mcr.microsoft.com/playwright/python:v1.48.0-jammy
   variables:
     SITE: "https://granada-atlas-597777.gitlab.io/"
+  timeout: 3h
   script:
-    - pip install -q playwright==1.48.0 pillow
-    - python tools/verify/live_atlas.py
+    - pip install -q playwright==1.48.0 pillow numpy pyproj shapely rasterio requests
+    - for s in $(cat tools/verify/RUN_GL); do echo "=== RUN $s"; python tools/verify/$s || echo "=== FAILED $s"; done
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    paths:
+      - out/
   rules:
     - if: $CI_PIPELINE_SOURCE == "api" || $CI_PIPELINE_SOURCE == "web"

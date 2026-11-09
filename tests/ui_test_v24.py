@@ -2,6 +2,8 @@
   1. no letter-spacing / upper-casing on Arabic or Hebrew text (CSS everywhere + map labels).
   3. phone/tablet/desktop chrome: title kept, north arrow and map controls never overlap (375–1280 px, ar/he/en).
   4. numbers with units / percent / ranges stay left-to-right inside Arabic and Hebrew (atlas, legend, 5.20–5.25 pages).
+  12. the factory has its own analysis frame: all five topics show real values (live, inside / around the estate); the city values did not change.
+  13. metro extension: planned stations named with the sources searched, never placed; the track and its two points unchanged.
   2. the map legend follows the atlas topic (topic classes first, other layers folded) and keeps clear of the analysed area.
 Usage: python3 tests/ui_test_v24.py  (OUT=/dir)  [items: ITEMS=1,2,... to run a subset]"""
 import sys, os, time, json, subprocess, warnings
@@ -12,7 +14,7 @@ warnings.filterwarnings('ignore')
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORT = 8824; V3.PORT = PORT; V3.V2.PORT = PORT
 OUT = os.environ.get('OUT', '/tmp/v24shots'); os.makedirs(OUT, exist_ok=True)
-ITEMS = set((os.environ.get('ITEMS') or '1,2,3,4').split(','))
+ITEMS = set((os.environ.get('ITEMS') or '1,2,3,4,12,13').split(','))
 fails = []
 def check(cond, msg, extra=''):
     print(('ok   ' if cond else 'FAIL ') + msg + (f'  [{extra}]' if extra != '' and not cond else ''), flush=True)
@@ -116,6 +118,43 @@ try:
                     check((r['n'] > 0 or name == 'south page') and not r['bad'], f'{lang} {name}: {r["n"]} numbers with units in LTR isolation' + (' (the page text has none; its boards are images)' if name == 'south page' and not r['n'] else ''), r['bad'][:5])
                     if name == 'metro density': pg.screenshot(path=f'{OUT}/i4_{lang}_metro.png')
                 check(not errs, f'{lang}: no page errors', errs[:3]); ctx.close()
+        # ---------- 12. the factory analysis frame ----------
+        if '12' in ITEMS:
+            dirty = subprocess.run(['git', 'status', '--porcelain', 'data/ex13'], cwd=ROOT, capture_output=True, text=True).stdout.strip()
+            check(not dirty, 'city frame data (data/ex13) untouched by this build', dirty)
+            city = {n: json.load(open(os.path.join(ROOT, 'data/ex13', n + '.json'))) for n in ['density', 'morphology', 'climate']}
+            ctx, pg, errs = boot({'width': 1440, 'height': 900}, False, 'en')
+            pg.evaluate('GA.atlas.setTopic("density")'); time.sleep(4)
+            txt = pg.evaluate('document.querySelector("#atl-panel").innerText')
+            check(f"{city['density']['stats']['pop_frame']:,}" in txt and f"{city['density']['stats']['peak']:,}" in txt, 'city: density values are the audited city-frame values (unchanged)')
+            pg.evaluate('GA.atlas.setArea("factory")'); time.sleep(4)
+            for k in ['density', 'morphology', 'centre', 'climate', 'human']:
+                pg.evaluate(f'GA.atlas.setTopic("{k}")'); time.sleep(5)
+                r = pg.evaluate('''(k) => { const ids = GA.atlas.topicLayers(k); const vis = ids.filter(id => GA.app.map.getLayoutProperty(id, "visibility") === "visible");
+                  return { cov: GA.atlas.coverage("factory"), ids: ids.length, vis: vis.length, own: ids.every(id => id.endsWith("~f")), ind: GA.atlas.indicators(k), txt: document.querySelector("#atl-panel").innerText }; }''', k)
+                nums = [v for _, v in r['ind'] if any(ch.isdigit() for ch in v)]
+                check(r['cov']['ok'] and r['ids'] > 0 and r['vis'] == r['ids'] and r['own'], f'factory {k}: its own frame layers shown ({r["vis"]}/{r["ids"]})', r['cov'])
+                check(len(r['ind']) >= 2 and len(nums) >= 2 and 'No data for this area' not in r['txt'], f'factory {k}: live indicators with real values {r["ind"][:3]}', r['ind'])
+                pg.screenshot(path=f'{OUT}/i12_factory_{k}.png')
+            ind = pg.evaluate('GA.atlas.indicators("density")'); fx = json.load(open(os.path.join(ROOT, 'data/ex13f/density.json')))
+            check(any(f"{round(fx['stats']['pop_frame'] / 10) * 10:,}" in v for _, v in ind), 'factory density: frame residents = the built factory-frame value', ind)
+            pg.evaluate('GA.atlas.setArea("city")'); time.sleep(4); txt = pg.evaluate('document.querySelector("#atl-panel").innerText')
+            check(f"{city['morphology']['stats']['coverage_frame_pct']}" in txt or pg.evaluate('GA.atlas.state.topic') == 'human', 'back in the city: city frame again')
+            check(pg.evaluate('GA.atlas.topicLayers(GA.atlas.state.topic).every(id => !id.endsWith("~f"))'), 'back in the city: the city-frame layers are the ones shown')
+            check(not errs, 'factory frame: no page errors', errs[:3]); ctx.close()
+        # ---------- 13. metro stations ----------
+        if '13' in ITEMS:
+            sm = json.load(open(os.path.join(ROOT, 'data/vec/south_metro.json'))); kinds = sorted(f['properties']['k'] for f in sm['features'])
+            check(kinds == ['station_now', 'terminus', 'track'], f'no planned station is placed on the map (features {kinds})')
+            for lang in ['en', 'ar']:
+                ctx, pg, errs = boot({'width': 1440, 'height': 900}, False, lang)
+                pg.evaluate('GA.atlas.setArea("metro")'); time.sleep(3.5)
+                pnl = pg.evaluate('(() => { const d = document.querySelector("#atl-panel .atl-st"); if (d) d.open = true; return d ? d.innerText : ""; })()')
+                names = ['San Cayetano', 'La Paz', 'Churriana de la Vega', 'Arabuleila', 'La Gloria', 'Los Chopos', 'Las Gabias']
+                check(all(n in pnl for n in names) and ('Overpass' in pnl) and ('2026' in pnl), f'{lang}: metro panel names the 7 planned stations, says why they are not drawn and what was searched', pnl[:200])
+                lg = pg.evaluate('(() => { const e = document.querySelector("#legend"); e.querySelectorAll("details").forEach(d => d.open = true); return e.innerText; })()')
+                check(all(n in lg for n in names), f'{lang}: the metro layer legend lists the planned stations (not drawn)')
+                pg.screenshot(path=f'{OUT}/i13_{lang}_metro.png'); check(not errs, f'{lang}: no page errors', errs[:3]); ctx.close()
 finally:
     srv.terminate()
 print('\n' + ('ALL PASSED' if not fails else f'{len(fails)} FAILED:\n  ' + '\n  '.join(fails)))

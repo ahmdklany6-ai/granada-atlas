@@ -58,6 +58,7 @@
   // shared seam band are compared with the neighbouring region's: a label repeated or missing at a seam is counted and
   // reported (never hidden). A canvas smaller than requested, a GPU too small for one region, or tiles that never load
   // stop the export with the reason — the dpi is never lowered.
+  const JPEG_Q = 0.92; // strip JPEG quality (seams were a PDF placement issue, fixed in pdf.js 5.26 — not compression)
   let GL_LIM = 0;
   function glLimit() {
     if (GL_LIM) return GL_LIM;
@@ -276,7 +277,7 @@
   }
   // sinks: PDF = one JPEG per strip (strips overlap by OVERLAP rows, the next drawn over the previous); PNG = streamed rows
   function pdfSink(paperPt, dpi, title) { const parts = [];
-    return { overlap: true, async add(cv, top, rows, drawn) { const b = await PG.toBlob(cv, 'image/jpeg', 0.92); parts.push({ bytes: new Uint8Array(await b.arrayBuffer()), w: cv.width, h: drawn, x: 0, y: top }); },
+    return { overlap: true, async add(cv, top, rows, drawn) { const b = await PG.toBlob(cv, 'image/jpeg', JPEG_Q); parts.push({ bytes: new Uint8Array(await b.arrayBuffer()), w: cv.width, h: drawn, x: 0, y: top }); },
       async end(P0) { return root.GA.pdf.buildStrips(parts, paperPt, dpi, { title }, [P0.W, P0.H]); }, parts }; }
   function pngSink(W, H) { if (!root.GA.pngStream.supported()) throw new Error(t('v17.noPngStream')); const enc = root.GA.pngStream.create(W, H);
     return { readsPixels: true, async add(cv, top, rows) { await enc.add(cv, rows); }, async end() { return enc.end(); }, abort() { enc.abort(); } }; }

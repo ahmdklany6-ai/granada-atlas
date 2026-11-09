@@ -15,11 +15,13 @@ def get(u, t=180, data=None, hdr=None):
         try: return urllib.request.urlopen(urllib.request.Request(u, data=data, headers=dict(UA, **(hdr or {}))), timeout=t).read()
         except Exception as e: print('retry', u[:110], e, flush=True); time.sleep(4 + 6 * k)
     return None
+OUTDIR = os.environ.get('OUTDIR')  # 5.26: on GitLab the files are written there and kept as job artifacts (no base64 in the log)
 def emit(name, data):
+    if OUTDIR: os.makedirs(OUTDIR, exist_ok=True); open(os.path.join(OUTDIR, name), 'wb').write(data); print('wrote', name, len(data), 'bytes', flush=True); return
     b = base64.b64encode(gzip.compress(data)).decode(); print(f'===FILE {name}==='); [print(b[i:i + 8000]) for i in range(0, len(b), 8000)]; print('===END===', flush=True)
 if os.environ.get('PART', 'a') != 'a': sys.exit(0)
 from pyproj import Transformer
-F = (440750, 4110000, 450750, 4120000); M = 600  # frame + margin (m)
+F = tuple(int(v) for v in os.environ['FRAME'].split(',')) if os.environ.get('FRAME') else (440750, 4110000, 450750, 4120000); M = 600  # frame + margin (m); 5.26: FRAME=x0,y0,x1,y1 for a second frame
 to_ll = Transformer.from_crs('EPSG:25830', 'EPSG:4326', always_xy=True); to_mw = Transformer.from_crs('EPSG:25830', 'ESRI:54009', always_xy=True)
 corners = [(F[0] - M, F[1] - M), (F[2] + M, F[1] - M), (F[2] + M, F[3] + M), (F[0] - M, F[3] + M)]
 ll = [to_ll.transform(*c) for c in corners]; S, Wd, N, E = min(p[1] for p in ll), min(p[0] for p in ll), max(p[1] for p in ll), max(p[0] for p in ll)
@@ -77,6 +79,24 @@ try:
         buf = io.BytesIO(); np.savez_compressed(buf, st=st_arr.astype(np.float16), ndvi=nd_arr.astype(np.float16)); emit('landsat_summer_stack.npz', buf.getvalue())
     emit('landsat_scenes.json', json.dumps({'frame': F, 'grid': '30 m Landsat C2 L2 (UTM 30N, EPSG:32630), window = frame', 'scenes': scenes}).encode())
 except Exception as e: print('Landsat failed', e, flush=True); log['landsat'] = str(e)
+# ---------- 2b. GHSL built-up surface 2020 (5.26; the city frame takes it from hist_extent_fetch.py) ----------
+if 'ghsl' in ONLY:
+    try:
+        mw = [to_mw.transform(*c) for c in corners]; gb = (min(p[0] for p in mw) - 500, min(p[1] for p in mw) - 500, max(p[0] for p in mw) + 500, max(p[1] for p in mw) + 500)
+        col = int((gb[0] + 18041000) // 1000000) + 1; row = int((9000000 - gb[3]) // 1000000) + 1; got = None
+        for (r, c) in [(row, col), (row, col + 1), (row + 1, col), (row - 1, col), (row, col - 1)]:
+            name = f'GHS_BUILT_S_E2020_GLOBE_R2023A_54009_100_V1_0_R{r}_C{c}'
+            z = get(f'https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/GHS_BUILT_S_GLOBE_R2023A/GHS_BUILT_S_E2020_GLOBE_R2023A_54009_100/V1-0/tiles/{name}.zip', 600)
+            if not z: continue
+            zf = zipfile.ZipFile(io.BytesIO(z)); tif = [n for n in zf.namelist() if n.endswith('.tif')][0]; open('/tmp/g.tif', 'wb').write(zf.read(tif))
+            with rasterio.open('/tmp/g.tif') as ds:
+                bd = ds.bounds
+                if not (bd.left <= gb[0] and bd.right >= gb[2] and bd.bottom <= gb[1] and bd.top >= gb[3]): print('ghsl tile does not cover', name, flush=True); continue
+                w = from_bounds(*gb, ds.transform).round_offsets().round_lengths(); a = ds.read(1, window=w); t = ds.window_transform(w)
+                got = {'2020': {'transform': list(t)[:6], 'shape': list(a.shape), 'nodata': ds.nodata, 'tile': name}}
+                buf = io.BytesIO(); np.savez_compressed(buf, e2020=a.astype(np.uint16)); emit('ghsl_built_s.npz', buf.getvalue()); emit('ghsl_meta.json', json.dumps(got).encode()); print('ghsl', name, a.shape, flush=True); break
+        if not got: print('GHSL failed: no tile covers the frame', flush=True)
+    except Exception as e: print('GHSL failed', e, flush=True); log['ghsl'] = str(e)
 # ---------- 3. OpenStreetMap via Overpass ----------
 bb = f'{S},{Wd},{N},{E}'
 QS = {
@@ -84,6 +104,11 @@ QS = {
   'osm_everyday': f'''[out:json][timeout:300];(nwr["amenity"~"^(marketplace|cafe|library|community_centre|social_centre)$"]({bb});nwr["place"="square"]({bb});way["highway"="pedestrian"]["area"="yes"]({bb});relation["highway"="pedestrian"]({bb});nwr["leisure"~"^(park|playground)$"]({bb});nwr["leisure"="garden"]["access"!~"^(private|no)$"]({bb}););out geom tags;''',
   'osm_heritage': f'''[out:json][timeout:300];(nwr["heritage"]({bb});nwr["boundary"="protected_area"]({bb});nwr["historic"="city_walls"]({bb});nwr["boundary"="historic"]({bb}););out geom tags;''',
 }
+if os.environ.get('EXTRA') == '1':  # 5.26: a frame outside the atlas' local OSM extract also needs buildings, streets and municipalities
+    QS['osm_buildings'] = f'''[out:json][timeout:600];(way["building"]({bb});relation["building"]({bb}););out geom tags;'''
+    QS['osm_streets'] = f'''[out:json][timeout:600];way["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|pedestrian|service|track)$"]({bb});out geom tags;'''
+    QS['osm_admin'] = f'''[out:json][timeout:300];relation["boundary"="administrative"]["admin_level"="8"]({bb});out geom;'''
+    QS['osm_landuse'] = f'''[out:json][timeout:300];(way["landuse"]({bb});way["leisure"~"park|garden|pitch"]({bb}););out geom tags;'''
 for name, ql in (QS.items() if 'osm' in ONLY else []):
     d = None
     for ep in ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter']:

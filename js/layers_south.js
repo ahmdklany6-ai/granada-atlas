@@ -29,7 +29,7 @@
       layers: () => [lid('smetro', 'case'), lid('smetro'), lid('smetro', 'pt'), lid('smetro', 'lbl')],
       opacityProp: { [lid('smetro')]: 'line-opacity', [lid('smetro', 'case')]: 'line-opacity', [lid('smetro', 'pt')]: 'circle-opacity' },
       controls() { return fitBtns('south_metro'); }, onControl(el) { return onFit(this, el); },
-      legend() { return `<ul class="lg">${swl(C.metro, 4, t('v18.lgTrack', { km: this._len ? nf(this._len / 1000, 1) : '—' }))}${dotSw('#FFFFFF', C.station, t('v18.lgNow'))}${dotSw(C.metro, '#FFFFFF', t('v18.lgEnd'))}</ul><p class="lyr-src">${t('v18.metroNote')}</p>`; },
+      legend() { return `<ul class="lg">${swl(C.metro, 4, t('v18.lgTrack', { km: this._len ? nf(this._len / 1000, 1) : '—' }))}${dotSw('#FFFFFF', C.station, t('v18.lgNow'))}${dotSw(C.metro, '#FFFFFF', t('v18.lgEnd'))}</ul><p class="lyr-src">${t('v18.metroNote')}</p><p class="lyr-src"><b>${t('v24.stTitle')}</b>: ${t('v24.stNames')}. ${t('v24.stWhy', { date: t('v24.stDate') })}</p>`; }, // 5.26: names published, positions not — never guessed
       src: () => 'OpenStreetMap (railway=construction, construction=light_rail, “Metro de Granada”) · ODbL · ' + ((D.manifest && D.manifest.layers.south_metro && D.manifest.layers.south_metro.date) || ''),
       popup: { layers: () => [lid('smetro'), lid('smetro', 'pt')], html: (p) => p.k === 'track' ? `<b>${esc(t('v18.lyMetro'))}</b><br><span class="num">${nf(p.len_m / 1000, 2)} km</span><br><small dir="ltr">OSM ways ${esc(p.osm)}</small>` : `<b dir="auto">${esc(p.nm)}</b><br>${esc(t(p.k === 'terminus' ? 'v18.lgEnd' : 'v18.lgNow'))}<br><small dir="ltr">${esc(p.osm)}</small>` } });
 

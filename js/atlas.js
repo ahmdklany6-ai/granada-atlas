@@ -19,7 +19,7 @@
   const CORRIDOR_M = 600;                                   // metro corridor: 600 m each side of the new track
   const REDUCED = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const S = { area: 'city', topic: null, min: false, growth: { on: !REDUCED, i: 0, timer: null }, reveal: { timer: null, step: 0 } };
-  let map, APP, X13 = null, SOUTH = null, EXT = null, ready = false; const cache = {};
+  let map, APP, X13 = null, XF = null, SOUTH = null, EXT = null, ready = false; const cache = {};
   const P = () => root.GA.palette; const C = () => root.GA.palette.ex13;
   const $ = (s, r) => (r || document).querySelector(s);
   const dotCol = (a) => a === 'factory' ? P().south.estate : a === 'metro' ? P().south.metro : P().red;
@@ -101,6 +101,7 @@
     if (cache.all) return cache.all;
     cache.all = (async () => {
       X13 = await root.GA.ex13.load();
+      XF = root.GA.ex13.loadFactory ? await root.GA.ex13.loadFactory().catch(() => null) : null; // 5.26: second frame (factory)
       const [metro, pole, ext] = await Promise.all([D.single('south_metro').catch(() => null), D.single('escuzar_pole').catch(() => null), fetch('data/ref/history_extents.json?v=' + (root.GA_BUILD || '')).then(r => r.json()).catch(() => null)]);
       SOUTH = { metro, pole }; EXT = ext; return true; })();
     return cache.all;
@@ -108,7 +109,11 @@
   const track = () => SOUTH && SOUTH.metro && SOUTH.metro.features.find(f => f.properties.k === 'track');
   const estate = () => SOUTH && SOUTH.pole && SOUTH.pole.features.find(f => f.properties.k === 'estate');
   const bboxOf = (coords) => { let a = [180, 90, -180, -90]; const add = (c) => { if (typeof c[0] === 'number') a = [Math.min(a[0], c[0]), Math.min(a[1], c[1]), Math.max(a[2], c[0]), Math.max(a[3], c[1])]; else c.forEach(add); }; add(coords); return [[a[0], a[1]], [a[2], a[3]]]; };
-  const frameLL = () => { const F = X13.frame; return [L([F.x0, F.y1]), L([F.x1, F.y1]), L([F.x1, F.y0]), L([F.x0, F.y0])]; }; // tl, tr, br, bl (image source order)
+  // 5.26: two analysis frames — the city frame (also used for the metro corridor) and the factory frame. Topic layers are
+  // built per frame (ids of the factory frame end in ~f) from the same classes and colours.
+  const FRM = () => (S.area === 'factory' && XF ? 'factory' : 'city'); const DS = (fr) => ((fr || FRM()) === 'factory' ? XF : X13);
+  const IDF = (fr) => (id) => (fr === 'factory' ? id + '~f' : id);
+  const frameLL = () => { const F = DS().frame; return [L([F.x0, F.y1]), L([F.x1, F.y1]), L([F.x1, F.y0]), L([F.x0, F.y0])]; }; // tl, tr, br, bl (image source order)
   // padding that keeps the fitted area clear of the context panel (left on desktop, bottom sheet on phones) and the legend
   function pad(p) { const pn = $('#atl-panel'); const w = innerWidth; if (w < 700) return { top: p, left: p, right: p, bottom: Math.min(innerHeight * 0.45, (pn && !S.min ? pn.offsetHeight : 40) + p) }; return { top: p + 20, bottom: p, left: (pn && !S.min ? pn.offsetWidth + 24 : 0) + p, right: p + (w > 1100 && !document.body.classList.contains('atl-nolegend') ? 290 : 0) }; } // wide screens: room for the map legend beside the analysed area
   const frameBB = () => { const c = frameLL(); return bboxOf(c); };
@@ -135,7 +140,7 @@
   function segD(x, y, a, b) { const dx = b[0] - a[0], dy = b[1] - a[1]; const l2 = dx * dx + dy * dy; let u = l2 ? ((x - a[0]) * dx + (y - a[1]) * dy) / l2 : 0; u = Math.max(0, Math.min(1, u)); return Math.hypot(x - a[0] - u * dx, y - a[1] - u * dy); }
   // does an area lie inside the analysis frame? (the factory does not: the data was processed for the 10 × 10 km frame)
   function coverage(area) {
-    const F = X13.frame; if (area === 'city') return { ok: true };
+    const F = X13.frame; if (area === 'city') return { ok: true }; if (area === 'factory' && XF) return { ok: true, frame: 'factory' };
     if (area === 'metro') { const b = corridor().bbU; const inside = b[0] >= F.x0 && b[2] <= F.x1 && b[1] >= F.y0 && b[3] <= F.y1; return { ok: true, partial: !inside }; }
     const e = estate(); if (!e) return { ok: false, dist: null }; const pts = (e.geometry.type === 'Polygon' ? e.geometry.coordinates : e.geometry.coordinates.flat()).flat().map(U);
     const d = Math.min(...pts.map(([x, y]) => Math.hypot(Math.max(F.x0 - x, 0, x - F.x1), Math.max(F.y0 - y, 0, y - F.y1)))); return { ok: false, dist: d };
@@ -147,7 +152,8 @@
   function addOnce(src, def) { if (!map.getSource(src)) map.addSource(src, def); }
   function add(l) { if (!map.getLayer(l.id)) map.addLayer(l); }
   function setVis(id, on) { if (has(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'); }
-  function topicLayerIds(k) { return (cache['ids_' + k] || []); }
+  function topicLayerIds(k, fr) { return (cache['ids_' + (fr || FRM()) + '_' + k] || []); }
+  const allTopicIds = () => ['city', 'factory'].flatMap(fr => TOPICS.flatMap(k => topicLayerIds(k, fr)));
   function buildBase() {
     addOnce('atl-veil', { type: 'geojson', data: FC([{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[-20, 20], [20, 20], [20, 60], [-20, 60], [-20, 20]]] } }]) });
     add({ id: 'atl-veil', type: 'fill', source: 'atl-veil', layout: { visibility: 'none' }, paint: { 'fill-color': '#FFFFFF', 'fill-opacity': 0.5, 'fill-opacity-transition': { duration: 600 } } });
@@ -165,7 +171,7 @@
   // keep the atlas layers on top of every other layer (a layer switched on later is added above them otherwise)
   // keeps the atlas layers on top, in this order. Moves layers ONLY when the order is wrong: moveLayer fires 'styledata',
   // which calls raise() again — an unconditional move would loop forever and the map would never become idle/loaded.
-  function raise() { if (!map || !map.style) return; const want = ['atl-veil'].concat(...TOPICS.map(topicLayerIds), ['atl-mask', 'atl-corr', 'atl-frame', 'atl-growth-fill', 'atl-growth-line', 'atl-hl-glow', 'atl-hl-line']).filter(has);
+  function raise() { if (!map || !map.style) return; const want = ['atl-veil'].concat(allTopicIds(), ['atl-mask', 'atl-corr', 'atl-frame', 'atl-growth-fill', 'atl-growth-line', 'atl-hl-glow', 'atl-hl-line']).filter(has);
     const ids = map.getStyle().layers.map(l => l.id); if (JSON.stringify(ids.slice(ids.length - want.length)) === JSON.stringify(want)) return;
     want.forEach(id => map.moveLayer(id)); }
 
@@ -174,75 +180,75 @@
   function addImage(id, url, coords, opacityProp) {
     addOnce(id, { type: 'image', url, coordinates: coords }); add({ id, type: 'raster', source: id, layout: { visibility: 'none' }, paint: { 'raster-opacity': 0, 'raster-opacity-transition': { duration: 600 }, 'raster-resampling': 'nearest', 'raster-fade-duration': 0 } });
   }
-  function buildTopic(k) {
-    if (cache['ids_' + k]) return cache['ids_' + k]; const ids = []; const c = C(); const F = X13.frame;
+  function buildTopic(k, fr) {
+    fr = fr || FRM(); const key = 'ids_' + fr + '_' + k; if (cache[key]) return cache[key]; const ids = []; const c = C(); const D = DS(fr), I = IDF(fr); const F = D.frame;
     if (k === 'density') {
-      const d = X13.density, cx = d.corners.x, cy = d.corners.y, br = d.breaks; const fs = [];
+      const d = D.density, cx = d.corners.x, cy = d.corners.y, br = d.breaks; const fs = [];
       d.pop.forEach((row, r) => row.forEach((p, q) => { if (!p || p <= 0) return; const v = p * 100; fs.push({ type: 'Feature', properties: { c: br.filter(b => v > b).length, v: Math.round(v) }, geometry: { type: 'Polygon', coordinates: [[L([cx[r][q], cy[r][q]]), L([cx[r][q + 1], cy[r][q + 1]]), L([cx[r + 1][q + 1], cy[r + 1][q + 1]]), L([cx[r + 1][q], cy[r + 1][q]]), L([cx[r][q], cy[r][q]])]] } }); }));
-      addOnce('atl-den', { type: 'geojson', data: FC(fs) });
-      c.density.forEach((col, i) => { const id = 'atl-den-' + i; add({ id, type: 'fill', source: 'atl-den', filter: ['==', ['get', 'c'], i], layout: { visibility: 'none' }, paint: { 'fill-color': col, 'fill-outline-color': col, 'fill-opacity': 0, 'fill-opacity-transition': { duration: 600 } } }); ids.push(id); });
+      addOnce(I('atl-den'), { type: 'geojson', data: FC(fs) });
+      c.density.forEach((col, i) => { const id = I('atl-den-' + i); add({ id, type: 'fill', source: I('atl-den'), filter: ['==', ['get', 'c'], i], layout: { visibility: 'none' }, paint: { 'fill-color': col, 'fill-outline-color': col, 'fill-opacity': 0, 'fill-opacity-transition': { duration: 600 } } }); ids.push(id); });
     }
     if (k === 'morphology') {
-      const g = X13.fgm; const w = g.width * g.px_m, h = g.height * g.px_m;
-      addImage('atl-fg', 'data/' + g.file, [L([g.ox, g.oy]), L([g.ox + w, g.oy]), L([g.ox + w, g.oy - h]), L([g.ox, g.oy - h])]); ids.push('atl-fg');
-      const m = X13.morphology, G = m.grid; const fs = m.gaps.map(([r, q]) => { const x0 = G.x0 + q * G.cell, y1 = G.y1 - r * G.cell; return { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[L([x0, y1]), L([x0 + G.cell, y1]), L([x0 + G.cell, y1 - G.cell]), L([x0, y1 - G.cell]), L([x0, y1])]] } }; });
-      addOnce('atl-gap', { type: 'geojson', data: FC(fs) });
-      add({ id: 'atl-gap', type: 'fill', source: 'atl-gap', layout: { visibility: 'none' }, paint: { 'fill-color': c.gap, 'fill-opacity': 0, 'fill-opacity-transition': { duration: 600 } } }); ids.push('atl-gap');
-      add({ id: 'atl-gap-l', type: 'line', source: 'atl-gap', layout: { visibility: 'none' }, paint: { 'line-color': c.gap, 'line-width': 1.2, 'line-opacity': 0, 'line-opacity-transition': { duration: 600 } } }); ids.push('atl-gap-l');
+      const g = D.fgm; const w = g.width * g.px_m, h = g.height * g.px_m;
+      addImage(I('atl-fg'), 'data/' + g.file, [L([g.ox, g.oy]), L([g.ox + w, g.oy]), L([g.ox + w, g.oy - h]), L([g.ox, g.oy - h])]); ids.push(I('atl-fg'));
+      const m = D.morphology, G = m.grid; const fs = m.gaps.map(([r, q]) => { const x0 = G.x0 + q * G.cell, y1 = G.y1 - r * G.cell; return { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[L([x0, y1]), L([x0 + G.cell, y1]), L([x0 + G.cell, y1 - G.cell]), L([x0, y1 - G.cell]), L([x0, y1])]] } }; });
+      addOnce(I('atl-gap'), { type: 'geojson', data: FC(fs) });
+      add({ id: I('atl-gap'), type: 'fill', source: I('atl-gap'), layout: { visibility: 'none' }, paint: { 'fill-color': c.gap, 'fill-opacity': 0, 'fill-opacity-transition': { duration: 600 } } }); ids.push(I('atl-gap'));
+      add({ id: I('atl-gap-l'), type: 'line', source: I('atl-gap'), layout: { visibility: 'none' }, paint: { 'line-color': c.gap, 'line-width': 1.2, 'line-opacity': 0, 'line-opacity-transition': { duration: 600 } } }); ids.push(I('atl-gap-l'));
     }
     if (k === 'centre') {
-      const g = X13.centre.grid, z = X13.centre.z, br = X13.centre.breaks; const up = 4, n = g.n * up; const val = (i, j) => z[Math.max(0, Math.min(g.n - 1, j))][Math.max(0, Math.min(g.n - 1, i))];
-      const cls = new Uint8Array(n * n);
-      for (let jj = 0; jj < n; jj++) for (let ii = 0; ii < n; ii++) { const fx = (ii + 0.5) / up - 0.5, fy = (jj + 0.5) / up - 0.5; const i0 = Math.floor(fx), j0 = Math.floor(fy), ax = fx - i0, ay = fy - j0;
+      const g = D.centre.grid, z = D.centre.z, br = D.centre.breaks; const gnx = g.nx || g.n, gny = g.ny || g.n; const up = 4, n = gnx * up, nh = gny * up; const val = (i, j) => z[Math.max(0, Math.min(gny - 1, j))][Math.max(0, Math.min(gnx - 1, i))];
+      const cls = new Uint8Array(n * nh);
+      for (let jj = 0; jj < nh; jj++) for (let ii = 0; ii < n; ii++) { const fx = (ii + 0.5) / up - 0.5, fy = (jj + 0.5) / up - 0.5; const i0 = Math.floor(fx), j0 = Math.floor(fy), ax = fx - i0, ay = fy - j0;
         const v = (1 - ax) * (1 - ay) * val(i0, j0) + ax * (1 - ay) * val(i0 + 1, j0) + (1 - ax) * ay * val(i0, j0 + 1) + ax * ay * val(i0 + 1, j0 + 1); cls[jj * n + ii] = br.filter(b => v >= b).length; }
-      const x1 = g.x0 + g.n * g.cell, y0 = g.y1 - g.n * g.cell; const corners = [L([g.x0, g.y1]), L([x1, g.y1]), L([x1, y0]), L([g.x0, y0])];
-      c.centre.forEach((col, i) => { const cv = document.createElement('canvas'); cv.width = cv.height = n; const ctx = cv.getContext('2d'); const img = ctx.createImageData(n, n); const rgb = P().rgb(col);
-        for (let p = 0; p < n * n; p++) if (cls[p] === i + 1) { img.data[p * 4] = rgb[0]; img.data[p * 4 + 1] = rgb[1]; img.data[p * 4 + 2] = rgb[2]; img.data[p * 4 + 3] = 235; }
-        ctx.putImageData(img, 0, 0); addImage('atl-cen-' + i, imgFromCanvas(cv), corners); ids.push('atl-cen-' + i); });
-      const hist = X13.centre.hist.geometry; const rings = hist.type === 'Polygon' ? hist.coordinates : hist.coordinates.flat();
-      addOnce('atl-hist', { type: 'geojson', data: FC([{ type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: rings.map(r => r.map(L)) } }]) });
-      add({ id: 'atl-hist', type: 'line', source: 'atl-hist', layout: { visibility: 'none' }, paint: { 'line-color': c.hist, 'line-width': 2.2, 'line-dasharray': [3, 2], 'line-opacity': 0, 'line-opacity-transition': { duration: 600 } } }); ids.push('atl-hist');
-      addOnce('atl-peaks', { type: 'geojson', data: FC(X13.centre.peaks.map(p => ({ type: 'Feature', properties: { lbl: 'C' + p.rank, r: p.rank }, geometry: { type: 'Point', coordinates: L([p.x, p.y]) } }))) });
-      add({ id: 'atl-peaks', type: 'circle', source: 'atl-peaks', layout: { visibility: 'none' }, paint: { 'circle-radius': ['case', ['==', ['get', 'r'], 1], 9, 6.5], 'circle-color': '#FFFFFF', 'circle-stroke-color': c.centreLine, 'circle-stroke-width': 2.4, 'circle-opacity': 0, 'circle-stroke-opacity': 0, 'circle-opacity-transition': { duration: 600 }, 'circle-stroke-opacity-transition': { duration: 600 } } }); ids.push('atl-peaks');
-      add({ id: 'atl-peaks-l', type: 'symbol', source: 'atl-peaks', layout: { visibility: 'none', 'text-field': ['get', 'lbl'], 'text-font': ['Noto Sans Bold'], 'text-size': 13, 'text-offset': [1.1, -0.9], 'text-allow-overlap': true }, paint: { 'text-color': c.centreLine, 'text-halo-color': '#FFFFFF', 'text-halo-width': 2, 'text-opacity': 0, 'text-opacity-transition': { duration: 600 } } }); ids.push('atl-peaks-l');
+      const x1 = g.x0 + gnx * g.cell, y0 = g.y1 - gny * g.cell; const corners = [L([g.x0, g.y1]), L([x1, g.y1]), L([x1, y0]), L([g.x0, y0])];
+      c.centre.forEach((col, i) => { const cv = document.createElement('canvas'); cv.width = n; cv.height = nh; const ctx = cv.getContext('2d'); const img = ctx.createImageData(n, nh); const rgb = P().rgb(col);
+        for (let p = 0; p < n * nh; p++) if (cls[p] === i + 1) { img.data[p * 4] = rgb[0]; img.data[p * 4 + 1] = rgb[1]; img.data[p * 4 + 2] = rgb[2]; img.data[p * 4 + 3] = 235; }
+        ctx.putImageData(img, 0, 0); addImage(I('atl-cen-' + i), imgFromCanvas(cv), corners); ids.push(I('atl-cen-' + i)); });
+      if (D.centre.hist) { const hist = D.centre.hist.geometry; const rings = hist.type === 'Polygon' ? hist.coordinates : hist.coordinates.flat();
+      addOnce(I('atl-hist'), { type: 'geojson', data: FC([{ type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: rings.map(r => r.map(L)) } }]) });
+      add({ id: I('atl-hist'), type: 'line', source: I('atl-hist'), layout: { visibility: 'none' }, paint: { 'line-color': c.hist, 'line-width': 2.2, 'line-dasharray': [3, 2], 'line-opacity': 0, 'line-opacity-transition': { duration: 600 } } }); ids.push(I('atl-hist')); } // the factory frame has no historic-core reference
+      addOnce(I('atl-peaks'), { type: 'geojson', data: FC(D.centre.peaks.map(p => ({ type: 'Feature', properties: { lbl: 'C' + p.rank, r: p.rank }, geometry: { type: 'Point', coordinates: L([p.x, p.y]) } }))) });
+      add({ id: I('atl-peaks'), type: 'circle', source: I('atl-peaks'), layout: { visibility: 'none' }, paint: { 'circle-radius': ['case', ['==', ['get', 'r'], 1], 9, 6.5], 'circle-color': '#FFFFFF', 'circle-stroke-color': c.centreLine, 'circle-stroke-width': 2.4, 'circle-opacity': 0, 'circle-stroke-opacity': 0, 'circle-opacity-transition': { duration: 600 }, 'circle-stroke-opacity-transition': { duration: 600 } } }); ids.push(I('atl-peaks'));
+      add({ id: I('atl-peaks-l'), type: 'symbol', source: I('atl-peaks'), layout: { visibility: 'none', 'text-field': ['get', 'lbl'], 'text-font': ['Noto Sans Bold'], 'text-size': 13, 'text-offset': [1.1, -0.9], 'text-allow-overlap': true }, paint: { 'text-color': c.centreLine, 'text-halo-color': '#FFFFFF', 'text-halo-width': 2, 'text-opacity': 0, 'text-opacity-transition': { duration: 600 } } }); ids.push(I('atl-peaks-l'));
     }
     if (k === 'climate') {
-      const g = X13.climate.grid, Lg = X13.climate.lst, br = X13.climate.breaks, n = g.n; const x1 = g.x0 + n * g.cell, y0 = g.y1 - n * g.cell; const corners = [L([g.x0, g.y1]), L([x1, g.y1]), L([x1, y0]), L([g.x0, y0])];
-      c.lst.forEach((col, i) => { const cv = document.createElement('canvas'); cv.width = cv.height = n; const ctx = cv.getContext('2d'); const img = ctx.createImageData(n, n); const rgb = P().rgb(col);
-        for (let j = 0; j < n; j++) for (let q = 0; q < n; q++) { const v = Lg[j][q]; if (v == null || br.filter(b => v >= b).length !== i) continue; const o = (j * n + q) * 4; img.data[o] = rgb[0]; img.data[o + 1] = rgb[1]; img.data[o + 2] = rgb[2]; img.data[o + 3] = 255; }
-        ctx.putImageData(img, 0, 0); addImage('atl-lst-' + i, imgFromCanvas(cv), corners); ids.push('atl-lst-' + i); });
+      const g = D.climate.grid, Lg = D.climate.lst, br = D.climate.breaks, n = g.nx || g.n, nh = g.ny || g.n; const x1 = g.x0 + n * g.cell, y0 = g.y1 - nh * g.cell; const corners = [L([g.x0, g.y1]), L([x1, g.y1]), L([x1, y0]), L([g.x0, y0])];
+      c.lst.forEach((col, i) => { const cv = document.createElement('canvas'); cv.width = n; cv.height = nh; const ctx = cv.getContext('2d'); const img = ctx.createImageData(n, nh); const rgb = P().rgb(col);
+        for (let j = 0; j < nh; j++) for (let q = 0; q < n; q++) { const v = Lg[j][q]; if (v == null || br.filter(b => v >= b).length !== i) continue; const o = (j * n + q) * 4; img.data[o] = rgb[0]; img.data[o + 1] = rgb[1]; img.data[o + 2] = rgb[2]; img.data[o + 3] = 255; }
+        ctx.putImageData(img, 0, 0); addImage(I('atl-lst-' + i), imgFromCanvas(cv), corners); ids.push(I('atl-lst-' + i)); });
       // vegetation context: outline of the 90 m cells with summer NDVI ≥ 0.4 (drawn at 8 px per cell, edges only)
-      const V = X13.climate.ndvi, k8 = 8; const cv = document.createElement('canvas'); cv.width = cv.height = n * k8; const ctx = cv.getContext('2d'); const veg = (q, j) => q >= 0 && j >= 0 && q < n && j < n && V[j][q] != null && V[j][q] >= 0.4;
+      const V = D.climate.ndvi, k8 = 8; const cv = document.createElement('canvas'); cv.width = n * k8; cv.height = nh * k8; const ctx = cv.getContext('2d'); const veg = (q, j) => q >= 0 && j >= 0 && q < n && j < nh && V[j][q] != null && V[j][q] >= 0.4;
       ctx.strokeStyle = c.veg; ctx.lineWidth = 2; ctx.beginPath();
-      for (let j = 0; j < n; j++) for (let q = 0; q < n; q++) { if (!veg(q, j)) continue; const x = q * k8, y = j * k8; if (!veg(q, j - 1)) { ctx.moveTo(x, y + 1); ctx.lineTo(x + k8, y + 1); } if (!veg(q, j + 1)) { ctx.moveTo(x, y + k8 - 1); ctx.lineTo(x + k8, y + k8 - 1); } if (!veg(q - 1, j)) { ctx.moveTo(x + 1, y); ctx.lineTo(x + 1, y + k8); } if (!veg(q + 1, j)) { ctx.moveTo(x + k8 - 1, y); ctx.lineTo(x + k8 - 1, y + k8); } }
-      ctx.stroke(); addImage('atl-veg', imgFromCanvas(cv), corners); map.setPaintProperty('atl-veg', 'raster-resampling', 'linear'); ids.push('atl-veg');
+      for (let j = 0; j < nh; j++) for (let q = 0; q < n; q++) { if (!veg(q, j)) continue; const x = q * k8, y = j * k8; if (!veg(q, j - 1)) { ctx.moveTo(x, y + 1); ctx.lineTo(x + k8, y + 1); } if (!veg(q, j + 1)) { ctx.moveTo(x, y + k8 - 1); ctx.lineTo(x + k8, y + k8 - 1); } if (!veg(q - 1, j)) { ctx.moveTo(x + 1, y); ctx.lineTo(x + 1, y + k8); } if (!veg(q + 1, j)) { ctx.moveTo(x + k8 - 1, y); ctx.lineTo(x + k8 - 1, y + k8); } }
+      ctx.stroke(); addImage(I('atl-veg'), imgFromCanvas(cv), corners); map.setPaintProperty(I('atl-veg'), 'raster-resampling', 'linear'); ids.push(I('atl-veg'));
     }
     if (k === 'human') {
-      const H = X13.human, d = X13.density, cx = d.corners.x, cy = d.corners.y;
-      addOnce('atl-far', { type: 'geojson', data: FC(H.far.map(([r, q]) => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[L([cx[r][q], cy[r][q]]), L([cx[r][q + 1], cy[r][q + 1]]), L([cx[r + 1][q + 1], cy[r + 1][q + 1]]), L([cx[r + 1][q], cy[r + 1][q]]), L([cx[r][q], cy[r][q]])]] } }))) });
-      add({ id: 'atl-far', type: 'fill', source: 'atl-far', layout: { visibility: 'none' }, paint: { 'fill-color': c.far, 'fill-opacity': 0, 'fill-opacity-transition': { duration: 600 } } }); ids.push('atl-far');
+      const H = D.human, d = D.density, cx = d.corners.x, cy = d.corners.y;
+      addOnce(I('atl-far'), { type: 'geojson', data: FC(H.far.map(([r, q]) => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[L([cx[r][q], cy[r][q]]), L([cx[r][q + 1], cy[r][q + 1]]), L([cx[r + 1][q + 1], cy[r + 1][q + 1]]), L([cx[r + 1][q], cy[r + 1][q]]), L([cx[r][q], cy[r][q]])]] } }))) });
+      add({ id: I('atl-far'), type: 'fill', source: I('atl-far'), layout: { visibility: 'none' }, paint: { 'fill-color': c.far, 'fill-opacity': 0, 'fill-opacity-transition': { duration: 600 } } }); ids.push(I('atl-far'));
       const poly = (kind) => (H.areas[kind] || []).map(a => ({ type: 'Feature', properties: { kind, n: a.n }, geometry: { type: 'Polygon', coordinates: a.p.map(r => r.map(L)) } }));
-      addOnce('atl-hum-a', { type: 'geojson', data: FC(poly('park').concat(poly('square'))) });
-      add({ id: 'atl-park', type: 'fill', source: 'atl-hum-a', filter: ['==', ['get', 'kind'], 'park'], layout: { visibility: 'none' }, paint: { 'fill-color': c.park, 'fill-opacity': 0, 'fill-opacity-transition': { duration: 600 } } }); ids.push('atl-park');
-      add({ id: 'atl-square', type: 'fill', source: 'atl-hum-a', filter: ['==', ['get', 'kind'], 'square'], layout: { visibility: 'none' }, paint: { 'fill-color': c.square, 'fill-opacity': 0, 'fill-opacity-transition': { duration: 600 } } }); ids.push('atl-square');
+      addOnce(I('atl-hum-a'), { type: 'geojson', data: FC(poly('park').concat(poly('square'))) });
+      add({ id: I('atl-park'), type: 'fill', source: I('atl-hum-a'), filter: ['==', ['get', 'kind'], 'park'], layout: { visibility: 'none' }, paint: { 'fill-color': c.park, 'fill-opacity': 0, 'fill-opacity-transition': { duration: 600 } } }); ids.push(I('atl-park'));
+      add({ id: I('atl-square'), type: 'fill', source: I('atl-hum-a'), filter: ['==', ['get', 'kind'], 'square'], layout: { visibility: 'none' }, paint: { 'fill-color': c.square, 'fill-opacity': 0, 'fill-opacity-transition': { duration: 600 } } }); ids.push(I('atl-square'));
       const pts = []; Object.entries(H.points).forEach(([kind, list]) => list.forEach(p => pts.push({ type: 'Feature', properties: { kind, n: p[2] || '' }, geometry: { type: 'Point', coordinates: L([p[0], p[1]]) } })));
-      addOnce('atl-hum-p', { type: 'geojson', data: FC(pts) });
-      const ptLayer = (kind, col, r, stroke) => { const id = 'atl-pt-' + kind; add({ id, type: 'circle', source: 'atl-hum-p', filter: ['==', ['get', 'kind'], kind], layout: { visibility: 'none' }, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, r * 0.6, 16, r * 1.6], 'circle-color': stroke ? '#FFFFFF' : col, 'circle-stroke-color': stroke ? col : '#FFFFFF', 'circle-stroke-width': stroke ? 2 : 0.8, 'circle-opacity': 0, 'circle-stroke-opacity': 0, 'circle-opacity-transition': { duration: 600 }, 'circle-stroke-opacity-transition': { duration: 600 } } }); ids.push(id); };
+      addOnce(I('atl-hum-p'), { type: 'geojson', data: FC(pts) });
+      const ptLayer = (kind, col, r, stroke) => { const id = I('atl-pt-' + kind); add({ id, type: 'circle', source: I('atl-hum-p'), filter: ['==', ['get', 'kind'], kind], layout: { visibility: 'none' }, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, r * 0.6, 16, r * 1.6], 'circle-color': stroke ? '#FFFFFF' : col, 'circle-stroke-color': stroke ? col : '#FFFFFF', 'circle-stroke-width': stroke ? 2 : 0.8, 'circle-opacity': 0, 'circle-stroke-opacity': 0, 'circle-opacity-transition': { duration: 600 }, 'circle-stroke-opacity-transition': { duration: 600 } } }); ids.push(id); };
       ptLayer('square_pt', c.square, 3.4); ptLayer('market', c.market, 6); ptLayer('cafe', c.cafe, 2.4); ptLayer('playground', c.play, 3); ptLayer('civic', c.civic, 3.6, true);
     }
-    cache['ids_' + k] = ids; return ids;
+    cache[key] = ids; return ids;
   }
   // opacity per layer when shown (the same strengths as the Exercise 1.3 maps)
-  function fullOpacity(id) { if (/^atl-den-/.test(id)) return 0.88; if (id === 'atl-fg') return 0.95; if (id === 'atl-gap') return 0.55; if (/^atl-cen-/.test(id)) return 0.9; if (/^atl-lst-/.test(id)) return 0.82; if (id === 'atl-veg') return 1; if (id === 'atl-far') return 0.42; if (id === 'atl-park') return 0.75; if (id === 'atl-square') return 0.92; return 1; }
+  function fullOpacity(id) { id = id.replace(/~f$/, ''); if (/^atl-den-/.test(id)) return 0.88; if (id === 'atl-fg') return 0.95; if (id === 'atl-gap') return 0.55; if (/^atl-cen-/.test(id)) return 0.9; if (/^atl-lst-/.test(id)) return 0.82; if (id === 'atl-veg') return 1; if (id === 'atl-far') return 0.42; if (id === 'atl-park') return 0.75; if (id === 'atl-square') return 0.92; return 1; }
   function opacityProps(id) { const l = map.getLayer(id); if (!l) return []; return l.type === 'fill' ? ['fill-opacity'] : l.type === 'line' ? ['line-opacity'] : l.type === 'raster' ? ['raster-opacity'] : l.type === 'circle' ? ['circle-opacity', 'circle-stroke-opacity'] : l.type === 'symbol' ? ['text-opacity'] : []; }
   function setOp(id, v) { opacityProps(id).forEach(p => map.setPaintProperty(id, p, v)); }
   // reveal groups: the order in which a topic's classes appear (low → high, cool → hot, open → meeting places)
   function revealGroups(k) {
-    const ids = topicLayerIds(k);
-    if (k === 'morphology') return [['atl-fg'], ['atl-gap', 'atl-gap-l']];
-    if (k === 'centre') return ids.filter(i => /^atl-cen-/.test(i)).map(i => [i]).concat([['atl-hist'], ['atl-peaks', 'atl-peaks-l']]);
-    if (k === 'climate') return ids.filter(i => /^atl-lst-/.test(i)).map(i => [i]).concat([['atl-veg']]);
-    if (k === 'human') return [['atl-far'], ['atl-park'], ['atl-square', 'atl-pt-square_pt'], ['atl-pt-market'], ['atl-pt-cafe'], ['atl-pt-playground'], ['atl-pt-civic']];
+    const ids = topicLayerIds(k); const I = IDF(FRM()); const keep = (gs) => gs.map(g => g.map(I).filter(has)).filter(g => g.length);
+    if (k === 'morphology') return keep([['atl-fg'], ['atl-gap', 'atl-gap-l']]);
+    if (k === 'centre') return ids.filter(i => /^atl-cen-/.test(i)).map(i => [i]).concat(keep([['atl-hist'], ['atl-peaks', 'atl-peaks-l']]));
+    if (k === 'climate') return ids.filter(i => /^atl-lst-/.test(i)).map(i => [i]).concat(keep([['atl-veg']]));
+    if (k === 'human') return keep([['atl-far'], ['atl-park'], ['atl-square', 'atl-pt-square_pt'], ['atl-pt-market'], ['atl-pt-cafe'], ['atl-pt-playground'], ['atl-pt-civic']]);
     return ids.map(i => [i]);
   }
   function stopReveal() { clearTimeout(S.reveal.timer); S.reveal.timer = null; }
@@ -254,7 +260,7 @@
     S.reveal.timer = setTimeout(step, 250); renderPanel();
   }
   function showTopicLayers(k) {
-    TOPICS.forEach(o => topicLayerIds(o).forEach(id => setVis(id, o === k)));
+    const fr = FRM(); ['city', 'factory'].forEach(f => TOPICS.forEach(o => topicLayerIds(o, f).forEach(id => setVis(id, o === k && f === fr))));
   }
   // the topic's companion GIS layers (existing atlas layers) — switched on with the topic, never switched off by it
   const COMPANION = { density: [], morphology: [], centre: [], climate: [], human: [] };
@@ -270,14 +276,16 @@
     if (a === 'city') stopGrowth(false);
     const bb = a === 'city' ? CITY_BB : a === 'factory' ? bboxOf(estate().geometry.coordinates) : corridor().ll;
     if (!opts.noFly) map.fitBounds(bb, { padding: pad(a === 'city' ? 40 : 70), duration: REDUCED ? 0 : 1800, maxZoom: a === 'city' ? 12 : 15, essential: true });
+    if (S.topic && coverage(a).ok) { buildTopic(S.topic); setFrameOutline(); applyTopicLayers(S.topic); } // 5.26: the factory has its own frame
     applyMask(); markers(); renderSide(); renderPanel(); $('#atl-back').hidden = a === 'city';
     if (a === 'city' && !S.topic && S.growth.on) startGrowth(); else stopGrowth(false);
     legendChanged();
   }
+  function setFrameOutline() { const fr = frameLL(); map.getSource('atl-frame').setData(FC([{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: fr.concat([fr[0]]) } }])); }
   async function setTopic(k) {
     await loadAll(); S.topic = TOPICS.includes(k) ? k : null; S.min = false; closeSide(); stopGrowth(false);
     if (S.topic) { buildTopic(S.topic); setVis('atl-veil', true); setVis('atl-frame', true); map.getSource('atl-frame').setData(FC([{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: frameLL().concat([frameLL()[0]]) } }])); applyTopicLayers(S.topic); }
-    else { stopReveal(); TOPICS.forEach(o => topicLayerIds(o).forEach(id => setVis(id, false))); setVis('atl-veil', false); setVis('atl-frame', false); if (S.area === 'city' && S.growth.on) startGrowth(); }
+    else { stopReveal(); allTopicIds().forEach(id => setVis(id, false)); setVis('atl-veil', false); setVis('atl-frame', false); if (S.area === 'city' && S.growth.on) startGrowth(); }
     // a topic chosen at city scale frames the analysis extent; inside a study area the zoom is kept
     if (S.topic && S.area === 'city') map.fitBounds(frameBB(), { padding: pad(40), duration: REDUCED ? 0 : 1400, maxZoom: 13 });
     applyMask(); renderSide(); renderPanel(); legendChanged();
@@ -324,6 +332,7 @@
       if (k === 'human') { const s = d.human.stats; out.push([t('x13.i.reach'), nf(s.reach_pct, 1) + ' %'], [t('x13.i.hAreas'), t('x13.i.hAreasV', { q: nf(s.squares), p: nf(s.parks), m: nf(s.markets) })]); }
       return out;
     }
+    if (S.area === 'factory' && XF) return factoryIndicators(k);
     if (S.area !== 'metro') return out;
     const key = 'mi_' + k; if (cache[key]) return cache[key];
     const den = d.density, cx = den.corners.x, cy = den.corners.y; const cells = [];
@@ -341,6 +350,31 @@
     if (k === 'human') { const pop = cells.reduce((s, c) => s + c.p, 0); const far = new Set(d.human.far.map(([r, q]) => r + ',' + q)); const farPop = cells.filter(c => far.has(c.r + ',' + c.q)).reduce((s, c) => s + c.p, 0);
       const H = d.human; const inC = (list) => (list || []).filter(p => distToTrack(p[0], p[1]) <= CORRIDOR_M).length;
       out.push([t('v23.i.corrRes'), nf(Math.round(pop / 10) * 10) + ' ' + t('x13.modelled')], [t('v23.i.corrFar'), nf(Math.round(farPop / 10) * 10) + ' (' + nf(pop ? farPop / pop * 100 : 0, 0) + ' %)'], [t('v23.i.corrMeet'), t('x13.i.hPtsV', { c: nf(inC(H.points.cafe)), p: nf(inC(H.points.playground)), l: nf(inC(H.points.civic)) }) + ' · ' + t('x13.lg.market') + ' ' + nf(inC(H.points.market))]); }
+    cache[key] = out; return out;
+  }
+  // 5.26: the factory, computed live from the factory frame: inside the CITAI estate (393 ha) and within 1 km of it.
+  // Where the area has little (few residents, few shops) the numbers say so — nothing is estimated.
+  function estDist(x, y) { const e = estate(); if (!e) return Infinity; if (!cache.estU) cache.estU = (e.geometry.type === 'Polygon' ? [e.geometry.coordinates] : e.geometry.coordinates).map(pg => pg[0].map(U));
+    const inside = cache.estU.some(r => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [xi, yi] = r[i], [xj, yj] = r[j]; if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) c = !c; } return c; });
+    if (inside) return 0; let d = Infinity; cache.estU.forEach(r => { for (let i = 1; i < r.length; i++) d = Math.min(d, segD(x, y, r[i - 1], r[i])); }); return d; }
+  function factoryIndicators(k) {
+    const key = 'fi_' + k; if (cache[key]) return cache[key]; const d = XF, out = [];
+    const den = d.density, cx = den.corners.x, cy = den.corners.y; const cells = [];
+    den.pop.forEach((row, r) => row.forEach((p, q) => { if (p == null) return; const x = (cx[r][q] + cx[r + 1][q + 1]) / 2, y = (cy[r][q] + cy[r + 1][q + 1]) / 2; const dd = estDist(x, y); if (dd <= 1000) cells.push({ r, q, p, v: p * 100, dd }); }));
+    const popIn = cells.filter(c => c.dd === 0).reduce((s, c) => s + c.p, 0), pop1 = cells.reduce((s, c) => s + c.p, 0);
+    const res = (v) => nf(Math.round(v / 10) * 10) + ' ' + t('x13.modelled');
+    if (k === 'density') { const top = (den.stats.by_municipality || []).slice().sort((a, b) => b.pop_ghs - a.pop_ghs).slice(0, 3).map(m => `${esc(m.name)} ${nf(Math.round(m.pop_ghs / 10) * 10)}`).join(' · ');
+      out.push([t('v24.i.estRes'), res(popIn)], [t('v24.i.est1km'), res(pop1)], [t('v24.i.frameRes'), res(den.stats.pop_frame)], [t('v24.i.muniTop'), top || '—']); }
+    if (k === 'morphology') { const s = d.morphology.stats; out.push([t('v24.i.estCov'), nf(s.coverage_estate_pct, 1) + ' %'], [t('v24.i.vsFactoryFrame'), nf(s.coverage_frame_pct, 1) + ' %'], [t('x13.i.gaps'), nf(s.gap_area_km2, 2) + ' km²'], [t('v24.i.buildings'), nf(d.morphology.source.buildings)]); }
+    if (k === 'centre') { const pts = d.centre.points; const inE = pts.filter(p => estDist(p[0], p[1]) === 0), in1 = pts.filter(p => estDist(p[0], p[1]) <= 1000); const by = {}; in1.forEach(p => by[p[2]] = (by[p[2]] || 0) + 1);
+      const pk = d.centre.peaks.map(p => ({ p, dd: estDist(p.x, p.y) })).sort((a, b) => a.dd - b.dd)[0];
+      out.push([t('v24.i.estPlaces'), nf(inE.length)], [t('v24.i.est1kmPlaces'), nf(in1.length) + ' — ' + t('x13.i.byCat', { r: nf(by.retail || 0), f: nf(by.food || 0), s: nf(by.service || 0), m: nf(by.market || 0) })], [t('v24.i.framePlaces'), nf(d.centre.stats.in_frame)]);
+      if (pk) out.push([t('v24.i.nearPeakF'), 'C' + pk.p.rank + ' · ' + nf(pk.dd / 1000, 1) + ' km · ' + nf(pk.p.v) + ' ' + t('x13.placesKm2')]); }
+    if (k === 'climate') { const g = d.climate.grid; const vs = []; d.climate.lst.forEach((row, j) => row.forEach((v, i) => { if (v != null && estDist(g.x0 + (i + 0.5) * g.cell, g.y1 - (j + 0.5) * g.cell) === 0) vs.push(v); })); vs.sort((a, b) => a - b);
+      const med = vs.length ? vs[Math.floor(vs.length / 2)] : null; const s = d.climate.stats;
+      out.push([t('v24.i.estLst'), med == null ? t('v24.missing') : nf(med, 1) + ' °C'], [t('v24.i.vsFactoryFrame'), nf(s.median_frame, 1) + ' °C'], [t('v23.i.hot'), vs.length ? nf(vs.filter(v => v >= 47).length / vs.length * 100, 0) + ' %' : t('v24.missing')], [t('x13.i.lstBare'), s.bare == null ? t('v24.missing') : nf(s.bare, 1) + ' °C']); }
+    if (k === 'human') { const H = d.human; const n1 = (list) => (list || []).filter(p => estDist(p[0], p[1]) <= 1000).length; const s = H.stats;
+      out.push([t('v24.i.est1kmMeet'), t('x13.i.hPtsV', { c: nf(n1(H.points.cafe)), p: nf(n1(H.points.playground)), l: nf(n1(H.points.civic)) }) + ' · ' + t('x13.lg.market') + ' ' + nf(n1(H.points.market))], [t('v24.i.est1km'), res(pop1)], [t('x13.i.reach'), nf(s.reach_pct, 1) + ' % (' + t('v24.i.factoryFrame') + ')']); }
     cache[key] = out; return out;
   }
   // building coverage inside the corridor, counted on the 4 m figure-ground raster (same source as map 02)
@@ -364,7 +398,7 @@
     if (k === 'centre') { const br = X13.centre.breaks; c.centre.forEach((col, i) => items.push(sw(col, (i < br.length - 1 ? `<span dir="ltr">${nf(br[i])}–${nf(br[i + 1])}</span>` : t('x13.atLeast', { v: `<span dir="ltr">${nf(br[i])}</span>` })) + ' ' + t('x13.placesKm2'), 0.9))); items.push(dt(c.centreLine, t('x13.lg.peak'), true), ln(c.hist, t('x13.lg.hist'), true)); }
     if (k === 'climate') { const br = X13.climate.breaks; c.lst.forEach((col, i) => items.push(sw(col, i === 0 ? t('x13.below', { v: `<span dir="ltr">${br[0]} °C</span>` }) : i < br.length ? `<span dir="ltr">${br[i - 1]}–${br[i]} °C</span>` : t('x13.atLeast', { v: `<span dir="ltr">${br[br.length - 1]} °C</span>` }), 0.82))); items.push(ln(c.veg, t('x13.lg.veg'))); }
     if (k === 'human') items.push(sw(c.square, t('x13.lg.square'), 0.92), sw(c.park, t('x13.lg.park'), 0.75), dt(c.market, t('x13.lg.market')), dt(c.cafe, t('x13.lg.cafe')), dt(c.play, t('x13.lg.play')), dt(c.civic, t('x13.lg.civic'), true), sw(c.far, t('x13.lg.far'), 0.42));
-    items.push(ln(P().ink, t('v23.lg.frame'), true)); if (S.area === 'metro') items.push(ln(P().ink, t('v23.lg.corridor')));
+    items.push(ln(P().ink, t(FRM() === 'factory' ? 'v24.lg.frameF' : 'v23.lg.frame'), true)); if (S.area === 'metro') items.push(ln(P().ink, t('v23.lg.corridor')));
     return `<ul class="lg">${items.join('')}</ul>`;
   }
   function areaHTML() {
@@ -372,8 +406,8 @@
     if (a === 'city') facts = t('v23.intro.city', { pop: `<span class="num">${nf(X13.frame.stats.pop)}</span>`, area: `<span class="num">${nf(X13.frame.stats.area_km2, 1)} km²</span>` });
     if (a === 'factory') { const e = estate(); const gap = SOUTH.pole.features.find(f => f.properties.k === 'gap'); const v = SOUTH.pole.features.find(f => f.properties.k === 'village');
       facts = t('v23.intro.factory', { ha: `<span class="num">${nf(e && e.properties.ha)}</span>`, km: `<span class="num">${nf(gap && gap.properties.km, 1)}</span>`, pop: `<span class="num">${nf(v && v.properties.pop)}</span>` }); }
-    if (a === 'metro') { const tr = track(); facts = t('v23.intro.metro', { km: `<span class="num">${nf(tr && tr.properties.len_m / 1000, 1)}</span>` }); }
-    return `<div class="atl-area">${dot(a)}<b>${t('v23.area.' + a)}</b></div><p class="atl-p">${facts}</p>`;
+    if (a === 'metro') { const tr = track(); facts = t('v23.intro.metro', { km: `<span class="num">${nf(tr && tr.properties.len_m / 1000, 1)}</span>` }) + `<details class="atl-st"><summary>${t('v24.stTitle')}</summary><p class="fine"><b>${t('v24.stNames')}</b></p><p class="fine">${t('v24.stWhy', { date: t('v24.stDate') })}</p></details>`; } // 5.26: planned stations named, never placed
+    return `<div class="atl-area">${dot(a)}<b>${t('v23.area.' + a)}</b></div><div class="atl-p">${facts}</div>`;
   }
   function renderStep() { const el = $('#atl-step'); if (!el) return; el.innerHTML = S.topic ? '' : (root.GA.ltrNums || String)(growthLabel()); }
   function renderPanel() {
@@ -397,7 +431,7 @@
     h += `<dl class="atl-ind">${ind.map(r => `<div><dt>${r[0]}</dt><dd>${r[1]}</dd></div>`).join('')}</dl>`;
     h += `<div class="atl-lg">${legendHTML(k)}</div>`;
     h += `<div class="atl-ctl"><button type="button" class="btn btn-tiny" data-atl-play>${t(S.reveal.timer ? 'v23.playing' : 'v23.replay')}</button> <button type="button" class="btn btn-tiny" data-atl-page="ex13">${t('v23.openPage')}</button> <button type="button" class="btn btn-tiny" data-topic="">${t('v23.clearTopic')}</button></div>`;
-    h += `<details class="atl-src"><summary>${t('v23.sources')}</summary><p>${t('x13.src.' + k, k === 'climate' ? { n: String(X13.climate.stats.scenes) } : { date: String((k === 'human' ? X13.human.source.date : X13.centre.source.date) || '').slice(0, 10), n: nf(X13.centre.stats.in_frame), dup: nf(X13.centre.stats.duplicates) })}</p><p>${t('x13.lim.' + k, { d: (X13.density.stats.diff_pct > 0 ? '+' : '') + nf(X13.density.stats.diff_pct, 1) + ' %', r: 'r = ' + nf(X13.centre.stats.overture_corr, 2), min: String(X13.climate.stats.min_obs) })}</p>${S.area === 'metro' ? `<p>${t('v23.corrNote')}</p>` : ''}</details>`;
+    h += `<details class="atl-src"><summary>${t('v23.sources')}</summary><p>${t('x13.src.' + k, k === 'climate' ? { n: String(DS().climate.stats.scenes) } : { date: String((k === 'human' ? DS().human.source.date : DS().centre.source.date) || '').slice(0, 10), n: nf(DS().centre.stats.in_frame), dup: nf(DS().centre.stats.duplicates) })}</p>${FRM() === 'factory' ? `<p>${t('v24.fr.note')}</p>` : `<p>${t('x13.lim.' + k, { d: (X13.density.stats.diff_pct > 0 ? '+' : '') + nf(X13.density.stats.diff_pct, 1) + ' %', r: 'r = ' + nf(X13.centre.stats.overture_corr, 2), min: String(X13.climate.stats.min_obs) })}</p>`}${S.area === 'metro' ? `<p>${t('v23.corrNote')}</p>` : ''}</details>`;
     box.innerHTML = (root.GA.ltrNums || String)(h);
   }
   function onPanelClick(e) {
