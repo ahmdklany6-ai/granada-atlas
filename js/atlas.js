@@ -372,7 +372,7 @@
       if (pk) out.push([t('v24.i.nearPeakF'), 'C' + pk.p.rank + ' · ' + nf(pk.dd / 1000, 1) + ' km · ' + nf(pk.p.v) + ' ' + t('x13.placesKm2')]); }
     if (k === 'climate') { const g = d.climate.grid; const vs = []; d.climate.lst.forEach((row, j) => row.forEach((v, i) => { if (v != null && estDist(g.x0 + (i + 0.5) * g.cell, g.y1 - (j + 0.5) * g.cell) === 0) vs.push(v); })); vs.sort((a, b) => a - b);
       const med = vs.length ? vs[Math.floor(vs.length / 2)] : null; const s = d.climate.stats;
-      out.push([t('v24.i.estLst'), med == null ? t('v24.missing') : nf(med, 1) + ' °C'], [t('v24.i.vsFactoryFrame'), nf(s.median_frame, 1) + ' °C'], [t('v23.i.hot'), vs.length ? nf(vs.filter(v => v >= 47).length / vs.length * 100, 0) + ' %' : t('v24.missing')], [t('x13.i.lstBare'), s.bare == null ? t('v24.missing') : nf(s.bare, 1) + ' °C']); }
+      out.push([t('v24.i.estLst'), med == null ? t('v24.missing') : nf(med, 1) + ' °C'], [t('v24.i.vsFactoryFrame'), nf(s.median_frame, 1) + ' °C'], [t('v24.i.hotEst'), vs.length ? nf(vs.filter(v => v >= 47).length / vs.length * 100, 0) + ' %' : t('v24.missing')], [t('x13.i.lstBare'), s.bare == null ? t('v24.missing') : nf(s.bare, 1) + ' °C']); }
     if (k === 'human') { const H = d.human; const n1 = (list) => (list || []).filter(p => estDist(p[0], p[1]) <= 1000).length; const s = H.stats;
       out.push([t('v24.i.est1kmMeet'), t('x13.i.hPtsV', { c: nf(n1(H.points.cafe)), p: nf(n1(H.points.playground)), l: nf(n1(H.points.civic)) }) + ' · ' + t('x13.lg.market') + ' ' + nf(n1(H.points.market))], [t('v24.i.est1km'), res(pop1)], [t('x13.i.reach'), nf(s.reach_pct, 1) + ' % (' + t('v24.i.factoryFrame') + ')']); }
     cache[key] = out; return out;

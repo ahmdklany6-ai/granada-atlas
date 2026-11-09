@@ -4,6 +4,7 @@
   4. numbers with units / percent / ranges stay left-to-right inside Arabic and Hebrew (atlas, legend, 5.20–5.25 pages).
   12. the factory has its own analysis frame: all five topics show real values (live, inside / around the estate); the city values did not change.
   13. metro extension: planned stations named with the sources searched, never placed; the track and its two points unchanged.
+  10. animated GIF of the Exercise 1.3 layer player: each layer alone, then built up, then the whole map; decodes, loops.
   2. the map legend follows the atlas topic (topic classes first, other layers folded) and keeps clear of the analysed area.
 Usage: python3 tests/ui_test_v24.py  (OUT=/dir)  [items: ITEMS=1,2,... to run a subset]"""
 import sys, os, time, json, subprocess, warnings
@@ -14,7 +15,7 @@ warnings.filterwarnings('ignore')
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORT = 8824; V3.PORT = PORT; V3.V2.PORT = PORT
 OUT = os.environ.get('OUT', '/tmp/v24shots'); os.makedirs(OUT, exist_ok=True)
-ITEMS = set((os.environ.get('ITEMS') or '1,2,3,4,12,13').split(','))
+ITEMS = set((os.environ.get('ITEMS') or '1,2,3,4,10,12,13').split(','))
 fails = []
 def check(cond, msg, extra=''):
     print(('ok   ' if cond else 'FAIL ') + msg + (f'  [{extra}]' if extra != '' and not cond else ''), flush=True)
@@ -137,7 +138,7 @@ try:
                 check(len(r['ind']) >= 2 and len(nums) >= 2 and 'No data for this area' not in r['txt'], f'factory {k}: live indicators with real values {r["ind"][:3]}', r['ind'])
                 pg.screenshot(path=f'{OUT}/i12_factory_{k}.png')
             ind = pg.evaluate('GA.atlas.indicators("density")'); fx = json.load(open(os.path.join(ROOT, 'data/ex13f/density.json')))
-            check(any(f"{round(fx['stats']['pop_frame'] / 10) * 10:,}" in v for _, v in ind), 'factory density: frame residents = the built factory-frame value', ind)
+            check(any(f"{int(fx['stats']['pop_frame'] / 10 + 0.5) * 10:,}" in v for _, v in ind), 'factory density: frame residents = the built factory-frame value', ind)
             pg.evaluate('GA.atlas.setArea("city")'); time.sleep(4); txt = pg.evaluate('document.querySelector("#atl-panel").innerText')
             check(f"{city['morphology']['stats']['coverage_frame_pct']}" in txt or pg.evaluate('GA.atlas.state.topic') == 'human', 'back in the city: city frame again')
             check(pg.evaluate('GA.atlas.topicLayers(GA.atlas.state.topic).every(id => !id.endsWith("~f"))'), 'back in the city: the city-frame layers are the ones shown')
@@ -155,6 +156,24 @@ try:
                 lg = pg.evaluate('(() => { const e = document.querySelector("#legend"); e.querySelectorAll("details").forEach(d => d.open = true); return e.innerText; })()')
                 check(all(n in lg for n in names), f'{lang}: the metro layer legend lists the planned stations (not drawn)')
                 pg.screenshot(path=f'{OUT}/i13_{lang}_metro.png'); check(not errs, f'{lang}: no page errors', errs[:3]); ctx.close()
+        # ---------- 10. GIF of the layer player ----------
+        if '10' in ITEMS:
+            from PIL import Image, ImageSequence
+            import base64, io
+            ctx, pg, errs = boot({'width': 1440, 'height': 900}, False, 'en')
+            pg.evaluate('GA.pages.go("ex13")'); pg.wait_for_function('document.querySelectorAll(".x13-prev canvas").length === 6', timeout=600000); time.sleep(1)
+            for k in ['density', 'centre', 'morphology']:
+                r = pg.evaluate('''async (k) => { const b = await GA.ex13.layersGif(k); const u8 = new Uint8Array(await b.arrayBuffer()); let s = ''; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode(...u8.subarray(i, i + 8192));
+                  return { b64: btoa(s), n: GA.ex13art.keys(k).length, type: b.type }; }''', k)
+                im = Image.open(io.BytesIO(base64.b64decode(r['b64']))); fr = []; durs = []
+                for f in ImageSequence.Iterator(im): durs.append(f.info.get('duration')); fr.append(f.copy())
+                open(f'{OUT}/i10_{k}.gif', 'wb').write(base64.b64decode(r['b64']))
+                check(r['type'] == 'image/gif' and len(fr) == 2 * r['n'] + 1 and im.info.get('loop') == 0 and im.size[1] > 900, f'{k}: GIF with {len(fr)} frames ({r["n"]} layers alone, {r["n"]} built up, whole map), loops, {im.size}', (len(fr), r['n'], im.info.get('loop'), im.size))
+                check(durs[0] == 1400 and durs[-1] == 3000, f'{k}: frame timing (1.4 s per layer, 3 s on the whole map)', durs)
+                ext = [f.convert('L').getextrema() for f in fr]; check(all(a < 120 and b > 200 for a, b in ext), f'{k}: every frame has map content (no blank frame)', ext[:3])
+            btn = pg.evaluate('(() => { document.querySelector(\'[data-e13open="density"]\').click(); return true; })()'); time.sleep(4)
+            check(pg.evaluate('!!document.querySelector("[data-vtool=gif]") || !GA.ex13.artOn("density")'), 'the viewer offers the GIF next to "PNG per layer (ZIP)" (artistic language on)')
+            check(not errs, 'GIF: no page errors', errs[:3]); ctx.close()
 finally:
     srv.terminate()
 print('\n' + ('ALL PASSED' if not fails else f'{len(fails)} FAILED:\n  ' + '\n  '.join(fails)))

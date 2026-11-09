@@ -20,6 +20,8 @@
     'v24.i.estLst': ['وسيط حرارة السطح صيفًا داخل المنطقة', 'חציון טמפרטורת פני השטח בקיץ בתוך האזור', 'Median summer surface temperature inside the estate'],
     'v24.i.est1kmMeet': ['أماكن لقاء ضمن 1 كم', 'מקומות מפגש עד 1 ק״מ', 'Meeting places within 1 km'],
     'v24.i.factoryFrame': ['إطار المصنع', 'מסגרת המפעל', 'factory frame'],
+    'v24.i.hotEst': ['خلايا ≥ ⁦47 °C⁩ داخل المنطقة', 'תאים ≥ ⁦47 °C⁩ בתוך האזור', 'Cells ≥ 47 °C inside the estate'],
+    'v24.gif': ['GIF متحرك للطبقات', 'GIF מונפש של השכבות', 'Animated GIF of the layers'],
     'v24.missing': ['لا توجد بيانات', 'אין נתונים', 'no data'],
     'v24.lg.frameF': ['امتداد بيانات التحليل (إطار ⁦12 × 10⁩ كم حول المصنع)', 'היקף נתוני הניתוח (מסגרת ⁦12 × 10⁩ ק״מ סביב המפעל)', 'extent of the analysis data (12 × 10 km frame around the factory)'],
     'v24.fr.note': ['إطار تحليل ثانٍ (⁦12 × 10⁩ كم) حول منطقة Escúzar والفجوة حتى آخر محطة مترو، بالمصادر والطرق والفئات نفسها لإطار المدينة. حيث تقلّ الأشياء فعلًا (سكان، محلات) تُظهر الأرقام ذلك كما هو.', 'מסגרת ניתוח שנייה (⁦12 × 10⁩ ק״מ) סביב אזור Escúzar והפער עד תחנת המטרו האחרונה, באותם מקורות, שיטות ומחלקות כמו מסגרת העיר. היכן שבאמת יש מעט (תושבים, חנויות) המספרים מראים זאת כפי שהוא.', 'A second analysis frame (12 × 10 km) around the Escúzar estate and the gap to the metro terminus, with the same sources, methods and classes as the city frame. Where the area genuinely has little (residents, shops) the numbers show it as it is.'],
