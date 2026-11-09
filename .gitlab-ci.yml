@@ -9,9 +9,9 @@ pages:
     paths:
       - public
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $VERIFY != "1"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
 
-# Live check of the published site (run on demand: new pipeline with VERIFY=1). Screenshots go to the job log as base64.
+# Live check of the published site (run on demand: Build → Pipelines → Run pipeline, or the API). Screenshots go to the job log as base64.
 verify:
   stage: test
   image: mcr.microsoft.com/playwright/python:v1.48.0-jammy
@@ -21,4 +21,4 @@ verify:
     - pip install -q playwright==1.48.0 pillow
     - python tools/verify/live_atlas.py
   rules:
-    - if: $VERIFY == "1"
+    - if: $CI_PIPELINE_SOURCE == "api" || $CI_PIPELINE_SOURCE == "web"
