@@ -98,11 +98,10 @@ try:
         lst = pg.evaluate('GA.atlas.indicators("climate")'); check(lst and '°C' in lst[0][1], f'corridor climate indicator {lst[:1]}')
         check(pg.evaluate('GA.atlas.topicLayers("density").every(id => GA.app.map.getLayoutProperty(id, "visibility") === "none")'), 'previous topic hidden on switch')
         pg.screenshot(path=f'{OUT}/en_metro_climate.png')
-        # ---------- WHERE: factory (no data) ----------
-        pg.evaluate('document.querySelector(".atl-mk-factory").click()'); time.sleep(3)  # the marker may lie off-screen at metro zoom
+        # ---------- WHERE: factory — since 5.26 it has its own analysis frame (data/ex13f; checked in depth by ui_test_v24 item 12) ----------
+        pg.evaluate('document.querySelector(".atl-mk-factory").click()'); time.sleep(4)  # the marker may lie off-screen at metro zoom
         txt = pg.evaluate('document.querySelector("#atl-panel").innerText'); c = pg.evaluate('GA.atlas.coverage("factory")')
-        check(not c['ok'] and c['dist'] > 8000 and 'No data for this area' in txt and 'ex13_fetch.py' in txt, f'factory: outside the analysis frame ({c["dist"]:.0f} m) → "no data" and what is missing; no invented result')
-        check(not any(ch.isdigit() and '°C' in txt for ch in '0'), 'no temperature value shown for the factory')
+        check(c['ok'] and c.get('frame') == 'factory' and 'No data for this area' not in txt and '°C' in txt, 'factory: its own analysis frame — real climate values, no "no data" block', (c, txt[:200]))
         pg.screenshot(path=f'{OUT}/en_factory_climate.png')
         pg.click('#atl-back'); time.sleep(2.5)
         st = pg.evaluate('GA.atlas.state'); check(st['area'] == 'city' and pg.evaluate('document.querySelector("#atl-back").hidden'), 'Back to Granada → city', st)
