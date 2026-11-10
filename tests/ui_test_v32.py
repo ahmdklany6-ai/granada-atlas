@@ -26,7 +26,7 @@ try:
         pg = ctx.new_page(); V3.stub3(pg); errs = []
         pg.on('pageerror', lambda e: 'rtl-text' not in str(e) and errs.append('PAGE ' + str(e)[:300]))
         pg.goto(f'http://127.0.0.1:{PORT}/index.html'); pg.wait_for_function('window.GA && GA.app && GA.ex13 && GA.ex13art', timeout=90000)
-        ver = json.load(open(os.path.join(ROOT, 'version.json')))['build']; check(ver >= '5.36' and pg.evaluate('window.GA_BUILD') == ver, f'build {ver}')
+        ver = json.load(open(os.path.join(ROOT, 'version.json')))['build']; check(ver >= '5.37' and pg.evaluate('window.GA_BUILD') == ver, f'build {ver}')
         pg.evaluate('GA.i18n.setLang("en")'); pg.evaluate('(async () => { await GA.ex13.load(); const e = GA.ex13.E(); GA.ex13.TOPICS.forEach(k => { if (e.maps[k]) e.maps[k].style = "art"; }); GA.app.store.save(); })()')
         for k in ['density', 'morphology', 'centre', 'climate', 'human']:
             n = pg.evaluate(f'(async () => {{ const a = "{k}" === "human" ? "humanAxo" : "{k}"; await GA.ex13art.ready(a); return GA.ex13art.keys(a).length; }})()')
@@ -42,6 +42,16 @@ try:
         check(h1 * 1.5 < h4 and h1 < h2 < h4, f'climate: starts as one block, then opens upward (height {h1} < {h2} < {h4})')
         # 5.36: all layers move together — halfway through, every gap between neighbouring layers is the same
         h3 = span({'upTo': 3, 't': 0.5}); check(h1 < h3 < h4, f'climate: all layers open upward at the same time (height mid-way {h3})')
+        # 5.37: the climate GIF opens in one continuous motion — no pause in the middle of the opening, heights only grow
+        gb = pg.evaluate('(async () => { const bl = await GA.ex13.layersGif("climate"); const u8 = new Uint8Array(await bl.arrayBuffer()); let s = ""; for (let i = 0; i < u8.length; i += 32768) s += String.fromCharCode.apply(null, u8.subarray(i, i + 32768)); return btoa(s); })()')
+        gi = Image.open(io.BytesIO(base64.b64decode(gb))); nG = gi.n_frames; du = []
+        for i in range(nG): gi.seek(i); du.append(gi.info.get('duration'))
+        check(du == [80] * 5 + [400] + [70] * 23 + [500] + [2600] + [1400] * 4, f'climate GIF: fade-in, one continuous opening (23 × 70 ms, no pause), whole map, each layer ({du})')
+        def gspan(i):
+            gi.seek(i); im = gi.convert('L'); W2, H2 = im.size; im = im.point(lambda v: 255 if v < 235 else 0).crop((int(W2 * .3), int(H2 * .08), int(W2 * .84), int(H2 * .62)))
+            return sum(1 for y in range(0, im.size[1], 2) if im.crop((0, y, im.size[0], y + 1)).getbbox())
+        hs = [gspan(i) for i in range(5, 30, 4)] + [gspan(29)]
+        check(all(a <= b + 1 for a, b in zip(hs, hs[1:])) and hs[0] < hs[-1], f'climate GIF: the stack only grows while it opens {hs}')
         check(not errs, 'no page errors', errs[:3]); ctx.close()
 finally:
     srv.terminate()

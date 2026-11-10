@@ -422,9 +422,12 @@
   // layers added one by one, then the whole map held longer. Whole A3 page at a screen size (≈ 1,000 px tall).
   async function layersGif(k, onProgress) { // 5.34: opens with the animation (each layer grows in smoothly, one after another, as in the player), then the whole map, then each layer alone (the others faded); 80 dpi, made without freezing the page
     const keys = root.GA.ex13art.keys(AK(k)); await root.GA.ex13art.ready(AK(k)); const frames = []; const dpi = 80; const STEPS = 6;
-    const nF = keys.length * STEPS + 1 + keys.length, total = 2 * nF; const ease = (u) => u * u * (3 - 2 * u);
+    const nF = (root.GA.ex13art.continuous(AK(k)) ? STEPS + 24 : keys.length * STEPS) + 1 + keys.length, total = 2 * nF; const ease = (u) => u * u * (3 - 2 * u);
     const add = async (o, delay) => { await new Promise(r => setTimeout(r, 0)); frames.push({ canvas: await pageCanvas(k, dpi, o), delay }); if (onProgress) onProgress(frames.length, total); };
-    for (let i = 1; i <= keys.length; i++) for (let s = 1; s <= STEPS; s++) await add({ upTo: i, t: ease(s / STEPS) }, s < STEPS ? 110 : 500);
+    if (root.GA.ex13art.continuous(AK(k))) { // 5.37 climate: the block fades in, then opens upward in ONE continuous motion (no pause between steps)
+      for (let s = 1; s <= STEPS; s++) await add({ upTo: 1, t: s / STEPS }, s < STEPS ? 80 : 400);
+      const M = 24; for (let s = 1; s <= M; s++) { const v = s / M * (keys.length - 1); const u = Math.min(keys.length, Math.floor(v) + 2); await add({ upTo: u, t: v - (u - 2) }, s < M ? 70 : 500); }
+    } else for (let i = 1; i <= keys.length; i++) for (let s = 1; s <= STEPS; s++) await add({ upTo: i, t: ease(s / STEPS) }, s < STEPS ? 110 : 500);
     await add(null, 2600);
     for (let i = 0; i < keys.length; i++) await add({ focus: i }, 1400);
     const bytes = await root.GA.gif.encodeAsync(frames, (i) => { if (onProgress) onProgress(nF + i, total); });

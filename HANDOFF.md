@@ -960,3 +960,10 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
 - Replaces the bottom-up peeling of §36: step 1 fades in the four layers as one block; steps 2–4 share one eased
   progress, so all layers move up together to their own heights (gaps equal at every moment). Titles fade in as the
   layers come apart. Player durations 1.2 / 1.0 / 1.0 / 1.0 s; the GIF uses the same sequence. Test `tests/ui_test_v32.py`.
+
+## 38. Build 5.37 — climate opening smooth, no stalls (owner request of 10 Nov 2026)
+- The GIF/viewer animation paused 0.5 s after every build-up step, which stopped the climate layers mid-rise. For maps
+  marked `GA.ex13art.continuous(k)` (climate) the GIF now fades the block in (6 × 80 ms), then opens it in one continuous
+  motion (24 frames × 70 ms, no pause), holds, then the whole map and each layer as before.
+- Each climate layer is composited once with its outline into its own canvas (`KA.lay`), so each animation frame draws
+  four bitmaps instead of eight images. Test `tests/ui_test_v32.py`.
