@@ -103,8 +103,12 @@ try:
             if lang == 'en':
                 check(set(P) == {'metro', 'tram'}, 'two pictograms: the metro on its track, the tram on the 1931 trunk line', P)
                 for z in (13, 14, 15, 16):
-                    pg.wait_for_function('!GA.app.map.isMoving()', timeout=60000); pg.evaluate(f'GA.app.map.stop(); GA.app.map.jumpTo({{ center: [-3.631, 37.143], zoom: {z} }})'); time.sleep(1.2)
-                    pg.wait_for_function(f'Math.abs(GA.app.map.getZoom() - {z}) < 0.01 && !GA.app.map.isMoving()', timeout=30000); time.sleep(0.8)
+                    for _ in range(30):  # repeat the jump until nothing else moves the map away (start-up animations)
+                        pg.evaluate(f'GA.app.map.stop(); GA.app.map.jumpTo({{ center: [-3.631, 37.143], zoom: {z} }})'); time.sleep(1.0)
+                        if pg.evaluate(f'Math.abs(GA.app.map.getZoom() - {z}) < 0.01 && !GA.app.map.isMoving()'): break
+                    time.sleep(0.8)
+                    st_ = pg.evaluate('({ z: GA.app.map.getZoom(), moving: GA.app.map.isMoving(), c: GA.app.map.getCenter().toArray() })')
+                    check(abs(st_['z'] - z) < 0.01, f'zoom {z}: the map holds the view for the check', st_)
                     for kind, line in (('metro', G['metro']), ('tram', G['trunk'])):
                         d = pg.evaluate(JS_LINE_DIST, {'pt': P[kind], 'line': line}); check(d <= 2, f'zoom {z}: the {kind} icon point lies on its line ({d:.2f} px)')
                     size = pg.evaluate(f'(() => {{ const z = {z}; const s = z >= 14 ? 1 : 0.8 + (z - 12) * 0.1; return s * GA.railIcons.W; }})()')
