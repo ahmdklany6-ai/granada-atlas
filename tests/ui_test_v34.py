@@ -41,7 +41,10 @@ try:
         pg.click('input[name=x20-style-identity][value=art]'); time.sleep(3)
         check(pg.evaluate('GA.app.store.get().ex13.idStyle') == 'art' and pg.evaluate('GA.ex13.idArt()'), 'switch saves the artistic identity map')
         art = img(pg.evaluate(PAGE)); art.save(f'{OUT}/identity_art.png')
-        check(reds(art) > reds(arch) + 200, f'artistic page drawn in the studio red ({reds(arch)} → {reds(art)} red pixels)')
+        corner = lambda im: reds(im.crop((int(im.size[0] * .6), int(im.size[1] * .03), im.size[0], int(im.size[1] * .2))).resize((im.size[0], im.size[1])))
+        check(corner(art) > corner(arch) + 300, f'artistic page: the information written in red in the top end corner ({corner(arch)} → {corner(art)} red pixels)')
+        D = sum(abs(a - b2) for a, b2 in zip(arch.convert('L').resize((100, 141)).get_flattened_data(), art.convert('L').resize((100, 141)).get_flattened_data()))
+        check(D > 50000, f'artistic page differs from the locator page (difference {D})')
         pg.locator('[data-e13="identity"]').screenshot(path=f'{OUT}/preview.png')
         # all-architectural / all-artistic buttons
         pg.click('[data-x31all="arch"]'); time.sleep(4)
