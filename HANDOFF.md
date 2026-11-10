@@ -1026,3 +1026,4 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
   sits in the bottom end corner (hills south-east of the Genil); one small line of note + sources along the bottom edge.
 - `tools/build_ex13_ident.py` → `data/ex13/art/ident.json` (es-atlas outlines, a DEM section — kept for later use; the
   owner chose the single-map page without locator maps or section). Strings `js/i18n_v32.js`. Test `tests/ui_test_v34.py`. Data version `2026-11-10-v22`.
+- 5.41 (owner, same day): the scale bar sits further towards the start edge.

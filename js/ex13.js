@@ -286,7 +286,7 @@
     const e = E(); const S0 = FR().stats; const k = G.k, W = G.W, H = G.H; const P = PAL(), RED = C().accent; const ID = root.GA.ex13ident;
     const mm = (v) => Math.round(v * k), M = mm(12);
     const txt = (s, px, py, size, weight, color, align, dir) => { ctx.save(); ctx.font = `${weight || 700} ${pt(size)}px ${F}`; ctx.lineJoin = 'round'; ctx.lineWidth = pt(size) * 0.22; ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.fillStyle = color; ctx.textAlign = align || 'right'; ctx.direction = dir || 'ltr'; ctx.textBaseline = 'alphabetic'; ctx.strokeText(s, px, py); ctx.fillText(s, px, py); ctx.restore(); };
-    ID.draw(ctx, 0, 0, W, { ext: ID.PAGE_EXTENT, h: H, k: mm(180) / 1000, noFrame: true, northAt: [M + mm(6), M + mm(10)], scaleAt: [M + mm(14), H - mm(26)] });
+    ID.draw(ctx, 0, 0, W, { ext: ID.PAGE_EXTENT, h: H, k: mm(180) / 1000, noFrame: true, northAt: [M + mm(6), M + mm(10)], scaleAt: [M + mm(3), H - mm(26)] });
     // the information, in red, top end corner (over the hills east of the Albaicín)
     const R = W - M; let y = M + mm(8);
     txt(t('x13.kicker'), R, y, 8, 700, RED, 'right', rtl ? 'rtl' : 'ltr'); y += mm(19);
