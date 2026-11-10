@@ -949,3 +949,9 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
   whole map (2.6 s), then each layer alone with the others faded (1.4 s each). The viewer's Play and the "Animated GIF"
   download use the same file. Morphology's newest layer now fades in with `o.t` like the other maps.
 - Tests: `tests/ui_test_v32.py` (all five maps grow gradually), `tests/ui_test_v29.py` updated to the new frame order.
+
+## 36. Build 5.35 — climate opens as one block that comes apart bottom-up (owner request of 10 Nov 2026)
+- `drawClimate` build-up (`upTo` / `t`): step 1 fades in all four layers together as one block at the bottom; each next
+  step lifts the remaining layers by one level, so terrain, then vegetation, then buildings, then heat are left at their
+  own heights in turn. Titles appear only once a layer is apart. Focus and the whole map are unchanged. The page player
+  and the GIF use the same sequence (player durations 1.1 / 1.5 / 1.5 / 1.5 s). Test `tests/ui_test_v32.py`.

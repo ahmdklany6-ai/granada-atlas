@@ -1,4 +1,4 @@
-"""v32 — build 5.34: the GIF opens with the animation (as in the player): each layer grows in over several frames, one
+"""v32 — build 5.34/5.35: the GIF opens with the animation (as in the player): each layer grows in over several frames, one
 after another, for every artistic map of Exercise 1.3; then the whole map, then each layer alone (checked in v29).
 Checks, for each of the five maps: the newest layer drawn at t = 0.17 / 0.5 / 1 changes gradually (not a jump), the GIF
 frame plan is 6 frames per layer + whole + one per layer; no page errors.
@@ -26,7 +26,7 @@ try:
         pg = ctx.new_page(); V3.stub3(pg); errs = []
         pg.on('pageerror', lambda e: 'rtl-text' not in str(e) and errs.append('PAGE ' + str(e)[:300]))
         pg.goto(f'http://127.0.0.1:{PORT}/index.html'); pg.wait_for_function('window.GA && GA.app && GA.ex13 && GA.ex13art', timeout=90000)
-        ver = json.load(open(os.path.join(ROOT, 'version.json')))['build']; check(ver >= '5.34' and pg.evaluate('window.GA_BUILD') == ver, f'build {ver}')
+        ver = json.load(open(os.path.join(ROOT, 'version.json')))['build']; check(ver >= '5.35' and pg.evaluate('window.GA_BUILD') == ver, f'build {ver}')
         pg.evaluate('GA.i18n.setLang("en")'); pg.evaluate('(async () => { await GA.ex13.load(); const e = GA.ex13.E(); GA.ex13.TOPICS.forEach(k => { if (e.maps[k]) e.maps[k].style = "art"; }); GA.app.store.save(); })()')
         for k in ['density', 'morphology', 'centre', 'climate', 'human']:
             n = pg.evaluate(f'(async () => {{ const a = "{k}" === "human" ? "humanAxo" : "{k}"; await GA.ex13art.ready(a); return GA.ex13art.keys(a).length; }})()')
@@ -34,6 +34,12 @@ try:
             f = [img(pg.evaluate(M, {'upTo': 1, 't': t})) for t in (0.17, 0.5, 1)]; f[0].save(f'{OUT}/{k}_t017.png'); f[2].save(f'{OUT}/{k}_t1.png')
             d1, d2 = dist(f[0], f[1]), dist(f[1], f[2])
             check(d1 > 0.01 and d2 > 0.01, f'{k}: the first layer grows in gradually ({n} layers; change {d1:.2f}, {d2:.2f})')
+        # 5.35: climate starts as one block at the bottom, then the layers come apart from the bottom up
+        C = '(async (o) => { const c = document.createElement("canvas"); c.width = c.height = 500; GA.ex13.drawMap("climate", c.getContext("2d"), 0, 0, 500, o); return c.toDataURL(); })'
+        def span(o):
+            im = img(pg.evaluate(C, o)).convert('L').point(lambda v: 255 if v < 235 else 0).crop((150, 40, 420, 470)); return sum(1 for y in range(im.size[1]) if im.crop((0, y, im.size[0], y + 1)).getbbox())
+        h1, h2, h4 = span({'upTo': 1, 't': 1}), span({'upTo': 2, 't': 1}), span(None)
+        check(h1 * 1.5 < h4 and h1 < h2 < h4, f'climate: starts as one block, the layers come apart bottom-up (height {h1} < {h2} < {h4})')
         check(not errs, 'no page errors', errs[:3]); ctx.close()
 finally:
     srv.terminate()
