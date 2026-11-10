@@ -8,18 +8,20 @@
    the metro on the extension's track near its Armilla end (the current terminus), both moved along the line so they do
    not sit on the line ends (AT below), the station circle or the town name. */
 (function (root) {
-  const W = 28, H = 18, R = 2; // on-screen size (px) at zoom ≥ 14; images are made at 2×
+  const W = 46, H = 33, R = 2; // 5.43 (owner: bigger, clearer): on-screen size (px) at zoom ≥ 14 on a white badge; images are made at 2×
   const C = () => root.GA.palette.south;
+  // the white badge with a border in the line's colour, so the pictogram reads on any basemap
+  const badge = (c) => `<rect x="-3" y="-3" width="34" height="24" rx="4.5" fill="#FFFFFF" stroke="${c}" stroke-width="1.6"/>`;
   function svg(kind) {
     const c = kind === 'tram' ? C().tram : C().metro, w = '#FFFFFF';
     const halo = `stroke="${w}" stroke-width="2.4" paint-order="stroke" stroke-linejoin="round"`;
-    if (kind === 'tram') return `<svg xmlns="http://www.w3.org/2000/svg" width="${W * R}" height="${H * R}" viewBox="0 0 28 18">`
+    if (kind === 'tram') return `<svg xmlns="http://www.w3.org/2000/svg" width="${W * R}" height="${H * R}" viewBox="-4 -4 36 26">` + badge(c)
       + `<path d="M14.5 6.2 L21.5 1.2" stroke="${w}" stroke-width="3" stroke-linecap="round"/><path d="M14.5 6.2 L21.5 1.2" stroke="${c}" stroke-width="1.2" stroke-linecap="round"/>` // trolley pole
       + `<rect x="5" y="4.6" width="16" height="2.2" rx="0.6" fill="${c}" ${halo}/>` // clerestory roof
       + `<rect x="3" y="6.4" width="20" height="7.6" rx="1" fill="${c}" ${halo}/>` // boxy car
       + `<rect x="5" y="7.8" width="3" height="3" fill="${w}"/><rect x="9.5" y="7.8" width="3" height="3" fill="${w}"/><rect x="14" y="7.8" width="3" height="3" fill="${w}"/><rect x="18.5" y="7.8" width="2.6" height="3" fill="${w}"/>`
       + `<circle cx="8" cy="15.4" r="1.9" fill="${c}" ${halo}/><circle cx="18" cy="15.4" r="1.9" fill="${c}" ${halo}/></svg>`;
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${W * R}" height="${H * R}" viewBox="0 0 28 18">`
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${W * R}" height="${H * R}" viewBox="-4 -4 36 26">` + badge(c)
       + `<path d="M11 5.4 L13 2.6 L11.4 1.6 M13 2.6 L15.6 2.6" fill="none" stroke="${w}" stroke-width="2.6" stroke-linecap="round"/><path d="M11 5.4 L13 2.6 L11.4 1.6 M13 2.6 L15.6 2.6" fill="none" stroke="${c}" stroke-width="1" stroke-linecap="round"/>` // pantograph
       + `<path d="M2.2 13.6 L2.2 7.6 Q2.2 5.4 4.4 5.4 L20 5.4 Q24.6 5.4 26 10.2 L26.6 13.6 Z" fill="${c}" ${halo}/>` // long low body, rounded nose
       + `<path d="M4.4 7.4 L19.8 7.4 Q22.8 7.4 23.8 10.2 L4.4 10.2 Z" fill="${w}"/>` // window band
@@ -28,7 +30,7 @@
   const url = (kind) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg(kind));
   const imgId = (kind) => 'ga-rail-' + kind;
   // legend / popup swatch: the same SVG at its on-screen size
-  const legendImg = (kind) => `<img class="sw-rail" src="${url(kind)}" width="${W}" height="${H}" alt="" aria-hidden="true">`;
+  const legendImg = (kind) => `<img class="sw-rail" src="${url(kind)}" width="${Math.round(W * 0.7)}" height="${Math.round(H * 0.7)}" alt="" aria-hidden="true">`;
   const cache = {};
   function bitmap(kind) { if (!cache[kind]) cache[kind] = new Promise((res, rej) => { const im = new Image(); im.onload = () => { const cv = document.createElement('canvas'); cv.width = W * R; cv.height = H * R; const g = cv.getContext('2d'); g.drawImage(im, 0, 0, cv.width, cv.height); res(g.getImageData(0, 0, cv.width, cv.height)); }; im.onerror = rej; im.src = url(kind); }); return cache[kind]; }
   async function ensure(map) { for (const k of ['tram', 'metro']) { const id = imgId(k); if (map.hasImage && map.hasImage(id)) continue; const data = await bitmap(k); if (!map.hasImage(id)) map.addImage(id, data, { pixelRatio: R }); } }
@@ -49,7 +51,7 @@
     const trunk = tramFC && tramFC.features.find(f => f.properties.k === 'trunk'); if (trunk) fs.push(pt(trunk, 'tram', AT.tram));
     return { type: 'FeatureCollection', features: fs }; }
   // the symbol layer paint / layout shared by the map layer and the tour (hidden where the lines are only a summary)
-  const MINZOOM = 12; // 22 px at zoom 12 → 28 px from zoom 14 (never larger)
+  const MINZOOM = 12; // 37 px at zoom 12 → 46 px from zoom 14
   const layout = () => ({ 'icon-image': ['get', 'icon'], 'icon-size': ['interpolate', ['linear'], ['zoom'], MINZOOM, 0.8, 14, 1], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-anchor': 'center' });
   root.GA.railIcons = { svg, url, imgId, legendImg, ensure, points, along, layout, MINZOOM, W, H, AT };
 })(window);

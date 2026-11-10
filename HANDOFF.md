@@ -1028,3 +1028,4 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
   owner chose the single-map page without locator maps or section). Strings `js/i18n_v32.js`. Test `tests/ui_test_v34.py`. Data version `2026-11-10-v22`.
 - 5.41 (owner, same day): the scale bar sits further towards the start edge.
 - 5.42 (owner): slide 1 on wide screens centres the base on the map, as large as fits (`centreBase()` in js/tour.js: zoomed out at most one level until the card covers no vertex of the outline; otherwise — tablets, phones — the free-area framing). Test v33 F checks both cases.
+- 5.43 (owner: the train symbols were not visible): pictograms 46 × 33 px from zoom 14 (37 px at zoom 12) on a white badge with a 1.6-unit border in the line's colour (`badge()` in js/rail_icons.js); legend images 70 %. Test v33 A: 36–46 px, still clear of stations and town names at zoom 13–16.

@@ -124,7 +124,7 @@ try:
                     for kind, line in (('metro', G['metro']), ('tram', G['trunk'])):
                         d = pg.evaluate(JS_LINE_DIST, {'pt': P[kind], 'line': line}); check(d <= 2, f'zoom {z}: the {kind} icon point lies on its line ({d:.2f} px)')
                     size = pg.evaluate(f'(() => {{ const z = {z}; const s = z >= 14 ? 1 : 0.8 + (z - 12) * 0.1; return s * GA.railIcons.W; }})()')
-                    check(22 <= size <= 28, f'zoom {z}: icon {size:.1f} px wide (22–28)')
+                    check(36 <= size <= 46, f'zoom {z}: icon {size:.1f} px wide (5.43: 36–46, on a white badge)')
                     boxes = pg.evaluate('''(a) => { const m = GA.app.map, z = m.getZoom(), s = (z >= 14 ? 1 : 0.8 + (z - 12) * 0.1), W = GA.railIcons.W * s, H = GA.railIcons.H * s; const B = (ll) => { const p = m.project(ll); return { l: p.x - W / 2, r: p.x + W / 2, t: p.y - H / 2, b: p.y + H / 2, x: p.x, y: p.y }; };
                       const r = 4 + (z - 10) * (8 - 4) / 6 + 2.2; /* station circle radius + stroke at this zoom */
                       const hitC = (bx, ll) => { const p = m.project(ll); const cx = Math.max(bx.l, Math.min(p.x, bx.r)), cy = Math.max(bx.t, Math.min(p.y, bx.b)); return Math.hypot(p.x - cx, p.y - cy) < r; };
@@ -144,7 +144,7 @@ try:
                     const img = new Image(); img.src = document.createRange().createContextualFragment(GA.railIcons.legendImg(k)).firstChild.src; await img.decode(); const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d'); g.drawImage(img, 0, 0, w, h);
                     const a = g.getImageData(0, 0, w, h).data, b = im.data.data; let d = 0, ink = 0; for (let i = 0; i < a.length; i += 4) { d += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) + Math.abs(a[i + 3] - b[i + 3]); if (b[i + 3] > 128) ink++; }
                     out[k] = { mean: d / (w * h), ink, w, h, pr: im.pixelRatio }; } return out; }''')
-                for k, v in diff.items(): check(v['mean'] < 2 and v['ink'] > 200 and v['w'] == 56 and v['pr'] == 2, f'the {k} legend image is the map image (mean diff {v["mean"]:.2f}, 2× bitmap {v["w"]}×{v["h"]})', v)
+                for k, v in diff.items(): check(v['mean'] < 2 and v['ink'] > 200 and v['w'] == 2 * pg.evaluate('GA.railIcons.W') and v['pr'] == 2, f'the {k} legend image is the map image (mean diff {v["mean"]:.2f}, 2× bitmap {v["w"]}×{v["h"]})', v)
                 # popups: a click on the icon opens the line's own popup
                 pg.evaluate('GA.app.map.jumpTo({ center: [-3.631, 37.143], zoom: 15 })'); time.sleep(2.5)
                 for k in ('metro', 'tram'):
