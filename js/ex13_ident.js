@@ -7,15 +7,15 @@
    GA.ex13ident = { ready(), draw(ctx, x, y, S, o), legendItems(t), LANDMARKS, EXTENT } */
 (function (root) {
   const EXT = { x0: 444700, y0: 4111700, x1: 449700, y1: 4116700 }; // 5 × 5 km
-  let BASE = null, BASEp = null;
+  let BASE = null, BASEp = null, IDF = null, AER = null;
   const P = () => root.GA.palette;
   // ---------- base data (loaded once) ----------
   function ready() {
     if (BASEp) return BASEp; const v = '?v=' + (root.GA_BUILD || ''); const prj = root.GA.proj.EPSG25830;
     const ll0 = prj.inverse([EXT.x0, EXT.y0]), ll1 = prj.inverse([EXT.x1, EXT.y1]); const bb = [ll0[0], ll0[1], ll1[0], ll1[1]];
     const img = (u) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error(u)); i.src = u + v; });
-    BASEp = Promise.all([root.GA.data.chunked('streets', bb, 0, 400), root.GA.data.single('water'), root.GA.data.single('contours_10m'), root.GA.data.chunked('parks', bb, 0, 400), img('data/ex13/art/centre_city.png'), fetch('data/ex13/frame.json' + v).then(r => r.json())])
-      .then(([streets, water, cont, parks, city, frame]) => { const U = (p) => prj.forward(p);
+    BASEp = Promise.all([root.GA.data.chunked('streets', bb, 0, 400), root.GA.data.single('water'), root.GA.data.single('contours_10m'), root.GA.data.chunked('parks', bb, 0, 400), img('data/ex13/art/centre_city.png'), fetch('data/ex13/frame.json' + v).then(r => r.json()), fetch('data/ex13/art/ident.json' + v).then(r => r.json()), root.GA.data.single('tour_area'), img('data/ex13/art/centre_aerial.jpg')])
+      .then(([streets, water, cont, parks, city, frame, idf, area, aer]) => { IDF = Object.assign(idf, { area }); AER = aer; const U = (p) => prj.forward(p);
         const lines = (fc, keep) => { const out = []; fc.forEach(f => { if (keep && !keep(f.properties || {})) return; const g = f.geometry; if (!g) return; const L = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : g.type === 'Polygon' ? g.coordinates : g.type === 'MultiPolygon' ? g.coordinates.flat() : []; L.forEach(l => out.push({ p: l.map(U), pr: f.properties || {} })); }); return out; };
         const seen = new Set(); const park = parks.filter(f => { const id = (f.properties || {}).id; if (seen.has(id)) return false; seen.add(id); return (f.properties || {}).le === 'park'; });
         return (BASE = { streets: lines(streets), water: lines(water.features, (p) => /Darro|Genil|Beiro/.test(p.nm || '') && !/Acequia/.test(p.nm || '')), cont: lines(cont.features), parks: lines(park), city, frame }); })
@@ -162,6 +162,9 @@
       const K = Kit(ctx, ox, oy, q, RED, PAPER, TINT); m._K = K; K.paperIn = TINT; K.paperIn2 = PAPER; K.tintIn = TINT; K.grass = 'rgba(126,123,67,.25)'; m.draw(K); ctx.restore();
       if (o.labels !== false) { ctx.save(); ctx.globalAlpha = o.focus != null && o.focus !== 1 ? 0.25 : vis; ctx.font = font(9.2, 700); const lab = m.name.toUpperCase(); const tw = ctx.measureText(lab).width; const bx0 = m._K.bb, lx0 = (bx0[0] + bx0[2]) / 2, ly = Math.max(oy, bx0[3]) + 9 * k; const ox2 = lx0;
         ctx.fillStyle = 'rgba(255,255,255,.88)'; ctx.fillRect(ox2 - tw / 2 - 3 * k, ly - 6.5 * k, tw + 6 * k, 13 * k); ctx.fillStyle = INK; ctx.fillText(lab, ox2, ly); ctx.restore(); } });
+    // section line A–A′ (the terrain section printed under the map)
+    if (o.section && IDF) { const yy = Y(IDF.section.y); ctx.save(); ctx.setLineDash([7 * k, 5 * k]); ctx.strokeStyle = RED; ctx.lineWidth = 1.4 * k; ctx.beginPath(); ctx.moveTo(x + 4 * k, yy); ctx.lineTo(x + S - 4 * k, yy); ctx.stroke(); ctx.setLineDash([]);
+      [['A', x + 14 * k], ['A′', x + S - 16 * k]].forEach(([n, px]) => { ctx.beginPath(); ctx.arc(px, yy, 9 * k, 0, 7); ctx.fillStyle = RED; ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.font = font(10, 700); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(n, px, yy + 0.5 * k); }); ctx.restore(); }
     // frame, north arrow, scale bar, note
     ctx.restore(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2 * k; ctx.strokeRect(x + 0.5, y + 0.5, S - 1, S - 1);
     if (root.GA.pages.northArrow) root.GA.pages.northArrow(ctx, x + S - 30 * k, y + 22 * k, 1.25 * k);
@@ -169,6 +172,43 @@
     ctx.font = font(11, 500); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillText('0', bx, by - 5 * k); ctx.fillText('1 km', bx + km, by - 5 * k);
     return true;
   }
+  // ---------- poster parts (5.38): framing maps, the residents chart, the terrain section, the aerial strip ----------
+  const lonlatBox = (rings, x, y, w, h, pad) => { let a = 1e9, b = 1e9, c = -1e9, d = -1e9; rings.forEach(r => r.forEach(([u, v]) => { a = Math.min(a, u); b = Math.min(b, v); c = Math.max(c, u); d = Math.max(d, v); }));
+    const kx = Math.cos((b + d) / 2 * Math.PI / 180); const sc = Math.min((w - 2 * pad) / ((c - a) * kx), (h - 2 * pad) / (d - b)); const ox = x + (w - (c - a) * kx * sc) / 2, oy = y + (h - (d - b) * sc) / 2;
+    return (p) => [ox + (p[0] - a) * kx * sc, oy + (d - p[1]) * sc]; };
+  const ringPath = (ctx, rings, f) => { ctx.beginPath(); rings.forEach(r => r.forEach((p, i) => { const q = f(p); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); })); };
+  const geomRings = (g) => g.type === 'Polygon' ? g.coordinates : g.type === 'MultiPolygon' ? g.coordinates.flat() : [];
+  function drawFrame(ctx, which, x, y, w, h, k) { if (!IDF) return; const pal = P(), RED = pal.red, LINE = 'rgba(41,16,12,.45)';
+    ctx.save(); ctx.fillStyle = pal.paper; ctx.fillRect(x, y, w, h); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip(); ctx.lineJoin = 'round';
+    if (which === 'spain') { const all = IDF.regions.flatMap(r => r.rings); const f = lonlatBox(all, x, y, w, h, 8 * k);
+      IDF.regions.forEach(r => { ringPath(ctx, r.rings, f); ctx.fillStyle = r.id === IDF.andalucia ? pal.redTint : '#FFFFFF'; ctx.fill(); ctx.strokeStyle = LINE; ctx.lineWidth = 0.6 * k; ctx.stroke(); });
+      ringPath(ctx, IDF.province, f); ctx.fillStyle = RED; ctx.fill(); const c = f(IDF.city); ctx.beginPath(); ctx.arc(c[0], c[1], 3 * k, 0, 7); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.2 * k; ctx.stroke(); }
+    if (which === 'andalucia') { const an = IDF.regions.find(r => r.id === IDF.andalucia); const f = lonlatBox(an.rings, x, y, w, h, 8 * k);
+      IDF.regions.forEach(r => { ringPath(ctx, r.rings, f); ctx.fillStyle = r.id === IDF.andalucia ? '#FFFFFF' : pal.gray1; ctx.fill(); ctx.strokeStyle = LINE; ctx.lineWidth = 0.6 * k; ctx.stroke(); });
+      ringPath(ctx, IDF.province, f); ctx.fillStyle = pal.redTint; ctx.fill(); ctx.strokeStyle = RED; ctx.lineWidth = 1.2 * k; ctx.stroke(); const c = f(IDF.city); ctx.beginPath(); ctx.arc(c[0], c[1], 4 * k, 0, 7); ctx.fillStyle = RED; ctx.fill(); }
+    if (which === 'metro') { const fs = IDF.area.features; const f = lonlatBox(fs.flatMap(ft => geomRings(ft.geometry)), x, y, w, h, 6 * k);
+      fs.forEach(ft => { const g = ft.properties; ringPath(ctx, geomRings(ft.geometry), f); ctx.fillStyle = g.ine === '18087' ? RED : g.five ? pal.redTint : '#FFFFFF'; ctx.fill('evenodd'); ctx.strokeStyle = LINE; ctx.lineWidth = 0.5 * k; ctx.stroke(); });
+      const prj = root.GA.proj.EPSG25830; const c0 = f(prj.inverse([EXT.x0, EXT.y1])), c1 = f(prj.inverse([EXT.x1, EXT.y0])); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.4 * k; ctx.strokeRect(c0[0], c0[1], c1[0] - c0[0], c1[1] - c0[1]); }
+    ctx.restore(); ctx.strokeStyle = pal.line2; ctx.lineWidth = 1 * k; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1); }
+  function drawResidents(ctx, x, y, w, h, k, t, font) { if (!IDF) return; const st = IDF.area.stats, pal = P(); const rows = [[t('x32.ch.city'), st.city.chg, pal.red], [t('x32.ch.rest'), st.rest.chg, pal.rose], [t('x32.ch.five'), st.five.chg, pal.base.wine]];
+    const max = 16, zx = x + w * 0.5, sc = (w * 0.36) / max, rh = h / rows.length; ctx.save(); ctx.textBaseline = 'middle';
+    rows.forEach(([lab, v, c], i) => { const cy = y + rh * (i + 0.5); ctx.fillStyle = c; const bw = v * sc; ctx.fillRect(v < 0 ? zx + bw : zx, cy - rh * 0.28, Math.abs(bw), rh * 0.56); ctx.fillStyle = pal.ink2; ctx.font = font(8.2, 500); ctx.textAlign = 'right'; ctx.direction = 'auto'; ctx.fillText(lab, zx + Math.min(0, bw) - 5 * k, cy); ctx.direction = 'ltr'; ctx.textAlign = 'left'; ctx.fillStyle = pal.ink; ctx.font = font(8.6, 700); ctx.fillText((v > 0 ? '+' : '') + v.toFixed(1) + ' %', zx + Math.max(0, bw) + 5 * k, cy); });
+    ctx.strokeStyle = pal.ink; ctx.lineWidth = 1 * k; ctx.beginPath(); ctx.moveTo(zx, y); ctx.lineTo(zx, y + h); ctx.stroke(); ctx.restore(); }
+  function drawSection(ctx, x, y, w, h, k, font) { if (!IDF) return; const sct = IDF.section, z = sct.z, pal = P(), RED = pal.red; const zmin = 560, zmax = 1060, n = z.length;
+    const X = (i) => x + i / (n - 1) * w, Y = (v) => y + h - (v - zmin) / (zmax - zmin) * h; ctx.save();
+    ctx.strokeStyle = pal.line; ctx.lineWidth = 0.6 * k; ctx.font = font(7, 500); ctx.fillStyle = pal.ink3; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr';
+    [600, 700, 800, 900, 1000].forEach(v => { ctx.beginPath(); ctx.moveTo(x, Y(v)); ctx.lineTo(x + w, Y(v)); ctx.stroke(); ctx.fillText(v + ' m', x + w + 4 * k, Y(v)); });
+    ctx.beginPath(); ctx.moveTo(X(0), y + h); z.forEach((v, i) => ctx.lineTo(X(i), Y(v == null ? zmin : v))); ctx.lineTo(X(n - 1), y + h); ctx.closePath(); ctx.fillStyle = pal.base.cream; ctx.fill();
+    ctx.beginPath(); z.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v))); ctx.strokeStyle = RED; ctx.lineWidth = 1.6 * k; ctx.stroke();
+    // the illustrated map's extent on the section
+    const xi = (u) => (u - sct.x0) / sct.step; ctx.fillStyle = 'rgba(153,43,42,.07)'; ctx.fillRect(X(xi(EXT.x0)), y, X(xi(EXT.x1)) - X(xi(EXT.x0)), h);
+    sct.marks.forEach(([nm, u], j) => { const i = Math.round(xi(u)); const px = X(i), py = Y(z[i]); ctx.strokeStyle = pal.ink; ctx.lineWidth = 0.8 * k; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, y + 4 * k + (j % 3) * 11 * k); ctx.stroke(); ctx.beginPath(); ctx.arc(px, py, 2.2 * k, 0, 7); ctx.fillStyle = pal.ink; ctx.fill();
+      ctx.font = font(7.6, 700); ctx.textAlign = 'center'; ctx.fillText(nm.toUpperCase(), px, y + (j % 3) * 11 * k); });
+    [['A', x], ['A′', x + w]].forEach(([nm, px]) => { ctx.beginPath(); ctx.arc(px, y + h + 10 * k, 8 * k, 0, 7); ctx.fillStyle = RED; ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.font = font(9, 700); ctx.textAlign = 'center'; ctx.fillText(nm, px, y + h + 10.5 * k); });
+    ctx.fillStyle = pal.ink3; ctx.font = font(7, 500); ctx.textAlign = 'center'; for (let km = 0; km <= 9; km++) { const px = x + km * 1000 / (sct.x1 - sct.x0) * w; ctx.fillRect(px, y + h, 0.8 * k, 4 * k); if (km % 2 === 0 && km) ctx.fillText(km + ' km', px, y + h + 10 * k); }
+    ctx.restore(); }
+  function drawAerial(ctx, x, y, w, h) { if (!AER) return; const F = BASE.frame, mpp = (F.x1 - F.x0) / AER.width; const cx = 447150, cy = 4114720, sw = 2600, sh = sw * h / w;
+    ctx.save(); ctx.filter = 'grayscale(1) contrast(1.08)'; ctx.drawImage(AER, (cx - sw / 2 - F.x0) / mpp, (F.y1 - cy - sh / 2) / mpp, sw / mpp, sh / mpp, x, y, w, h); ctx.restore(); }
   function legendItems(t) { return [{ line: P().grey2, w: 1, label: t('x32.lg.streets') }, { line: P().blue, w: 3, label: t('x32.lg.rivers') }, { sw: P().base.cream, label: t('x32.lg.hills') }, { sw: '#FFFFFF', edge: P().red, label: t('x32.lg.city') }, { sw: '#FFFFFF', edge: P().red, label: t('x32.lg.landmarks') }]; }
-  root.GA.ex13ident = { ready, draw, legendItems, LANDMARKS, EXTENT: EXT, DISTRICTS };
+  root.GA.ex13ident = { ready, draw, legendItems, drawFrame, drawResidents, drawSection, drawAerial, LANDMARKS, EXTENT: EXT, DISTRICTS, get data() { return IDF; } };
 })(window);

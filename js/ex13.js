@@ -244,7 +244,7 @@
   const DPI_FULL = 200, PAGE = [297, 420], MAP_MM = 250;
   function pageGeom(dpi) { const k = dpi / 25.4; return { W: Math.round(PAGE[0] * k), H: Math.round(PAGE[1] * k), M: Math.round(23.5 * k), mapS: Math.round(MAP_MM * k), k }; }
   async function pageCanvas(pk, dpi, opts) {
-    await load(); if (artOn(pk)) await root.GA.ex13art.ready(AK(pk)); if (pk === 'identity' && idArt()) await root.GA.ex13ident.ready(); dpi = dpi || DPI_FULL; const G = pageGeom(dpi); const cv = document.createElement('canvas'); cv.width = G.W; cv.height = G.H; const ctx = cv.getContext('2d');
+    await load(); if (artOn(pk)) await root.GA.ex13art.ready(AK(pk)); if (pk === 'identity' && idArt()) { await root.GA.ex13ident.ready(); for (const tk of TOPICS) if (artOn(tk)) await root.GA.ex13art.ready(AK(tk)); } dpi = dpi || DPI_FULL; const G = pageGeom(dpi); const cv = document.createElement('canvas'); cv.width = G.W; cv.height = G.H; const ctx = cv.getContext('2d');
     const rtl = I.dir() === 'rtl'; const F = PG.font(); const pt = (v) => Math.round(v / 72 * dpi); const x = G.M, w = G.W - 2 * G.M; const o = (size, ex) => Object.assign({ size: pt(size), F, rtl }, ex || {});
     ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, G.W, G.H);
     if (pk === 'identity' && idArt()) return identityArt(ctx, G, o, pt, rtl, F), cv; // 5.38: the illustrated identity card
@@ -281,36 +281,47 @@
   // 5.38: the identity card in the artistic language — a red name band (the city's name in Latin, Arabic and Hebrew
   // script), three key figures with source and date, the illustrated map, its legend, the synthesis and the sources
   function identityArt(ctx, G, o, pt, rtl, F) {
-    const e = E(); const S0 = FR().stats; const k = G.k, M = G.M, W = G.W; const P = PAL(), RED = C().accent, CREAM = P.base.cream;
-    const big = (txt, px, py, size, weight, color, align, dir) => { ctx.save(); ctx.font = `${weight || 700} ${pt(size)}px ${F}`; ctx.fillStyle = color; ctx.textAlign = align; ctx.direction = dir || 'ltr'; ctx.textBaseline = 'alphabetic'; ctx.fillText(txt, px, py); ctx.restore(); };
-    // 1 name band
-    const bandH = Math.round(66 * k); ctx.fillStyle = RED; ctx.fillRect(0, 0, W, bandH);
-    big(t('x13.kicker'), rtl ? W - M : M, Math.round(11 * k), 8.5, 600, CREAM, rtl ? 'right' : 'left', rtl ? 'rtl' : 'ltr');
-    big('Granada', M, Math.round(40 * k), 58, 700, '#FFFFFF', 'left');
-    big('غرناطة', W - M, Math.round(40 * k), 52, 700, '#FFFFFF', 'right', 'rtl');
-    ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(M, Math.round(46 * k), W - 2 * M, Math.max(1, Math.round(0.35 * k)));
-    big('גרנדה  ·  España  ·  ' + t('x13.spain'), W - M, Math.round(55 * k), 13, 600, '#FFFFFF', 'right', 'rtl');
-    const who = (e.students || '').trim() || t('x13.noStudents'); big(who, M, Math.round(55 * k), 12, 700, CREAM, 'left', rtl ? 'rtl' : 'ltr');
-    big('37.18° N · 3.60° W', M, Math.round(61.5 * k), 8, 500, CREAM, 'left');
-    // 2 three key figures (start side → end side), each with its date and source
-    const figs = [[t('x13.pop'), nf(S0.pop), t('x13.popDate', { y: iso(S0.pop_year) }) + ' · INE'], [t('x13.area'), nf(S0.area_km2, 2) + ' km²', 'INE · OSM ' + nf(S0.area_osm_km2, 2) + ' km²'], [t('x13.avgDen'), nf(S0.density) + ' /km²', t('x13.pop') + ' ÷ ' + t('x13.area')]];
-    const colW = (W - 2 * M) / 3; let y0 = bandH + Math.round(8 * k);
-    figs.forEach(([lab, val, sub], i) => { const cx = rtl ? W - M - i * colW : M + i * colW; const al = rtl ? 'right' : 'left', dir = rtl ? 'rtl' : 'ltr';
-      big(lab, cx, y0 + pt(9), 9, 600, P.ink3, al, dir); big(val, cx, y0 + pt(9) + pt(30), 30, 700, P.ink, al, 'ltr'); big(sub, cx, y0 + pt(9) + pt(30) + pt(12), 7.4, 500, P.ink3, al, dir);
-      if (i) { ctx.fillStyle = P.line; ctx.fillRect(rtl ? cx + Math.round(4 * k) : cx - Math.round(4 * k), y0, Math.max(1, Math.round(0.3 * k)), pt(52)); } });
-    // 3 the illustrated map
-    const S = Math.round(226 * k), mx = Math.round((W - S) / 2), my = y0 + pt(66); root.GA.ex13ident.draw(ctx, mx, my, S, {});
-    let y = my + S + pt(7);
-    y = legend(ctx, root.GA.ex13ident.legendItems(t), mx, y, S, o(8.2, { cols: 3 })) + pt(1);
-    y = para(ctx, t('x32.note'), mx, y, S, o(7.2, { color: P.ink3, lh: 1.25 })) + pt(7);
-    // 4 the synthesis, large
-    ctx.fillStyle = RED; ctx.fillRect(rtl ? mx + S - pt(3) : mx, y, pt(3), pt(14) * 3.2);
-    y = para(ctx, (e.synthesis || '').trim() || synthesis(), rtl ? mx : mx + pt(11), y, S - pt(11), o(12.5, { weight: 700, lh: 1.3 })) + pt(6);
-    // 5 unit and sources
-    y = para(ctx, t('x13.unitStmt', { code: iso(S0.ine_code) }), mx, y, S, o(7.4, { color: P.ink2 }));
-    y = para(ctx, t('x13.src.identity', { y: iso(S0.pop_year), a: iso(nf(S0.area_osm_km2, 2) + ' km²') }), mx, y + pt(2), S, o(7, { color: P.ink3, lh: 1.25 }));
+    const e = E(); const S0 = FR().stats; const k = G.k, W = G.W, H = G.H; const P = PAL(), RED = C().accent, CREAM = P.base.cream; const ID = root.GA.ex13ident;
+    const M = Math.round(14 * k), GUT = Math.round(6 * k), CW = W - 2 * M; const mm = (v) => Math.round(v * k);
+    const txt = (s, px, py, size, weight, color, align, dir) => { ctx.save(); ctx.font = `${weight || 700} ${pt(size)}px ${F}`; ctx.fillStyle = color; ctx.textAlign = align || 'left'; ctx.direction = dir || 'ltr'; ctx.textBaseline = 'alphabetic'; ctx.fillText(s, px, py); ctx.restore(); };
+    const fontK = (sz, w) => `${w || 600} ${pt(sz)}px ${F}`; const S_ = (sz) => sz; const kk = pt(1);
+    const head = (n, label, px, py, w) => { txt(n, px, py, 8, 700, RED, 'left'); ctx.save(); ctx.font = `700 ${pt(8)}px ${F}`; const nw = ctx.measureText(n + '  ').width; ctx.restore(); txt(label.toUpperCase(), px + nw, py, 8, 700, P.ink, 'left', 'auto'); ctx.fillStyle = P.ink; ctx.fillRect(px, py + mm(1.6), w, Math.max(1, mm(0.25))); };
+    // A · name band
+    const bandH = mm(40); ctx.fillStyle = RED; ctx.fillRect(0, 0, W, bandH);
+    txt(t('x13.kicker'), rtl ? W - M : M, mm(8), 8, 600, CREAM, rtl ? 'right' : 'left', rtl ? 'rtl' : 'ltr');
+    txt('Granada', M, mm(26), 46, 700, '#FFFFFF', 'left'); txt('غرناطة', W - M, mm(26), 40, 700, '#FFFFFF', 'right', 'rtl');
+    ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.fillRect(M, mm(29.5), CW, Math.max(1, mm(0.3)));
+    txt((e.students || '').trim() || t('x13.noStudents'), M, mm(36), 11, 700, CREAM, 'left', rtl ? 'rtl' : 'ltr');
+    txt('\u2067גרנדה\u2069  ·  España  ·  \u2068' + t('x13.spain') + '\u2069  ·  37.18° N 3.60° W', W - M, mm(36), 10, 600, '#FFFFFF', 'right', 'ltr');
+    // B · key figures + residents chart
+    let y = bandH + mm(5); const fw = (CW - GUT) * 0.62 / 3;
+    [[t('x13.pop'), nf(S0.pop), t('x13.popDate', { y: iso(S0.pop_year) }) + ' · INE'], [t('x13.area'), nf(S0.area_km2, 2) + ' km²', 'INE · OSM ' + nf(S0.area_osm_km2, 2) + ' km²'], [t('x13.avgDen'), nf(S0.density) + ' /km²', t('x13.pop') + ' ÷ ' + t('x13.area')]].forEach(([lab, val, sub], i) => {
+      const cx = M + i * fw; txt(lab, cx, y + pt(8), 8, 600, P.ink3, 'left', 'auto'); txt(val, cx, y + pt(8) + pt(25), 24, 700, P.ink, 'left'); txt(sub, cx, y + pt(8) + pt(25) + pt(10), 6.8, 500, P.ink3, 'left', 'auto');
+      if (i) { ctx.fillStyle = P.line; ctx.fillRect(cx - mm(3), y, Math.max(1, mm(0.3)), pt(46)); } });
+    { const cx = M + 3 * fw + GUT, cw = CW - 3 * fw - GUT; txt(t('x32.ch.title'), cx, y + pt(8), 8, 600, P.ink3, 'left', 'auto'); ID.drawResidents(ctx, cx, y + pt(13), cw, pt(32), kk, t, fontK); txt('INE padrón 2015 / 2025', cx, y + pt(51), 6.5, 500, P.ink3, 'left'); }
+    // C · framing maps (start side) + the illustrated map
+    y += pt(58); const mapS = mm(180), colW = CW - mapS - GUT; const mapX = rtl ? M : M + colW + GUT, colX = rtl ? M + mapS + GUT : M;
+    ID.draw(ctx, mapX, y, mapS, { section: true });
+    const fh = (mapS - 3 * GUT) / 4; [['spain', t('x32.f.spain')], ['andalucia', t('x32.f.andalucia')], ['metro', t('x32.f.metro')], ['aerial', t('x32.aerialH')]].forEach(([w, lab], i) => {
+      const fy = y + i * (fh + GUT); head(String.fromCharCode(97 + i), lab, colX, fy + pt(8), colW); if (w === 'aerial') { ID.drawAerial(ctx, colX, fy + pt(12), colW, fh - pt(12)); ctx.strokeStyle = P.line2; ctx.strokeRect(colX + 0.5, fy + pt(12) + 0.5, colW - 1, fh - pt(12) - 1); } else ID.drawFrame(ctx, w, colX, fy + pt(12), colW, fh - pt(12), kk); });
+    y += mapS + pt(6);
+    y = legend(ctx, ID.legendItems(t), M, y, CW, o(7, { cols: 3 }));
+    y = para(ctx, t('x32.note') + ' ' + t('x32.aerial'), M, y, CW, o(6.3, { color: P.ink3, lh: 1.2 })) + pt(7);
+    // D · terrain section A–A′
+    head('A–A′', t('x32.sec.title'), M, y + pt(8), CW); ID.drawSection(ctx, M, y + pt(30), CW - mm(14), mm(20), kk, fontK); y += pt(30) + mm(20) + pt(20);
+    // E · the five maps, small
+    head('01–05', t('x32.five'), M, y + pt(8), CW); y += pt(13); const ts = Math.floor((CW - 4 * GUT) / 5);
+    TOPICS.forEach((tk, i) => { const tx = rtl ? M + CW - (i + 1) * ts - i * GUT : M + i * (ts + GUT); ctx.save(); ctx.beginPath(); ctx.rect(tx, y, ts, ts); ctx.clip(); drawMap(tk, ctx, tx, y, ts, {}); ctx.restore(); ctx.strokeStyle = P.line2; ctx.lineWidth = 1; ctx.strokeRect(tx + 0.5, y + 0.5, ts - 1, ts - 1);
+      ctx.fillStyle = RED; ctx.fillRect(tx, y, pt(16), pt(11)); txt(String(i + 1).padStart(2, '0'), tx + pt(8), y + pt(8.5), 7.5, 700, '#FFFFFF', 'center'); para(ctx, t('e13.t.' + tk), tx, y + ts + pt(3), ts, o(7.2, { weight: 700 })); });
+    y += ts + pt(16);
+    // F · synthesis and sources
+    const sx = M, sw = CW;
+    ctx.fillStyle = RED; ctx.fillRect(rtl ? sx + sw - pt(3) : sx, y, pt(3), pt(12) * 3);
+    let yy = para(ctx, (e.synthesis || '').trim() || synthesis(), rtl ? sx : sx + pt(10), y, sw - pt(10), o(10, { weight: 700, lh: 1.26 })) + pt(3);
+    yy = para(ctx, t('x13.unitStmt', { code: iso(S0.ine_code) }), sx, yy, sw, o(6.6, { color: P.ink2 }));
+    yy = para(ctx, t('x13.src.identity', { y: iso(S0.pop_year), a: iso(nf(S0.area_osm_km2, 2) + ' km²') }) + ' ' + t('x32.src'), sx, yy + pt(2), sw, o(6.2, { color: P.ink3, lh: 1.2 }));
     footer(ctx, G, o, pt);
-    ctx.canvas.__layout = { mapX: mx, mapY: my, mapS: S, bottom: y, H: G.H, footerY: G.H - pt(16), locator: true };
+    ctx.canvas.__layout = { mapX, mapY: y, mapS, bottom: yy, H, footerY: H - pt(16), locator: true };
   }
   function identity(ctx, G, mx, my, o, pt) {
     const e = E(); const S0 = FR().stats; const F = FR(); const rtl = I.dir() === 'rtl'; const c = C();
