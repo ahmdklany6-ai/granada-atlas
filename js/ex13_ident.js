@@ -6,13 +6,15 @@
    the real buildings, and their size is enlarged so they read on an A3 page. The map says so in its note.
    GA.ex13ident = { ready(), draw(ctx, x, y, S, o), legendItems(t), LANDMARKS, EXTENT } */
 (function (root) {
-  const EXT = { x0: 444700, y0: 4111700, x1: 449700, y1: 4116700 }; // 5 × 5 km
+  const EXT = { x0: 444700, y0: 4111700, x1: 449700, y1: 4116700 }; // 5 × 5 km (square version)
+  const PAGE_EXT = { x0: 444490, y0: 4110605, x1: 449910, y1: 4118270 }; // 5.42 × 7.67 km: the whole A3 portrait page (5.38)
+  const LOAD = { x0: 444400, y0: 4110500, x1: 450000, y1: 4118400 };
   let BASE = null, BASEp = null, IDF = null, AER = null;
   const P = () => root.GA.palette;
   // ---------- base data (loaded once) ----------
   function ready() {
     if (BASEp) return BASEp; const v = '?v=' + (root.GA_BUILD || ''); const prj = root.GA.proj.EPSG25830;
-    const ll0 = prj.inverse([EXT.x0, EXT.y0]), ll1 = prj.inverse([EXT.x1, EXT.y1]); const bb = [ll0[0], ll0[1], ll1[0], ll1[1]];
+    const ll0 = prj.inverse([LOAD.x0, LOAD.y0]), ll1 = prj.inverse([LOAD.x1, LOAD.y1]); const bb = [ll0[0], ll0[1], ll1[0], ll1[1]];
     const img = (u) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error(u)); i.src = u + v; });
     BASEp = Promise.all([root.GA.data.chunked('streets', bb, 0, 400), root.GA.data.single('water'), root.GA.data.single('contours_10m'), root.GA.data.chunked('parks', bb, 0, 400), img('data/ex13/art/centre_city.png'), fetch('data/ex13/frame.json' + v).then(r => r.json()), fetch('data/ex13/art/ident.json' + v).then(r => r.json()), root.GA.data.single('tour_area'), img('data/ex13/art/centre_aerial.jpg')])
       .then(([streets, water, cont, parks, city, frame, idf, area, aer]) => { IDF = Object.assign(idf, { area }); AER = aer; const U = (p) => prj.forward(p);
@@ -122,22 +124,22 @@
       K.poly(top, K.paperIn2); K.poly(R(46, 22).map(p => [p[0], p[1], 6]), K.tintIn); K.poly(R(30, 6).map(p => [p[0] * 1.05, p[1], 6]), K.grass);
       for (let r = 50; r <= 66; r += 5) K.path3(R(r, 22 - (r - 50) * 0.2).map((p, i) => p), true, 0.45); } },
   ];
-  const DISTRICTS = [['ALBAICÍN', 447560, 4115700], ['SACROMONTE', 448800, 4115700], ['REALEJO', 447330, 4113900], ['CENTRO', 446250, 4114350], ['ZAIDÍN', 446500, 4112250], ['CARTUJA', 446900, 4116580], ['RONDA', 445250, 4114250], ['GENIL', 448650, 4112650]];
+  const DISTRICTS = [['ALBAICÍN', 447560, 4115700], ['SACROMONTE', 448700, 4114930], ['REALEJO', 447330, 4113900], ['CENTRO', 446250, 4114350], ['ZAIDÍN', 446500, 4112250], ['CARTUJA', 446900, 4116580], ['RONDA', 445650, 4114250], ['GENIL', 448650, 4112650]];
   // ---------- draw the whole map ----------
   function draw(ctx, x, y, S, o) {
-    o = o || {}; if (!BASE) return false; const pal = P(), B = pal.base; const mpp = (EXT.x1 - EXT.x0) / S, k = S / 1000;
-    const X = (u) => x + (u - EXT.x0) / mpp, Y = (v) => y + (EXT.y1 - v) / mpp; const RED = pal.red, INK = pal.ink;
+    o = o || {}; if (!BASE) return false; const pal = P(), B = pal.base; const E = o.ext || EXT, Hh = o.h || S; const mpp = (E.x1 - E.x0) / S, k = (o.k || S / 1000);
+    const X = (u) => x + (u - E.x0) / mpp, Y = (v) => y + (E.y1 - v) / mpp; const RED = pal.red, INK = pal.ink;
     const PAPER = '#FFFFFF', LAND = B.cream, STREET = pal.grey2, TINT = pal.blush;
-    ctx.save(); ctx.beginPath(); ctx.rect(x, y, S, S); ctx.clip();
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, S, Hh); ctx.clip();
     // 1 ground: the hills and fields outside the built city cream, the city white (GHS built-up shape, data/ex13/art)
-    ctx.fillStyle = LAND; ctx.fillRect(x, y, S, S);
-    const F = BASE.frame, cpx = (EXT.x0 - F.x0) / 5, cpy = (F.y1 - EXT.y1) / 5, cw = (EXT.x1 - EXT.x0) / 5;
-    const cm = document.createElement('canvas'); cm.width = cm.height = Math.round(S); const cx = cm.getContext('2d', { willReadFrequently: true }); cx.imageSmoothingEnabled = true; cx.filter = `blur(${Math.max(2, 9 * k)}px)`; cx.drawImage(BASE.city, cpx, cpy, cw, cw, 0, 0, S, S); cx.filter = 'none'; { const id = cx.getImageData(0, 0, cm.width, cm.height), a = id.data; for (let i = 0; i < a.length; i += 4) { const on = a[i + 3] > 120; a[i] = a[i + 1] = a[i + 2] = 255; a[i + 3] = on ? 255 : 0; } cx.putImageData(id, 0, 0); }
+    ctx.fillStyle = LAND; ctx.fillRect(x, y, S, Hh);
+    const F = BASE.frame, cpx = (E.x0 - F.x0) / 5, cpy = (F.y1 - E.y1) / 5, cw = (E.x1 - E.x0) / 5, chh = (E.y1 - E.y0) / 5;
+    const cm = document.createElement('canvas'); cm.width = Math.round(S); cm.height = Math.round(Hh); const cx = cm.getContext('2d', { willReadFrequently: true }); cx.imageSmoothingEnabled = true; cx.filter = `blur(${Math.max(2, 9 * k)}px)`; cx.drawImage(BASE.city, cpx, cpy, cw, chh, 0, 0, S, Hh); cx.filter = 'none'; { const id = cx.getImageData(0, 0, cm.width, cm.height), a = id.data; for (let i = 0; i < a.length; i += 4) { const on = a[i + 3] > 120; a[i] = a[i + 1] = a[i + 2] = 255; a[i + 3] = on ? 255 : 0; } cx.putImageData(id, 0, 0); }
     // contours on the hills only (outside the city shape), faint red
     ctx.save(); ctx.strokeStyle = 'rgba(153,43,42,.22)'; ctx.lineWidth = 0.6 * k; ctx.beginPath(); BASE.cont.forEach(l => l.p.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); ctx.stroke(); ctx.restore();
     ctx.drawImage(cm, x, y);
     // the city edge as a thin red line with a soft outer halo (as a coastline)
-    const ed = document.createElement('canvas'); ed.width = ed.height = Math.round(S); const ex = ed.getContext('2d'); ex.filter = `blur(${1.2 * k}px)`; ex.drawImage(cm, 0, 0); ex.filter = 'none'; ex.globalCompositeOperation = 'source-in'; ex.fillStyle = 'rgba(153,43,42,.35)'; ex.fillRect(0, 0, S, S); ex.globalCompositeOperation = 'destination-out'; ex.drawImage(cm, 0, 0); ctx.drawImage(ed, x, y);
+    const ed = document.createElement('canvas'); ed.width = Math.round(S); ed.height = Math.round(Hh); const ex = ed.getContext('2d'); ex.filter = `blur(${1.2 * k}px)`; ex.drawImage(cm, 0, 0); ex.filter = 'none'; ex.globalCompositeOperation = 'source-in'; ex.fillStyle = 'rgba(153,43,42,.35)'; ex.fillRect(0, 0, S, Hh); ex.globalCompositeOperation = 'destination-out'; ex.drawImage(cm, 0, 0); ctx.drawImage(ed, x, y);
     // 2 parks (OSM leisure=park): a light olive wash
     ctx.fillStyle = pal.base ? 'rgba(126,123,67,.13)' : '#eee'; BASE.parks.forEach(l => { ctx.beginPath(); l.p.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1]))); ctx.closePath(); ctx.fill(); });
     { const area = (r) => { let a = 0; for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][0] + r[i][0]) * (r[j][1] - r[i][1]); return Math.abs(a / 2); };
@@ -155,7 +157,7 @@
     DISTRICTS.forEach(([n, u, v]) => { ctx.font = font(15, 600); ctx.lineWidth = 4 * k; ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.strokeText(spaced(n), X(u), Y(v)); ctx.fillStyle = RED; ctx.fillText(spaced(n), X(u), Y(v)); });
     ctx.font = font(11, 600); ctx.fillStyle = pal.blue; ctx.save(); ctx.translate(X(448250), Y(4113120)); ctx.rotate(0.2); ctx.fillText(spaced('RÍO GENIL'), 0, 0); ctx.restore();
     // 6 landmarks, north first so the southern drawings overlap them; each fades in with the build-up (o.t)
-    const q0 = S / 5000 * 2.7; const L = LANDMARKS.slice().sort((a, b) => b.y - a.y); const tAll = o.upTo != null ? (o.t != null ? o.t : 1) : 1;
+    const q0 = S / (E.x1 - E.x0) * 2.7 * (o.big || 1); const L = LANDMARKS.slice().sort((a, b) => b.y - a.y); const tAll = o.upTo != null ? (o.t != null ? o.t : 1) : 1;
     L.forEach((m, i) => { const vis = o.upTo == null ? 1 : Math.max(0, Math.min(1, tAll * L.length - i)); if (vis <= 0) return; const ox = X(m.x), oy = Y(m.y); const q = q0 * m.e * (0.6 + 0.4 * vis);
       ctx.save(); ctx.globalAlpha = o.focus != null && o.focus !== 1 ? 0.25 : vis;
       // a soft white footprint shadow so the drawing lifts off the streets
@@ -166,9 +168,9 @@
     if (o.section && IDF) { const yy = Y(IDF.section.y); ctx.save(); ctx.setLineDash([7 * k, 5 * k]); ctx.strokeStyle = RED; ctx.lineWidth = 1.4 * k; ctx.beginPath(); ctx.moveTo(x + 4 * k, yy); ctx.lineTo(x + S - 4 * k, yy); ctx.stroke(); ctx.setLineDash([]);
       [['A', x + 14 * k], ['A′', x + S - 16 * k]].forEach(([n, px]) => { ctx.beginPath(); ctx.arc(px, yy, 9 * k, 0, 7); ctx.fillStyle = RED; ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.font = font(10, 700); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(n, px, yy + 0.5 * k); }); ctx.restore(); }
     // frame, north arrow, scale bar, note
-    ctx.restore(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2 * k; ctx.strokeRect(x + 0.5, y + 0.5, S - 1, S - 1);
-    if (root.GA.pages.northArrow) root.GA.pages.northArrow(ctx, x + S - 30 * k, y + 22 * k, 1.25 * k);
-    const km = 1000 / mpp, bx = x + 22 * k, by = y + S - 26 * k; ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(bx - 8 * k, by - 22 * k, km + 64 * k, 36 * k); ctx.fillStyle = INK; ctx.fillRect(bx, by, km / 2, 5 * k); ctx.strokeStyle = INK; ctx.lineWidth = 1 * k; ctx.strokeRect(bx, by, km, 5 * k);
+    ctx.restore(); if (!o.noFrame) { ctx.strokeStyle = INK; ctx.lineWidth = 1.2 * k; ctx.strokeRect(x + 0.5, y + 0.5, S - 1, Hh - 1); }
+    const na = o.northAt || [x + S - 30 * k, y + 22 * k]; if (root.GA.pages.northArrow) root.GA.pages.northArrow(ctx, na[0], na[1], 1.25 * k);
+    const km = 1000 / mpp, bx = o.scaleAt ? o.scaleAt[0] : x + 22 * k, by = o.scaleAt ? o.scaleAt[1] : y + Hh - 26 * k; ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(bx - 8 * k, by - 22 * k, km + 64 * k, 36 * k); ctx.fillStyle = INK; ctx.fillRect(bx, by, km / 2, 5 * k); ctx.strokeStyle = INK; ctx.lineWidth = 1 * k; ctx.strokeRect(bx, by, km, 5 * k);
     ctx.font = font(11, 500); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillText('0', bx, by - 5 * k); ctx.fillText('1 km', bx + km, by - 5 * k);
     return true;
   }
@@ -188,7 +190,7 @@
       ringPath(ctx, IDF.province, f); ctx.fillStyle = pal.redTint; ctx.fill(); ctx.strokeStyle = RED; ctx.lineWidth = 1.2 * k; ctx.stroke(); const c = f(IDF.city); ctx.beginPath(); ctx.arc(c[0], c[1], 4 * k, 0, 7); ctx.fillStyle = RED; ctx.fill(); }
     if (which === 'metro') { const fs = IDF.area.features; const f = lonlatBox(fs.flatMap(ft => geomRings(ft.geometry)), x, y, w, h, 6 * k);
       fs.forEach(ft => { const g = ft.properties; ringPath(ctx, geomRings(ft.geometry), f); ctx.fillStyle = g.ine === '18087' ? RED : g.five ? pal.redTint : '#FFFFFF'; ctx.fill('evenodd'); ctx.strokeStyle = LINE; ctx.lineWidth = 0.5 * k; ctx.stroke(); });
-      const prj = root.GA.proj.EPSG25830; const c0 = f(prj.inverse([EXT.x0, EXT.y1])), c1 = f(prj.inverse([EXT.x1, EXT.y0])); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.4 * k; ctx.strokeRect(c0[0], c0[1], c1[0] - c0[0], c1[1] - c0[1]); }
+      const prj = root.GA.proj.EPSG25830; const c0 = f(prj.inverse([PAGE_EXT.x0, PAGE_EXT.y1])), c1 = f(prj.inverse([PAGE_EXT.x1, PAGE_EXT.y0])); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.4 * k; ctx.strokeRect(c0[0], c0[1], c1[0] - c0[0], c1[1] - c0[1]); }
     ctx.restore(); ctx.strokeStyle = pal.line2; ctx.lineWidth = 1 * k; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1); }
   function drawResidents(ctx, x, y, w, h, k, t, font) { if (!IDF) return; const st = IDF.area.stats, pal = P(); const rows = [[t('x32.ch.city'), st.city.chg, pal.red], [t('x32.ch.rest'), st.rest.chg, pal.rose], [t('x32.ch.five'), st.five.chg, pal.base.wine]];
     const max = 16, zx = x + w * 0.5, sc = (w * 0.36) / max, rh = h / rows.length; ctx.save(); ctx.textBaseline = 'middle';
@@ -210,5 +212,5 @@
   function drawAerial(ctx, x, y, w, h) { if (!AER) return; const F = BASE.frame, mpp = (F.x1 - F.x0) / AER.width; const cx = 447150, cy = 4114720, sw = 2600, sh = sw * h / w;
     ctx.save(); ctx.filter = 'grayscale(1) contrast(1.08)'; ctx.drawImage(AER, (cx - sw / 2 - F.x0) / mpp, (F.y1 - cy - sh / 2) / mpp, sw / mpp, sh / mpp, x, y, w, h); ctx.restore(); }
   function legendItems(t) { return [{ line: P().grey2, w: 1, label: t('x32.lg.streets') }, { line: P().blue, w: 3, label: t('x32.lg.rivers') }, { sw: P().base.cream, label: t('x32.lg.hills') }, { sw: '#FFFFFF', edge: P().red, label: t('x32.lg.city') }, { sw: '#FFFFFF', edge: P().red, label: t('x32.lg.landmarks') }]; }
-  root.GA.ex13ident = { ready, draw, legendItems, drawFrame, drawResidents, drawSection, drawAerial, LANDMARKS, EXTENT: EXT, DISTRICTS, get data() { return IDF; } };
+  root.GA.ex13ident = { ready, draw, legendItems, drawFrame, drawResidents, drawSection, drawAerial, LANDMARKS, EXTENT: EXT, PAGE_EXTENT: PAGE_EXT, DISTRICTS, get data() { return IDF; } };
 })(window);
