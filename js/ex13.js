@@ -21,7 +21,7 @@
   const ART_TOPICS = ['density', 'morphology', 'centre', 'climate', 'human']; // 5.26: climate (isotherms) and human (reach rings) approved
   // 5.30: the human dimension has two artistic styles — 'art' (300 m reach rings) and 'axo' (axonometric drawing, HANDOFF §32)
   const artOn = (k) => ART_TOPICS.includes(k) && !!root.GA.ex13art && ((E().maps[k] || {}).style === 'art' || (k === 'human' && (E().maps[k] || {}).style === 'axo'));
-  const axoOn = (k) => k === 'human' && artOn(k) && (E().maps[k] || {}).style === 'axo';
+  const axoOn = (k) => k === 'human' && artOn(k); // 5.33: one artistic human map — the axonometric drawing (the reach rings are retired)
   const AK = (k) => axoOn(k) ? 'humanAxo' : k; // the key of the drawing in GA.ex13art (layers, durations, data)
 
   // ---------- data (loaded once) ----------
@@ -74,7 +74,7 @@
       muni();
     } else if (artOn(k)) {
       if (k === 'centre') { if (!root.GA.ex13art.drawCentre(ctx, DATA, x, y, S, opts)) { ctx.fillStyle = PAL().gray1; ctx.fillRect(x, y, S, S); } }
-      else if (k === 'climate') root.GA.ex13art.drawClimate(ctx, DATA, x, y, S, opts);
+      else if (k === 'climate') { if (!root.GA.ex13art.drawClimate(ctx, DATA, x, y, S, opts)) { ctx.fillStyle = PAL().gray1; ctx.fillRect(x, y, S, S); } }
       else if (k === 'human') root.GA.ex13art.drawHuman(ctx, DATA, x, y, S, opts);
       else root.GA.ex13art.draw(ctx, DATA, x, y, S, opts);
     } else if (k === 'morphology') {
@@ -129,7 +129,7 @@
     ctx.restore();
     // frame, north arrow, scale bar (same on every map)
     ctx.save(); ctx.strokeStyle = c.frame; ctx.lineWidth = 1.6 * s; ctx.strokeRect(x + 0.5, y + 0.5, S - 1, S - 1);
-    if ((k === 'density' && artOn(k)) || axoOn(k)) { ctx.restore(); return; } // the oblique view draws its own north, east–west scale and reference needle
+    if (((k === 'density' || k === 'climate') && artOn(k)) || axoOn(k)) { ctx.restore(); return; } // the oblique view draws its own north, east–west scale and reference needle
     const nx = x + S - 34 * s, ny = y + 22 * s; ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(nx - 16 * s, ny - 8 * s, 32 * s, 58 * s); PG.northArrow(ctx, nx, ny, 1.25 * s);
     const bx = x + 18 * s, by = y + S - 34 * s, km = 1000 / mpp; ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(bx - 8 * s, by - 26 * s, 2 * km + 120 * s, 46 * s);
     ctx.fillStyle = PAL().ink; ctx.fillRect(bx, by, km, 6 * s); ctx.strokeStyle = PAL().ink; ctx.lineWidth = 1.2 * s; ctx.strokeRect(bx, by, 2 * km, 6 * s);
@@ -227,7 +227,8 @@
       out.ind = [[t('x13.i.lstMed'), iso(`${nf(s.median_frame, 1)} °C`) + ' ' + t('x13.i.lstRange', { a: iso(`${nf(s.p5, 1)}–${nf(s.p95, 1)} °C`) })], [t('x13.i.lstDense'), iso(`${nf(s.dense_built, 1)} °C`)], [t('x13.i.lstVeg'), iso(`${nf(s.vegetated, 1)} °C`)], [t('x13.i.lstBare'), iso(`${nf(s.bare, 1)} °C`)], [t('x13.i.lstGap'), iso(`${nf(s.gap_dense_veg, 1)} °C`)], [t('x13.i.scenes'), iso(`${s.scenes} (${s.first} → ${s.last})`)]];
       const L = d.climate.lst.flat().filter(v => v != null); const br = d.climate.breaks; out.chartTitle = t('x13.c.climate'); out.chart = c.lst.map((col, i) => ({ v: L.filter(v => br.filter(b => v >= b).length === i).length, col }));
       out.sentence = t('x13.s.climate', { dense: iso(`${nf(s.dense_built, 1)} °C`), veg: iso(`${nf(s.vegetated, 1)} °C`), gap: iso(`${nf(s.gap_dense_veg, 1)} °C`), bare: iso(`${nf(s.bare, 1)} °C`) });
-      out.src = [t('x13.src.climate', { n: iso(String(s.scenes)) }), t('x13.lim.climate', { min: iso(String(s.min_obs)) })]; }
+      out.src = [t('x13.src.climate', { n: iso(String(s.scenes)) }), t('x13.lim.climate', { min: iso(String(s.min_obs)) })];
+      if (artOn(k)) out.src.push(t('x25.src.climate')); }
     if (k === 'human') { const s = d.human.stats;
       out.ind = [[t('x13.i.reach'), iso(nf(s.reach_pct, 1) + ' %')], [t('x13.i.hAreas'), t('x13.i.hAreasV', { q: iso(nf(s.squares)), p: iso(nf(s.parks)), m: iso(nf(s.markets)) })], [t('x13.i.hPts'), t('x13.i.hPtsV', { c: iso(nf(s.cafes)), p: iso(nf(s.playgrounds)), l: iso(nf(s.civic)) })], [t('x13.i.far'), iso(nf(s.far_cells)) + ' × 1 ha']];
       out.chartTitle = t('x13.c.human'); out.chart = [{ v: s.reach_pct, col: c.park }, { v: 100 - s.reach_pct, col: c.far }];
@@ -345,7 +346,7 @@
     const e = E(); body.innerHTML = `<div class="loading"><span class="spin"></span>${t('ws.computing')}</div>`;
     try { await load(); } catch (er) { body.innerHTML = `<p class="error">${esc(t('x13.loadFail'))} ${esc(er.message)}</p>`; return; }
     const SUB = root.GA.submission; SUB.norm(e); const F = FR();
-    body.innerHTML = `<div class="e13 x13"><aside class="e13-form"><p class="fine">${t('x13.lead')}</p><div id="e13-sub" class="sub-box"></div>
+    body.innerHTML = `<div class="e13 x13"><aside class="e13-form"><p class="fine">${t('x13.lead')}</p><div class="x31-all"><button type="button" class="btn btn-primary" data-x31all="art">${t('x31.allArt')}</button><button type="button" class="btn" data-x31all="arch">${t('x31.allArch')}</button></div><div id="e13-sub" class="sub-box"></div>
       <section class="x13-frame"><h3>${t('x13.frameH')}</h3><p class="fine">${t('x13.frameWhy', { c: iso(nf(F.why.coverage_pct, 1) + ' %'), s: iso('1:' + nf(F.scale)), s15: iso('1:' + nf(F.why.alt15.scale)) })}</p><p class="fine" dir="ltr">EPSG:25830 · x ${nf(F.x0)}–${nf(F.x1)} · y ${nf(F.y0)}–${nf(F.y1)} · 250 mm · 1:${nf(F.scale)}</p></section>
       <label class="name"><span>${t('e13.students')}</span><input dir="auto" data-e="students" value="${esc(e.students || '')}" placeholder="${esc(t('x13.studentsPh'))}"></label>
       ${TOPICS.map((k, i) => `<fieldset class="e13-t"><legend>${String(i + 1).padStart(2, '0')} · ${t('e13.t.' + k)}</legend><p class="fine">${t('x13.auto')}</p><p class="fine x13-auto">${esc(content(k).sentence)}</p><textarea dir="auto" rows="2" data-em="${k}" data-f="finding" placeholder="${esc(t('x13.ownPh'))}">${esc(e.maps[k].finding)}</textarea>${ART_TOPICS.includes(k) ? styleHTML(k) : ''}</fieldset>`).join('')}
@@ -363,7 +364,7 @@
     for (const k of PAGES) await prev(k);
     // 5.22 / 5.23 layer player (artistic maps): each layer alone (the others faint), then the map built up layer after layer —
     // drawn straight into the preview's map box, so squares can fade in smoothly — then all; loops until stopped
-    const PL = {}; const DUR = { centre: [1200, 2800, 1000, 1100, 700], morphology: [900, 900, 900, 900, 900], density: [800, 800, 800, 1300, 1300, 1300, 1300, 1300, 800], climate: [800, 1300, 1300, 1300, 1600, 900, 800], human: [800, 900, 900, 1800, 900, 1200], humanAxo: [1700, 1700, 1700, 1700, 1700, 1700] };
+    const PL = {}; const DUR = { centre: [1200, 2800, 1000, 1100, 700], morphology: [900, 900, 900, 900, 900], density: [800, 800, 800, 1300, 1300, 1300, 1300, 1300, 800], climate: [1000, 1000, 1000, 1400], human: [800, 900, 900, 1800, 900, 1200], humanAxo: [1700, 1700, 1700, 1700, 1700, 1700] };
     const mapBox = (k) => { const c = body.querySelector(`[data-e13="${k}"] .e13-img canvas`); return c && c.__layout ? c : null; };
     const paintMap = (k, o) => { const c = mapBox(k); if (!c) return; const L = c.__layout; const x = c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); drawMap(k, x, L.mapX, L.mapY, L.mapS, o); if (L.top && (k === 'density' || axoOn(k))) root.GA.ex13art[k === 'human' ? 'drawHumanAxoTop' : 'drawDensityTop'](x, DATA, L.top.x, L.top.y, L.top.s, o); };
     const stopPlay = (k) => { const P = PL[k]; if (!P) return; P.playing = false; cancelAnimationFrame(P.raf); };
@@ -396,6 +397,9 @@
         const b = await getGif(btn); if (!sh.el.isConnected) return; if (!gifUrl) gifUrl = URL.createObjectURL(b); img.src = gifUrl; playingGif = true; btn.innerHTML = '❚❚ ' + t('x29.stop'); }
       const c0 = sh.close; sh.close = (q) => { URL.revokeObjectURL(url); if (gifUrl) URL.revokeObjectURL(gifUrl); c0(q); }; };
     let tm; const later = (k) => { clearTimeout(tm); tm = setTimeout(() => { prev(k); if (k !== 'identity') { const a = body.querySelector(`[data-em="${k}"]`); if (a) a.closest('fieldset').querySelector('.x13-auto').textContent = content(k).sentence; } }, 400); };
+    // 5.33: one click turns every map artistic (or architectural); each map keeps its own switch afterwards
+    body.querySelectorAll('[data-x31all]').forEach(b => b.onclick = async () => { const v = b.dataset.x31all; ART_TOPICS.forEach(k => { stopPlay(k); e.maps[k].style = v; const r = body.querySelector(`input[name="x20-style-${k}"][value="${v}"]`); if (r) r.checked = true; }); store.save();
+      for (const k of ART_TOPICS) { await prev(k); const a = body.querySelector(`[data-em="${k}"]`); if (a) a.closest('fieldset').querySelector('.x13-auto').textContent = content(k).sentence; paintPlayer(k, -1); } });
     body.onchange = async (ev) => { const el = ev.target; if (!String(el.name).startsWith('x20-style-')) return; const k = el.name.slice(10); if (!ART_TOPICS.includes(k)) return; stopPlay(k); e.maps[k].style = el.value === 'art' ? 'art' : (el.value === 'axo' && k === 'human') ? 'axo' : 'arch'; store.save();
       await prev(k); const a = body.querySelector(`[data-em="${k}"]`); if (a) a.closest('fieldset').querySelector('.x13-auto').textContent = content(k).sentence; paintPlayer(k, -1); };
     body.oninput = (ev) => { const el = ev.target; if (String(el.name).startsWith('x20-style-')) return; if (el.dataset.e) { e[el.dataset.e] = el.value; store.save(); renderSub(); later('identity'); } if (el.dataset.em) { e.maps[el.dataset.em][el.dataset.f] = el.value; store.save(); later(el.dataset.em); } };
@@ -408,7 +412,7 @@
     } catch (er) { (root.GA.toast || alert)(t('x13.exportFail') + ' ' + er.message); console.error(er); } finally { b.disabled = false; } };
   }
   function styleHTML(k) { const art = artOn(k); const nm = 'x20-style-' + k;
-    return `<div class="x20-style" role="radiogroup" aria-label="${esc(t('x20.style'))}"><span>${t('x20.style')}</span><label><input type="radio" name="${nm}" value="arch"${art ? '' : ' checked'}> ${t('x20.arch')}</label><label><input type="radio" name="${nm}" value="art"${art && !axoOn(k) ? ' checked' : ''}> ${k === 'human' ? t('x30.artRings') : t('x20.art')}</label>${k === 'human' ? `<label><input type="radio" name="${nm}" value="axo"${axoOn(k) ? ' checked' : ''}> ${t('x30.artAxo')}</label>` : ''}</div><p class="fine">${t(k === 'centre' ? 'x21.styleHint' : k === 'density' ? 'x22.styleHint' : k === 'climate' ? 'x24.styleHint.climate' : k === 'human' ? (axoOn(k) ? 'x24.styleHint' : 'x24.styleHint.human') : 'x20.styleHint')}</p>`; }
+    return `<div class="x20-style" role="radiogroup" aria-label="${esc(t('x20.style'))}"><span>${t('x20.style')}</span><label><input type="radio" name="${nm}" value="arch"${art ? '' : ' checked'}> ${t('x20.arch')}</label><label><input type="radio" name="${nm}" value="art"${art ? ' checked' : ''}> ${t('x20.art')}</label></div><p class="fine">${t(k === 'centre' ? 'x21.styleHint' : k === 'density' ? 'x22.styleHint' : k === 'climate' ? 'x24.styleHint.climate' : k === 'human' ? 'x24.styleHint' : 'x20.styleHint')}</p>`; }
   async function layersZip(k) { // one full-resolution page per layer (that layer full, the others faint), then the whole map
     const keys = root.GA.ex13art.keys(AK(k)); await root.GA.ex13art.ready(AK(k)); const files = []; const add = async (o, name) => { const c = await pageCanvas(k, DPI_FULL, o); const bl = await PG.toBlob(c); files.push({ name, data: new Uint8Array(await bl.arrayBuffer()) }); };
     for (let i = 0; i < keys.length; i++) await add({ focus: i }, `${fileOf(k)}_${i + 1}_${keys[i]}.png`);

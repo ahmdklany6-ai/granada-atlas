@@ -931,3 +931,14 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
   published on GitHub Pages.
 - Built as "5.31" in this session while another session published its own 5.31 (layer animation, §33) on `main`; both
   merged as 5.32.
+
+## 34. Build 5.33 — one button for all artistic maps; one artistic human map; the approved climate stack (owner request of 10 Nov 2026)
+
+- Exercise 1.3 page: **All maps artistic** / **All maps architectural** at the top of the form set the five switches at
+  once (saved per topic; each switch still works alone).
+- 05 Human dimension: one artistic version — the axonometric drawing (§32). The 300 m reach-ring version is retired from
+  the switch (code kept); an older saved `'art'` / `'axo'` both open the axonometric drawing.
+- 04 Climate: the approved version (§29 on GitLab, 9 Nov 2026) — four layers (terrain, summer vegetation, buildings,
+  summer surface heat) draped on the real terrain and stacked, seen from the south-west — replaces the isotherm version
+  on this site. Assets `data/ex13/art/climate_*` from `tools/build_ex13_climate_art.py`; the isotherm code is kept as
+  `drawClimateIso`. Strings `js/i18n_v30.js`. Test `tests/ui_test_v31.py`.

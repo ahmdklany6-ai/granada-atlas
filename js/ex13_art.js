@@ -192,7 +192,7 @@
 
   // ---------- 5.26 (approved preview): CLIMATE as isotherms and HUMAN DIMENSION as 300 m reach rings ----------
   // Same frame, same Landsat / OSM data as the Exercise 1.3 maps; colours only from the palette. Layers follow the player.
-  const KLKEYS = ['base', 'cool', 'warm', 'hot', 'hottest', 'veg', 'marks'];
+  const KLKEYS_ISO = ['base', 'cool', 'warm', 'hot', 'hottest', 'veg', 'marks']; // 5.26 isotherm version, replaced in 5.33 by the stacked layers
   const HKEYS = ['base', 'buildings', 'areas', 'rings', 'places', 'far'];
   let ISO = null;
   function isotherms(D) { // Gaussian-smoothed LST (σ = 1.4 cells), marching squares at every whole degree
@@ -219,7 +219,7 @@
     ctx.beginPath(); D.muni.forEach(r => r.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); ctx.strokeStyle = P.ex13art.muni; ctx.lineWidth = 1.1 * s; ctx.setLineDash([5 * s, 4 * s]); ctx.stroke(); ctx.setLineDash([]); ctx.restore(); }
   function runLayers(L, o) { const f = o.focus; L.forEach((fn, i) => { if (i === f) return; const a = layerAlpha(o, i), tt = layerT(o, i); if (a <= 0.005 || tt <= 0) return; ctx_save(fn, a, tt); }); if (f != null) ctx_save(L[f], 1, 1); }
   let _ctx = null; const ctx_save = (fn, a, tt) => { _ctx.save(); _ctx.globalAlpha = a; fn(tt); _ctx.restore(); };
-  function drawClimate(ctx, D, x, y, S, o) {
+  function drawClimateIso(ctx, D, x, y, S, o) {
     o = o || {}; const I = isotherms(D), P = GA.palette, E = P.ex13, F = D.frame, g = D.climate.grid, s = S / 1000, mpp = (F.x1 - F.x0) / 1000, cols = E.lst, br = D.climate.breaks;
     const X = (u) => (u - F.x0) / mpp * s, Y = (v) => (F.y1 - v) / mpp * s; const GX = (gi) => X(g.x0 + (gi + 0.5) * g.cell), GY = (gj) => Y(g.y1 - (gj + 0.5) * g.cell);
     const colOf = (lv) => cols[br.filter(b => lv >= b).length]; const font = (sz, w) => `${w || 600} ${Math.round(sz * s)}px ${root.GA.pages.font()}`;
@@ -237,7 +237,7 @@
           if (p.v == null) return; const tx = String(p.v.toFixed(1)) + ' °C'; ctx.font = font(16); const w = ctx.measureText(tx).width; const lx = Math.min(S - w - 14 * s, px + 12 * s), ly = Math.max(26 * s, py - 10 * s); ctx.fillStyle = 'rgba(255,255,255,.88)'; ctx.fillRect(lx - 4 * s, ly - 17 * s, w + 8 * s, 22 * s); ctx.fillStyle = P.ink; ctx.textAlign = 'left'; ctx.fillText(tx, lx, ly); }); }];
     runLayers(L, o); ctx.restore(); return true;
   }
-  function climateLegend(t, D) {
+  function climateLegendIso(t, D) {
     const P = GA.palette, cols = P.ex13.lst, I = isotherms(D);
     return [{ line: P.ex13.street, w: 1, label: t('x24.lg.base'), layer: 0 },
       { line: cols[0], w: 0.8, label: t('x24.lg.cool'), layer: 1 }, { line: cols[3], w: 1.4, label: t('x24.lg.warm'), layer: 2 }, { line: cols[4], w: 2.2, label: t('x24.lg.hot'), layer: 3 },
@@ -362,6 +362,37 @@
       { sw: H.hotel, label: t('x24.lg.hotels', { n: n(HA.hotels.length) }), layer: 5 },
     ];
   }
-  root.GA.ex13art = { KEYS, CKEYS, DKEYS, CELL, prepare, draw, legendItems, loadCentre, ready: (k) => (k === 'centre' || k === 'density') ? loadCentre() : k === 'humanAxo' ? Promise.all([loadCentre(), loadHuman()]) : Promise.resolve(), keys: (k) => k === 'centre' ? CKEYS : k === 'density' ? DKEYS : k === 'climate' ? KLKEYS : k === 'human' ? HKEYS : k === 'humanAxo' ? HAXKEYS : KEYS,
-    drawCentre, centreLegend, drawDensity, drawDensityTop, densityLegend, drawClimate, climateLegend, drawHuman, humanLegend, HAXKEYS, loadHuman, drawHumanAxo, drawHumanAxoTop, humanAxoLegend, get human() { return HA; }, densityStats: (D) => needles(D), get centre() { return CA; }, get grid() { return G; } };
+  // ---------- 5.33: CLIMATE (approved 9 Nov 2026) — four layers of the frame (terrain, summer vegetation, buildings, summer surface heat), each draped
+  // over the real terrain and stacked, seen from the south-west (assets from tools/build_ex13_climate_art.py). ----------
+  const KLKEYS = ['terrain', 'veg', 'built', 'heat']; // bottom → top
+  let KA = null, KAp = null;
+  function loadClimate() { if (KAp) return KAp; const v = '?v=' + (root.GA_BUILD || ''), dir = 'data/ex13/art/'; const im = (u) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error(u)); i.src = dir + u + v; });
+    KAp = Promise.all([fetch(dir + 'climate_art.json' + v).then(r => { if (!r.ok) throw new Error('climate_art.json ' + r.status); return r.json(); })].concat(KLKEYS.concat(['edge']).map(k => im('climate_' + k + '.png'))))
+      .then(([m, ...ims]) => { const I = {}; KLKEYS.concat(['edge']).forEach((k, i) => I[k] = ims[i]); return (KA = Object.assign(m, { img: I })); }).catch(e => { KAp = null; throw e; }); return KAp; }
+  function drawClimate(ctx, D, x, y, S, o) {
+    o = o || {}; if (!KA) return false; const P = GA.palette, INK = P.ink, F = root.GA.pages.font(); const W = 1000, HH = 1000; // drawing space 1000 × 1000
+    const SC = 0.66, OX = 165, GAP = 150, n = KLKEYS.length, BH = KA.H * SC; const top0 = (HH - BH - (n - 1) * GAP) / 2 + 20;
+    const C = Object.fromEntries(Object.entries(KA.corners).map(([k, [cx, cy]]) => [k, [OX + cx * SC, cy * SC]]));
+    const Y = (i) => top0 + (n - 1 - i) * GAP; // layer 0 (terrain) at the bottom
+    ctx.save(); ctx.translate(x, y); ctx.scale(S / W, S / HH); ctx.beginPath(); ctx.rect(0, 0, W, HH); ctx.clip(); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, W, HH);
+    ctx.strokeStyle = 'rgba(41,16,12,.28)'; ctx.lineWidth = 0.8; ctx.setLineDash([2, 5]); ['n', 'e', 'w'].forEach(c => { ctx.beginPath(); ctx.moveTo(C[c][0], Y(n - 1) + C[c][1] - 30); ctx.lineTo(C[c][0], Y(0) + C[c][1]); ctx.stroke(); }); ctx.setLineDash([]);
+    const titles = [['TERRAIN', 'x25.k.terrain'], ['VEGETATION', 'x25.k.veg'], ['BUILT FABRIC', 'x25.k.built'], ['SURFACE HEAT', 'x25.k.heat']];
+    const t9n = (k) => root.GA.i18n.t(k);
+    for (let i = 0; i < n; i++) { const a = layerAlpha(o, i), t = layerT(o, i); if (a <= 0.005 || t <= 0) continue; const lift = (1 - t) * 110 + (o.focus === i ? 16 : 0); const yy = Y(i) - lift;
+      ctx.save(); ctx.globalAlpha = a * Math.min(1, t * 1.4); ctx.drawImage(KA.img[KLKEYS[i]], OX, yy, KA.W * SC, KA.H * SC); ctx.drawImage(KA.img.edge, OX, yy, KA.W * SC, KA.H * SC);
+      const wx = C.w[0], wy = yy + C.w[1] - 12, lx = 26, red = o.focus === i; ctx.strokeStyle = red ? P.red : 'rgba(41,16,12,.55)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(wx - 6, wy); ctx.lineTo(lx + 40, wy); ctx.stroke(); ctx.fillStyle = ctx.strokeStyle; ctx.beginPath(); ctx.arc(wx - 6, wy, 2.6, 0, 7); ctx.fill();
+      ctx.fillStyle = red ? P.red : INK; ctx.direction = 'ltr'; ctx.textAlign = 'left'; ctx.font = `700 24px ${F}`; ctx.fillText(String(i + 1).padStart(2, '0'), lx, wy - 6); ctx.font = `700 12px ${F}`; ctx.fillText(titles[i][0], lx, wy + 18); ctx.font = `700 15px ${F}`; ctx.fillText(t9n(titles[i][1]), lx, wy + 38); ctx.restore(); }
+    ctx.save(); ctx.translate(950, 50); ctx.rotate(-Math.PI / 3); ctx.fillStyle = INK; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(8, 12); ctx.lineTo(0, 7); ctx.lineTo(-8, 12); ctx.closePath(); ctx.fill(); ctx.restore();
+    ctx.fillStyle = INK; ctx.font = `700 14px ${F}`; ctx.textAlign = 'center'; ctx.direction = 'ltr'; ctx.fillText('N', 928, 88);
+    ctx.font = `500 13px ${F}`; ctx.textAlign = 'right'; ctx.fillStyle = P.ink3; ctx.fillText('10 × 10 km · relief × ' + KA.exag + ' · IGN MDT25', W - 24, HH - 18);
+    ctx.restore(); return true;
+  }
+  function climateLegend(t) { if (!KA) return []; const s = KA.stats, P = GA.palette, n = (v) => '‎' + v + '‎';
+    return [{ sw: P.base.khaki, label: t('x25.lg.terrain', { a: n(s.elev[0]), b: n(s.elev[1]), x: n(KA.exag) }), layer: 0 },
+      { sw: P.olive, label: t('x25.lg.veg', { p: n(s.vegShare + ' %') }), layer: 1 },
+      { sw: P.ink, label: t('x25.lg.built', { p: n(s.cov + ' %') }), layer: 2 }]
+      .concat(s.lstCols.map((c, i) => ({ sw: c, label: i === 0 ? n('< ' + s.breaks[0] + ' °C') : i === s.breaks.length ? n('≥ ' + s.breaks[i - 1] + ' °C') : n(s.breaks[i - 1] + '–' + s.breaks[i] + ' °C'), layer: 3 })))
+      .concat([{ edge: P.ink, label: t('x25.lg.edge') }]); }
+  root.GA.ex13art = { KEYS, CKEYS, DKEYS, CELL, prepare, draw, legendItems, loadCentre, ready: (k) => (k === 'centre' || k === 'density') ? loadCentre() : k === 'climate' ? loadClimate() : k === 'humanAxo' ? Promise.all([loadCentre(), loadHuman()]) : Promise.resolve(), keys: (k) => k === 'centre' ? CKEYS : k === 'density' ? DKEYS : k === 'climate' ? KLKEYS : k === 'human' ? HKEYS : k === 'humanAxo' ? HAXKEYS : KEYS,
+    drawCentre, centreLegend, drawDensity, drawDensityTop, densityLegend, drawClimate, climateLegend, loadClimate, KLKEYS, drawHuman, humanLegend, HAXKEYS, loadHuman, drawHumanAxo, drawHumanAxoTop, humanAxoLegend, get human() { return HA; }, densityStats: (D) => needles(D), get centre() { return CA; }, get grid() { return G; } };
 })(window);
