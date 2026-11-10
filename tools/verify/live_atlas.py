@@ -1,4 +1,4 @@
-"""Live verification of build 5.25 (Atlas shell) and 5.27 (opening page + story tour) on the PUBLIC site from a GitHub runner. Fresh browser — no visitor data
+"""Live verification of build 5.25 (Atlas shell), 5.27 (opening page + story tour) and 5.28 (city growth as a layer, OFF by default) on the PUBLIC site from a GitHub runner. Fresh browser — no visitor data
 touched. Checks: the build is served; ☰ sidebar with seven sections and the old navigation inside; city start with the
 growth animation and both markers; density topic → class layers + legend; metro area keeps the topic and computes
 corridor indicators; factory → "No data for this area"; Back to Granada; ar / he sidebar side; phone bottom sheet.
@@ -60,9 +60,22 @@ with sync_playwright() as p:
     check(pg.evaluate('window.GA_BUILD') == EXPECT, f'page runs build {EXPECT}')
     pg.evaluate('GA.i18n.setLang("en")'); time.sleep(1)
     check(pg.evaluate('document.body.classList.contains("atlas") && !!document.querySelector("#atl-side #tb-nav") && !!document.querySelector("#atl-side #panel-layers")'), 'atlas shell: ☰, navigation and Layers inside the sidebar')
-    st = pg.evaluate('GA.atlas.state'); check(st['area'] == 'city' and st['growing'], 'starts on the whole city with the growth animation', st)
+    st = pg.evaluate('GA.atlas.state'); gv = pg.evaluate('["ly-growth-fill", "ly-growth"].map(id => GA.app.map.getLayer(id) ? GA.app.map.getLayoutProperty(id, "visibility") : "none")')
+    check(st['area'] == 'city' and not st['growing'] and not pg.evaluate('GA.growth.state.on') and gv == ['none', 'none'], 'starts on the whole city, clean: city growth layer OFF, nothing drawn (5.28)', (st, gv))
     check(pg.evaluate('!!document.querySelector(".atl-mk-factory") && !!document.querySelector(".atl-mk-metro")'), 'factory and metro markers')
     emit('en_start', pg.screenshot())
+    # 5.28: the city growth layer from the Layers list: ON draws it with its legend, Pause keeps the period, OFF removes it
+    pg.evaluate('GA.panels.set("layers", true)'); time.sleep(0.8); pg.click('input[data-ly="city_growth"]')
+    pg.wait_for_function('GA.growth.state.on && GA.app.map.getSource("ly-growth")._data.features.length > 0', timeout=60000); time.sleep(1.5)
+    lg = pg.evaluate('[...document.querySelectorAll("#legend .lg-blk")].some(e => e.textContent.includes(GA.i18n.t("gr.title")) && e.querySelectorAll("li").length === 7)')
+    check(pg.evaluate(f'GA.app.map.getLayoutProperty("ly-growth-fill", "visibility")') == 'visible' and lg, 'city growth layer ON from the Layers list: extents drawn, legend with 7 periods')
+    pg.evaluate('GA.panels.set("layers", false)'); time.sleep(0.5); pg.evaluate('GA.growth.play()'); time.sleep(2); pg.evaluate('GA.growth.pause()'); i = pg.evaluate('GA.growth.state.i'); time.sleep(3)
+    check(pg.evaluate('GA.growth.state.i') == i and not pg.evaluate('GA.growth.state.playing'), f'Pause keeps the period ({pg.evaluate("GA.growth.state.period")})')
+    pg.evaluate('GA.growth.setPeriod(6)'); time.sleep(1); emit('en_growth_on', pg.screenshot())
+    pg.click('#atl-panel .atl-gr-btns [data-gr="off"]'); time.sleep(1)
+    check(pg.evaluate('["ly-growth-fill", "ly-growth"].map(id => GA.app.map.getLayoutProperty(id, "visibility"))') == ['none', 'none'] and not pg.evaluate('GA.growth.state.on'), 'Hide from the atlas panel: layer OFF, nothing drawn')
+    pg.evaluate('GA.atlas.setTopic("density")'); time.sleep(3); pg.evaluate('GA.atlas.setTopic(null)'); time.sleep(2)
+    check(not pg.evaluate('GA.growth.state.on'), 'a topic switch does not bring it back')
     pg.click('#atl-burger'); time.sleep(0.6); n = pg.evaluate('document.querySelectorAll("#atl-side [data-sec-t]").length'); check(n == 7, f'sidebar sections: {n}')
     pg.click('[data-sec-t="research"]'); time.sleep(0.4); emit('en_menu', pg.screenshot()); pg.click('#atl-side-x'); time.sleep(0.4)
     pg.evaluate('GA.atlas.setTopic("density")'); time.sleep(7)

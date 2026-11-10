@@ -373,6 +373,6 @@
       const b = e.target.closest('[data-pl-act]'); if (b) run(b.dataset.plAct, body); };
   }
   PG.register('print', { plate: () => t('pl.plate'), title: () => t('pl.pageTitle'), render });
-  root.GA.printLayout = { st, compose, layout, PAPERS, effDpi, TEMPLATES, glLimit, KEY, estimate, DPIS, pdfSink, pngSink, get running() { return ctlNow; },
+  root.GA.printLayout = { st, compose, layout, PAPERS, effDpi, TEMPLATES, glLimit, KEY, estimate, DPIS, pdfSink, pngSink, legendItems, get running() { return ctlNow; }, // legendItems: what the printed legend lists (5.28 tests)
     _setGlLimit(n) { GL_LIM = n; } }; // test hook: simulate a smaller GPU
 })(window);

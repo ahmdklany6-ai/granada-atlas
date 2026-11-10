@@ -147,6 +147,13 @@
     rent: [D.khakiPale, BASE.khaki, BASE.burgundy, BASE.wine], rentBreaks: [120, 125, 130], missing: D.stone,
     muni: BASE.brown, five: RED, barrio: BASE.burgundy,
   };
+  // 5.28 — "City growth (built-up extent 1932–2020)" layer (js/layers_growth.js): one fill per period, oldest → newest
+  // (traced periods in the dark red family, GHSL epochs in the khaki family); the selected period is outlined in red.
+  // Map paint and legend read the same array.
+  P.growth = {
+    fills: [BASE.wine, BASE.oxblood, BASE.burgundy, BASE.olive, BASE.khaki, BASE.chartreuse, D.khakiPale],
+    fillAlpha: 0.32, current: RED, currentW: 2.6, lineW: 1,
+  };
   if (typeof module !== 'undefined' && module.exports) module.exports = P;
   else {
     root.GA = root.GA || {}; root.GA.palette = P;

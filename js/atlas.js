@@ -18,7 +18,7 @@
   const CITY_BB = [[-3.80, 37.06], [-3.53, 37.235]];       // Granada with both study areas in view
   const CORRIDOR_M = 600;                                   // metro corridor: 600 m each side of the new track
   const REDUCED = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const S = { area: 'city', topic: null, min: false, growth: { on: !REDUCED, i: 0, timer: null }, reveal: { timer: null, step: 0 } };
+  const S = { area: 'city', topic: null, min: false, reveal: { timer: null, step: 0 } };
   let map, APP, X13 = null, XF = null, SOUTH = null, EXT = null, ready = false; const cache = {};
   const P = () => root.GA.palette; const C = () => root.GA.palette.ex13;
   const $ = (s, r) => (r || document).querySelector(s);
@@ -68,7 +68,7 @@
     $('#atl-sec-areas').innerHTML = `<div class="atl-list" role="radiogroup">${AREAS.map(a => `<button type="button" class="atl-item ${S.area === a ? 'on' : ''}" role="radio" aria-checked="${S.area === a}" data-area="${a}">${dot(a)}<span>${t('v23.area.' + a)}</span></button>`).join('')}</div><p class="fine"><button type="button" class="btn btn-tiny" data-atl-go="areas">${t('nav.areas')}</button> <button type="button" class="btn btn-tiny" data-atl-pn="study">${t('v8.tabStudy')}</button></p>`;
     let lx = $('#atl-layers-x'); if (!lx) { lx = document.createElement('div'); lx.id = 'atl-layers-x'; lx.className = 'atl-layers-x'; $('#atl-sec-layers').insertBefore(lx, $('#atl-sec-layers').firstChild); }
     lx.innerHTML = `<button type="button" class="btn btn-tiny" data-atl-reset="layers">${t('v23.resetLayers')}</button> <button type="button" class="btn btn-tiny" data-atl-reset="topic" ${S.topic ? '' : 'disabled'}>${t('v23.resetTopic')}</button> <button type="button" class="btn btn-tiny" data-atl-legend>${t('v23.legendToggle')}</button>`;
-    $('#atl-sec-history').innerHTML = `<p class="fine">${t('v23.historyLead')}</p><p><button type="button" class="btn btn-small" data-atl-page="history">${t('nav.history')}</button> <button type="button" class="btn btn-small" data-atl-growth>${t(S.growth.on && !S.topic && S.area === 'city' ? 'v23.growthPause' : 'v23.growthPlay')}</button></p>`;
+    $('#atl-sec-history').innerHTML = `<p class="fine">${t('v23.historyLead')}</p><p><button type="button" class="btn btn-small" data-atl-page="history">${t('nav.history')}</button> </p><p class="atl-gr-btns">${root.GA.growth ? root.GA.growth.buttonsHTML() : ''}</p><p class="fine">${t('gr.hint')}</p>`; // 5.28: the city growth layer's own state
     let pn = $('#atl-panels'); if (!pn) { pn = document.createElement('div'); pn.id = 'atl-panels'; pn.className = 'atl-panels'; $('#atl-sec-tools').insertBefore(pn, $('#atl-sec-tools').firstChild); }
     pn.innerHTML = `<button type="button" class="btn btn-small" data-atl-pn="analysis">${t('v8.tabAnalysis')}</button> <button type="button" class="btn btn-small" data-atl-pn="study">${t('v8.tabStudy')}</button> <button type="button" class="btn btn-small" data-atl-page="ex13">${t('e13.title')}</button>`;
     let dx = $('#atl-display'); if (!dx) { dx = document.createElement('div'); dx.id = 'atl-display'; $('#atl-sec-display').appendChild(dx); }
@@ -89,7 +89,7 @@
     if (b.dataset.atlReset === 'topic') { applyTopicLayers(S.topic, true); return; }
     if (b.dataset.atlLegend != null) { const lg = $('#legend'); if (lg) document.body.classList.toggle('atl-nolegend'); return; }
     if (b.dataset.atlIntro != null) { S.min = false; closeSide(); renderPanel(); return; }
-    if (b.dataset.atlGrowth != null) { S.growth.on = !S.growth.on; if (S.growth.on) startGrowth(); else stopGrowth(true); renderSide(); renderPanel(); return; }
+    if (b.dataset.gr && root.GA.growth) { root.GA.growth.onButton(b); return; } // 5.28: the city growth layer (one state for every button)
   }
   function onSideChange() { /* the moved Layers panel handles its own inputs */ }
   // every layer back to its documented default (on/off, opacity)
@@ -157,9 +157,6 @@
   function buildBase() {
     addOnce('atl-veil', { type: 'geojson', data: FC([{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[-20, 20], [20, 20], [20, 60], [-20, 60], [-20, 20]]] } }]) });
     add({ id: 'atl-veil', type: 'fill', source: 'atl-veil', layout: { visibility: 'none' }, paint: { 'fill-color': '#FFFFFF', 'fill-opacity': 0.5, 'fill-opacity-transition': { duration: 600 } } });
-    addOnce('atl-growth', { type: 'geojson', data: FC() });
-    add({ id: 'atl-growth-fill', type: 'fill', source: 'atl-growth', paint: { 'fill-color': ['get', 'col'], 'fill-opacity': ['get', 'op'] } });
-    add({ id: 'atl-growth-line', type: 'line', source: 'atl-growth', paint: { 'line-color': ['get', 'line'], 'line-width': ['get', 'w'], 'line-opacity': 0.95 } });
     addOnce('atl-hl', { type: 'geojson', data: FC() });
     add({ id: 'atl-hl-glow', type: 'line', source: 'atl-hl', paint: { 'line-color': P().red, 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 6, 16, 16], 'line-opacity': 0.22, 'line-blur': 4 } });
     add({ id: 'atl-hl-line', type: 'line', source: 'atl-hl', paint: { 'line-color': P().red, 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 1.6, 16, 3.2], 'line-opacity': 0.95 } });
@@ -171,7 +168,7 @@
   // keep the atlas layers on top of every other layer (a layer switched on later is added above them otherwise)
   // keeps the atlas layers on top, in this order. Moves layers ONLY when the order is wrong: moveLayer fires 'styledata',
   // which calls raise() again — an unconditional move would loop forever and the map would never become idle/loaded.
-  function raise() { if (!map || !map.style) return; const want = ['atl-veil'].concat(allTopicIds(), ['atl-mask', 'atl-corr', 'atl-frame', 'atl-growth-fill', 'atl-growth-line', 'atl-hl-glow', 'atl-hl-line']).filter(has);
+  function raise() { if (!map || !map.style) return; const want = ['atl-veil'].concat(allTopicIds(), ['atl-mask', 'atl-corr', 'atl-frame', 'atl-hl-glow', 'atl-hl-line']).filter(has);
     // 5.27: the story tour's own layers (tour-*) stay on top; the atlas layers go just below them
     const all = map.getStyle().layers.map(l => l.id), tour = all.filter(id => id.startsWith('tour-')), ids = all.filter(id => !id.startsWith('tour-'));
     if (JSON.stringify(ids.slice(ids.length - want.length)) === JSON.stringify(want)) return;
@@ -275,19 +272,17 @@
     map.getSource('atl-hl').setData(FC(hl));
     if (a === 'metro') APP.L.S.south_metro && !APP.L.S.south_metro.on && APP.L.setOn('south_metro', true);
     if (a === 'factory') APP.L.S.escuzar_pole && !APP.L.S.escuzar_pole.on && APP.L.setOn('escuzar_pole', true);
-    if (a === 'city') stopGrowth(false);
     const bb = a === 'city' ? CITY_BB : a === 'factory' ? bboxOf(estate().geometry.coordinates) : corridor().ll;
     if (!opts.noFly) map.fitBounds(bb, { padding: pad(a === 'city' ? 40 : 70), duration: REDUCED ? 0 : 1800, maxZoom: a === 'city' ? 12 : 15, essential: true });
     if (S.topic && coverage(a).ok) { buildTopic(S.topic); setFrameOutline(); applyTopicLayers(S.topic); } // 5.26: the factory has its own frame
     applyMask(); markers(); renderSide(); renderPanel(); $('#atl-back').hidden = a === 'city';
-    if (a === 'city' && !S.topic && S.growth.on) startGrowth(); else stopGrowth(false);
     legendChanged();
   }
   function setFrameOutline() { const fr = frameLL(); map.getSource('atl-frame').setData(FC([{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: fr.concat([fr[0]]) } }])); }
   async function setTopic(k) {
-    await loadAll(); S.topic = TOPICS.includes(k) ? k : null; S.min = false; closeSide(); stopGrowth(false);
+    await loadAll(); S.topic = TOPICS.includes(k) ? k : null; S.min = false; closeSide();
     if (S.topic) { buildTopic(S.topic); setVis('atl-veil', true); setVis('atl-frame', true); map.getSource('atl-frame').setData(FC([{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: frameLL().concat([frameLL()[0]]) } }])); applyTopicLayers(S.topic); }
-    else { stopReveal(); allTopicIds().forEach(id => setVis(id, false)); setVis('atl-veil', false); setVis('atl-frame', false); if (S.area === 'city' && S.growth.on) startGrowth(); }
+    else { stopReveal(); allTopicIds().forEach(id => setVis(id, false)); setVis('atl-veil', false); setVis('atl-frame', false); }
     // a topic chosen at city scale frames the analysis extent; inside a study area the zoom is kept
     if (S.topic && S.area === 'city') map.fitBounds(frameBB(), { padding: pad(40), duration: REDUCED ? 0 : 1400, maxZoom: 13 });
     applyMask(); renderSide(); renderPanel(); legendChanged();
@@ -311,17 +306,9 @@
   const centroid = (g) => { const pts = (g.type === 'Polygon' ? g.coordinates[0] : g.coordinates[0][0]); const s = pts.reduce((a, p) => [a[0] + p[0], a[1] + p[1]], [0, 0]); return [s[0] / pts.length, s[1] / pts.length]; };
   const midpoint = (g) => { const p = g.type === 'MultiLineString' ? g.coordinates.flat() : g.coordinates; return p[Math.floor(p.length / 2)]; };
 
-  // ---------- city animation: Granada's documented built-up extents, 1932 → 2020 ----------
-  const GROWTH = ['mtn50_1932', 'ams_1956', 'ghsl_1975', 'ghsl_1990', 'ghsl_2000', 'ghsl_2015', 'ghsl_2020'];
-  function growthFrame(i) {
-    if (!EXT) return; const ex = EXT.extents; const fs = []; const ramp = [P().base.oxblood, P().red, P().base.khaki, P().base.chartreuse, P().base.cream];
-    GROWTH.slice(0, i + 1).forEach((id, j) => { const x = ex[id]; if (!x) return; const last = j === i; fs.unshift({ type: 'Feature', properties: { col: last ? P().red : P().base.khaki, op: last ? 0.16 : 0.1, line: last ? P().red : P().base.khaki, w: last ? 2.4 : 1 }, geometry: x.geometry }); });
-    map.getSource('atl-growth').setData(FC(fs)); S.growth.i = i; renderStep();
-  }
-  function startGrowth() { if (!EXT || S.growth.timer) return; setVis('atl-growth-fill', true); setVis('atl-growth-line', true); const tick = () => { growthFrame(S.growth.i); S.growth.i = (S.growth.i + 1) % GROWTH.length; S.growth.timer = setTimeout(tick, S.growth.i === 0 ? 2600 : 1500); }; tick(); }
-  function stopGrowth(keepVisible) { clearTimeout(S.growth.timer); S.growth.timer = null; if (!keepVisible) { setVis('atl-growth-fill', false); setVis('atl-growth-line', false); } }
-  function growthLabel() { if (!EXT) return ''; const id = GROWTH[(S.growth.i - (S.growth.timer ? 1 : 0) + GROWTH.length) % GROWTH.length] || GROWTH[0]; const x = EXT.extents[id]; if (!x) return '';
-    return `<b class="num">${esc(x.period || x.date)}</b> · ${esc(t(x.kind === 'ghsl' ? 'v23.growthGhsl' : 'v23.growthTraced'))}`; }
+  // ---------- city growth: since 5.28 a normal layer (js/layers_growth.js, Layers → History), OFF by default ----------
+  // The atlas only shows its period label and the same Play / Pause / Hide buttons; GA.growth holds the one state.
+  function growthLabel() { const G = root.GA.growth; return G ? G.stepHTML() : ''; }
 
   // ---------- indicators for the selected area ----------
   function areaIndicators(k) {
@@ -421,7 +408,7 @@
       if (S.area === 'city') {
         h += `<h2 class="atl-h">${t('v23.title')}</h2><p class="atl-p">${t('v23.lead')}</p>${areaHTML()}`;
         h += `<div class="atl-cards">${['factory', 'metro'].map(a => `<button type="button" class="atl-card" data-area="${a}">${dot(a)}<b>${t('v23.area.' + a)}</b><span>${t('v23.card.' + a)}</span><span class="atl-go">${t('v23.go')} →</span></button>`).join('')}</div>`;
-        h += `<div class="atl-anim"><p class="fine">${t('v23.growthLead')}</p><p class="atl-step" id="atl-step">${growthLabel()}</p><p><button type="button" class="btn btn-tiny" data-atl-growth>${t(S.growth.timer ? 'v23.growthPause' : 'v23.growthPlay')}</button></p></div>`;
+        h += `<div class="atl-anim"><p class="fine">${t('v23.growthLead')}</p><p class="atl-step" id="atl-step">${growthLabel()}</p><p class="atl-gr-btns">${root.GA.growth ? root.GA.growth.buttonsHTML() : ''}</p></div>`;
       } else h += areaHTML();
       h += `<p class="atl-hint">${t('v23.pickTopic')}</p><div class="atl-chips">${TOPICS.map((k, i) => `<button type="button" class="atl-chip" data-topic="${k}">${String(i + 1).padStart(2, '0')} ${t('e13.t.' + k)}</button>`).join('')}</div>`;
       box.innerHTML = (root.GA.ltrNums || String)(h); return;
@@ -443,7 +430,7 @@
     if (b.dataset.topic != null) { setTopic(b.dataset.topic || null); return; }
     if (b.dataset.atlPlay != null) { reveal(S.topic); return; }
     if (b.dataset.atlPage) { PG.go(b.dataset.atlPage); return; }
-    if (b.dataset.atlGrowth != null) { S.growth.on = !S.growth.timer; if (S.growth.on) startGrowth(); else stopGrowth(true); renderPanel(); renderSide(); return; }
+    if (b.dataset.gr && root.GA.growth) { root.GA.growth.onButton(b); return; } // 5.28
   }
 
   // ---------- start ----------
@@ -458,10 +445,12 @@
     const go = async () => { buildBase(); await loadAll(); ready = true; relabel(); markers();
       const legacy = !!root.__gaLegacyView; // test hook only: the pre-5.25 suites keep their old opening view (no city fit, no animation)
       if (!PG.current && !legacy && !(root.GA.tour && root.GA.tour.state.on)) map.fitBounds(CITY_BB, { padding: pad(40), duration: 0 }); // 5.27: never over the story tour's view // the city first, never inside a study area
-      if (S.growth.on && !legacy) startGrowth(); else growthFrame(GROWTH.length - 1);
+      // 5.28: the city growth extents are a normal layer (js/layers_growth.js), OFF unless the visitor switched it on
       map.on('styledata', () => { if (map.getLayer('atl-veil')) raise(); }); APP.L.onChange(() => setTimeout(raise, 0)); };
     if (map.loaded()) go(); else map.once('load', go);
     I.onChange(relabel); map.on('moveend', relayout);
+    // 5.28: the city growth layer changes (checkbox, Play / Pause, period, OFF from anywhere) → the same buttons and label here
+    if (root.GA.growth) root.GA.growth.onChange(() => { renderStep(); document.querySelectorAll('.atl-gr-btns').forEach(el => { el.innerHTML = root.GA.growth.buttonsHTML(); }); });
     const pn = () => requestAnimationFrame(placeNorth); addEventListener('resize', pn); addEventListener('ga:relayout', pn); new MutationObserver(pn).observe(document.body, { attributes: true, attributeFilter: ['class'] }); if (root.ResizeObserver) new ResizeObserver(pn).observe($('.maplibregl-ctrl-top-right') || document.body); pn();
     // while a map drawing tool is active (section, polygon — the mode banner is shown), the atlas panel folds to its title
     // bar so the map and the Finish / Undo buttons are free; it unfolds again when drawing ends (if it was open before)
@@ -478,6 +467,6 @@
   function legendAvoid() { if (!ready || !S.topic || !map) return null; const bb = analysedBB(); const a = map.project(bb[0]), b = map.project(bb[1]);
     return { left: Math.min(a.x, b.x), right: Math.max(a.x, b.x), top: Math.min(a.y, b.y), bottom: Math.max(a.y, b.y) }; }
   const legendChanged = () => { document.body.classList.toggle('atl-maplg', !!mapLegendHTML()); dispatchEvent(new Event('ga:legend')); };
-  root.GA.atlas = { init, setArea, setTopic, mapLegendHTML, legendAvoid, get state() { return { area: S.area, topic: S.topic, revealing: !!S.reveal.timer, growing: !!S.growth.timer, ready }; }, coverage: (a) => coverage(a), indicators: (k) => areaIndicators(k), topicLayers: (k) => topicLayerIds(k), corridor: () => corridor() };
+  root.GA.atlas = { init, setArea, setTopic, mapLegendHTML, legendAvoid, get state() { return { area: S.area, topic: S.topic, revealing: !!S.reveal.timer, growing: !!(root.GA.growth && root.GA.growth.state.playing), growthOn: !!(root.GA.growth && root.GA.growth.state.on), ready }; }, coverage: (a) => coverage(a), indicators: (k) => areaIndicators(k), topicLayers: (k) => topicLayerIds(k), corridor: () => corridor() };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(init, 0)); else setTimeout(init, 0);
 })(window);

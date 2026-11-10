@@ -1002,3 +1002,13 @@ html[dir="rtl"] .tour-dots { direction: rtl; }
   .tour-btns .btn { min-height: 40px; flex: 1 1 auto; }
 }
 @media (prefers-reduced-motion: reduce) { .tour-card, .tour-intro { transition: none; } }
+
+/* ---------- 5.28 city growth layer controls and legend (js/layers_growth.js) ---------- */
+.gr-ctl .gr-range { display: flex; align-items: center; gap: 8px; }
+.gr-ctl .gr-range input[type=range] { flex: 1; min-width: 90px; }
+.gr-ticks { display: flex; flex-wrap: wrap; gap: 3px; margin: 2px 0 6px; }
+.gr-tick { border: 1px solid var(--line-2); background: var(--white); color: var(--ink-2); font: inherit; font-size: 11px; padding: 2px 5px; border-radius: 3px; cursor: pointer; min-height: 26px; }
+.gr-tick.on { border-color: var(--red); color: var(--red); font-weight: 600; }
+.lg.lg-col { flex-direction: column; flex-wrap: nowrap; }
+.lg li.gr-cur span { font-weight: 600; }
+.lg li.gr-dim { opacity: .45; }

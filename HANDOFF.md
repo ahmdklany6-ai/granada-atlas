@@ -1,4 +1,4 @@
-# Granada Atlas — handoff (state at build 5.27, 10 Nov 2026)
+# Granada Atlas — handoff (state at build 5.28, 10 Nov 2026)
 
 This document lets a new Claude Code session continue the project without the original chat. Short operating rules
 are in `CLAUDE.md`; feature and data documentation is in `README.md`.
@@ -10,11 +10,11 @@ are in `CLAUDE.md`; feature and data documentation is in `README.md`.
 | Repository | **Now on GitLab:** `gitlab.com/ahmdklany6/granada-atlas` (public), branch `main`. GitHub `ahmdklany6-ai/granada-atlas` is **suspended** since 9 Nov 2026 (support ticket #4976314); when it is reinstated, push the full history back (the local branch / the `granada-atlas-*.bundle` files keep it) |
 | Live site | **https://granada-atlas-597777.gitlab.io/** (GitLab Pages, `pages` job in `.gitlab-ci.yml`, publishes `main` on every push). The old GitHub URL (https://ahmdklany6-ai.github.io/granada-atlas/) returns 404 while the account is suspended |
 | Publishing from a cloud session | git push to GitLab is refused with the session's token (Basic auth); files are uploaded with the GitLab API (`POST /projects/88701784/repository/commits`, token sent by the session proxy as `Authorization: Bearer`). On-demand jobs: the `run` job executes every script listed in `tools/verify/RUN_GL` (live check `live_atlas.py`, data fetches) — start a pipeline with the API or Build → Pipelines → Run; results in the job log and job artifacts (`out/`) |
-| Current build | **5.27** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.27` asset queries) |
-| Latest feature work | 5.27: opening page and story tour (see §29). 5.26: fixes from the 5.25 live review, factory analysis frame, GIF export (§28) |
+| Current build | **5.28** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.28` asset queries) |
+| Latest feature work | 5.28: city growth extents as a normal layer, OFF by default (§30). 5.27: opening page and story tour (see §29). 5.26: fixes from the 5.25 live review, factory analysis frame, GIF export (§28) |
 | Data version | `2026-11-10-v15` in `data/manifest.json` (5.27: `base_edge`, `tour_area`; 5.26: `ex13f`) |
 
-Build history (newest first): 5.27 opening page and story tour (base → five towns → agglomeration) · 5.26 fixes from the 5.25 review (RTL typography, legend follows the topic, phone chrome, LTR numbers), old test failures fixed, factory analysis frame, metro stations, GIF export · 5.25 Atlas shell (☰ menu, WHERE × WHAT) · 5.24–5.22 Exercise 1.3 artistic maps · 5.21 Southern axis page with the two research boards · 5.20 southern-axis essentials layers (metro extension, 1931 tram, Escúzar / IFMIF-DONES) on by default · 5.19 print up to 700 dpi built in strips · 5.18 print at full resolution + "Map only" template · 5.17 / 5.16 Exercise 1.3 identity card · 5.15 one card format, historical extents · 5.14 current study area red on the locator · 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
+Build history (newest first): 5.28 city growth as a switchable layer (OFF by default) · 5.27 opening page and story tour (base → five towns → agglomeration) · 5.26 fixes from the 5.25 review (RTL typography, legend follows the topic, phone chrome, LTR numbers), old test failures fixed, factory analysis frame, metro stations, GIF export · 5.25 Atlas shell (☰ menu, WHERE × WHAT) · 5.24–5.22 Exercise 1.3 artistic maps · 5.21 Southern axis page with the two research boards · 5.20 southern-axis essentials layers (metro extension, 1931 tram, Escúzar / IFMIF-DONES) on by default · 5.19 print up to 700 dpi built in strips · 5.18 print at full resolution + "Map only" template · 5.17 / 5.16 Exercise 1.3 identity card · 5.15 one card format, historical extents · 5.14 current study area red on the locator · 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
 classified climate rasters, dashed fabric marks, historical red dots explained · 5.5/5.4 smooth building scales and
 street hierarchy at close zoom · 5.3 (v5) analysis page, viewers, unified Comparison, phone/iPad · v4/v3/v2 earlier.
 
@@ -805,4 +805,38 @@ es.wikipedia from this session (blocked); the Ala 78 / 1980 fact is from the bri
 motion, F RTL side and LTR numbers). The suites written before 5.27 import `tests/_nointro.py` (patches Playwright's
 `new_context` / `new_page` to add `window.__noIntro = true`). The live check `tools/verify/live_atlas.py` opens the plain
 URL for the opening page and runs the tour on the public site, then runs the older checks with `__noIntro`.
+
+## 30. Build 5.28 — city growth as a normal layer, OFF by default (owner request of 10 Nov 2026)
+
+**Problem (5.25–5.27)**: the atlas drew Granada's built-up extents (source `atl-growth`, layers `atl-growth-fill` /
+`atl-growth-line`) by itself on the whole-city view; "Pause" only stopped the timer (`stopGrowth(true)` kept the shapes),
+`setArea('city')`, `setTopic(null)` and `init` restarted it, and there was no checkbox — it always covered the map.
+
+**Now** (`js/layers_growth.js`, loaded after `layers_south.js`; strings `js/i18n_v26.js`; colours `GA.palette.growth`):
+- one layer **`city_growth`** in the layer manager, group History: checkbox, opacity, legend, status, source line; its
+  state is saved with the other layers in `granada-atlas.layers.v1` (`on`, `opacity`, `opts.i` = period index,
+  `opts.play` = playing, `opts.only` = outline only). Default OFF.
+- OFF: fill and outline hidden, no timer (the timer checks the state at every tick and a layer-manager listener stops it
+  whenever the layer goes OFF from anywhere: checkbox, reset layers, saved project, Hide button).
+- ON: the extents up to the chosen period, older ones beneath (one fill colour per period: traced periods in the dark red
+  family, GHSL epochs in the khaki family), the chosen period outlined in red. Switching ON never starts the animation.
+  Controls in the Layers row: Play / Pause, period slider + seven period ticks (1932, 1956–1957, 1975, 1990, 2000, 2015,
+  2020), "only this period's outline". Pause keeps the period; choosing a period pauses.
+- Legend (from the same `GA.palette.growth.fills`): every period with its source kind — "approximate reconstruction from a
+  map / aerial photo" (1932 MTN50, 1956–57 AMS), GHSL observed epoch (1975, 1990, 2000) or GHSL interpolated epoch (2015,
+  2020; `observed: false` in `data/ref/history_extents.json`), plus km² for GHSL; the shown period is bold.
+- `GA.growth` is the one controller: `play()`, `pause()`, `setOn()`, `setPeriod()`, `setOnly()`, `state`, `onChange()`,
+  `buttonsHTML()` / `onButton()` for the atlas panel (city view, no topic) and the sidebar's Historical maps section,
+  which show Play or Pause and "Hide the city growth layer" from the same state.
+- The atlas no longer owns any growth source, layer or timer; `GA.atlas.state.growing` / `growthOn` read `GA.growth`.
+  No code path turns it on: area / topic changes and init leave it as the visitor set it.
+- `prefers-reduced-motion`: never plays by itself; a remembered "playing" layer opens on the latest period, still.
+- Print layout and exports draw the map's own style and the layer manager's legend / sources, so the layer is printed
+  (with its legend and source line) only when ON. `GA.printLayout.legendItems()` is exported for the test.
+
+Release note: 5.27 (opening page and story tour, §29) was never published on its own; it went live together with 5.28.
+
+**Tests**: `tests/ui_test_v26.py` (all of the above, ar / he / en); `tests/ui_test_v23.py` now expects the clean start and
+no restart on `setTopic(null)`; the live check (`tools/verify/live_atlas.py`) checks the clean start, ON from the Layers
+list with its legend, Pause, Hide from the atlas panel, and no return after a topic switch.
 
