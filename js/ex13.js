@@ -364,7 +364,7 @@
     for (const k of PAGES) await prev(k);
     // 5.22 / 5.23 layer player (artistic maps): each layer alone (the others faint), then the map built up layer after layer —
     // drawn straight into the preview's map box, so squares can fade in smoothly — then all; loops until stopped
-    const PL = {}; const DUR = { centre: [1200, 2800, 1000, 1100, 700], morphology: [900, 900, 900, 900, 900], density: [800, 800, 800, 1300, 1300, 1300, 1300, 1300, 800], climate: [1100, 1500, 1500, 1500], human: [800, 900, 900, 1800, 900, 1200], humanAxo: [1700, 1700, 1700, 1700, 1700, 1700] };
+    const PL = {}; const DUR = { centre: [1200, 2800, 1000, 1100, 700], morphology: [900, 900, 900, 900, 900], density: [800, 800, 800, 1300, 1300, 1300, 1300, 1300, 800], climate: [1200, 1000, 1000, 1000], human: [800, 900, 900, 1800, 900, 1200], humanAxo: [1700, 1700, 1700, 1700, 1700, 1700] };
     const mapBox = (k) => { const c = body.querySelector(`[data-e13="${k}"] .e13-img canvas`); return c && c.__layout ? c : null; };
     const paintMap = (k, o) => { const c = mapBox(k); if (!c) return; const L = c.__layout; const x = c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); drawMap(k, x, L.mapX, L.mapY, L.mapS, o); if (L.top && (k === 'density' || axoOn(k))) root.GA.ex13art[k === 'human' ? 'drawHumanAxoTop' : 'drawDensityTop'](x, DATA, L.top.x, L.top.y, L.top.s, o); };
     const stopPlay = (k) => { const P = PL[k]; if (!P) return; P.playing = false; cancelAnimationFrame(P.raf); };

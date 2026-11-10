@@ -955,3 +955,8 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
   step lifts the remaining layers by one level, so terrain, then vegetation, then buildings, then heat are left at their
   own heights in turn. Titles appear only once a layer is apart. Focus and the whole map are unchanged. The page player
   and the GIF use the same sequence (player durations 1.1 / 1.5 / 1.5 / 1.5 s). Test `tests/ui_test_v32.py`.
+
+## 37. Build 5.36 — climate opens upward all at once (owner request of 10 Nov 2026)
+- Replaces the bottom-up peeling of §36: step 1 fades in the four layers as one block; steps 2–4 share one eased
+  progress, so all layers move up together to their own heights (gaps equal at every moment). Titles fade in as the
+  layers come apart. Player durations 1.2 / 1.0 / 1.0 / 1.0 s; the GIF uses the same sequence. Test `tests/ui_test_v32.py`.

@@ -374,10 +374,11 @@
     const SC = 0.66, OX = 165, GAP = 150, n = KLKEYS.length, BH = KA.H * SC; const top0 = (HH - BH - (n - 1) * GAP) / 2 + 20;
     const C = Object.fromEntries(Object.entries(KA.corners).map(([k, [cx, cy]]) => [k, [OX + cx * SC, cy * SC]]));
     const Y = (i) => top0 + (n - 1 - i) * GAP; // layer 0 (terrain) at the bottom
-    // 5.35: the build-up starts as ONE block (all four layers together at the bottom), then the layers come apart from the
-    // bottom up — step u lifts layers u-1 … n-1 together by one level, so each layer is left at its own height in turn
+    // 5.36: the build-up starts as ONE block (all four layers together at the bottom), then the block opens upward — all
+    // layers move up AT THE SAME TIME (steps 2 … n carry one shared, eased progress), each to its own height
     const bu = o.focus == null && o.upTo != null; const tB = o.t != null ? o.t : 1;
-    const lvl = (i) => bu ? Math.min(i, Math.max(0, o.upTo - 2 + tB)) : i;
+    const pB = bu ? Math.max(0, Math.min(1, (o.upTo - 2 + tB) / (n - 1))) : 1, eB = pB * pB * (3 - 2 * pB);
+    const lvl = (i) => i * eB;
     const YL = (v) => top0 + (n - 1 - v) * GAP;
     const apart = (i) => { const d = i < n - 1 ? lvl(i + 1) - lvl(i) : lvl(i) - lvl(i - 1); return Math.max(0, Math.min(1, (d - 0.55) / 0.4)); };
     ctx.save(); ctx.translate(x, y); ctx.scale(S / W, S / HH); ctx.beginPath(); ctx.rect(0, 0, W, HH); ctx.clip(); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, W, HH);
