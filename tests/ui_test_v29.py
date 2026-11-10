@@ -29,7 +29,8 @@ def stub(pg):
 GEOM = r'''() => { const R = (e) => { if (!e || !e.offsetWidth || getComputedStyle(e).display === 'none') return null; const r = e.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom, cx: (r.left + r.right) / 2, cy: (r.top + r.bottom) / 2 }; };
   const box = document.querySelector('.ga-north'); const cs = box ? getComputedStyle(box) : null; const bw = cs ? parseFloat(cs.borderLeftWidth) : 0;
   const inner = box ? (() => { const r = box.getBoundingClientRect(); return { cx: (r.left + r.right) / 2, cy: (r.top + r.bottom) / 2 }; })() : null;
-  const tri = R(document.querySelector('.ga-north .ga-n-tri')), nn = R(document.querySelector('.ga-north .ga-n-n')), svg = R(document.querySelector('.ga-north svg'));
+  const SR = (e) => { if (!e) return null; const r = e.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom, cx: (r.left + r.right) / 2, cy: (r.top + r.bottom) / 2 }; }; // SVG parts: geometry boxes
+  const tri = SR(document.querySelector('.ga-north .ga-n-tri')), nn = SR(document.querySelector('.ga-north .ga-n-n')), svg = SR(document.querySelector('.ga-north svg'));
   const glyph = tri && nn ? { cx: (Math.min(tri.l, nn.l) + Math.max(tri.r, nn.r)) / 2, cy: (Math.min(tri.t, nn.t) + Math.max(tri.b, nn.b)) / 2 } : null;
   return { north: R(box), scale: R(document.querySelector('.maplibregl-ctrl-scale')), inner, tri, glyph, svg, panel: R(document.querySelector('#atl-panel')), tour: R(document.querySelector('#tour-card')),
     attr: R(document.querySelector('.maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib')), stage: R(document.querySelector('.stage')) }; }'''
