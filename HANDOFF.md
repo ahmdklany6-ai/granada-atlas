@@ -879,4 +879,6 @@ The owner sent an annotated screenshot of the English map screen and the Exercis
   `GA.modelPrint.last` = scale, ground size, sheets (kind, part, denom, measured, mm per metre, outline in mm).
 
 **Tests**: `tests/ui_test_v27.py` (items 1–6 at 375–1440 px in ar / he / en; the outline measured on the rendered PDF).
+Release note: published on 10 Nov 2026 at the owner's request (model workshop on 11 Nov) after v27, v24, v23, v26 and the
+node tests passed; the remaining old suites were still running one at a time — see the commit series after 5.29 for any fix.
 
