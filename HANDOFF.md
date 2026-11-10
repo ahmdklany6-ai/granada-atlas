@@ -1,4 +1,4 @@
-# Granada Atlas — handoff (state at build 5.26, 9 Nov 2026)
+# Granada Atlas — handoff (state at build 5.27, 10 Nov 2026)
 
 This document lets a new Claude Code session continue the project without the original chat. Short operating rules
 are in `CLAUDE.md`; feature and data documentation is in `README.md`.
@@ -10,11 +10,11 @@ are in `CLAUDE.md`; feature and data documentation is in `README.md`.
 | Repository | **Now on GitLab:** `gitlab.com/ahmdklany6/granada-atlas` (public), branch `main`. GitHub `ahmdklany6-ai/granada-atlas` is **suspended** since 9 Nov 2026 (support ticket #4976314); when it is reinstated, push the full history back (the local branch / the `granada-atlas-*.bundle` files keep it) |
 | Live site | **https://granada-atlas-597777.gitlab.io/** (GitLab Pages, `pages` job in `.gitlab-ci.yml`, publishes `main` on every push). The old GitHub URL (https://ahmdklany6-ai.github.io/granada-atlas/) returns 404 while the account is suspended |
 | Publishing from a cloud session | git push to GitLab is refused with the session's token (Basic auth); files are uploaded with the GitLab API (`POST /projects/88701784/repository/commits`, token sent by the session proxy as `Authorization: Bearer`). On-demand jobs: the `run` job executes every script listed in `tools/verify/RUN_GL` (live check `live_atlas.py`, data fetches) — start a pipeline with the API or Build → Pipelines → Run; results in the job log and job artifacts (`out/`) |
-| Current build | **5.26** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.26` asset queries) |
-| Latest feature work | 5.26: fixes from the 5.25 live review, old failing tests, factory analysis frame, metro stations search, GIF export (see §28) |
-| Data version | `2026-11-09-v14` in `data/manifest.json` (5.26: `ex13f` factory frame, `south_metro` checked again) |
+| Current build | **5.27** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.27` asset queries) |
+| Latest feature work | 5.27: opening page and story tour (see §29). 5.26: fixes from the 5.25 live review, factory analysis frame, GIF export (§28) |
+| Data version | `2026-11-10-v15` in `data/manifest.json` (5.27: `base_edge`, `tour_area`; 5.26: `ex13f`) |
 
-Build history (newest first): 5.26 fixes from the 5.25 review (RTL typography, legend follows the topic, phone chrome, LTR numbers), old test failures fixed, factory analysis frame, metro stations, GIF export · 5.25 Atlas shell (☰ menu, WHERE × WHAT) · 5.24–5.22 Exercise 1.3 artistic maps · 5.21 Southern axis page with the two research boards · 5.20 southern-axis essentials layers (metro extension, 1931 tram, Escúzar / IFMIF-DONES) on by default · 5.19 print up to 700 dpi built in strips · 5.18 print at full resolution + "Map only" template · 5.17 / 5.16 Exercise 1.3 identity card · 5.15 one card format, historical extents · 5.14 current study area red on the locator · 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
+Build history (newest first): 5.27 opening page and story tour (base → five towns → agglomeration) · 5.26 fixes from the 5.25 review (RTL typography, legend follows the topic, phone chrome, LTR numbers), old test failures fixed, factory analysis frame, metro stations, GIF export · 5.25 Atlas shell (☰ menu, WHERE × WHAT) · 5.24–5.22 Exercise 1.3 artistic maps · 5.21 Southern axis page with the two research boards · 5.20 southern-axis essentials layers (metro extension, 1931 tram, Escúzar / IFMIF-DONES) on by default · 5.19 print up to 700 dpi built in strips · 5.18 print at full resolution + "Map only" template · 5.17 / 5.16 Exercise 1.3 identity card · 5.15 one card format, historical extents · 5.14 current study area red on the locator · 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
 classified climate rasters, dashed fabric marks, historical red dots explained · 5.5/5.4 smooth building scales and
 street hierarchy at close zoom · 5.3 (v5) analysis page, viewers, unified Comparison, phone/iPad · v4/v3/v2 earlier.
 
@@ -753,3 +753,56 @@ Hosting moved to GitLab Pages while the GitHub account is suspended (see §1). E
     stops). Stations are named in the metro legend and panel with the sources searched, never placed; the track is unchanged.
 Tests: `tests/ui_test_v24.py` (items 1, 2, 3, 4, 9, 10, 12, 13), `tests/pdfstrips.test.js`, `tests/gif.test.js`; v3, v5, v7, v17 fixed; v2/v3/v5 ignore
 only the sandbox-blocked RTL text plugin error.
+
+## 29. Build 5.27 — opening page and story tour (owner request of 10 Nov 2026)
+
+The owner's brief was written for build 5.22 on GitHub; it was implemented on top of 5.26 (atlas shell) as 5.27, with
+`js/i18n_v25.js` and `tests/ui_test_v25.py` instead of the v20 names the brief used.
+
+**What the visitor sees**
+- **Opening page** (`#tour-intro`, static markup at the top of `<body>` so it appears at once): title غرناطة / גרנדה /
+  Granada in red, the authors' names, red "Start the tour", white "Open the map of Granada", a language switch; the real map
+  behind it, desaturated (`filter: grayscale`) and not interactive. Shown on **every** load of the plain URL (no "don't
+  show again"); any hash (`#/south`, `#/print`, …) skips it; `#/tour` and the menu entry "Tour" (`#tb-tour`, first in the
+  sidebar's tools & pages) reopen it. The authors' names as confirmed by the owner on 10 Nov 2026: أحمد زيد · يارا بشير /
+  אחמד זיד · יארא בשיר / Ahmad Zid · Yara Bashir.
+- **Step 1** the base alone (outline oxblood, light fill; the rest under a cream veil): 371 ha measured on OSM, military
+  airfield since June 1922 (OSM says 21 June, the brief 20 June — so only the month is shown), Ala 78 since 1980, fence 8.7 km.
+- **Step 2** the five towns (Armilla, Churriana de la Vega, Las Gabias = OSM "Gabia Grande", Alhendín, Ogíjares) in view;
+  Space cycles: residents circles (INE 2025, change since 2015) · fence classes · dead ends + walking routes · 300 m band ·
+  metro 2026 + tram 1931 (the metro runs ≈ 20 m from the north fence, computed live).
+- **Step 3** the 34-municipality agglomeration; card: five towns +15.3 %, rest of the area +8.2 %, Granada city −0.8 %;
+  income Granada €16,893 vs Las Gabias €12,492, Churriana €13,167. Space cycles: population change · income · rent index
+  (missing €/m² explained) · city neighbourhoods (zooms to the city; section income missing) · southern axis.
+  The last Enter ends the tour on the normal map at the current view: panels closed, tour layers and sources removed.
+- Keys: Enter next step · Space / → next layer · Shift+Space / ← previous layer · Backspace previous step · Esc leave.
+  Keys typed into inputs are ignored; Space/Enter on a focused button count once (key-up swallowed). On-screen buttons:
+  Back, Previous layer, Next layer, Next / Open the map, Exit (pinned at the bottom of the card). URL: `#/tour`,
+  `#/tour/1`, `#/tour/2/3` (history.replaceState, so no extra history entries). Card on the inline-start side (left in en,
+  right in ar/he), bottom sheet under 700 px. `prefers-reduced-motion`: no flights (duration 0).
+
+**Code**: `js/tour.js` (loaded after `atlas.js`); `GA.palette.tour` (map paint and card legends read the same breaks and
+colours); CSS `.tour-*` at the end of `css/app.css`; during the tour `body.tour-on` hides the atlas panel, markers, map
+legend and ☰. `atlas.js` `raise()` now keeps the atlas layers just below any `tour-*` layers, and its opening city fit is
+skipped while the tour is on (deep links into the tour). Label layers use their own sources (`towns-l`, `barrio-l`): a
+label whose font cannot load would otherwise stop the circles / lines of the same source from drawing.
+
+**Data**: `tools/build_base_edge.py` (OSM API tiles of 0.01°, cache in `$CACHE`) → `data/vec/base_edge.json`;
+`tools/build_tour_area.py` (INE wstempus tables 2871, 31025, 59060; `ESATLAS=` path to es-atlas `municipalities.json`;
+`INE=` folder of saved responses optional) → `data/vec/tour_area.json`. Manifest entries `base_edge`, `tour_area`;
+dataVersion `2026-11-10-v15`. Values match the brief (fence housing 42 % / open 33 % / road 17 %, 13 dead ends, ×1.49 and
+×1.29, band 287 ha, five towns 91,476 residents) except: the agglomeration list on es.wikipedia now has **34**
+municipalities (with Colomera and Valderrubio), not 32; the brief's "south ring +12.5 % vs north ring +6.2 %" could not be
+reproduced without its ring definitions, so the card compares the five towns (+15.3 %), the rest of the area (+8.2 %) and
+Granada city (−0.8 %).
+
+**Missing, shown as missing**: rent in €/m² (INE IPVA is an index of change for municipalities over 10,000 residents
+only — 14 of 34; MIVAU SERPAVI refused automated download with HTTP 403 on 10 Nov 2026; listing-site figures not used);
+income by census section for the neighbourhoods (no section boundaries in the atlas yet). Base facts not re-checked on
+es.wikipedia from this session (blocked); the Ala 78 / 1980 fact is from the brief.
+
+**Tests**: `tests/ui_test_v25.py` (A opening page, B white button, C keyboard tour, D phone / iPad buttons, E reduced
+motion, F RTL side and LTR numbers). The suites written before 5.27 import `tests/_nointro.py` (patches Playwright's
+`new_context` / `new_page` to add `window.__noIntro = true`). The live check `tools/verify/live_atlas.py` opens the plain
+URL for the opening page and runs the tour on the public site, then runs the older checks with `__noIntro`.
+

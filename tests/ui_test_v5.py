@@ -5,6 +5,7 @@
 # Run: python3 tests/ui_test_v5.py [output_dir]
 import json, os, re, subprocess, sys, time, zipfile, io, xml.dom.minidom
 from playwright.sync_api import sync_playwright
+import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__))); import _nointro  # 5.27: start on the map, not the opening page
 from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ui_test_v3 as V3

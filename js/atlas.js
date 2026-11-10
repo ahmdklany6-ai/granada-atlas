@@ -172,8 +172,10 @@
   // keeps the atlas layers on top, in this order. Moves layers ONLY when the order is wrong: moveLayer fires 'styledata',
   // which calls raise() again — an unconditional move would loop forever and the map would never become idle/loaded.
   function raise() { if (!map || !map.style) return; const want = ['atl-veil'].concat(allTopicIds(), ['atl-mask', 'atl-corr', 'atl-frame', 'atl-growth-fill', 'atl-growth-line', 'atl-hl-glow', 'atl-hl-line']).filter(has);
-    const ids = map.getStyle().layers.map(l => l.id); if (JSON.stringify(ids.slice(ids.length - want.length)) === JSON.stringify(want)) return;
-    want.forEach(id => map.moveLayer(id)); }
+    // 5.27: the story tour's own layers (tour-*) stay on top; the atlas layers go just below them
+    const all = map.getStyle().layers.map(l => l.id), tour = all.filter(id => id.startsWith('tour-')), ids = all.filter(id => !id.startsWith('tour-'));
+    if (JSON.stringify(ids.slice(ids.length - want.length)) === JSON.stringify(want)) return;
+    want.forEach(id => tour.length ? map.moveLayer(id, tour[0]) : map.moveLayer(id)); }
 
   // -- topic layers, built once per topic from data/ex13 (same classes and colours as the Exercise 1.3 maps) --
   function imgFromCanvas(cv) { return cv.toDataURL('image/png'); }
@@ -455,7 +457,7 @@
     APP = root.GA.app; map = APP.map; buildShell(); if (root.GA.panels.isOpen('analysis')) S.min = true; buildOverlay(); relabel();
     const go = async () => { buildBase(); await loadAll(); ready = true; relabel(); markers();
       const legacy = !!root.__gaLegacyView; // test hook only: the pre-5.25 suites keep their old opening view (no city fit, no animation)
-      if (!PG.current && !legacy) map.fitBounds(CITY_BB, { padding: pad(40), duration: 0 }); // the city first, never inside a study area
+      if (!PG.current && !legacy && !(root.GA.tour && root.GA.tour.state.on)) map.fitBounds(CITY_BB, { padding: pad(40), duration: 0 }); // 5.27: never over the story tour's view // the city first, never inside a study area
       if (S.growth.on && !legacy) startGrowth(); else growthFrame(GROWTH.length - 1);
       map.on('styledata', () => { if (map.getLayer('atl-veil')) raise(); }); APP.L.onChange(() => setTimeout(raise, 0)); };
     if (map.loaded()) go(); else map.once('load', go);

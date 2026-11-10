@@ -9,6 +9,7 @@ import sys, os, time, json, subprocess, warnings
 sys.path.insert(0, os.path.dirname(__file__))
 import ui_test_v3 as V3
 from playwright.sync_api import sync_playwright
+import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__))); import _nointro  # 5.27: start on the map, not the opening page
 warnings.filterwarnings('ignore')
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORT = 8823; V3.PORT = PORT; V3.V2.PORT = PORT
