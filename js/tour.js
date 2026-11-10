@@ -457,8 +457,8 @@
     document.addEventListener('keydown', onKey, true); document.addEventListener('keyup', onKeyUp, true);
     addEventListener('hashchange', () => { if (/^#\/tour/.test(location.hash)) fromHash(); else if (S.on || introShown()) { S.on = false; hideIntro(); hideTourUI(); unbuild(); } });
     I.onChange(() => { renderIntro(); if (!S.on) return; closePop(); renderCard(); renderLabels(); requestAnimationFrame(() => frame()); }); // the card changes side with the language
-    if (map) { map.on('styledata', () => { if (S.built) raise(); }); map.on('move', () => { if (S.on && S.items.length + ((S.signs || []).length)) schedule(); }); map.on('resize', () => { if (S.on) schedule(); }); }
-    addEventListener('resize', () => { if (S.on) { frame(true); schedule(); } });
+    if (map) { map.on('styledata', () => { if (S.built) raise(); }); map.on('move', () => { if (S.on && S.items.length + ((S.signs || []).length)) schedule(); }); map.on('resize', () => { if (S.on) { frame(true); schedule(); } }); } // refit once the map itself has its new size
+    addEventListener('resize', () => { if (S.on) requestAnimationFrame(() => { frame(true); schedule(); }); });
     const nav = $('#tb-nav'); if (nav && !$('#tb-tour')) { const b = document.createElement('button'); b.type = 'button'; b.className = 'tb-btn'; b.id = 'tb-tour'; b.dataset.i18n = 'tour.nav'; b.textContent = t('tour.nav'); b.addEventListener('click', () => { location.hash = '#/tour'; }); nav.insertBefore(b, nav.firstChild); }
     if (!fromHash() && introShown()) { renderIntro(); load().catch(() => { }); }
   }

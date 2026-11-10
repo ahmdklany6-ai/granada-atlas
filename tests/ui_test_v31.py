@@ -83,8 +83,10 @@ try:
             ctx, pg, errs = boot(w, lang, f'#/tour/{step}/{layer}' if step > 1 else '#/tour/1')
             pg.wait_for_function(f'GA.tour && GA.tour.state.built && GA.tour.state.step === {step} && GA.tour.state.layer === {layer}', timeout=120000); time.sleep(2.2)
             return ctx, pg, errs
+        def settle(pg):  # the map has stopped moving and drawn a frame
+            pg.wait_for_function('!GA.app.map.isMoving()', timeout=30000); pg.evaluate('new Promise(r => { const m = GA.app.map; m.once("render", () => setTimeout(r, 300)); m.triggerRepaint(); })'); time.sleep(0.6)
         def goto(pg, step, layer):
-            pg.evaluate(f'GA.tour.go({step}, {layer}, true)'); pg.wait_for_function(f'GA.tour.state.step === {step} && GA.tour.state.layer === {layer} && GA.tour.state.built', timeout=60000); time.sleep(1.2)
+            pg.evaluate(f'GA.tour.go({step}, {layer}, true)'); pg.wait_for_function(f'GA.tour.state.step === {step} && GA.tour.state.layer === {layer} && GA.tour.state.built', timeout=60000); time.sleep(0.4); settle(pg)
         T = {}
 
         # ================= A. pictograms on the main map =================
@@ -132,7 +134,7 @@ try:
                     xy = pg.evaluate('(ll) => { const p = GA.app.map.project(ll); return [p.x, p.y]; }', P[k])
                     r = pg.evaluate('(xy) => { const r = GA.app.L.popupAt({ x: xy[0], y: xy[1] }); return r ? { id: r.def.id, layer: r.feature.layer.id, html: r.html } : null; }', xy)
                     want_id, title = ('south_metro', pg.evaluate('GA.i18n.t("v18.lyMetro")')) if k == 'metro' else ('tram_1931', pg.evaluate('GA.i18n.t("v18.lgTrunk")'))
-                    check(r and r['id'] == want_id and r['layer'].endswith('-icon') and title in r['html'], f'a click on the {k} icon opens its line popup ("{title}")', r)
+                    check(r and r['id'] == want_id and r['layer'].endswith('-iconhit') and title in r['html'], f'a click on the {k} icon opens its line popup ("{title}")', r)
                 # a print-layout map shows the icons (offscreen map copies the images from the main map): render the same frame with
                 # and without the two icon layers and count the pixels that change inside each icon's box
                 pr = pg.evaluate('''async () => { const q = { x: 0, y: 0, w: 900, h: 700 }; const c = [-3.632, 37.1445]; const main = GA.app.map; const ids = ['ly-smetro-icon', 'ly-tram-icon'];
@@ -282,7 +284,7 @@ try:
                     pg.evaluate('GA.tour.back()'); pg.wait_for_function('GA.tour.state.step === 2', timeout=30000); time.sleep(2.4); framed(pg.evaluate(JS_FREE), f'{tag} after Back')
                     other = 'en' if lang != 'en' else 'ar'; pg.evaluate(f'GA.i18n.setLang("{other}")'); time.sleep(2.6)
                     G = pg.evaluate(JS_FREE); framed(G, f'{tag} after switching to {other}')
-                    pg.set_viewport_size({'width': 1024, 'height': 768}); time.sleep(1.5); framed(pg.evaluate(JS_FREE), f'{tag} after a resize to 1024 px')
+                    pg.set_viewport_size({'width': 1024, 'height': 768}); time.sleep(1.5); settle(pg); framed(pg.evaluate(JS_FREE), f'{tag} after a resize to 1024 px')
                 check(not errs, f'{tag}: no page errors', errs[:3]); ctx.close()
         b.close()
 finally:
