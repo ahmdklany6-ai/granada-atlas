@@ -105,6 +105,9 @@ try:
                 if '5' in ITEMS:
                     pg.click('#atl-topics [data-topic="climate"]'); time.sleep(3)
                     check(pg.evaluate('GA.atlas.state.topic') == 'climate' and pg.evaluate('document.querySelector("#atl-topics .on").dataset.topic') == 'climate', f'{tag}: a topic button sets the analysis and is marked')
+                    pg.evaluate('GA.atlas.setTopic("human")'); time.sleep(3)
+                    vis5 = pg.evaluate('(() => { const row = document.querySelector("#atl-topics"), on = row.querySelector(".on"); const r = row.getBoundingClientRect(), b = on.getBoundingClientRect(); return b.left >= r.left - 1 && b.right <= r.right + 1; })()')
+                    check(vis5, f'{tag}: the current analysis is scrolled into view in the row (05, the last one)')
                     pg.click('#atl-burger'); time.sleep(0.6)
                     vis = pg.evaluate('''(() => { const r = document.querySelector('#atl-topics').getBoundingClientRect(); const side = document.querySelector('#atl-side').getBoundingClientRect(); const e = document.elementFromPoint(r.left + Math.min(r.width - 2, 60), r.top + r.height / 2); return r.height > 0 && !!e && !!e.closest('#atl-topics'); })()''')
                     check(vis, f'{tag}: the topic row stays visible with the ☰ menu open')

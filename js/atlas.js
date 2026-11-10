@@ -71,7 +71,10 @@
   function renderTopicRow() { const row = $('#atl-topics'); if (!row) return;
     row.innerHTML = TOPICS.map((k, i) => `<button type="button" class="atl-tp ${S.topic === k ? 'on' : ''}" data-topic="${k}" aria-pressed="${S.topic === k}"><span class="atl-num">${String(i + 1).padStart(2, '0')}</span> ${t('e13.t.' + k)}</button>`).join('')
       + `<button type="button" class="atl-tp atl-tp-none ${!S.topic ? 'on' : ''}" data-topic="" aria-pressed="${!S.topic}">${t('v23.noTopic')}</button>`;
-    row.setAttribute('aria-label', t('v27.topicsRow')); }
+    row.setAttribute('aria-label', t('v27.topicsRow'));
+    // a sideways-scrolling row (phones): bring the current analysis into view — never scrolls the page itself
+    const on = row.querySelector('.atl-tp.on'); if (on && row.scrollWidth > row.clientWidth + 1) { const r = row.getBoundingClientRect(), b = on.getBoundingClientRect();
+      if (b.left < r.left) row.scrollLeft -= (r.left - b.left) + 8; else if (b.right > r.right) row.scrollLeft += (b.right - r.right) + 8; } }
   // 5.29: language buttons in the top bar (top right in English, mirrored to the top left in Arabic and Hebrew); the same
   // GA.i18n state as the Display section, so both always agree
   function renderLangBar() { const g = $('#tb-lang'); if (!g) return; g.setAttribute('aria-label', t('lang.label'));
