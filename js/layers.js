@@ -395,7 +395,11 @@
       popupAt(point) {
         if (!built) return null;
         const all = order.map(id => byId[id] || userDefs.find(u => u.id === id)).filter(d => d && S[d.id].on && d.popup);
-        for (const d of all) { const ls = d.popup.layers().filter(l => map.getLayer(l)); if (!ls.length) continue; const f = map.queryRenderedFeatures(point, { layers: ls })[0]; if (f) return { html: d.popup.html(f.properties, f), def: d, feature: f }; }
+        // 5.33: a point feature must lie under the click (the renderer can return a far symbol / circle from another place)
+        const near = (f) => { if (!f.geometry || f.geometry.type !== 'Point') return true; const p = map.project(f.geometry.coordinates); return Math.hypot(p.x - point.x, p.y - point.y) <= 24; };
+        // points under the click (pictograms, stations) win over lines and areas of any layer; then the layers in order
+        for (const pass of [(f) => f.geometry && f.geometry.type === 'Point' && near(f), near])
+          for (const d of all) { const ls = d.popup.layers().filter(l => map.getLayer(l)); if (!ls.length) continue; const f = map.queryRenderedFeatures(point, { layers: ls }).find(pass); if (f) return { html: d.popup.html(f.properties, f), def: d, feature: f }; }
         return null;
       },
       // raster layers that can describe a clicked point (WMS GetFeatureInfo / WFS)

@@ -288,6 +288,7 @@
   // ---------- map clicks: section drawing, feature popups ----------
   let popup = null;
   function mapClick(e) {
+    if (GA.tour && GA.tour.state.on) return GA.tour.popupAt(e); // 5.33: during the story tour only the tour's own popups
     if (secTool.isDrawing()) return secTool.click(e);
     const info = sel.info(); if (info.measure.on || (info.type === 'polygon' && !info.closed && info.phase === 'shape')) return false;
     // clicking a drawn section line opens the large section viewer

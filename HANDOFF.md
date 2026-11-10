@@ -967,3 +967,45 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
   motion (24 frames × 70 ms, no pause), holds, then the whole map and each layer as before.
 - Each climate layer is composited once with its outline into its own canvas (`KA.lay`), so each animation frame draws
   four bitmaps instead of eight images. Test `tests/ui_test_v32.py`.
+
+## 39. Build 5.38 — train pictograms and the story tour reworked (owner requests A–F of 10 Nov 2026)
+
+- **A. Pictograms** (`js/rail_icons.js`, one definition for map, legends, tour and popups): an early electric tram (boxy
+  car, clerestory roof, trolley pole, two wheels) in `palette.south.tram` on the 1931 trunk line 100 m from its north-east
+  end (just NE of Armilla, towards Granada); a light-rail car (rounded nose, window band, pantograph, bogies) in
+  `palette.south.metro` on the metro track 700 m from its Armilla end. Original flat SVG with a white halo, added with
+  `map.addImage` at 2×; 22 px at zoom 12 → 28 px from zoom 14; hidden below zoom 12; the point carries its line's
+  properties, so a click opens the line's popup. Map layers `ly-smetro-icon`, `ly-tram-icon` (layers_south.js), legend rows
+  in both layer legends; the print layout copies the images from the main map (`styleimagemissing`), so printed maps show
+  them. The positions (`AT`) keep ≥ 40 px from the Armilla station circle and the town name at zoom 13. The
+  Southern-axis page boards (south_page.js) are the team's pre-rendered JPEGs and were not changed.
+- **B. Towns as built-up areas** (tour step 2, slide 1): `data/vec/tour_towns.json` from `tools/build_tour_towns.py`
+  (OSM `landuse=residential` in the town's municipality, 40 m closing, the part at the OSM place node; see README data
+  table). Red fill 30 %, 1.2 px red outline, under the base outline and the lines. Names only on the map (HTML labels,
+  localised: `x33.nm.*`, white halo); residents 2025 and change 2015–2025 in the card list and the popup. A town without
+  a shape would be listed with "no outline" (none now).
+- **C. Where the streets stop** = step 2 slides 3 / 4 / 5 (route A, route B, both). Dead-end road sign (SVG, 18 px) on all
+  13 dead ends; signs closer than 20 px are grouped into one sign with a count (never hidden). Routes 4 px on a 7.5 px
+  white casing, A `palette.tour.routeA` (blue), B `routeB` (olive); each straight line in its route colour, 1.6 px dashed;
+  arrows (`symbol-placement: line`, canvas chevrons); start/end circles with names; the figures on the map from the data
+  (walk_m / straight_m / ratio, unchanged). Towns, metro, tram and pictograms fade to 30 % (`palette.tour.fade`).
+- **D. Step 3 maps**: fills at 0.5 (`palette.tour.choroAlpha`; "no index" at 0.3) with the legend swatches at the same
+  opacity; white municipal outlines; the five towns' red outline on top. A label on every municipality: name above the
+  value (value alone where crowded), at the polygon's pole of inaccessibility (`GA.tour.polylabel`), moved to the nearest
+  free spot with a leader line when crowded; missing values written as missing; numbers LTR. Placement is one greedy
+  pass in screen space (priority: the five towns and Granada, then small polygons first), re-run on every map move;
+  obstacles are the tour card, the controls and the attribution. A click opens a popup with name, value, year, source.
+  Five towns and Granada use localised names; the other 28 municipalities keep their official names.
+- **E.** Step 3 has four slides (population change, income, rents, Granada's neighbourhoods); the "Southern axis" slide
+  and its strings (`tour.s3.l5`, `tour.s3.l5t`, `tour.lgEstate`) are gone; the layers stay on the map. "Next layer" is
+  disabled on a step's last slide and "Previous layer" on its first; "Open the map" ends the tour.
+- **F. Framing**: `GA.tour.freeRect()` = the stage minus the tour card (side panel: left in English, right in Arabic /
+  Hebrew; bottom sheet on phones), the top-right controls and the bottom bars (attribution, scale, north), measured with
+  getBoundingClientRect; `pad()` adds a 48 px margin. Each slide fits its own feature (base · base + towns · base + routes ·
+  base + metro + tram · agglomeration · neighbourhoods). Refit on resize, language switch, card size change
+  (ResizeObserver, only when the padding really changes), Back and every step.
+- Strings `js/i18n_v31.js`. Popups during the tour come only from the tour (`GA.tour.popupAt`, called first by app.js).
+- Tests: `tests/ui_test_v33.py` (new), `tests/ui_test_v25.py` updated for 7 + 4 slides. Data version `2026-11-10-v21`.
+- Published on GitHub Pages (the request said GitLab; the site is on GitHub since 5.30).
+- Built as "5.33" in this session while another session published 5.33–5.35 (Exercise 1.3, §34–36) on `main`; merged and
+  released as 5.38 (5.36 and 5.37 were then taken by the same session's climate updates) (file names i18n_v31 / ui_test_v33, since v30 / v31 were taken).
