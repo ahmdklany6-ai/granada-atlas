@@ -385,9 +385,16 @@
         if (b.dataset.x20play != null) { if (P.playing) { stopPlay(k); paintPlayer(k, -1); } else play(k); return; }
         stopPlay(k); if (b.dataset.x20all != null) return show(k, null); const L = +b.dataset.x20layer; show(k, P.focus === L ? null : { focus: L }); }; });
     const openSheet = async (k) => { const c = await pageCanvas(k); const url = URL.createObjectURL(await PG.toBlob(c)); const title = k === 'identity' ? t('x13.idTitle') : t('e13.t.' + k);
-      const sh = root.GA.viewer.image({ title, subtitle: t('e13.title'), src: url, notGIS: true, kind: 'vw-sheet', tools: `<button class="btn btn-small" data-vtool="png">PNG</button><button class="btn btn-small" data-vtool="pdf">PDF</button>${artOn(k) ? `<button class="btn btn-small" data-vtool="layers">${t('x20.layersZip')}</button><button class="btn btn-small" data-vtool="gif">${t('v24.gif')}</button>` : ''}`,
-        onTool: async (tool, btn) => { btn.disabled = true; try { if (tool === 'layers') { PG.download(await layersZip(k), fileOf(k) + '_layers_png.zip'); SUB.exported(e, 'layers:' + k); store.save(); renderSub(); return; } if (tool === 'gif') { PG.download(await layersGif(k), fileOf(k) + '_layers.gif'); SUB.exported(e, 'gif:' + k); store.save(); renderSub(); return; } if (tool === 'png') PG.download(await PG.toBlob(c), fileOf(k) + '.png'); else PG.download(new Blob([root.GA.pdf.build([{ canvas: c, paper: 'A3P' }], { title: 'Granada 1.3 - ' + title })], { type: 'application/pdf' }), fileOf(k) + '.pdf'); SUB.exported(e, tool + ':' + k); store.save(); renderSub(); } finally { btn.disabled = false; } } });
-      const c0 = sh.close; sh.close = (q) => { URL.revokeObjectURL(url); c0(q); }; };
+      const sh = root.GA.viewer.image({ title, subtitle: t('e13.title'), src: url, notGIS: true, kind: 'vw-sheet', tools: `<button class="btn btn-small" data-vtool="png">PNG</button><button class="btn btn-small" data-vtool="pdf">PDF</button>${artOn(k) ? `<button class="btn btn-small" data-vtool="layers">${t('x20.layersZip')}</button><button class="btn btn-small" data-vtool="gif">${t('v24.gif')}</button><button class="btn btn-small btn-primary" data-vtool="play">▶ ${t('x29.play')}</button>` : ''}`,
+        onTool: async (tool, btn) => { if (tool === 'play') return togglePlay(btn); btn.disabled = true; try { if (tool === 'layers') { PG.download(await layersZip(k), fileOf(k) + '_layers_png.zip'); SUB.exported(e, 'layers:' + k); store.save(); renderSub(); return; } if (tool === 'gif') { PG.download(await getGif(btn), fileOf(k) + '_layers.gif'); SUB.exported(e, 'gif:' + k); store.save(); renderSub(); return; } if (tool === 'png') PG.download(await PG.toBlob(c), fileOf(k) + '.png'); else PG.download(new Blob([root.GA.pdf.build([{ canvas: c, paper: 'A3P' }], { title: 'Granada 1.3 - ' + title })], { type: 'application/pdf' }), fileOf(k) + '.pdf'); SUB.exported(e, tool + ':' + k); store.save(); renderSub(); } finally { btn.disabled = false; } } });
+      // 5.31: the animation plays inside the large viewer (the same GIF that downloads, zoomable); made once per opening
+      let gifBlob = null, gifUrl = null, playingGif = false;
+      async function getGif(btn) { if (gifBlob) return gifBlob; const label = btn.innerHTML; btn.disabled = true;
+        try { gifBlob = await layersGif(k, (i, n) => { btn.textContent = t('x29.making', { i: '\u200E' + i + '\u200E', n: '\u200E' + n + '\u200E' }); }); } finally { btn.innerHTML = label; btn.disabled = false; } return gifBlob; }
+      async function togglePlay(btn) { const img = sh.el.querySelector('.vw-stage img'); if (!img) return;
+        if (playingGif) { img.src = url; playingGif = false; btn.innerHTML = '▶ ' + t('x29.play'); return; }
+        const b = await getGif(btn); if (!sh.el.isConnected) return; if (!gifUrl) gifUrl = URL.createObjectURL(b); img.src = gifUrl; playingGif = true; btn.innerHTML = '❚❚ ' + t('x29.stop'); }
+      const c0 = sh.close; sh.close = (q) => { URL.revokeObjectURL(url); if (gifUrl) URL.revokeObjectURL(gifUrl); c0(q); }; };
     let tm; const later = (k) => { clearTimeout(tm); tm = setTimeout(() => { prev(k); if (k !== 'identity') { const a = body.querySelector(`[data-em="${k}"]`); if (a) a.closest('fieldset').querySelector('.x13-auto').textContent = content(k).sentence; } }, 400); };
     body.onchange = async (ev) => { const el = ev.target; if (!String(el.name).startsWith('x20-style-')) return; const k = el.name.slice(10); if (!ART_TOPICS.includes(k)) return; stopPlay(k); e.maps[k].style = el.value === 'art' ? 'art' : (el.value === 'axo' && k === 'human') ? 'axo' : 'arch'; store.save();
       await prev(k); const a = body.querySelector(`[data-em="${k}"]`); if (a) a.closest('fieldset').querySelector('.x13-auto').textContent = content(k).sentence; paintPlayer(k, -1); };
@@ -409,13 +416,14 @@
     return new Blob([root.GA.zip.zip(files, new Date())], { type: 'application/zip' }); }
   // 5.26: animated GIF of the layer player for Miro — each layer on its own (the others faint, as in the player), then the
   // layers added one by one, then the whole map held longer. Whole A3 page at a screen size (≈ 1,000 px tall).
-  async function layersGif(k) {
-    const keys = root.GA.ex13art.keys(AK(k)); await root.GA.ex13art.ready(AK(k)); const frames = []; const dpi = 60;
-    const add = async (o, delay) => frames.push({ canvas: await pageCanvas(k, dpi, o), delay });
-    for (let i = 0; i < keys.length; i++) await add({ focus: i }, 1400);
+  async function layersGif(k, onProgress) { // 5.31: the build-up first (layers appear one after another), the whole map, then each layer alone (the others faded); 80 dpi, made without freezing the page
+    const keys = root.GA.ex13art.keys(AK(k)); await root.GA.ex13art.ready(AK(k)); const frames = []; const dpi = 80; const nF = 2 * keys.length + 1, total = 2 * nF;
+    const add = async (o, delay) => { await new Promise(r => setTimeout(r, 0)); frames.push({ canvas: await pageCanvas(k, dpi, o), delay }); if (onProgress) onProgress(frames.length, total); };
     for (let i = 1; i <= keys.length; i++) await add({ upTo: i, t: 1 }, 900);
-    await add(null, 3000);
-    return new Blob([root.GA.gif.encode(frames)], { type: 'image/gif' });
+    await add(null, 2600);
+    for (let i = 0; i < keys.length; i++) await add({ focus: i }, 1400);
+    const bytes = await root.GA.gif.encodeAsync(frames, (i) => { if (onProgress) onProgress(nF + i, total); });
+    return new Blob([bytes], { type: 'image/gif' });
   }
   function auditHTML() {
     const d = DATA; const v = { d: iso((d.density.stats.diff_pct > 0 ? '+' : '') + nf(d.density.stats.diff_pct, 1) + ' %'), g: iso(nf(d.morphology.stats.gap_cells)), a: iso(nf(d.morphology.stats.agree_pct, 0) + ' %'), r: iso('r = ' + nf(d.centre.stats.overture_corr, 2)), n: iso(String(d.climate.stats.scenes)) };

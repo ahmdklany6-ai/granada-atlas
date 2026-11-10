@@ -907,3 +907,12 @@ object; labels in one ordered column; a simplified version was rejected — "bac
 - Data built once: `tools/build_ex13_human.py` → `data/ex13/art/human_ground.png`, `human_art.json` (run after
   `tools/build_ex13_art.py`). Colours `palette.ex13art.human`. Strings `js/i18n_v24.js`. Test `tests/ui_test_v24.py`.
 - Not yet on the site: the climate "stacked layers on the terrain" preview (approved look, not integrated).
+
+## 33. Build 5.31 — layer animation: build-up first, played in the large viewer (owner request of 10 Nov 2026)
+
+The layer GIF of every artistic Exercise 1.3 map now starts with the build-up (layers appear one after another, 0.9 s
+each), then the whole map (2.6 s), then each layer alone with the others faded (1.4 s each); loops. The large viewer has
+**▶ Play animation** (plays that GIF in place, zoomable; Stop returns to the still page) and **Animated GIF** downloads the
+same file without making it again. 80 dpi; built frame by frame (`GA.gif.encodeAsync`) so the page stays responsive and
+the button shows progress. (This viewer button had been published on GitLab as 5.28 and was lost in the 5.30 merge.)
+Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
