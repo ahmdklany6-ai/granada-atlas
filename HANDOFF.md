@@ -1021,8 +1021,8 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
   cathedral + Capilla Real, Mirador de San Nicolás, Abadía del Sacromonte, Cartuja, Hospital Real, San Juan de Dios,
   Plaza de Toros, Palacio de Congresos, Parque de las Ciencias, Estadio Nuevo Los Cármenes. The drawings are schematic
   (shapes simplified, enlarged, not to scale, not measured) and the page says so.
-- The information is written in red in the top end corner (name in Latin / Arabic / Hebrew script, country, students,
+- The information is written in red in the top end corner (the city's name once, in the page's language; country, students,
   population / area / density with source and date, residents change 2015→2025 from INE via `tour_area`); the synthesis
-  sits in the empty bottom start corner; one small line of note + sources along the bottom edge.
+  sits in the bottom end corner (hills south-east of the Genil); one small line of note + sources along the bottom edge.
 - `tools/build_ex13_ident.py` → `data/ex13/art/ident.json` (es-atlas outlines, a DEM section — kept for later use; the
   owner chose the single-map page without locator maps or section). Strings `js/i18n_v32.js`. Test `tests/ui_test_v34.py`. Data version `2026-11-10-v22`.

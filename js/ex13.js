@@ -290,9 +290,7 @@
     // the information, in red, top end corner (over the hills east of the Albaicín)
     const R = W - M; let y = M + mm(8);
     txt(t('x13.kicker'), R, y, 8, 700, RED, 'right', rtl ? 'rtl' : 'ltr'); y += mm(19);
-    txt('Granada', R, y, 48, 700, RED); y += mm(14);
-    txt('غرناطة', R, y, 30, 700, RED, 'right', 'rtl'); y += mm(10);
-    txt('גרנדה', R, y, 20, 700, RED, 'right', 'rtl'); y += mm(8);
+    { const L = I.lang; txt(L === 'ar' ? 'غرناطة' : L === 'he' ? 'גרנדה' : 'Granada', R, y, 48, 700, RED, 'right', L === 'en' ? 'ltr' : 'rtl'); y += mm(10); } // one language: the page's
     txt('España · ⁨' + t('x13.spain') + '⁩ · 37.18° N 3.60° W', R, y, 9, 600, RED); y += mm(6);
     txt((e.students || '').trim() || t('x13.noStudents'), R, y, 9.5, 700, RED, 'right', rtl ? 'rtl' : 'ltr'); y += mm(5);
     ctx.fillStyle = RED; ctx.fillRect(R - mm(84), y, mm(84), Math.max(2, mm(0.5))); y += mm(10);
@@ -301,9 +299,9 @@
     const st = ID.data && ID.data.area && ID.data.area.stats; if (st) { const f = (v) => (v > 0 ? '+' : '') + v.toFixed(1) + ' %';
       txt(t('x32.ch.title') + ' · INE', R, y - mm(2), 7.5, 700, RED, 'right', 'auto'); y += mm(3);
       [[t('x32.ch.city'), st.city.chg], [t('x32.ch.rest'), st.rest.chg], [t('x32.ch.five'), st.five.chg]].forEach(([lab, v]) => { txt('⁨' + lab + '⁩  ' + f(v), R, y, 8.5, 600, RED, 'right', 'ltr'); y += mm(4.4); }); }
-    // the synthesis: red, in the empty bottom start corner (the vega), above the scale bar
-    ctx.save(); const sw = mm(88), sx = M; const lines = []; ctx.font = `700 ${pt(8.8)}px ${F}`; let cur = ''; ((e.synthesis || '').trim() || synthesis()).split(/\s+/).forEach(wd => { const tt = cur ? cur + ' ' + wd : wd; if (ctx.measureText(tt).width > sw && cur) { lines.push(cur); cur = wd; } else cur = tt; }); if (cur) lines.push(cur); ctx.restore();
-    const lh = pt(8.8) * 1.3, sy = H - mm(34) - lines.length * lh; ctx.fillStyle = RED; ctx.fillRect(sx, sy - mm(6), mm(30), Math.max(2, mm(0.5)));
+    // the synthesis: red, in the bottom end corner (the hills south-east of the Genil), above the bottom note
+    ctx.save(); const sw = mm(88), sx = W - M - sw; const lines = []; ctx.font = `700 ${pt(8.8)}px ${F}`; let cur = ''; ((e.synthesis || '').trim() || synthesis()).split(/\s+/).forEach(wd => { const tt = cur ? cur + ' ' + wd : wd; if (ctx.measureText(tt).width > sw && cur) { lines.push(cur); cur = wd; } else cur = tt; }); if (cur) lines.push(cur); ctx.restore();
+    const lh = pt(8.8) * 1.3, sy = H - mm(34) - lines.length * lh; ctx.fillStyle = RED; ctx.fillRect(sx + sw - mm(30), sy - mm(6), mm(30), Math.max(2, mm(0.5)));
     lines.forEach((l, i) => txt(l, rtl ? sx + sw : sx, sy + i * lh, 8.8, 700, RED, rtl ? 'right' : 'left', rtl ? 'rtl' : 'ltr'));
     // bottom edge: the honesty note and the sources, small
     const by = H - mm(16); ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(0, by, W, H - by);
