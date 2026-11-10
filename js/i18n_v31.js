@@ -1,4 +1,4 @@
-/* v31 strings (build 5.36): train pictograms; the tour's towns as built-up areas, the streets slides (routes A / B),
+/* v31 strings (build 5.38): train pictograms; the tour's towns as built-up areas, the streets slides (routes A / B),
    the labelled step-3 maps and their popups; town names in each language. [ar, he, en] */
 (function (root) {
   root.GA.i18n.add({

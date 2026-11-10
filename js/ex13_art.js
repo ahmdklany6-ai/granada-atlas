@@ -368,16 +368,20 @@
   let KA = null, KAp = null;
   function loadClimate() { if (KAp) return KAp; const v = '?v=' + (root.GA_BUILD || ''), dir = 'data/ex13/art/'; const im = (u) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error(u)); i.src = dir + u + v; });
     KAp = Promise.all([fetch(dir + 'climate_art.json' + v).then(r => { if (!r.ok) throw new Error('climate_art.json ' + r.status); return r.json(); })].concat(KLKEYS.concat(['edge']).map(k => im('climate_' + k + '.png'))))
-      .then(([m, ...ims]) => { const I = {}; KLKEYS.concat(['edge']).forEach((k, i) => I[k] = ims[i]); return (KA = Object.assign(m, { img: I })); }).catch(e => { KAp = null; throw e; }); return KAp; }
+      .then(([m, ...ims]) => { const I = {}; KLKEYS.concat(['edge']).forEach((k, i) => I[k] = ims[i]);
+        /* 5.37: each layer composited once with its outline into its own canvas — the animation then draws one decoded bitmap per layer and frame */
+        const L = {}; KLKEYS.forEach(k => { const c = document.createElement('canvas'); c.width = m.W; c.height = m.H; const x = c.getContext('2d'); x.drawImage(I[k], 0, 0, m.W, m.H); x.drawImage(I.edge, 0, 0, m.W, m.H); L[k] = c; });
+        return (KA = Object.assign(m, { img: I, lay: L })); }).catch(e => { KAp = null; throw e; }); return KAp; }
   function drawClimate(ctx, D, x, y, S, o) {
     o = o || {}; if (!KA) return false; const P = GA.palette, INK = P.ink, F = root.GA.pages.font(); const W = 1000, HH = 1000; // drawing space 1000 × 1000
     const SC = 0.66, OX = 165, GAP = 150, n = KLKEYS.length, BH = KA.H * SC; const top0 = (HH - BH - (n - 1) * GAP) / 2 + 20;
     const C = Object.fromEntries(Object.entries(KA.corners).map(([k, [cx, cy]]) => [k, [OX + cx * SC, cy * SC]]));
     const Y = (i) => top0 + (n - 1 - i) * GAP; // layer 0 (terrain) at the bottom
-    // 5.35: the build-up starts as ONE block (all four layers together at the bottom), then the layers come apart from the
-    // bottom up — step u lifts layers u-1 … n-1 together by one level, so each layer is left at its own height in turn
+    // 5.36: the build-up starts as ONE block (all four layers together at the bottom), then the block opens upward — all
+    // layers move up AT THE SAME TIME (steps 2 … n carry one shared, eased progress), each to its own height
     const bu = o.focus == null && o.upTo != null; const tB = o.t != null ? o.t : 1;
-    const lvl = (i) => bu ? Math.min(i, Math.max(0, o.upTo - 2 + tB)) : i;
+    const pB = bu ? Math.max(0, Math.min(1, (o.upTo - 2 + tB) / (n - 1))) : 1, eB = pB * pB * (3 - 2 * pB);
+    const lvl = (i) => i * eB;
     const YL = (v) => top0 + (n - 1 - v) * GAP;
     const apart = (i) => { const d = i < n - 1 ? lvl(i + 1) - lvl(i) : lvl(i) - lvl(i - 1); return Math.max(0, Math.min(1, (d - 0.55) / 0.4)); };
     ctx.save(); ctx.translate(x, y); ctx.scale(S / W, S / HH); ctx.beginPath(); ctx.rect(0, 0, W, HH); ctx.clip(); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, W, HH);
@@ -385,7 +389,7 @@
     const titles = [['TERRAIN', 'x25.k.terrain'], ['VEGETATION', 'x25.k.veg'], ['BUILT FABRIC', 'x25.k.built'], ['SURFACE HEAT', 'x25.k.heat']];
     const t9n = (k) => root.GA.i18n.t(k);
     for (let i = 0; i < n; i++) { const a = bu ? (o.upTo === 1 ? tB : 1) : layerAlpha(o, i); if (a <= 0.005) continue; const yy = YL(lvl(i)) - (o.focus === i ? 16 : 0);
-      ctx.save(); ctx.globalAlpha = a; ctx.drawImage(KA.img[KLKEYS[i]], OX, yy, KA.W * SC, KA.H * SC); ctx.drawImage(KA.img.edge, OX, yy, KA.W * SC, KA.H * SC);
+      ctx.save(); ctx.globalAlpha = a; ctx.drawImage(KA.lay[KLKEYS[i]], OX, yy, KA.W * SC, KA.H * SC);
       const la = bu ? apart(i) : 1; if (la <= 0.01) { ctx.restore(); continue; } ctx.globalAlpha = a * la;
       const wx = C.w[0], wy = yy + C.w[1] - 12, lx = 26, red = o.focus === i; ctx.strokeStyle = red ? P.red : 'rgba(41,16,12,.55)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(wx - 6, wy); ctx.lineTo(lx + 40, wy); ctx.stroke(); ctx.fillStyle = ctx.strokeStyle; ctx.beginPath(); ctx.arc(wx - 6, wy, 2.6, 0, 7); ctx.fill();
       ctx.fillStyle = red ? P.red : INK; ctx.direction = 'ltr'; ctx.textAlign = 'left'; ctx.font = `700 24px ${F}`; ctx.fillText(String(i + 1).padStart(2, '0'), lx, wy - 6); ctx.font = `700 12px ${F}`; ctx.fillText(titles[i][0], lx, wy + 18); ctx.font = `700 15px ${F}`; ctx.fillText(t9n(titles[i][1]), lx, wy + 38); ctx.restore(); }
@@ -401,5 +405,5 @@
       .concat(s.lstCols.map((c, i) => ({ sw: c, label: i === 0 ? n('< ' + s.breaks[0] + ' °C') : i === s.breaks.length ? n('≥ ' + s.breaks[i - 1] + ' °C') : n(s.breaks[i - 1] + '–' + s.breaks[i] + ' °C'), layer: 3 })))
       .concat([{ edge: P.ink, label: t('x25.lg.edge') }]); }
   root.GA.ex13art = { KEYS, CKEYS, DKEYS, CELL, prepare, draw, legendItems, loadCentre, ready: (k) => (k === 'centre' || k === 'density') ? loadCentre() : k === 'climate' ? loadClimate() : k === 'humanAxo' ? Promise.all([loadCentre(), loadHuman()]) : Promise.resolve(), keys: (k) => k === 'centre' ? CKEYS : k === 'density' ? DKEYS : k === 'climate' ? KLKEYS : k === 'human' ? HKEYS : k === 'humanAxo' ? HAXKEYS : KEYS,
-    drawCentre, centreLegend, drawDensity, drawDensityTop, densityLegend, drawClimate, climateLegend, loadClimate, KLKEYS, drawHuman, humanLegend, HAXKEYS, loadHuman, drawHumanAxo, drawHumanAxoTop, humanAxoLegend, get human() { return HA; }, densityStats: (D) => needles(D), get centre() { return CA; }, get grid() { return G; } };
+    drawCentre, centreLegend, drawDensity, drawDensityTop, densityLegend, drawClimate, climateLegend, loadClimate, KLKEYS, continuous: (k) => k === 'climate', drawHuman, humanLegend, HAXKEYS, loadHuman, drawHumanAxo, drawHumanAxoTop, humanAxoLegend, get human() { return HA; }, densityStats: (D) => needles(D), get centre() { return CA; }, get grid() { return G; } };
 })(window);

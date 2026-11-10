@@ -1,4 +1,4 @@
-"""v33 — build 5.36: the story tour reworked and the train pictograms (owner requests A–F).
+"""v33 — build 5.38: the story tour reworked and the train pictograms (owner requests A–F).
   A. Tram and metro pictograms on the southern-axis lines (main map): each icon point lies on its line (≤ 2 px) at zoom
      13–16; 22–28 px; hidden below zoom 12; no overlap with the station circles or the town names (OSM place nodes, label
      box estimated) at zoom 13–16; the legend images are the same pictures as the map images (pixel comparison); legend

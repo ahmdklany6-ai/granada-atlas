@@ -956,7 +956,19 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
   own heights in turn. Titles appear only once a layer is apart. Focus and the whole map are unchanged. The page player
   and the GIF use the same sequence (player durations 1.1 / 1.5 / 1.5 / 1.5 s). Test `tests/ui_test_v32.py`.
 
-## 37. Build 5.36 — train pictograms and the story tour reworked (owner requests A–F of 10 Nov 2026)
+## 37. Build 5.36 — climate opens upward all at once (owner request of 10 Nov 2026)
+- Replaces the bottom-up peeling of §36: step 1 fades in the four layers as one block; steps 2–4 share one eased
+  progress, so all layers move up together to their own heights (gaps equal at every moment). Titles fade in as the
+  layers come apart. Player durations 1.2 / 1.0 / 1.0 / 1.0 s; the GIF uses the same sequence. Test `tests/ui_test_v32.py`.
+
+## 38. Build 5.37 — climate opening smooth, no stalls (owner request of 10 Nov 2026)
+- The GIF/viewer animation paused 0.5 s after every build-up step, which stopped the climate layers mid-rise. For maps
+  marked `GA.ex13art.continuous(k)` (climate) the GIF now fades the block in (6 × 80 ms), then opens it in one continuous
+  motion (24 frames × 70 ms, no pause), holds, then the whole map and each layer as before.
+- Each climate layer is composited once with its outline into its own canvas (`KA.lay`), so each animation frame draws
+  four bitmaps instead of eight images. Test `tests/ui_test_v32.py`.
+
+## 39. Build 5.38 — train pictograms and the story tour reworked (owner requests A–F of 10 Nov 2026)
 
 - **A. Pictograms** (`js/rail_icons.js`, one definition for map, legends, tour and popups): an early electric tram (boxy
   car, clerestory roof, trolley pole, two wheels) in `palette.south.tram` on the 1931 trunk line 100 m from its north-east
@@ -996,4 +1008,4 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
 - Tests: `tests/ui_test_v33.py` (new), `tests/ui_test_v25.py` updated for 7 + 4 slides. Data version `2026-11-10-v21`.
 - Published on GitHub Pages (the request said GitLab; the site is on GitHub since 5.30).
 - Built as "5.33" in this session while another session published 5.33–5.35 (Exercise 1.3, §34–36) on `main`; merged and
-  released as 5.36 (file names i18n_v31 / ui_test_v33, since v30 / v31 were taken).
+  released as 5.38 (5.36 and 5.37 were then taken by the same session's climate updates) (file names i18n_v31 / ui_test_v33, since v30 / v31 were taken).
