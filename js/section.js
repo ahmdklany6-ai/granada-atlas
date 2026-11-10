@@ -239,7 +239,7 @@
     const slim = !compact && H < 620; // wide, short frames (fabric pages, sheets): one legend row, no locator
     const footH = compact ? 58 : slim ? 104 : Math.round(Math.max(170, Math.min(250, H * 0.27)));
     const ml = compact ? 12 : 30, mr = ml, mt = compact ? 26 : 44; const pw = W - ml - mr; const dimPx = compact ? 0 : 46; const ph = H - mt - footH - dimPx;
-    const ve = o.ve === 'auto' ? chooseVE(prof, W, H) : Math.max(1, +o.ve || 1);
+    const ve = o.pxPerM ? 1 : o.ve === 'auto' ? chooseVE(prof, W, H) : Math.max(1, +o.ve || 1); // 5.29: a fixed scale is always true to scale (no exaggeration)
     // 5.10: trees in METRES on the drawing's own scale (as buildings and the 1.75 m figures). Recorded height / crown are used
     // as given (small trees and saplings stay small); missing values take the section's schematic size (default 6 m tall,
     // 4 m crown, editable in the viewer) and are drawn dashed and labelled "schematic — not measured".
@@ -252,7 +252,8 @@
     const tops = prof.cuts.concat(prof.bg).filter(c => c.h != null && c.base != null).map(c => c.base + c.h).concat((prof.trees || []).filter(tr => tr.base != null).map(treeTop));
     const bottoms = prof.cuts.filter(c => c.lvu && c.base != null).map(c => c.base - c.lvu * floorH);
     const top = Math.max(prof.max, ...tops) + 1.5; const lo = Math.max(Math.min(prof.min, ...bottoms) - 0.5, prof.min - Math.max(3, (top - prof.min) * 0.12));
-    const xs = Math.min(pw / prof.L, ph / ((top - lo) * ve)); const ys = xs * ve;
+    const xs = o.pxPerM ? o.pxPerM : Math.min(pw / prof.L, ph / ((top - lo) * ve)); const ys = xs * ve; // 5.29: o.pxPerM = an exact drawing scale (model sheets)
+    if (o.layoutOut) Object.assign(o.layoutOut, { x0: ml + (pw - prof.L * xs) / 2, xs, ys, top, lo, needH: mt + (top - lo) * ys + footH + dimPx });
     // centred in the frame; the dimension band follows directly below the drawing
     const x0 = ml + (pw - prof.L * xs) / 2; const yBase = mt + ph - (ph - (top - lo) * ys) / 2;
     // looking to the left of A→B puts A on the left of the drawing; looking to the right puts B on the left (what one sees)

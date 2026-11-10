@@ -1,4 +1,4 @@
-# Granada Atlas — handoff (state at build 5.28, 10 Nov 2026)
+# Granada Atlas — handoff (state at build 5.29, 10 Nov 2026)
 
 This document lets a new Claude Code session continue the project without the original chat. Short operating rules
 are in `CLAUDE.md`; feature and data documentation is in `README.md`.
@@ -10,11 +10,11 @@ are in `CLAUDE.md`; feature and data documentation is in `README.md`.
 | Repository | **Now on GitLab:** `gitlab.com/ahmdklany6/granada-atlas` (public), branch `main`. GitHub `ahmdklany6-ai/granada-atlas` is **suspended** since 9 Nov 2026 (support ticket #4976314); when it is reinstated, push the full history back (the local branch / the `granada-atlas-*.bundle` files keep it) |
 | Live site | **https://granada-atlas-597777.gitlab.io/** (GitLab Pages, `pages` job in `.gitlab-ci.yml`, publishes `main` on every push). The old GitHub URL (https://ahmdklany6-ai.github.io/granada-atlas/) returns 404 while the account is suspended |
 | Publishing from a cloud session | git push to GitLab is refused with the session's token (Basic auth); files are uploaded with the GitLab API (`POST /projects/88701784/repository/commits`, token sent by the session proxy as `Authorization: Bearer`). On-demand jobs: the `run` job executes every script listed in `tools/verify/RUN_GL` (live check `live_atlas.py`, data fetches) — start a pipeline with the API or Build → Pipelines → Run; results in the job log and job artifacts (`out/`) |
-| Current build | **5.28** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.28` asset queries) |
-| Latest feature work | 5.28: city growth extents as a normal layer, OFF by default (§30). 5.27: opening page and story tour (see §29). 5.26: fixes from the 5.25 live review, factory analysis frame, GIF export (§28) |
+| Current build | **5.29** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.29` asset queries) |
+| Latest feature work | 5.29: map screen layout + model workshop print preset (§31). 5.28: city growth extents as a normal layer, OFF by default (§30). 5.27: opening page and story tour (see §29). 5.26: fixes from the 5.25 live review, factory analysis frame, GIF export (§28) |
 | Data version | `2026-11-10-v15` in `data/manifest.json` (5.27: `base_edge`, `tour_area`; 5.26: `ex13f`) |
 
-Build history (newest first): 5.28 city growth as a switchable layer (OFF by default) · 5.27 opening page and story tour (base → five towns → agglomeration) · 5.26 fixes from the 5.25 review (RTL typography, legend follows the topic, phone chrome, LTR numbers), old test failures fixed, factory analysis frame, metro stations, GIF export · 5.25 Atlas shell (☰ menu, WHERE × WHAT) · 5.24–5.22 Exercise 1.3 artistic maps · 5.21 Southern axis page with the two research boards · 5.20 southern-axis essentials layers (metro extension, 1931 tram, Escúzar / IFMIF-DONES) on by default · 5.19 print up to 700 dpi built in strips · 5.18 print at full resolution + "Map only" template · 5.17 / 5.16 Exercise 1.3 identity card · 5.15 one card format, historical extents · 5.14 current study area red on the locator · 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
+Build history (newest first): 5.29 map screen (no zoom buttons, controls top-right, north + scale, language and analysis buttons in the top bar) and the model workshop (40 × 40 cm) print preset · 5.28 city growth as a switchable layer (OFF by default) · 5.27 opening page and story tour (base → five towns → agglomeration) · 5.26 fixes from the 5.25 review (RTL typography, legend follows the topic, phone chrome, LTR numbers), old test failures fixed, factory analysis frame, metro stations, GIF export · 5.25 Atlas shell (☰ menu, WHERE × WHAT) · 5.24–5.22 Exercise 1.3 artistic maps · 5.21 Southern axis page with the two research boards · 5.20 southern-axis essentials layers (metro extension, 1931 tram, Escúzar / IFMIF-DONES) on by default · 5.19 print up to 700 dpi built in strips · 5.18 print at full resolution + "Map only" template · 5.17 / 5.16 Exercise 1.3 identity card · 5.15 one card format, historical extents · 5.14 current study area red on the locator · 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
 classified climate rasters, dashed fabric marks, historical red dots explained · 5.5/5.4 smooth building scales and
 street hierarchy at close zoom · 5.3 (v5) analysis page, viewers, unified Comparison, phone/iPad · v4/v3/v2 earlier.
 
@@ -839,4 +839,44 @@ Release note: 5.27 (opening page and story tour, §29) was never published on it
 **Tests**: `tests/ui_test_v26.py` (all of the above, ar / he / en); `tests/ui_test_v23.py` now expects the clean start and
 no restart on `setTopic(null)`; the live check (`tools/verify/live_atlas.py`) checks the clean start, ON from the Layers
 list with its legend, Pause, Hide from the atlas panel, and no return after a topic switch.
+
+## 31. Build 5.29 — main map screen layout and the model workshop preset (owner request of 10 Nov 2026)
+
+The owner sent an annotated screenshot of the English map screen and the Exercise 02 brief (model workshop, 11 Nov).
+
+**Map screen** (`js/app.js`, `js/atlas.js`, CSS block "5.29 main map screen" at the end of `css/app.css`):
+1. No NavigationControl. Zoom: wheel, pinch, double-click, MapLibre's own keys on the focused map, and a page-level
+   + / = / − handler (ignored while typing, with a page or dialog open, or on the opening page). The canvas carries the
+   hint as `aria-description` (`v27.zoomKeys`).
+2. Draw section + 3D: the top-right control container is a flex row at the map's top-right corner (8 px), `direction:
+   ltr`, every language. In Arabic / Hebrew, when the ☰ menu (which opens from the right) is open on a wide screen, the
+   row moves left of it.
+3. North arrow: the `.north` element is moved into the bottom-left control container next to the scale bar (one group,
+   `.ga-north`, white box like the scale bar). `atlas.js placeNorth()` now lifts that group above whatever sits at the
+   bottom-left (atlas panel open / folded / phone bottom sheet, tour card). On ≥ 701 px the atlas panel and the tour card
+   sit at bottom 42 px so the group fits under them. Hidden in 3D (the map can rotate).
+4. Language buttons `#tb-lang` (عربي · עברית · English, each in its own script and direction) at the end of the top bar
+   (right in English, mirrored to the left in Arabic / Hebrew). They call `GA.i18n.setLang`, the same state as the Display
+   section's switch; switching keeps the map view, area, topic, panels and the visitor's work.
+5. The five analyses + "no topic": `#atl-topics` in the top bar (≥ 1200 px), a 42 px strip under it below 1200 px
+   (`--top` = top bar + strip), sideways-scrolling on phones. Rendered with the ☰ menu's research list (`renderSide()`),
+   so both always show the same topic.
+
+**Model workshop (40 × 40 cm)** (`js/modelprint.js`, a collapsible block at the top of Print layout):
+- Area: the map view (largest centred square, 90 %), a saved study area (its bounding square in EPSG:25830), or a square
+  drawn on the map (two opposite corners). Exact scale = side × 1000 / 400 mm; the scale used is the next standard scale
+  up (1:100 · 200 · 250 · 500 · 1,000 · 2,000 · 2,500 · 5,000 · 10,000), so the whole area fits; the model then covers
+  400 mm × N on the ground, centred on the area. Above 1:10,000 the export is refused with the reason.
+- A 400 mm square does not fit on A3 (297 mm): plan and aerial are two A3 landscape sheets each (north / south half,
+  400 × 200 mm of model at x 10–410, y 52–252 mm), with the red model outline, crop marks outside the corners, a dashed
+  join line and "sheet 2 continues here"; sections A–B (E–W) and C–D (N–S) through the model centre are 400 mm long, one
+  sheet each, true scale (horizontal = vertical; `GA.section.draw` option `pxPerM`), with the model width marked above.
+  The section lines are drawn on the plan / aerial sheets. A section taller than the sheet at that scale is not printed
+  and the reason is reported.
+- Plan: `GA.printLayout.mapRenderer` (now exported; option `center`) — the map as shown, measured scale printed on the
+  sheet. Aerial: IGN PNOA WMS `pnoa-ma` (`OI.OrthoimageCoverage`), EPSG:25830 box in grid metres (ground × local UTM
+  scale factor), tiles ≤ 2,000 px. Output: one PDF (`GA.pdf.build`, A3L pages at 150 / 200 / 300 dpi).
+  `GA.modelPrint.last` = scale, ground size, sheets (kind, part, denom, measured, mm per metre, outline in mm).
+
+**Tests**: `tests/ui_test_v27.py` (items 1–6 at 375–1440 px in ar / he / en; the outline measured on the rendered PDF).
 

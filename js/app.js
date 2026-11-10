@@ -26,9 +26,20 @@
   // ---------- map ----------
   const map = new maplibregl.Map({ container: 'map', style: basemap.style(), center: [-3.5986, 37.1773], zoom: 13.2, minZoom: 3, maxZoom: 19, renderWorldCopies: false, attributionControl: false, dragRotate: false, pitchWithRotate: true, preserveDrawingBuffer: false }); // rotation (and tilt with it) is enabled only in the 3D view (view3d.js). 5.11: zoom out to zoom 3 (Spain, the Mediterranean and North Africa in one view); no geographic bounds — Granada's own data stays at its true place and size
   map.touchZoomRotate.disableRotation();
-  // physical corners: navigation top-right, scale bottom-left, attribution bottom-right — never mirrored
-  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+  // physical corners, never mirrored: Draw section + 3D in one row top-right, north arrow + scale bar bottom-left,
+  // attribution bottom-right. 5.29 (owner request): no zoom buttons — wheel, pinch, double-click and the + / − keys zoom.
   map.addControl(new maplibregl.ScaleControl({ unit: 'metric', maxWidth: 140 }), 'bottom-left');
+  { // the north arrow joins the scale bar (one small group, bottom-left)
+    const n = document.querySelector('.north'), bl = document.querySelector('.maplibregl-ctrl-bottom-left');
+    if (n && bl) { n.classList.add('maplibregl-ctrl', 'ga-north'); bl.appendChild(n); } }
+  // + / − (and =, numpad) zoom from anywhere unless the visitor is typing, a page or dialog is open, or a tour is running
+  document.addEventListener('keydown', (e) => {
+    if (e.altKey || e.ctrlKey || e.metaKey) return; const k = e.key; const zin = k === '+' || k === '=' || k === 'Add', zout = k === '-' || k === '_' || k === 'Subtract'; if (!zin && !zout) return;
+    const tg = e.target; if (tg && tg.closest && tg.closest('input, textarea, select, [contenteditable="true"], .vw, .modal:not([hidden]), #tour-intro')) return;
+    const pg = document.getElementById('page'); if (pg && !pg.hidden) return;
+    if (tg && tg.classList && tg.classList.contains('maplibregl-canvas')) return; // MapLibre's own keyboard handler already zooms
+    e.preventDefault(); zin ? map.zoomIn() : map.zoomOut(); });
+  const zoomHint = () => { try { map.getCanvas().setAttribute('aria-description', GA.i18n.t('v27.zoomKeys')); } catch (e) { } }; zoomHint(); GA.i18n.onChange(zoomHint);
   // standalone "Draw section" on the main map: no study area needed (see startSection)
   const secCtl = { onAdd() { const d = document.createElement('div'); d.className = 'maplibregl-ctrl maplibregl-ctrl-group ga-secctl'; d.innerHTML = `<button type="button" id="map-draw-section" class="ga-secbtn"><span class="ic" aria-hidden="true">A–B</span><span class="tx"></span></button>`; d.querySelector('button').addEventListener('click', () => startSection()); this._d = d; this.label(); return d; },
     onRemove() { this._d.remove(); }, label() { if (!this._d) return; const b = this._d.querySelector('button'); b.querySelector('.tx').textContent = GA.i18n.t('v6.drawSection'); b.title = GA.i18n.t('v6.drawSectionHint'); b.setAttribute('aria-label', GA.i18n.t('v6.drawSection')); } };

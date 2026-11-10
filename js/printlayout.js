@@ -71,7 +71,7 @@
   const fromWorld = (p, z) => [p[0] / WS(z) * 360 - 180, Math.atan(Math.sinh(Math.PI * (1 - 2 * p[1] / WS(z)))) * 180 / Math.PI];
   class Cancelled extends Error { constructor() { super(t('v17.cancelled')); this.cancelled = true; } }
   async function mapRenderer(frameMm, dpi, denom, q, opt) {
-    opt = opt || {}; const ctl = opt.ctl || {}; const main = root.GA.app.map; const c = main.getCenter(); const pr = dpi / 96; const wPx = q.w, hPx = q.h;
+    opt = opt || {}; const ctl = opt.ctl || {}; const main = root.GA.app.map; const c = opt.center ? new maplibregl.LngLat(opt.center[0], opt.center[1]) : main.getCenter(); // 5.29: model sheets render around their own centre const pr = dpi / 96; const wPx = q.w, hPx = q.h;
     const mppCss = denom * 0.0254 / 96; // ground metres per CSS px at 1:N (1 CSS px = 1/96 in on paper)
     const zoom = Math.log2(40075016.686 * Math.cos(c.lat * Math.PI / 180) / (512 * mppCss));
     const L = root.GA.app.L; if (L && L.printPrepare) await L.printPrepare(zoom);
@@ -291,6 +291,7 @@
     while (st.slots.length < 4) st.slots.push({ type: 'none', caption: '' }); const mo = st.template === 'maponly';
     const chk = (k, l) => `<label class="chk"><input type="checkbox" data-mo="${k}" ${st.mo[k] ? 'checked' : ''}> ${l}</label>`;
     return `<div class="pl"><form class="pl-form" onsubmit="return false">
+      ${root.GA.modelPrint ? root.GA.modelPrint.html() : ''}
       ${mo ? '' : `<label>${t('pl.title')} <input type="text" data-pl="title" value="${esc(st.title)}"></label>
       <label>${t('pl.subtitle')} <input type="text" data-pl="subtitle" value="${esc(st.subtitle)}"></label>`}
       <div class="pl-row"><label>${t('pl.paper')} <select data-pl="paper">${Object.keys(PAPERS).map(k => opt(k, st.paper, `${k} (${PAPERS[k][0]} × ${PAPERS[k][1]} mm)`)).join('')}</select></label>
@@ -354,7 +355,7 @@
     finally { busy = false; ctlNow = null; }
   }
   function render(body) {
-    const redraw = () => { const keep = body.querySelector('#pl-sheet') && body.querySelector('#pl-sheet').innerHTML; body.innerHTML = form(); if (keep) body.querySelector('#pl-sheet').innerHTML = keep; };
+    const redraw = () => { const keep = body.querySelector('#pl-sheet') && body.querySelector('#pl-sheet').innerHTML; body.innerHTML = form(); if (keep) body.querySelector('#pl-sheet').innerHTML = keep; if (root.GA.modelPrint) root.GA.modelPrint.mount(body); };
     redraw();
     body.onchange = async (e) => { await change(e); persist(); };
     const change = async (e) => { const el = e.target;
@@ -373,6 +374,6 @@
       const b = e.target.closest('[data-pl-act]'); if (b) run(b.dataset.plAct, body); };
   }
   PG.register('print', { plate: () => t('pl.plate'), title: () => t('pl.pageTitle'), render });
-  root.GA.printLayout = { st, compose, layout, PAPERS, effDpi, TEMPLATES, glLimit, KEY, estimate, DPIS, pdfSink, pngSink, legendItems, get running() { return ctlNow; }, // legendItems: what the printed legend lists (5.28 tests)
+  root.GA.printLayout = { st, compose, layout, PAPERS, effDpi, TEMPLATES, glLimit, KEY, estimate, DPIS, pdfSink, pngSink, legendItems, mapRenderer, get running() { return ctlNow; }, // mapRenderer: the true-scale map renderer, reused by the model workshop sheets (5.29) // legendItems: what the printed legend lists (5.28 tests)
     _setGlLimit(n) { GL_LIM = n; } }; // test hook: simulate a smaller GPU
 })(window);

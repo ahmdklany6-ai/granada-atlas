@@ -1,4 +1,4 @@
-"""Live verification of build 5.25 (Atlas shell), 5.27 (opening page + story tour) and 5.28 (city growth as a layer, OFF by default) on the PUBLIC site from a GitHub runner. Fresh browser — no visitor data
+"""Live verification of build 5.25 (Atlas shell), 5.27 (opening page + story tour) 5.28 (city growth as a layer, OFF by default) and 5.29 (map screen: no zoom buttons, Draw section + 3D top-right, north arrow beside the scale bar, language buttons and the five analyses in the top bar) on the PUBLIC site from a GitHub runner. Fresh browser — no visitor data
 touched. Checks: the build is served; ☰ sidebar with seven sections and the old navigation inside; city start with the
 growth animation and both markers; density topic → class layers + legend; metro area keeps the topic and computes
 corridor indicators; factory → "No data for this area"; Back to Granada; ar / he sidebar side; phone bottom sheet.
@@ -56,8 +56,22 @@ with sync_playwright() as p:
             pg.keyboard.press('Enter'); time.sleep(1.5)
             check(not pg.evaluate('GA.tour.state.on') and pg.evaluate('GA.app.map.getStyle().layers.filter(l => l.id.startsWith("tour-")).length') == 0, 'the last Enter returns to the map, tour layers removed')
         check(not errs, f'{lang}: no page errors (opening page / tour)', errs[:2]); ctx.close()
+
+    LAYOUT = r"""() => { const R = (s) => { const e = document.querySelector(s); if (!e || !e.offsetWidth) return null; const r = e.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; };
+      const st = R('.stage'), s = R('#map-draw-section'), d = R('.ga-3dctl'), n = R('.ga-north'), sc = R('.maplibregl-ctrl-scale');
+      return { zoom: document.querySelectorAll('.maplibregl-ctrl-zoom-in').length, row: !!(s && d && Math.abs(s[1] - d[1]) < 4 && st[2] - Math.max(s[2], d[2]) <= 16 && Math.min(s[1], d[1]) - st[1] <= 16),
+        north: !!(n && sc && (Math.abs(n[2] - sc[0]) <= 12 || Math.abs(sc[2] - n[0]) <= 12) && Math.min(n[0], sc[0]) - st[0] <= 20),
+        langs: [...document.querySelectorAll('#tb-lang button')].map(b => b.textContent.trim()), topics: document.querySelectorAll('#atl-topics button').length }; }"""
+    def layout_check(pg, tag):
+        L = pg.evaluate(LAYOUT)
+        check(L['zoom'] == 0 and L['row'] and L['north'], f'{tag}: no zoom buttons; Draw section + 3D top-right; north arrow beside the scale bar (5.29)', L)
+        check(L['langs'] == ['عربي', 'עברית', 'English'] and L['topics'] == 6, f'{tag}: language buttons and the five analyses (+ no topic) in the top bar (5.29)', L)
     ctx, pg, errs = boot({'width': 1440, 'height': 900})
     check(pg.evaluate('window.GA_BUILD') == EXPECT, f'page runs build {EXPECT}')
+    layout_check(pg, 'en 1440 px')
+    c0 = pg.evaluate('[GA.app.map.getCenter().toArray(), GA.app.map.getZoom()]'); pg.click('#tb-lang [data-lang="he"]'); time.sleep(1.5)
+    c1 = pg.evaluate('[GA.app.map.getCenter().toArray(), GA.app.map.getZoom()]'); check(pg.evaluate('document.documentElement.lang') == 'he' and c0 == c1, 'top-bar language button switches the language and keeps the map view (5.29)', (c0, c1))
+    pg.click('#tb-lang [data-lang="en"]'); time.sleep(1.2)
     pg.evaluate('GA.i18n.setLang("en")'); time.sleep(1)
     check(pg.evaluate('document.body.classList.contains("atlas") && !!document.querySelector("#atl-side #tb-nav") && !!document.querySelector("#atl-side #panel-layers")'), 'atlas shell: ☰, navigation and Layers inside the sidebar')
     st = pg.evaluate('GA.atlas.state'); gv = pg.evaluate('["ly-growth-fill", "ly-growth"].map(id => GA.app.map.getLayer(id) ? GA.app.map.getLayoutProperty(id, "visibility") : "none")')
@@ -96,6 +110,7 @@ with sync_playwright() as p:
     check(not [e for e in errs if 'rtl-text' not in e], 'no page errors', errs[:3]); ctx.close()
     for lang, vp, mob in [('ar', {'width': 1440, 'height': 900}, False), ('he', {'width': 390, 'height': 844}, True)]:
         ctx, pg, errs = boot(vp, mob); pg.evaluate(f'GA.i18n.setLang("{lang}")'); time.sleep(1)
+        layout_check(pg, f'{lang} {vp["width"]} px'); emit(f'{lang}_start', pg.screenshot())
         sp = pg.evaluate('[...document.querySelectorAll("body *")].filter(e => (e.offsetWidth || e.offsetHeight) && [...e.childNodes].some(n => n.nodeType === 3 && /[\\u0590-\\u06FF]/.test(n.textContent))).filter(e => { const c = getComputedStyle(e); return !(c.letterSpacing === "normal" || parseFloat(c.letterSpacing) === 0) || c.textTransform !== "none"; }).length')
         check(sp == 0, f'{lang}: no letter-spacing on Arabic / Hebrew text ({sp} elements)')
         pg.click('#atl-burger'); time.sleep(0.6); sb = pg.evaluate('(() => { const r = document.querySelector("#atl-side").getBoundingClientRect(); return [r.right, innerWidth]; })()')

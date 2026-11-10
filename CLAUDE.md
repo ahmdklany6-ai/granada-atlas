@@ -22,6 +22,9 @@ while that account is suspended (ticket #4976314) — push the full history back
   sidebar (research requirements, study areas, layers, historical maps, tools & pages, display, export) from the ☰
   side; the analysis panel floats bottom-left (bottom sheet on phones). Opening/closing anything never moves the map.
   The Analysis / Study-area panels still exist and open from the sidebar (`js/atlas.js`, HANDOFF §27).
+  Since 5.29 (owner request): no zoom buttons (wheel / pinch / double-click / + − keys); Draw section + 3D in one row in
+  the map's top-right corner; north arrow beside the scale bar bottom-left; three language buttons always in the top bar
+  (end side); the five analyses + "no topic" always on screen (in the top bar ≥ 1200 px, a strip under it below).
 - Opening page and story tour (since 5.27, owner request): the plain URL (no hash) always opens on the opening page
   (title, names, red "Start the tour", white "Open the map"; no "don't show again"); deep links skip it; `#/tour` reopens it.
   The tour (`js/tour.js`, HANDOFF §29) uses its own `tour-*` layers and never changes the visitor's saved layer state.
@@ -31,7 +34,7 @@ while that account is suspended (ticket #4976314) — push the full history back
   OFF by default; nothing may start it by itself. Play / Pause / period / Hide everywhere go through `GA.growth` (one state).
 - Visual identity: red `#992B2A` with the owner's mood-board palette (cream, muted blues, olives, burgundies — see
   HANDOFF §3); IBM Plex Sans / Arabic / Hebrew. Colours come ONLY from `js/palette.js` (CSS reads its `--c-*`); legends must be generated from the same class definitions as the map (never hard-coded twice).
-- Every string in all three languages (`GA.i18n.add({ key: [ar, he, en] })`, newest file `js/i18n_v26.js`; add a new `i18n_vN.js` per build).
+- Every string in all three languages (`GA.i18n.add({ key: [ar, he, en] })`, newest file `js/i18n_v27.js`; add a new `i18n_vN.js` per build).
   Numbers, units and coordinates stay left-to-right inside RTL text.
 - Honesty about data: never invent heights, roofs, materials, widths, trees or any value and present it as fact.
   Estimates are labelled, schematic elements are named, missing data is shown as missing (never as zero).
@@ -42,7 +45,7 @@ while that account is suspended (ticket #4976314) — push the full history back
 - Every release: bump the build in `version.json` AND `index.html` (`window.GA_BUILD` and every `?v=` query) —
   `tests/ui_test_v4.py` checks they agree. Data changes also bump `dataVersion` in `data/manifest.json`.
 - Run locally: `python3 -m http.server 8000` in the repo root (for your own testing only).
-- Tests: `for t in tests/*.test.js; do node $t; done` and `python3 tests/ui_test_vN.py` (N = 2…26; Playwright +
+- Tests: `for t in tests/*.test.js; do node $t; done` and `python3 tests/ui_test_vN.py` (N = 2…27; Playwright +
   Chromium; v6 and v8 take 10–20 min). Run browser suites ONE AT A TIME (parallel runs crash the headless GPU).
 - Check exports by opening them (pdfinfo/pdffonts/pdftoppm, Pillow, XML parse, sqlite, `tests/validate_export.py`).
 - After publishing: wait for the GitLab `pages` job, then verify the live URL with the on-demand `run` job

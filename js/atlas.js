@@ -33,6 +33,11 @@
     document.body.classList.add('atlas');
     const top = $('.topbar'); const btn = document.createElement('button'); btn.type = 'button'; btn.id = 'atl-burger'; btn.className = 'atl-burger'; btn.setAttribute('aria-controls', 'atl-side'); btn.setAttribute('aria-expanded', 'false');
     btn.innerHTML = '<span aria-hidden="true">☰</span>'; top.insertBefore(btn, top.firstChild);
+    const row = document.createElement('nav'); row.id = 'atl-topics'; row.className = 'atl-topics'; top.appendChild(row);
+    row.addEventListener('click', (e) => { const b = e.target.closest('[data-topic]'); if (b) setTopic(b.dataset.topic || null); });
+    const lg = document.createElement('div'); lg.id = 'tb-lang'; lg.className = 'tb-lang'; lg.setAttribute('role', 'group');
+    lg.innerHTML = [['ar', 'عربي'], ['he', 'עברית'], ['en', 'English']].map(([l, n]) => `<button type="button" data-lang="${l}" lang="${l}" dir="${l === 'en' ? 'ltr' : 'rtl'}">${n}</button>`).join('');
+    top.appendChild(lg); lg.addEventListener('click', (e) => { const b = e.target.closest('[data-lang]'); if (b && b.dataset.lang !== I.lang) I.setLang(b.dataset.lang); });
     const side = document.createElement('aside'); side.id = 'atl-side'; side.className = 'atl-side'; side.hidden = true; side.setAttribute('aria-label', 'menu');
     side.innerHTML = `<div class="atl-side-h"><b data-i18n="v23.menu"></b><button type="button" class="icon-btn" id="atl-side-x">✕</button></div><div class="atl-side-b">${SECTIONS.map(k => `<section class="atl-sec" data-sec="${k}"><button type="button" class="atl-sec-h" data-sec-t="${k}" aria-expanded="false"><span class="atl-sec-n"></span><span class="atl-caret" aria-hidden="true">▸</span></button><div class="atl-sec-b" id="atl-sec-${k}" hidden></div></section>`).join('')}</div>`;
     document.body.appendChild(side);
@@ -54,14 +59,27 @@
   }
   function openSide() { const s = $('#atl-side'); if (innerWidth < 1000) ['analysis', 'study'].forEach(k => root.GA.panels.isOpen(k) && root.GA.panels.set(k, false)); /* tablets and phones: one side view at a time */ s.hidden = false; $('#atl-burger').setAttribute('aria-expanded', 'true'); document.body.classList.add('atl-menu'); relayout(); const f = s.querySelector('.atl-sec-h'); f && f.focus({ preventScroll: true }); }
   const relayout = () => dispatchEvent(new Event('ga:relayout'));
-  // 5.26: the north arrow sits under the map control column (zoom, draw section, 3D) whatever its height, centred on it —
-  // fixed offsets put it on the 3D button on phones
-  function placeNorth() { const n = $('.north'), c = $('.maplibregl-ctrl-top-right'), st = $('.stage'); if (!n || !c || !st) return;
-    const r = c.getBoundingClientRect(), s = st.getBoundingClientRect(); if (!r.height) return; const w = n.offsetWidth || 16;
-    n.style.top = Math.round(r.bottom - s.top + 10) + 'px'; n.style.right = Math.round(s.right - (r.left + r.right) / 2 - w / 2) + 'px'; } // the map legend moves clear of the menu and the panel
+  // 5.29: north arrow + scale bar are one group in the bottom-left corner (js/app.js). It stays clear of whatever sits at the
+  // bottom-left: the atlas panel (floating, folded, or the phone bottom sheet) and the tour card — the group rises above it.
+  function placeNorth() { const g = $('.maplibregl-ctrl-bottom-left'), st = $('.stage'); if (!g || !st) return;
+    g.style.bottom = ''; const s = st.getBoundingClientRect(), r0 = g.getBoundingClientRect(); if (!r0.height) return;
+    let lift = 0; ['#atl-panel', '#tour-card'].forEach(sel => { const e = $(sel); if (!e || e.hidden || !e.offsetWidth || getComputedStyle(e).display === 'none') return; const q = e.getBoundingClientRect();
+      const hit = !(r0.right <= q.left || r0.left >= q.right || r0.bottom <= q.top || r0.top >= q.bottom); if (hit) lift = Math.max(lift, Math.round(s.bottom - q.top + 4)); });
+    if (lift) g.style.bottom = lift + 'px'; }
+  // 5.29: the five analyses are always on screen — a row in the top bar (a strip under it below 1200 px, scrollable on
+  // phones), with "no topic"; the current one is marked. The ☰ menu keeps its own list (same state).
+  function renderTopicRow() { const row = $('#atl-topics'); if (!row) return;
+    row.innerHTML = TOPICS.map((k, i) => `<button type="button" class="atl-tp ${S.topic === k ? 'on' : ''}" data-topic="${k}" aria-pressed="${S.topic === k}"><span class="atl-num">${String(i + 1).padStart(2, '0')}</span> ${t('e13.t.' + k)}</button>`).join('')
+      + `<button type="button" class="atl-tp atl-tp-none ${!S.topic ? 'on' : ''}" data-topic="" aria-pressed="${!S.topic}">${t('v23.noTopic')}</button>`;
+    row.setAttribute('aria-label', t('v27.topicsRow')); }
+  // 5.29: language buttons in the top bar (top right in English, mirrored to the top left in Arabic and Hebrew); the same
+  // GA.i18n state as the Display section, so both always agree
+  function renderLangBar() { const g = $('#tb-lang'); if (!g) return; g.setAttribute('aria-label', t('lang.label'));
+    g.querySelectorAll('button').forEach(b => { const on = b.dataset.lang === I.lang; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); }); }
   function closeSide() { const s = $('#atl-side'); if (!s) return; s.hidden = true; $('#atl-burger').setAttribute('aria-expanded', 'false'); document.body.classList.remove('atl-menu'); relayout(); }
   function showSection(k) { open[k] = true; renderSide(); openSide(); const el = $(`.atl-sec[data-sec="${k}"]`); el && el.scrollIntoView({ block: 'nearest' }); }
   function renderSide() {
+    renderTopicRow(); renderLangBar();
     const side = $('#atl-side'); if (!side) return; $('[data-i18n="v23.menu"]', side).textContent = t('v23.menu'); $('#atl-side-x').setAttribute('aria-label', t('close'));
     SECTIONS.forEach(k => { const h = $(`[data-sec-t="${k}"]`, side); h.querySelector('.atl-sec-n').textContent = t('v23.sec.' + k); h.setAttribute('aria-expanded', String(!!open[k])); h.querySelector('.atl-caret').textContent = open[k] ? '▾' : '▸'; $('#atl-sec-' + k).hidden = !open[k]; });
     $('#atl-sec-research').innerHTML = `<p class="fine">${t('v23.researchLead')}</p><div class="atl-list" role="radiogroup">${TOPICS.map((k, i) => `<button type="button" class="atl-item ${S.topic === k ? 'on' : ''}" role="radio" aria-checked="${S.topic === k}" data-topic="${k}"><span class="atl-num">${String(i + 1).padStart(2, '0')}</span><span>${t('e13.t.' + k)}</span></button>`).join('')}<button type="button" class="atl-item atl-none ${!S.topic ? 'on' : ''}" role="radio" aria-checked="${!S.topic}" data-topic=""><span class="atl-num">—</span><span>${t('v23.noTopic')}</span></button></div>`;
@@ -451,7 +469,7 @@
     I.onChange(relabel); map.on('moveend', relayout);
     // 5.28: the city growth layer changes (checkbox, Play / Pause, period, OFF from anywhere) → the same buttons and label here
     if (root.GA.growth) root.GA.growth.onChange(() => { renderStep(); document.querySelectorAll('.atl-gr-btns').forEach(el => { el.innerHTML = root.GA.growth.buttonsHTML(); }); });
-    const pn = () => requestAnimationFrame(placeNorth); addEventListener('resize', pn); addEventListener('ga:relayout', pn); new MutationObserver(pn).observe(document.body, { attributes: true, attributeFilter: ['class'] }); if (root.ResizeObserver) new ResizeObserver(pn).observe($('.maplibregl-ctrl-top-right') || document.body); pn();
+    const pn = () => requestAnimationFrame(placeNorth); addEventListener('resize', pn); addEventListener('ga:relayout', pn); new MutationObserver(pn).observe(document.body, { attributes: true, attributeFilter: ['class'] }); if (root.ResizeObserver) { const ro = new ResizeObserver(pn); ro.observe($('.maplibregl-ctrl-bottom-left') || document.body); ['#atl-panel', '#tour-card'].forEach(sel => { const e = $(sel); if (e) ro.observe(e); }); } pn(); setTimeout(pn, 1500);
     // while a map drawing tool is active (section, polygon — the mode banner is shown), the atlas panel folds to its title
     // bar so the map and the Finish / Undo buttons are free; it unfolds again when drawing ends (if it was open before)
     const mb = $('#mode-banner'); let foldedForDraw = false;
