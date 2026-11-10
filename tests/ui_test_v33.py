@@ -123,9 +123,9 @@ try:
                     check(abs(st_['z'] - z) < 0.01, f'zoom {z}: the map holds the view for the check', st_)
                     for kind, line in (('metro', G['metro']), ('tram', G['trunk'])):
                         d = pg.evaluate(JS_LINE_DIST, {'pt': P[kind], 'line': line}); check(d <= 2, f'zoom {z}: the {kind} icon point lies on its line ({d:.2f} px)')
-                    size = pg.evaluate(f'(() => {{ const z = {z}; const s = z >= 14 ? 1 : 0.8 + (z - 12) * 0.1; return s * GA.railIcons.W; }})()')
-                    check(36 <= size <= 46, f'zoom {z}: icon {size:.1f} px wide (5.43: 36–46, on a white badge)')
-                    boxes = pg.evaluate('''(a) => { const m = GA.app.map, z = m.getZoom(), s = (z >= 14 ? 1 : 0.8 + (z - 12) * 0.1), W = GA.railIcons.W * s, H = GA.railIcons.H * s; const B = (ll) => { const p = m.project(ll); return { l: p.x - W / 2, r: p.x + W / 2, t: p.y - H / 2, b: p.y + H / 2, x: p.x, y: p.y }; };
+                    size = pg.evaluate(f'(() => {{ const z = {z}; const s = z >= 14 ? 1 : 0.55 + (z - 12) * 0.225; return s * GA.railIcons.W; }})()')
+                    check(50 <= size <= 69, f'zoom {z}: icon {size:.1f} px wide (5.44: 50–69, on a white badge)')
+                    boxes = pg.evaluate('''(a) => { const m = GA.app.map, z = m.getZoom(), s = (z >= 14 ? 1 : 0.55 + (z - 12) * 0.225), W = GA.railIcons.W * s, H = GA.railIcons.H * s; const B = (ll) => { const p = m.project(ll); return { l: p.x - W / 2, r: p.x + W / 2, t: p.y - H / 2, b: p.y + H / 2, x: p.x, y: p.y }; };
                       const r = 4 + (z - 10) * (8 - 4) / 6 + 2.2; /* station circle radius + stroke at this zoom */
                       const hitC = (bx, ll) => { const p = m.project(ll); const cx = Math.max(bx.l, Math.min(p.x, bx.r)), cy = Math.max(bx.t, Math.min(p.y, bx.b)); return Math.hypot(p.x - cx, p.y - cy) < r; };
                       const lbl = (nm, ll) => { const p = m.project(ll); const w = nm.length * 7.6 + 6, h = 18; return { l: p.x - w / 2, r: p.x + w / 2, t: p.y - h / 2, b: p.y + h / 2 }; };

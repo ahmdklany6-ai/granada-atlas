@@ -132,6 +132,7 @@
   P.south = {
     metro: RED, metroCasing: '#FFFFFF', station: BASE.brown, tram: BASE.oxblood, trunk: BASE.khaki, tramStation: BASE.oxblood,
     estate: BASE.burgundy, science: RED, logistics: BASE.khaki, industry: D.warmGrey, village: BASE.brown, gap: BASE.brown,
+    smoke: D.warmGrey2, glass: D.blueDark, // 5.44 pictograms: steam of the old locomotive, windscreen of the modern train
   };
   // 5.27 — story tour (js/tour.js): the base, the fence classes, the towns and the agglomeration ramps. Map paint, card
   // legends and dot indicator read these entries.
