@@ -276,6 +276,92 @@
       { mk: 'market', label: t('x13.lg.market'), layer: 4 }, { mk: 'cafe', label: t('x13.lg.cafe'), layer: 4 }, { mk: 'play', label: t('x13.lg.play'), layer: 4 }, { mk: 'civic', label: t('x13.lg.civic'), layer: 4 },
       { dot: B.red, label: t('x24.lg.far', { n: '‎' + hd.far.length.toLocaleString('en-US') + '‎' }), layer: 5 }];
   }
-  root.GA.ex13art = { KEYS, CKEYS, DKEYS, CELL, prepare, draw, legendItems, loadCentre, ready: (k) => (k === 'centre' || k === 'density') ? loadCentre() : Promise.resolve(), keys: (k) => k === 'centre' ? CKEYS : k === 'density' ? DKEYS : k === 'climate' ? KLKEYS : k === 'human' ? HKEYS : KEYS,
-    drawCentre, centreLegend, drawDensity, drawDensityTop, densityLegend, drawClimate, climateLegend, drawHuman, humanLegend, densityStats: (D) => needles(D), get centre() { return CA; }, get grid() { return G; } };
+
+  // ---------- HUMAN DIMENSION, second artistic style: the axonometric drawing (other session, merged in 5.30 — HANDOFF §32) ----------
+  // ---------- 5.26: the human dimension — the city as used, each layer a 3D object over a line drawing of the frame, seen from
+  // the south-west (assets from tools/build_ex13_human.py). Heights are scales for the values, stated in the legend. ----------
+  const HAXKEYS = ['residents', 'commerce', 'streets', 'buses', 'meeting', 'visitors'];
+  let HA = null, HAp = null;
+  function loadHuman() { if (HAp) return HAp; const v = '?v=' + (root.GA_BUILD || ''), dir = 'data/ex13/art/';
+    HAp = Promise.all([fetch(dir + 'human_art.json' + v).then(r => { if (!r.ok) throw new Error('human_art.json ' + r.status); return r.json(); }), new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('human_ground.png')); i.src = dir + 'human_ground.png' + v; })])
+      .then(([d, g]) => (HA = Object.assign(d, { ground: g }))).catch(e => { HAp = null; throw e; }); return HAp; }
+  function drawHumanAxo(ctx, D, x, y, S, o) {
+    o = o || {}; if (!HA) return false; const DT = HA, P = GA.palette, H = P.ex13art.human, INK = P.ink, MONO = root.GA.pages.font();
+    const K = 0.56, OX = 500, OY = 960; const PR = (px, py, z) => { const a = px, b = 1000 - py; return [OX + 0.866 * K * (a - b), OY - 0.5 * K * (a + b) - (z || 0)]; }; const depth = (px, py) => px + (1000 - py);
+    const fmt = (n) => Number(n).toLocaleString('en-US'); const ctr = (pts) => pts.reduce((q, p) => [q[0] + p[0] / pts.length, q[1] + p[1] / pts.length], [0, 0]);
+    const shade = (hex, f) => { const c = P.rgb(hex).map(v => Math.round(Math.min(255, v * f))); return `rgb(${c})`; };
+    ctx.save(); ctx.translate(x, y); ctx.scale(S / 1000, S / 1000); ctx.beginPath(); ctx.rect(0, 0, 1000, 1000); ctx.clip(); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, 1000, 1000);
+    const prism = (ring, z0, z1, col) => { const c = ctr(ring); const faces = [];
+      for (let i = 0; i < ring.length; i++) { const p = ring[i], q = ring[(i + 1) % ring.length]; const mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2; const out = [mx - c[0], my - c[1]]; if (out[1] - out[0] <= 0) continue; faces.push({ p, q, d: depth(mx, my), f: out[1] > -out[0] ? 0.72 : 0.88 }); }
+      faces.sort((u, v) => v.d - u.d).forEach(fc => { ctx.fillStyle = shade(col, fc.f); ctx.beginPath(); [PR(fc.p[0], fc.p[1], z0), PR(fc.q[0], fc.q[1], z0), PR(fc.q[0], fc.q[1], z1), PR(fc.p[0], fc.p[1], z1)].forEach((q, i) => i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])); ctx.closePath(); ctx.fill(); });
+      ctx.fillStyle = shade(col, 1.12); ctx.beginPath(); ring.forEach((p, i) => { const q = PR(p[0], p[1], z1); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }); ctx.closePath(); ctx.fill(); };
+    const box = (cx, cy, h, z0, z1, col) => prism([[cx - h, cy - h], [cx + h, cy - h], [cx + h, cy + h], [cx - h, cy + h]], z0, z1, col);
+    const cylinder = (px, py, r, z1, col) => { const [sx, sy] = PR(px, py, 0); const rx = r * K * 1.2247, ry = r * K * 0.7071; const g = ctx.createLinearGradient(sx - rx, 0, sx + rx, 0); g.addColorStop(0, shade(col, 0.7)); g.addColorStop(0.45, shade(col, 1.18)); g.addColorStop(1, shade(col, 0.62));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(sx, sy, rx, ry, 0, 0, Math.PI); ctx.lineTo(sx - rx, sy - z1); ctx.ellipse(sx, sy - z1, rx, ry, 0, Math.PI, 0, true); ctx.closePath(); ctx.fill(); ctx.fillStyle = INK; ctx.beginPath(); ctx.ellipse(sx, sy - z1, rx, ry, 0, 0, 7); ctx.fill(); };
+    const ring = (px, py, r) => { const [sx, sy] = PR(px, py, 0); ctx.strokeStyle = 'rgba(41,16,12,.45)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.ellipse(sx, sy, r * K * 1.2247, r * K * 0.7071, 0, 0, 7); ctx.stroke(); };
+    const label = (sx, sy, lines, col, align) => { ctx.save(); ctx.direction = 'ltr'; ctx.textAlign = align || 'left'; ctx.lineJoin = 'round'; lines.forEach((t, i) => { ctx.font = (i ? '500 11px ' : '700 12px ') + MONO; ctx.lineWidth = 3.5; ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.strokeText(t, sx, sy + i * 14); ctx.fillStyle = i ? P.ink3 : col; ctx.fillText(t, sx, sy + i * 14); }); ctx.restore(); };
+    const guide = (px, py, z) => { const [a, b] = PR(px, py, 0); ctx.strokeStyle = 'rgba(41,16,12,.35)'; ctx.lineWidth = 0.7; ctx.setLineDash([2, 4]); ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(a, b - z); ctx.stroke(); ctx.setLineDash([]); };
+    const TAGS = []; const tag = (anchor, lines, col) => TAGS.push({ a: anchor, lines, col, alpha: ctx.globalAlpha });
+    const C1 = DT.peaks.find(p => p.rank === 1) || DT.peaks[0];
+    const L = [
+      (t) => { const LIFT = 230 * Math.min(1, t * 1.3); const hh = (v) => Math.min(v, 40000) / 40000 * 70 * t; const c = ctr(DT.residents.map(r => ctr(r.qd)));
+        ctx.save(); ctx.globalAlpha *= 0.25; ctx.fillStyle = H.res[1]; DT.residents.forEach(r => { ctx.beginPath(); r.qd.forEach((p, i) => { const q = PR(p[0], p[1], 0); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }); ctx.fill(); }); ctx.restore();
+        [[c[0] - 60, c[1] - 120], [c[0] + 60, c[1] + 120], c].forEach(([px, py]) => guide(px, py, LIFT));
+        DT.residents.slice().sort((u, v) => depth(...ctr(v.qd)) - depth(...ctr(u.qd))).forEach(r => prism(r.qd, LIFT, LIFT + hh(r.v), r.v >= 30000 ? H.res[2] : r.v >= 20000 ? H.res[1] : H.res[0]));
+        if (t > 0.7) tag(PR(c[0] - 150, c[1] + 80, LIFT + 20), ['01 RESIDENTS', '>15,000 /km² · max ' + fmt(D.density.stats.peak)], H.res[2]); },
+      (t) => { DT.peaks.slice().sort((u, v) => depth(v.x, v.y) - depth(u.x, u.y)).forEach(p => { ring(p.x, p.y, 30); cylinder(p.x, p.y, 5.5, p.v / C1.v * 470 * t, H.gold); });
+        if (t > 0.6) DT.peaks.filter(p => p.rank <= 2).forEach(p => tag(PR(p.x, p.y, p.v / C1.v * 470), ['02 C' + p.rank + ' · ' + fmt(p.v) + ' shops/km²', p.n300 + ' shops ≤ 300 m'], H.goldLabel)); },
+      (t) => { const top = DT.streets[0].per100; const segs = []; DT.streets.forEach(st => st.lines.forEach(l => { for (let i = 1; i < l.length; i++) segs.push({ a: l[i - 1], b: l[i], h: st.per100 / top * 120 * t, d: depth((l[i - 1][0] + l[i][0]) / 2, (l[i - 1][1] + l[i][1]) / 2) }); }));
+        segs.sort((u, v) => v.d - u.d).forEach(g => { const q = [PR(g.a[0], g.a[1], 0), PR(g.b[0], g.b[1], 0), PR(g.b[0], g.b[1], g.h), PR(g.a[0], g.a[1], g.h)]; ctx.fillStyle = `rgba(${P.rgb(H.street)},.82)`; ctx.beginPath(); q.forEach((z, i) => i ? ctx.lineTo(z[0], z[1]) : ctx.moveTo(z[0], z[1])); ctx.closePath(); ctx.fill(); ctx.strokeStyle = H.streetEdge; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(q[3][0], q[3][1]); ctx.lineTo(q[2][0], q[2][1]); ctx.stroke(); });
+        if (t > 0.6) DT.streets.slice(0, 3).forEach((st, i) => { const all = st.lines.flat(); const p = all[Math.floor(all.length / 2)]; tag(PR(p[0], p[1], st.per100 / top * 120), ['03.' + (i + 1) + ' ' + st.nm.replace(/^Calle /, 'C/ '), st.n + ' shops · ' + st.len + ' m'], H.street); }); },
+      (t) => { const mx = DT.stops[0].t; DT.stops.slice().sort((u, v) => depth(v.x, v.y) - depth(u.x, u.y)).forEach(st => { const h = st.t / mx * 330 * t; box(st.x, st.y, 1.8, 0, h, H.stop); const tp = PR(st.x, st.y, h); ctx.fillStyle = P.red; ctx.beginPath(); ctx.arc(tp[0], tp[1], 2.2, 0, 7); ctx.fill(); });
+        if (t > 0.6) { const st = DT.stops[0]; tag(PR(st.x, st.y, 330), ['04 ' + String(st.nm).slice(0, 20), st.t + ' bus trips/day'], INK); } },
+      (t) => { DT.parks.map(r => ({ r: r[0], c: H.park, h: 2.5 })).concat(DT.squares.map(r => ({ r: r[0], c: H.square, h: 4.5 }))).filter(q => q.r.length >= 3).map(q => Object.assign(q, { d: depth(...ctr(q.r)) })).sort((u, v) => v.d - u.d).forEach(q => prism(q.r, 0, q.h * t, q.c));
+        DT.markets.forEach(m => box(m[0], m[1], 4, 0, 26 * t, H.market)); if (t > 0.6 && DT.markets[0]) tag(PR(DT.markets[0][0], DT.markets[0][1], 26), ['05 MEETING PLACES', DT.meta.reach + ' % of residents ≤ 300 m'], H.square); },
+      (t) => { const LIFT = 450 * Math.min(1, t * 1.3); const c = ctr(DT.hotels); guide(c[0], c[1], LIFT); DT.hotels.slice().sort((u, v) => depth(v[0], v[1]) - depth(u[0], u[1])).forEach(h => box(h[0], h[1], 2.6, LIFT, LIFT + 9 * t, H.hotel));
+        if (t > 0.7) tag(PR(c[0], c[1], LIFT + 9), ['06 VISITORS', DT.hotels.length + ' hotels & hostels'], H.hotel); },
+    ];
+    ctx.save(); ctx.setTransform(ctx.getTransform().multiply(new DOMMatrix([0.866 * K, -0.5 * K, 0.866 * K, 0.5 * K, OX - 866 * K, OY - 500 * K]))); ctx.globalAlpha = 0.85; ctx.drawImage(DT.ground, 0, 0, 1000, 1000); ctx.restore();
+    const f = o.focus; L.forEach((fn, i) => { if (i === f) return; const a = layerAlpha(o, i), t = layerT(o, i); if (a <= 0.005 || t <= 0) return; ctx.save(); ctx.globalAlpha = a; fn(t); ctx.restore(); }); if (f != null) { ctx.save(); L[f](1); ctx.restore(); }
+    DT.whc.forEach((w, i) => { const q = PR(w.x, w.y, 0); label(q[0] + (i ? 8 : -8), q[1] + (i ? 22 : 16), [String(w.name).toUpperCase()], INK, i ? 'left' : 'right'); });
+    // one label column on the right, ordered by the height of each anchor
+    const X0 = 800; if (TAGS.length) { ctx.fillStyle = 'rgba(255,255,255,.88)'; ctx.fillRect(X0 - 20, 110, 1000 - X0 + 20, 880); ctx.strokeStyle = 'rgba(41,16,12,.15)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(X0 - 20, 110); ctx.lineTo(X0 - 20, 990); ctx.stroke(); }
+    const items = TAGS.slice().sort((u, v) => u.a[1] - v.a[1]); let yy = 130; items.forEach(q => { q.ly = Math.max(yy, q.a[1]); yy = q.ly + 46; });
+    for (let k = items.length - 1; k >= 0; k--) { const lim = k === items.length - 1 ? 975 : items[k + 1].ly - 46; items[k].ly = Math.min(items[k].ly, lim); }
+    items.forEach(q => { ctx.save(); ctx.globalAlpha = q.alpha; ctx.strokeStyle = q.col; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(q.a[0], q.a[1]); ctx.lineTo(X0 - 16, q.ly - 4); ctx.lineTo(X0 - 4, q.ly - 4); ctx.stroke(); ctx.fillStyle = q.col; ctx.beginPath(); ctx.arc(q.a[0], q.a[1], 2.2, 0, 7); ctx.fill(); label(X0, q.ly, q.lines, q.col); ctx.restore(); });
+    // title, north (up-left in this view), 2 km along the east edge
+    ctx.direction = 'ltr'; ctx.fillStyle = INK; ctx.textAlign = 'left'; ctx.font = '700 26px ' + MONO; ctx.fillText('THE HUMAN DIMENSION', 30, 52); ctx.font = '500 13px ' + MONO; ctx.fillStyle = P.ink3; ctx.fillText('GRANADA · 10 × 10 km · seen from the south-west', 30, 74);
+    ctx.save(); ctx.translate(950, 60); ctx.rotate(-Math.PI / 3); ctx.fillStyle = INK; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(8, 12); ctx.lineTo(0, 7); ctx.lineTo(-8, 12); ctx.closePath(); ctx.fill(); ctx.restore(); ctx.fillStyle = INK; ctx.font = '700 14px ' + MONO; ctx.textAlign = 'center'; ctx.fillText('N', 928, 98);
+    const a0 = PR(0, 1000, 0), a1 = PR(200, 1000, 0); ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(a0[0], a0[1] + 18); ctx.lineTo(a1[0], a1[1] + 18); ctx.stroke(); ctx.font = '500 12px ' + MONO; ctx.textAlign = 'left'; ctx.fillText('2 km', a1[0] + 6, a1[1] + 22);
+    ctx.restore(); return true;
+  }
+  function drawHumanAxoTop(ctx, D, x, y, S, o) {
+    o = o || {}; if (!HA) return; const DT = HA, P = GA.palette, H = P.ex13art.human; const k = S / 1000; const al = (i) => layerAlpha(o, i) * (layerT(o, i) > 0 ? 1 : 0);
+    ctx.save(); ctx.translate(x, y); ctx.beginPath(); ctx.rect(0, 0, S, S); ctx.clip(); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, S, S); ctx.globalAlpha = 0.9; ctx.drawImage(DT.ground, 0, 0, S, S); ctx.scale(k, k);
+    const poly = (r) => { ctx.beginPath(); r.forEach((p, n) => n ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); }; const sq = (px, py, h) => ctx.fillRect(px - h, py - h, 2 * h, 2 * h); const mx = DT.stops[0].t, C1 = DT.peaks.find(p => p.rank === 1) || DT.peaks[0];
+    const lay = [
+      () => DT.residents.forEach(r => { ctx.fillStyle = r.v >= 30000 ? H.res[2] : r.v >= 20000 ? H.res[1] : H.res[0]; poly(r.qd); ctx.fill(); }),
+      () => DT.peaks.forEach(p => { ctx.strokeStyle = 'rgba(41,16,12,.5)'; ctx.lineWidth = 1; ctx.strokeRect(p.x - 30, p.y - 30, 60, 60); const h = 4 + p.v / C1.v * 9; ctx.fillStyle = H.gold; sq(p.x, p.y, h); ctx.strokeStyle = P.ink; ctx.lineWidth = 1.2; ctx.strokeRect(p.x - h, p.y - h, 2 * h, 2 * h); ctx.fillStyle = P.ink; ctx.font = `700 15px ${root.GA.pages.font()}`; ctx.direction = 'ltr'; ctx.textAlign = 'left'; ctx.fillText('C' + p.rank, p.x + h + 3, p.y + 5); }),
+      () => { ctx.strokeStyle = H.street; ctx.lineCap = 'round'; const top = DT.streets[0].per100; DT.streets.forEach(st => { ctx.lineWidth = 2 + st.per100 / top * 6; st.lines.forEach(l => { ctx.beginPath(); l.forEach((p, n) => n ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke(); }); }); },
+      () => DT.stops.forEach(st => { ctx.fillStyle = H.stop; sq(st.x, st.y, 2 + st.t / mx * 6); ctx.fillStyle = P.red; sq(st.x, st.y, 1.5); }),
+      () => { ctx.fillStyle = H.park; DT.parks.forEach(r => { poly(r[0]); ctx.fill(); }); ctx.fillStyle = H.square; DT.squares.forEach(r => { poly(r[0]); ctx.fill(); }); ctx.fillStyle = H.market; DT.markets.forEach(m => sq(m[0], m[1], 6)); },
+      () => { ctx.fillStyle = H.hotel; DT.hotels.forEach(h => sq(h[0], h[1], 3)); },
+    ];
+    lay.forEach((fn, i) => { const a = al(i); if (a <= 0.01 || i === o.focus) return; ctx.globalAlpha = a; fn(); }); if (o.focus != null) { ctx.globalAlpha = 1; lay[o.focus](); }
+    ctx.globalAlpha = 1; ctx.setTransform(ctx.getTransform().scale(1 / k, 1 / k)); ctx.strokeStyle = P.ink; ctx.lineWidth = Math.max(1, 1.6 * k); ctx.strokeRect(0.5, 0.5, S - 1, S - 1); root.GA.pages.northArrow(ctx, S - 30 * k, 16 * k, 1.6 * k); ctx.restore();
+  }
+  function humanAxoLegend(t) {
+    const P = GA.palette, H = P.ex13art.human, n = (v) => '‎' + Number(v).toLocaleString('en-US') + '‎';
+    if (!HA) return [];
+    return [
+      { sw: H.res[1], label: t('x24.lg.res', { n: n(HA.residents.length) }), layer: 0 },
+      { sw: H.gold, label: t('x24.lg.peaks', { v: n(HA.peaks.find(p => p.rank === 1).v) }), layer: 1 },
+      { line: H.street, w: 3, label: t('x24.lg.streets', { s: HA.streets[0].nm, v: n(HA.streets[0].per100) }), layer: 2 },
+      { sw: H.stop, label: t('x24.lg.buses', { n: n(HA.stops.length), v: n(HA.stops[0].t) }), layer: 3 },
+      { sw: H.square, label: t('x24.lg.meeting', { s: n(HA.meta.squares), p: n(HA.meta.parks) }), layer: 4 },
+      { sw: H.hotel, label: t('x24.lg.hotels', { n: n(HA.hotels.length) }), layer: 5 },
+    ];
+  }
+  root.GA.ex13art = { KEYS, CKEYS, DKEYS, CELL, prepare, draw, legendItems, loadCentre, ready: (k) => (k === 'centre' || k === 'density') ? loadCentre() : k === 'humanAxo' ? Promise.all([loadCentre(), loadHuman()]) : Promise.resolve(), keys: (k) => k === 'centre' ? CKEYS : k === 'density' ? DKEYS : k === 'climate' ? KLKEYS : k === 'human' ? HKEYS : k === 'humanAxo' ? HAXKEYS : KEYS,
+    drawCentre, centreLegend, drawDensity, drawDensityTop, densityLegend, drawClimate, climateLegend, drawHuman, humanLegend, HAXKEYS, loadHuman, drawHumanAxo, drawHumanAxoTop, humanAxoLegend, get human() { return HA; }, densityStats: (D) => needles(D), get centre() { return CA; }, get grid() { return G; } };
 })(window);

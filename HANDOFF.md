@@ -1,4 +1,4 @@
-# Granada Atlas — handoff (state at build 5.29, 10 Nov 2026)
+# Granada Atlas — handoff (state at build 5.30, 10 Nov 2026)
 
 This document lets a new Claude Code session continue the project without the original chat. Short operating rules
 are in `CLAUDE.md`; feature and data documentation is in `README.md`.
@@ -7,14 +7,14 @@ are in `CLAUDE.md`; feature and data documentation is in `README.md`.
 
 | Item | Value |
 | --- | --- |
-| Repository | **Now on GitLab:** `gitlab.com/ahmdklany6/granada-atlas` (public), branch `main`. GitHub `ahmdklany6-ai/granada-atlas` is **suspended** since 9 Nov 2026 (support ticket #4976314); when it is reinstated, push the full history back (the local branch / the `granada-atlas-*.bundle` files keep it) |
-| Live site | **https://granada-atlas-597777.gitlab.io/** (GitLab Pages, `pages` job in `.gitlab-ci.yml`, publishes `main` on every push). The old GitHub URL (https://ahmdklany6-ai.github.io/granada-atlas/) returns 404 while the account is suspended |
-| Publishing from a cloud session | git push to GitLab is refused with the session's token (Basic auth); files are uploaded with the GitLab API (`POST /projects/88701784/repository/commits`, token sent by the session proxy as `Authorization: Bearer`). On-demand jobs: the `run` job executes every script listed in `tools/verify/RUN_GL` (live check `live_atlas.py`, data fetches) — start a pipeline with the API or Build → Pipelines → Run; results in the job log and job artifacts (`out/`) |
-| Current build | **5.29** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.29` asset queries) |
-| Latest feature work | 5.29: map screen layout + model workshop print preset (§31). 5.28: city growth extents as a normal layer, OFF by default (§30). 5.27: opening page and story tour (see §29). 5.26: fixes from the 5.25 live review, factory analysis frame, GIF export (§28) |
-| Data version | `2026-11-10-v15` in `data/manifest.json` (5.27: `base_edge`, `tour_area`; 5.26: `ex13f`) |
+| Repository | GitHub `ahmdklany6-ai/granada-atlas` (back since 10 Nov 2026 after a one-day suspension, ticket #4976314). Work branch `claude/vigilant-ritchie-wammdd`; `main` deploys. The GitLab copy `gitlab.com/ahmdklany6/granada-atlas` is frozen at 5.29 and no longer updated |
+| Live site | **https://ahmdklany6-ai.github.io/granada-atlas/** (GitHub Pages from `main`). The GitLab site https://granada-atlas-597777.gitlab.io/ still shows 5.29 (left in place, not updated) |
+| Publishing from a cloud session | push the work branch, open a PR to `main` and merge it (GitHub MCP tools); GitHub Pages deploys `main`. Verify with the `live-check` workflow (workflow_dispatch, script `live_atlas.py`) — this sandbox cannot open *.github.io. The GitLab API route (§28–31) is retired |
+| Current build | **5.30** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.30` asset queries) |
+| Latest feature work | 5.30: back on GitHub, merged with the other session's axonometric human dimension (§32). 5.29: map screen layout + model workshop print preset (§31). 5.28: city growth extents as a normal layer, OFF by default (§30). 5.27: opening page and story tour (see §29). 5.26: fixes from the 5.25 live review, factory analysis frame, GIF export (§28) |
+| Data version | `2026-11-10-v16` in `data/manifest.json` (5.30 merge; 5.27: `base_edge`, `tour_area`; 5.26: `ex13f`) |
 
-Build history (newest first): 5.29 map screen (no zoom buttons, controls top-right, north + scale, language and analysis buttons in the top bar) and the model workshop (40 × 40 cm) print preset · 5.28 city growth as a switchable layer (OFF by default) · 5.27 opening page and story tour (base → five towns → agglomeration) · 5.26 fixes from the 5.25 review (RTL typography, legend follows the topic, phone chrome, LTR numbers), old test failures fixed, factory analysis frame, metro stations, GIF export · 5.25 Atlas shell (☰ menu, WHERE × WHAT) · 5.24–5.22 Exercise 1.3 artistic maps · 5.21 Southern axis page with the two research boards · 5.20 southern-axis essentials layers (metro extension, 1931 tram, Escúzar / IFMIF-DONES) on by default · 5.19 print up to 700 dpi built in strips · 5.18 print at full resolution + "Map only" template · 5.17 / 5.16 Exercise 1.3 identity card · 5.15 one card format, historical extents · 5.14 current study area red on the locator · 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
+Build history (newest first): 5.30 back on GitHub; merged with the other session's "5.26" (axonometric human dimension, now a second artistic style) · 5.29 map screen (no zoom buttons, controls top-right, north + scale, language and analysis buttons in the top bar) and the model workshop (40 × 40 cm) print preset · 5.28 city growth as a switchable layer (OFF by default) · 5.27 opening page and story tour (base → five towns → agglomeration) · 5.26 fixes from the 5.25 review (RTL typography, legend follows the topic, phone chrome, LTR numbers), old test failures fixed, factory analysis frame, metro stations, GIF export · 5.25 Atlas shell (☰ menu, WHERE × WHAT) · 5.24–5.22 Exercise 1.3 artistic maps · 5.21 Southern axis page with the two research boards · 5.20 southern-axis essentials layers (metro extension, 1931 tram, Escúzar / IFMIF-DONES) on by default · 5.19 print up to 700 dpi built in strips · 5.18 print at full resolution + "Map only" template · 5.17 / 5.16 Exercise 1.3 identity card · 5.15 one card format, historical extents · 5.14 current study area red on the locator · 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
 classified climate rasters, dashed fabric marks, historical red dots explained · 5.5/5.4 smooth building scales and
 street hierarchy at close zoom · 5.3 (v5) analysis page, viewers, unified Comparison, phone/iPad · v4/v3/v2 earlier.
 
@@ -882,3 +882,28 @@ The owner sent an annotated screenshot of the English map screen and the Exercis
 Release note: published on 10 Nov 2026 at the owner's request (model workshop on 11 Nov) after v27, v24, v23, v26 and the
 node tests passed; the remaining old suites were still running one at a time — see the commit series after 5.29 for any fix.
 
+
+
+## 32. Exercise 1.3 human dimension as an axonometric drawing (other session, published on GitHub as "5.26" on 9 Nov 2026)
+
+This work was done in another session and published on GitHub `main` (commit fc73ed2) just before the account was
+suspended, while this session continued on GitLab (5.26–5.29). It was merged back in build 5.30: the human dimension now
+has TWO artistic styles — "reach rings" (this session, §28 item 9) and "axonometric" (below) — chosen in the same switch.
+Its test, originally `tests/ui_test_v24.py`, is now `tests/ui_test_v28.py` (v24 is the 5.26 review-fix suite here). The
+functions were renamed `drawHumanAxo` / `humanAxoLegend` and its strings live in `js/i18n_v24.js` with ours.
+
+
+After previews (flat layer player; then an axonometric drawing inspired by an owner reference where every layer is a 3D
+object; labels in one ordered column; a simplified version was rejected — "back as it was"):
+- 05 Human dimension box: **Map language** switch. The artistic map is a line drawing of the frame seen from the
+  south-west (`K = 0.56`, ground diamond at the bottom of the square) with six objects: residents (GHS-POP 100 m cells
+  > 15,000/km² as prisms floating above their place), commerce (chartreuse columns on peaks C1–C6, height ∝ shops/km²,
+  300 m ring), shop streets (the six densest named streets as red walls, height ∝ shops per 100 m), buses (the 20 busiest
+  stops as poles, height ∝ trips/day, schedule of 26 Oct 2026), meeting places (squares / parks as slabs, markets as
+  blocks), visitors (251 hotels as cubes floating above their place). Labels sit in one column on the right, ordered by
+  the height of their anchors so leaders do not cross. Top view of the same layers under the map (16 % of the map width
+  so the A3 page fits). Heights are scales, stated; what has no data (time of day, walking routes, who uses places,
+  informal activity) is named in the limits line.
+- Data built once: `tools/build_ex13_human.py` → `data/ex13/art/human_ground.png`, `human_art.json` (run after
+  `tools/build_ex13_art.py`). Colours `palette.ex13art.human`. Strings `js/i18n_v24.js`. Test `tests/ui_test_v24.py`.
+- Not yet on the site: the climate "stacked layers on the terrain" preview (approved look, not integrated).
