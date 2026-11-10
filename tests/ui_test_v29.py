@@ -42,10 +42,13 @@ try:
         check(im.format == 'GIF' and n >= 10 and im.info.get('loop') == 0 and im.size[0] >= 900, f'viewer shows an animated GIF ({im.format}, {n} frames, {im.size}, loop {im.info.get("loop")})')
         durs = []
         for i in range(n): im.seek(i); durs.append(im.info.get('duration'))
-        kk = (n - 1) // 2
-        check(durs[:kk] == [900] * kk and durs[kk] == 2600 and durs[kk + 1:] == [1400] * kk, f'order: build-up first, whole map, then each layer alone ({durs})')
-        im.seek(0); f0 = sum(1 for v in im.convert('L').resize((200, 280)).get_flattened_data() if v < 200); im.seek(kk); fa = sum(1 for v in im.convert('L').resize((200, 280)).get_flattened_data() if v < 200)
-        check(f0 < fa, f'the first frame shows one layer, the build-up frame the whole map ({f0} < {fa})')
+        kk = (n - 1) // 7; B = kk * 6  # 5.34: each layer grows in over six frames, then the whole map, then each layer alone
+        check(n == 7 * kk + 1 and durs[:B] == ([110] * 5 + [500]) * kk and durs[B] == 2600 and durs[B + 1:] == [1400] * kk, f'order: the animation first (each layer grows in), whole map, then each layer alone ({durs})')
+        from PIL import ImageChops, ImageStat
+        fr = lambda i: (im.seek(i), im.convert('RGB').resize((200, 280)))[1]
+        dif = lambda a, b2: sum(ImageStat.Stat(ImageChops.difference(a, b2)).mean)
+        g0, g2, g5, ga = fr(0), fr(2), fr(5), fr(B)
+        check(dif(g0, g2) > 0.01 and dif(g2, g5) > 0.01 and dif(g5, ga) > dif(g0, g5), f'the first layer grows in gradually, then the whole map ({dif(g0, g2):.2f}, {dif(g2, g5):.2f}, {dif(g5, ga):.2f})')
         check('❚❚' in pg.evaluate('document.querySelector("[data-vtool=play]").textContent'), 'button turns into Stop')
         pg.click('[data-z="in"]'); time.sleep(0.3); check(pg.evaluate('document.querySelector(".vw-stage img").style.transform') != '', 'the playing GIF stays zoomable')
         pg.screenshot(path=f'{OUT}/viewer_playing.png')

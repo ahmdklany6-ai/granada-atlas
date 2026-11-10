@@ -942,3 +942,10 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
   summer surface heat) draped on the real terrain and stacked, seen from the south-west — replaces the isotherm version
   on this site. Assets `data/ex13/art/climate_*` from `tools/build_ex13_climate_art.py`; the isotherm code is kept as
   `drawClimateIso`. Strings `js/i18n_v30.js`. Test `tests/ui_test_v31.py`.
+
+## 35. Build 5.34 — the GIF opens with the animation (owner request of 10 Nov 2026, with a screen video)
+- The owner's video showed the layers growing in smoothly one after another. `layersGif` (js/ex13.js) now opens with that
+  animation: each layer grows in over six frames (`upTo: i`, `t` eased 0 → 1; 110 ms each, the last held 500 ms), then the
+  whole map (2.6 s), then each layer alone with the others faded (1.4 s each). The viewer's Play and the "Animated GIF"
+  download use the same file. Morphology's newest layer now fades in with `o.t` like the other maps.
+- Tests: `tests/ui_test_v32.py` (all five maps grow gradually), `tests/ui_test_v29.py` updated to the new frame order.

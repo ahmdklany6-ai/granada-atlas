@@ -31,7 +31,7 @@
   function draw(ctx, D, x, y, S, o) {
     o = o || {}; const A = GA.palette.ex13art; const P = prepare(D); const F = D.frame; const n = P.n, cp = S / n, s = S / 1000; const mpp = (F.x1 - F.x0) / S;
     const X = (u) => x + (u - F.x0) / mpp, Y = (v) => y + (F.y1 - v) / mpp;
-    const alpha = (i) => o.focus != null ? (i === o.focus ? 1 : 0.1) : o.upTo != null ? (i < o.upTo ? 1 : 0) : 1;
+    const alpha = (i) => o.focus != null ? (i === o.focus ? 1 : 0.1) : o.upTo != null ? (i < o.upTo - 1 ? 1 : i === o.upTo - 1 ? (o.t != null ? o.t : 1) : 0) : 1; /* 5.34: the newest layer fades in with o.t */
     ctx.save(); ctx.beginPath(); ctx.rect(x, y, S, S); ctx.clip(); ctx.fillStyle = A.paper; ctx.fillRect(x, y, S, S);
     // context: the real footprints, very light
     const g = D.fgm; const t = document.createElement('canvas'); t.width = t.height = Math.round(S); const tc = t.getContext('2d'); tc.imageSmoothingEnabled = true; tc.imageSmoothingQuality = 'high';

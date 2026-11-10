@@ -420,10 +420,11 @@
     return new Blob([root.GA.zip.zip(files, new Date())], { type: 'application/zip' }); }
   // 5.26: animated GIF of the layer player for Miro — each layer on its own (the others faint, as in the player), then the
   // layers added one by one, then the whole map held longer. Whole A3 page at a screen size (≈ 1,000 px tall).
-  async function layersGif(k, onProgress) { // 5.31: the build-up first (layers appear one after another), the whole map, then each layer alone (the others faded); 80 dpi, made without freezing the page
-    const keys = root.GA.ex13art.keys(AK(k)); await root.GA.ex13art.ready(AK(k)); const frames = []; const dpi = 80; const nF = 2 * keys.length + 1, total = 2 * nF;
+  async function layersGif(k, onProgress) { // 5.34: opens with the animation (each layer grows in smoothly, one after another, as in the player), then the whole map, then each layer alone (the others faded); 80 dpi, made without freezing the page
+    const keys = root.GA.ex13art.keys(AK(k)); await root.GA.ex13art.ready(AK(k)); const frames = []; const dpi = 80; const STEPS = 6;
+    const nF = keys.length * STEPS + 1 + keys.length, total = 2 * nF; const ease = (u) => u * u * (3 - 2 * u);
     const add = async (o, delay) => { await new Promise(r => setTimeout(r, 0)); frames.push({ canvas: await pageCanvas(k, dpi, o), delay }); if (onProgress) onProgress(frames.length, total); };
-    for (let i = 1; i <= keys.length; i++) await add({ upTo: i, t: 1 }, 900);
+    for (let i = 1; i <= keys.length; i++) for (let s = 1; s <= STEPS; s++) await add({ upTo: i, t: ease(s / STEPS) }, s < STEPS ? 110 : 500);
     await add(null, 2600);
     for (let i = 0; i < keys.length; i++) await add({ focus: i }, 1400);
     const bytes = await root.GA.gif.encodeAsync(frames, (i) => { if (onProgress) onProgress(nF + i, total); });

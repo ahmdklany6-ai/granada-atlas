@@ -45,7 +45,7 @@ deploys). From 9 to 10 Nov 2026 the GitHub account was suspended and the site ra
 - Every release: bump the build in `version.json` AND `index.html` (`window.GA_BUILD` and every `?v=` query) —
   `tests/ui_test_v4.py` checks they agree. Data changes also bump `dataVersion` in `data/manifest.json`.
 - Run locally: `python3 -m http.server 8000` in the repo root (for your own testing only).
-- Tests: `for t in tests/*.test.js; do node $t; done` and `python3 tests/ui_test_vN.py` (N = 2…31; Playwright +
+- Tests: `for t in tests/*.test.js; do node $t; done` and `python3 tests/ui_test_vN.py` (N = 2…32; Playwright +
   Chromium; v6 and v8 take 10–20 min). Run browser suites ONE AT A TIME (parallel runs crash the headless GPU).
 - Check exports by opening them (pdfinfo/pdffonts/pdftoppm, Pillow, XML parse, sqlite, `tests/validate_export.py`).
 - After publishing: wait for the GitHub Pages deployment, then verify the live URL with the `live-check` workflow
