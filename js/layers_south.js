@@ -3,6 +3,7 @@
    2. the Granada–Gabia branch of the old electric tram, traced from the IGN 1:50,000 map of 1931 (approximate, ±100 m);
    3. the CITAI estate at Escúzar with IFMIF-DONES, Lidl, Amazon and Knauf, the village, and the straight-line gap from the
       new metro terminus to the accelerator.
+   Build 5.33: a light-rail pictogram on the metro track and an early-tram pictogram on the 1931 trunk line (js/rail_icons.js).
    Data: data/vec/south_metro.json, tram_1931.json, escuzar_pole.json (tools/build_south_axis.py). Colours: palette.south. */
 (function (root) {
   const P = root.GA.palette, C = P.south;
@@ -16,37 +17,41 @@
     const fitBtns = (id) => `<div class="row2"><button type="button" class="btn btn-tiny" data-ly-ctl="${id}" data-k="fit">${t('v18.fit')}</button> <button type="button" class="btn btn-tiny" data-ly-ctl="${id}" data-k="axis">${t('v18.fitAll')}</button></div>`;
     function onFit(d, el) { const k = el.dataset.k; const bb = k === 'axis' || !d._bb ? AXIS_BB : d._bb; map.fitBounds(bb, { padding: 60, duration: 1000, maxZoom: 15 }); return false; }
     const dotSw = (fill, stroke, l) => `<li><i class="sw dot" style="background:${fill};border:2px solid ${stroke}"></i><span>${l}</span></li>`;
+    const RI = () => root.GA.railIcons; // 5.33: one pictogram definition for map, legends, tour and popups
+    const railSw = (k) => `<li>${RI().legendImg(k)}<span>${t(k === 'tram' ? 'x33.icTram' : 'x33.icMetro')}</span></li>`;
     const sqSw = (stroke, l) => `<li><i class="sw" style="background:#fff;border:2.5px solid ${stroke};border-radius:0"></i><span>${l}</span></li>`;
 
     // ---------- 1. metro extension ----------
     defs.push({ id: 'south_metro', group: 'south', title: () => t('v18.lyMetro'), def: { on: true, opacity: 1 },
-      build() { const s = lid('smetro'); addSrc(s, { type: 'geojson', data: fc() });
+      build() { const s = lid('smetro'); addSrc(s, { type: 'geojson', data: fc() }); addSrc(lid('smetro', 'iconsrc'), { type: 'geojson', data: fc() }); RI().ensure(map).catch(() => { });
         addLyr({ id: lid('smetro', 'case'), type: 'line', source: s, filter: ['==', ['get', 'k'], 'track'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': C.metroCasing, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 4, 16, 9], 'line-opacity': 1 } });
         addLyr({ id: lid('smetro'), type: 'line', source: s, filter: ['==', ['get', 'k'], 'track'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': C.metro, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 2.4, 16, 5.5], 'line-opacity': 1 } });
         addLyr({ id: lid('smetro', 'pt'), type: 'circle', source: s, filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 16, 8], 'circle-color': ['match', ['get', 'k'], 'terminus', C.metro, '#FFFFFF'], 'circle-stroke-color': ['match', ['get', 'k'], 'terminus', '#FFFFFF', C.station], 'circle-stroke-width': 2.2, 'circle-opacity': 1, 'circle-stroke-opacity': 1 } });
+        addLyr({ id: lid('smetro', 'icon'), type: 'symbol', source: lid('smetro', 'iconsrc'), minzoom: RI().MINZOOM, layout: RI().layout(), paint: { 'icon-opacity': 1 } }); // 5.33 light-rail pictogram (js/rail_icons.js)
         addLyr({ id: lid('smetro', 'lbl'), type: 'symbol', source: s, minzoom: 11, filter: ['==', ['geometry-type'], 'Point'], layout: { 'text-field': ['get', 'nm'], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-offset': [0, 1.2], 'text-anchor': 'top' }, paint: { 'text-color': C.metro, 'text-halo-color': '#FFFFFF', 'text-halo-width': 1.8 } }); },
-      async load() { if (this._loaded) return this._loaded; const j = await D.single('south_metro'); map.getSource(lid('smetro')).setData(j); this._bb = bboxOf(j); const tr = j.features.find(f => f.properties.k === 'track'); this._len = tr && tr.properties.len_m; this._loaded = j.features.length; return this._loaded; },
-      layers: () => [lid('smetro', 'case'), lid('smetro'), lid('smetro', 'pt'), lid('smetro', 'lbl')],
-      opacityProp: { [lid('smetro')]: 'line-opacity', [lid('smetro', 'case')]: 'line-opacity', [lid('smetro', 'pt')]: 'circle-opacity' },
+      async load() { if (this._loaded) return this._loaded; const j = await D.single('south_metro'); map.getSource(lid('smetro')).setData(j); map.getSource(lid('smetro', 'iconsrc')).setData(RI().points(j, null)); this._bb = bboxOf(j); const tr = j.features.find(f => f.properties.k === 'track'); this._len = tr && tr.properties.len_m; this._loaded = j.features.length; return this._loaded; },
+      layers: () => [lid('smetro', 'case'), lid('smetro'), lid('smetro', 'pt'), lid('smetro', 'icon'), lid('smetro', 'lbl')],
+      opacityProp: { [lid('smetro')]: 'line-opacity', [lid('smetro', 'case')]: 'line-opacity', [lid('smetro', 'pt')]: 'circle-opacity', [lid('smetro', 'icon')]: 'icon-opacity' },
       controls() { return fitBtns('south_metro'); }, onControl(el) { return onFit(this, el); },
-      legend() { return `<ul class="lg">${swl(C.metro, 4, t('v18.lgTrack', { km: this._len ? nf(this._len / 1000, 1) : '—' }))}${dotSw('#FFFFFF', C.station, t('v18.lgNow'))}${dotSw(C.metro, '#FFFFFF', t('v18.lgEnd'))}</ul><p class="lyr-src">${t('v18.metroNote')}</p><p class="lyr-src"><b>${t('v24.stTitle')}</b>: ${t('v24.stNames')}. ${t('v24.stWhy', { date: t('v24.stDate') })}</p>`; }, // 5.26: names published, positions not — never guessed
+      legend() { return `<ul class="lg">${swl(C.metro, 4, t('v18.lgTrack', { km: this._len ? nf(this._len / 1000, 1) : '—' }))}${dotSw('#FFFFFF', C.station, t('v18.lgNow'))}${dotSw(C.metro, '#FFFFFF', t('v18.lgEnd'))}${railSw('metro')}</ul><p class="lyr-src">${t('v18.metroNote')}</p><p class="lyr-src"><b>${t('v24.stTitle')}</b>: ${t('v24.stNames')}. ${t('v24.stWhy', { date: t('v24.stDate') })}</p>`; }, // 5.26: names published, positions not — never guessed
       src: () => 'OpenStreetMap (railway=construction, construction=light_rail, “Metro de Granada”) · ODbL · ' + ((D.manifest && D.manifest.layers.south_metro && D.manifest.layers.south_metro.date) || ''),
-      popup: { layers: () => [lid('smetro'), lid('smetro', 'pt')], html: (p) => p.k === 'track' ? `<b>${esc(t('v18.lyMetro'))}</b><br><span class="num">${nf(p.len_m / 1000, 2)} km</span><br><small dir="ltr">OSM ways ${esc(p.osm)}</small>` : `<b dir="auto">${esc(p.nm)}</b><br>${esc(t(p.k === 'terminus' ? 'v18.lgEnd' : 'v18.lgNow'))}<br><small dir="ltr">${esc(p.osm)}</small>` } });
+      popup: { layers: () => [lid('smetro', 'icon'), lid('smetro'), lid('smetro', 'pt')], html: (p) => p.k === 'track' ? `<b>${esc(t('v18.lyMetro'))}</b><br><span class="num">${nf(p.len_m / 1000, 2)} km</span><br><small dir="ltr">OSM ways ${esc(p.osm)}</small>` : `<b dir="auto">${esc(p.nm)}</b><br>${esc(t(p.k === 'terminus' ? 'v18.lgEnd' : 'v18.lgNow'))}<br><small dir="ltr">${esc(p.osm)}</small>` } });
 
     // ---------- 2. tram 1931 ----------
     defs.push({ id: 'tram_1931', group: 'south', title: () => t('v18.lyTram'), def: { on: true, opacity: 1 },
-      build() { const s = lid('tram'); addSrc(s, { type: 'geojson', data: fc() });
+      build() { const s = lid('tram'); addSrc(s, { type: 'geojson', data: fc() }); addSrc(lid('tram', 'iconsrc'), { type: 'geojson', data: fc() }); RI().ensure(map).catch(() => { });
         addLyr({ id: lid('tram', 'trunk'), type: 'line', source: s, filter: ['==', ['get', 'k'], 'trunk'], layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: { 'line-color': C.trunk, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 2, 16, 4], 'line-dasharray': [2, 1.5], 'line-opacity': 1 } });
         addLyr({ id: lid('tram'), type: 'line', source: s, filter: ['==', ['get', 'k'], 'gabia'], layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: { 'line-color': C.tram, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 2.2, 16, 4.5], 'line-dasharray': [2, 1.5], 'line-opacity': 1 } });
         addLyr({ id: lid('tram', 'st'), type: 'circle', source: s, filter: ['==', ['get', 'k'], 'station'], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 3.5, 16, 7], 'circle-color': '#FFFFFF', 'circle-stroke-color': C.tramStation, 'circle-stroke-width': 2.5, 'circle-opacity': 1, 'circle-stroke-opacity': 1 } });
+        addLyr({ id: lid('tram', 'icon'), type: 'symbol', source: lid('tram', 'iconsrc'), minzoom: RI().MINZOOM, layout: RI().layout(), paint: { 'icon-opacity': 1 } }); // 5.33 early tram pictogram
         addLyr({ id: lid('tram', 'lbl'), type: 'symbol', source: s, minzoom: 12, filter: ['==', ['get', 'k'], 'station'], layout: { 'text-field': ['concat', ['get', 'lbl'], ' · ', ['get', 'nm'], ' (1931)'], 'text-font': ['Noto Sans Italic'], 'text-size': 11, 'text-offset': [0, 1.1], 'text-anchor': 'top' }, paint: { 'text-color': C.tram, 'text-halo-color': '#FFFFFF', 'text-halo-width': 1.6 } }); },
-      async load() { if (this._loaded) return this._loaded; const j = await D.single('tram_1931'); map.getSource(lid('tram')).setData(j); this._bb = bboxOf(j); this._loaded = j.features.length; return this._loaded; },
-      layers: () => [lid('tram', 'trunk'), lid('tram'), lid('tram', 'st'), lid('tram', 'lbl')],
-      opacityProp: { [lid('tram')]: 'line-opacity', [lid('tram', 'trunk')]: 'line-opacity', [lid('tram', 'st')]: 'circle-opacity' },
+      async load() { if (this._loaded) return this._loaded; const j = await D.single('tram_1931'); map.getSource(lid('tram')).setData(j); map.getSource(lid('tram', 'iconsrc')).setData(RI().points(null, j)); this._bb = bboxOf(j); this._loaded = j.features.length; return this._loaded; },
+      layers: () => [lid('tram', 'trunk'), lid('tram'), lid('tram', 'st'), lid('tram', 'icon'), lid('tram', 'lbl')],
+      opacityProp: { [lid('tram')]: 'line-opacity', [lid('tram', 'trunk')]: 'line-opacity', [lid('tram', 'st')]: 'circle-opacity', [lid('tram', 'icon')]: 'icon-opacity' },
       controls() { return fitBtns('tram_1931'); }, onControl(el) { return onFit(this, el); },
-      legend: () => `<ul class="lg">${swl(C.tram, 3.5, t('v18.lgTram'), true)}${swl(C.trunk, 3, t('v18.lgTrunk'), true)}${dotSw('#FFFFFF', C.tramStation, t('v18.lgTramSt'))}</ul><p class="lyr-src"><b>${t('v9.approx')}</b> ${t('v18.tramNote')}</p>`,
+      legend: () => `<ul class="lg">${swl(C.tram, 3.5, t('v18.lgTram'), true)}${swl(C.trunk, 3, t('v18.lgTrunk'), true)}${dotSw('#FFFFFF', C.tramStation, t('v18.lgTramSt'))}${railSw('tram')}</ul><p class="lyr-src"><b>${t('v9.approx')}</b> ${t('v18.tramNote')}</p>`,
       src: () => '© IGN MTN50 1st ed. sheet 1026 Padul (1931) · CC BY 4.0 · traced in this repository (±100 m)',
-      popup: { layers: () => [lid('tram'), lid('tram', 'st'), lid('tram', 'trunk')], html: (p) => p.k === 'station' ? `<b dir="auto">${esc(p.lbl)} · ${esc(p.nm)}</b><br>${esc(t('v18.lgTramSt'))}` : `<b>${esc(t(p.k === 'trunk' ? 'v18.lgTrunk' : 'v18.lgTram'))}</b>${p.len_m ? `<br><span class="num">≈ ${nf(p.len_m / 1000, 1)} km</span>` : ''}<br><small>${esc(t('v18.tramNote'))}</small>` } });
+      popup: { layers: () => [lid('tram', 'icon'), lid('tram'), lid('tram', 'st'), lid('tram', 'trunk')], html: (p) => p.k === 'station' ? `<b dir="auto">${esc(p.lbl)} · ${esc(p.nm)}</b><br>${esc(t('v18.lgTramSt'))}` : `<b>${esc(t(p.k === 'trunk' ? 'v18.lgTrunk' : 'v18.lgTram'))}</b>${p.len_m ? `<br><span class="num">≈ ${nf(p.len_m / 1000, 1)} km</span>` : ''}<br><small>${esc(t('v18.tramNote'))}</small>` } });
 
     // ---------- 3. Escúzar pole ----------
     defs.push({ id: 'escuzar_pole', group: 'south', title: () => t('v18.lyPole'), def: { on: true, opacity: 1 },

@@ -149,6 +149,11 @@
     // rent index 2024 (2015 = 100): < 120 · 120–125 · 125–130 · ≥ 130 — sequential khaki; no index = missing (hatched)
     rent: [D.khakiPale, BASE.khaki, BASE.burgundy, BASE.wine], rentBreaks: [120, 125, 130], missing: D.stone,
     muni: BASE.brown, five: RED, barrio: BASE.burgundy,
+    // 5.33: towns as built-up polygons (light red fill, thin red outline); the two walking routes in two colours (A blue,
+    // B olive) on a white casing; the dead-end road sign (blue plate, white bar, red cross-bar); step-3 maps at half
+    // opacity with white municipal outlines; labels with a white halo; fade of context layers on the streets slides
+    townFill: RED, townFillAlpha: 0.3, townEdge: RED, routeA: D.blueDeep, routeB: D.oliveMid, routeCase: '#FFFFFF',
+    sign: { plate: D.blueDeep, bar: '#FFFFFF', stop: RED }, choroAlpha: 0.5, muniLight: '#FFFFFF', halo: '#FFFFFF', fade: 0.3,
   };
   // 5.28 — "City growth (built-up extent 1932–2020)" layer (js/layers_growth.js): one fill per period, oldest → newest
   // (traced periods in the dark red family, GHSL epochs in the khaki family); the selected period is outlined in red.

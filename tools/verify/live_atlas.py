@@ -1,4 +1,4 @@
-"""Live verification of build 5.25 (Atlas shell), 5.27 (opening page + story tour) 5.28 (city growth as a layer, OFF by default) and 5.29 (map screen: no zoom buttons, Draw section + 3D top-right, north arrow beside the scale bar, language buttons and the five analyses in the top bar) on the PUBLIC site from a GitHub runner. Fresh browser — no visitor data
+"""Live verification of build 5.33 (train pictograms; tour: towns as built-up areas, streets slides A/B, labelled step-3 maps, four slides in step 3, framing), 5.25 (Atlas shell), 5.27 (opening page + story tour) 5.28 (city growth as a layer, OFF by default) and 5.29 (map screen: no zoom buttons, Draw section + 3D top-right, north arrow beside the scale bar, language buttons and the five analyses in the top bar) on the PUBLIC site from a GitHub runner. Fresh browser — no visitor data
 touched. Checks: the build is served; ☰ sidebar with seven sections and the old navigation inside; city start with the
 growth animation and both markers; density topic → class layers + legend; metro area keeps the topic and computes
 corridor indicators; factory → "No data for this area"; Back to Granada; ar / he sidebar side; phone bottom sheet.
@@ -120,5 +120,25 @@ with sync_playwright() as p:
             r = pg.evaluate('(() => { const r = document.querySelector("#atl-panel").getBoundingClientRect(); return [r.top, r.bottom, innerHeight]; })()'); check(r[1] >= r[2] - 2, 'phone: bottom sheet', r)
         check(pg.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), f'{lang}: no horizontal overflow'); emit(f'{lang}_metro_human', pg.screenshot())
         check(not [e for e in errs if 'rtl-text' not in e], f'{lang}: no page errors', errs[:3]); ctx.close()
+    # ---- 5.33: train pictograms, towns as built-up areas, the streets slides, labelled step-3 maps, 4 slides, framing ----
+    ctx, pg, errs = boot({'width': 1440, 'height': 900}, lang='en')
+    pg.evaluate('GA.app.map.jumpTo({ center: [-3.6315, 37.1435], zoom: 15.2 })'); time.sleep(9)
+    n = pg.evaluate('GA.app.map.queryRenderedFeatures({ layers: ["ly-smetro-icon", "ly-tram-icon"].filter(l => GA.app.map.getLayer(l)) }).length')
+    check(n == 2, f'5.33: tram and metro pictograms on the map near Armilla ({n})'); emit('x33_icons_armilla', pg.screenshot(clip={'x': 300, 'y': 120, 'width': 900, 'height': 640}))
+    ctx.close()
+    for lang in ('en', 'ar'):
+        ctx, pg, errs = boot({'width': 1440 if lang == 'en' else 1280, 'height': 900 if lang == 'en' else 800}, intro=True, lang=lang)
+        def slide(st, ly, name, extra=None):
+            pg.evaluate(f'location.hash = "#/tour/{st}/{ly}"' if st > 1 else 'location.hash = "#/tour/1"'); pg.wait_for_function(f'GA.tour.state.built && GA.tour.state.step === {st} && GA.tour.state.layer === {ly}', timeout=120000); time.sleep(6)
+            if extra: extra()
+            emit(f'x33_{name}_{lang}', pg.screenshot())
+        slide(1, 1, 'slide1')
+        slide(2, 1, 'towns', lambda: check(len(pg.evaluate('GA.tour.labels')) == 5, f'{lang}: step 2 — five town names on the built-up areas'))
+        for ly, nm in ((3, 'streetsA'), (4, 'streetsB'), (5, 'streetsAB')):
+            if lang == 'en' or ly == 5: slide(2, ly, nm, (lambda: check(sum(int(x) for x in pg.evaluate('[...document.querySelectorAll(".tour-sign")].map(e => e.dataset.n)')) == 13, f'{lang}: 13 dead-end signs')) if ly == 5 else None)
+        for ly, nm in ((1, 'chg'), (2, 'inc'), (3, 'rent')):
+            if lang == 'en' or ly == 1: slide(3, ly, nm, lambda: check(len(pg.evaluate('GA.tour.labels')) == 34 and not [x for x in pg.evaluate('GA.tour.labels') if x['forced']], f'{lang}: 34 municipality labels, none forced'))
+        slide(3, 4, 'last', lambda: check(pg.evaluate('document.querySelectorAll(".tour-dots i").length') == 4, f'{lang}: step 3 has four slides'))
+        check(not [e for e in errs if 'rtl-text' not in e], f'{lang}: no page errors (5.33 tour)', errs[:3]); ctx.close()
     b.close()
 n = sum(1 for c, _ in res if not c); print(f'\nLIVE RESULT atlas: {len(res) - n}/{len(res)} checks passed' + ('' if not n else ' — FAILED: ' + '; '.join(m for c, m in res if not c)), flush=True)
