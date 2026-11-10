@@ -386,7 +386,27 @@
   // the feature each slide frames
   const viewKey = () => { if (S.step === 3 && S.layer === 4 && S.D && S.D.bb.barrio) return 'barrio'; if (S.step === 2 && streets()) return 'streets'; if (S.step === 2 && S.layer === 7) return 'rail'; return String(S.step); };
   let lastPad = null;
-  function frame(instant) { if (!S.D || !map || !S.step) return; const k = viewKey(); S.view = k; const p = pad(); lastPad = p; map.stop(); map.fitBounds(S.D.bb[k], { padding: p, duration: instant || RM() ? 0 : 1600, essential: false }); }
+  // 5.39 (owner): slide 1 on wide screens — the base in the middle of the map, as large as fits; zoomed out a little only
+  // where the card would cover part of the outline (the outline itself, not its box). Phones keep the free-area framing.
+  function centreBase() {
+    const st = $('.stage'), c = $('#tour-card'); if (!st || !c || c.hidden) return null; const s = st.getBoundingClientRect(), r = c.getBoundingClientRect();
+    if (r.left - s.left <= 1 && r.right - s.left >= s.width - 1) return null; // bottom sheet
+    const tr = $('.maplibregl-ctrl-top-right'); const top = Math.max(MARGIN, tr ? tr.getBoundingClientRect().bottom - s.top + 16 : 0);
+    const bars = ['.maplibregl-ctrl-attrib', '.maplibregl-ctrl-scale'].map(q => $(q)).filter(e => e && e.offsetWidth).map(e => s.bottom - e.getBoundingClientRect().top + 12);
+    const v = Math.max(top, MARGIN, ...bars); const pd = { top: v, bottom: v, left: MARGIN, right: MARGIN };
+    const cam = map.cameraForBounds(S.D.bb[1], { padding: pd }); if (!cam) return null;
+    const ring = S.D.base.geometry.type === 'Polygon' ? S.D.base.geometry.coordinates[0] : S.D.base.geometry.coordinates[0][0];
+    const card = { l: r.left - s.left - 12, t: r.top - s.top - 12, r: r.right - s.left + 12, b: r.bottom - s.top + 12 };
+    const C = maplibregl.MercatorCoordinate.fromLngLat(cam.center); const M = ring.map(p => maplibregl.MercatorCoordinate.fromLngLat(p));
+    let z = cam.zoom; const hits = (z) => { const k = 512 * Math.pow(2, z); return M.some(m => { const x = s.width / 2 + (m.x - C.x) * k, y = s.height / 2 + (m.y - C.y) * k; return x > card.l && x < card.r && y > card.t && y < card.b; }); };
+    for (let i = 0; i < 20 && hits(z); i++) z -= 0.05;
+    if (hits(z)) return null; // the card covers the middle (tablets): keep the base beside the card
+    return { center: cam.center, zoom: z };
+  }
+  function frame(instant) { if (!S.D || !map || !S.step) return; const k = viewKey(); S.view = k; const p = pad(); lastPad = p; map.stop();
+    const cb = k === '1' ? centreBase() : null; S.centred = !!cb;
+    if (cb) { map.easeTo(Object.assign({ duration: instant || RM() ? 0 : 1600, essential: false }, cb)); return; }
+    map.fitBounds(S.D.bb[k], { padding: p, duration: instant || RM() ? 0 : 1600, essential: false }); }
   // refit when the card or the controls change size (debounced; only when the padding really changed)
   let refitT = 0; function refitSoon() { if (!S.on || !S.step) return; clearTimeout(refitT); refitT = setTimeout(() => { if (!S.on || !S.step) return; const p = pad(); if (!lastPad || ['top', 'bottom', 'left', 'right'].some(k => Math.abs(p[k] - lastPad[k]) > 6)) frame(); else schedule(); }, 160); }
 
@@ -463,7 +483,7 @@
     if (!fromHash() && introShown()) { renderIntro(); load().catch(() => { }); }
   }
   root.GA.tour = { init, go, exit, next, back, setLayer, showIntro, popupAt, freeRect, pad, polylabel,
-    get state() { return { on: S.on, step: S.step, layer: S.layer, n: LAYERS[S.step] || 0, intro: introShown(), built: S.built, groups: S.on ? VIS[S.step][S.layer - 1] : [], view: S.view, bbox: S.D && S.view ? S.D.bb[S.view] : null }; },
+    get state() { return { centred: !!S.centred, on: S.on, step: S.step, layer: S.layer, n: LAYERS[S.step] || 0, intro: introShown(), built: S.built, groups: S.on ? VIS[S.step][S.layer - 1] : [], view: S.view, bbox: S.D && S.view ? S.D.bb[S.view] : null }; },
     get labels() { return S.placed.slice(); }, get data() { return S.D; }, VIS, GROUPS, ID, LAYERS };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(init, 0)); else setTimeout(init, 0);
 })(window);

@@ -62,6 +62,18 @@ def framed(G, tag):
     dx = abs((b['l'] + b['r']) / 2 - (f['l'] + f['r']) / 2) / fw; dy = abs((b['t'] + b['b']) / 2 - (f['t'] + f['b']) / 2) / fh
     check(inside, f'{tag}: the feature ({G["view"]}) lies inside the free map area', (b, f))
     check(dx <= 0.05 and dy <= 0.05, f'{tag}: centred in the free area (dx {dx * 100:.1f} %, dy {dy * 100:.1f} %)', (b, f))
+JS_CENTRED = r'''() => { const m = GA.app.map, st = document.querySelector('.stage').getBoundingClientRect(), c = document.querySelector('#tour-card').getBoundingClientRect();
+  const ring = GA.tour.data.base.geometry.type === 'Polygon' ? GA.tour.data.base.geometry.coordinates[0] : GA.tour.data.base.geometry.coordinates[0][0];
+  const P = ring.map(ll => m.project(ll)); const xs = P.map(p => p.x), ys = P.map(p => p.y);
+  const box = { l: Math.min(...xs), r: Math.max(...xs), t: Math.min(...ys), b: Math.max(...ys) };
+  const under = P.filter(p => p.x + st.left > c.left && p.x + st.left < c.right && p.y + st.top > c.top && p.y + st.top < c.bottom).length;
+  return { box, w: st.width, h: st.height, under, frac: (box.r - box.l) / st.width }; }'''
+def centred(pg, tag):
+    G = pg.evaluate(JS_CENTRED); b = G['box']
+    dx = abs((b['l'] + b['r']) / 2 - G['w'] / 2) / G['w']; dy = abs((b['t'] + b['b']) / 2 - G['h'] / 2) / G['h']
+    check(dx <= 0.05 and dy <= 0.05, f'{tag}: the base in the middle of the map (dx {dx * 100:.1f} %, dy {dy * 100:.1f} %)', G)
+    check(b['l'] >= 0 and b['r'] <= G['w'] and b['t'] >= 0 and b['b'] <= G['h'], f'{tag}: the whole base on screen', G)
+    check(G['under'] == 0, f'{tag}: the card covers no part of the outline', G)
 JS_LABELS = r'''() => { const els = [...document.querySelectorAll('#tour-lbls .tour-lbl')]; const R = els.map(e => { const r = e.getBoundingClientRect(); return { id: e.dataset.id, l: r.left, t: r.top, r: r.right, b: r.bottom, txt: e.innerText, html: e.innerHTML, shadow: getComputedStyle(e).textShadow }; });
   const bad = []; for (let i = 0; i < R.length; i++) for (let j = i + 1; j < R.length; j++) { const a = R[i], c = R[j]; if (a.l < c.r - 0.5 && c.l < a.r - 0.5 && a.t < c.b - 0.5 && c.t < a.b - 0.5) bad.push(a.id + '/' + c.id); }
   const obs = ['#tour-card', '.maplibregl-ctrl-top-right', '.maplibregl-ctrl-bottom-right', '.maplibregl-ctrl-bottom-left'].map(q => document.querySelector(q)).filter(e => e && e.offsetWidth && !e.hidden).map(e => e.getBoundingClientRect());
@@ -288,7 +300,8 @@ try:
         for lang in (('ar', 'he', 'en') if 'F' in PARTS else ()):
             for w in (375, 768, 1024, 1280, 1440):
                 ctx, pg, errs = tour(w, lang, 1); tag = f'F {w}px {lang}'
-                framed(pg.evaluate(JS_FREE), tag + ' slide 1')
+                if pg.evaluate('GA.tour.state.centred'): centred(pg, tag + ' slide 1')
+                else: framed(pg.evaluate(JS_FREE), tag + ' slide 1')
                 if w in (390, 1280, 1440) or (w == 375 and lang != 'he'): pg.screenshot(path=f'{OUT}/F_slide1_{lang}_{w}.png')
                 for s_, l_ in ((2, 1), (2, 5), (2, 7), (3, 1)):
                     goto(pg, s_, l_); time.sleep(0.6); framed(pg.evaluate(JS_FREE), f'{tag} slide {s_}.{l_}')
