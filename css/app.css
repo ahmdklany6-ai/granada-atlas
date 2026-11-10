@@ -1081,3 +1081,5 @@ img.sw-rail { width: 28px; height: 18px; flex: none; vertical-align: middle; }
 .tour-c-b .lg img.tour-sign-sw { width: 16px; height: 16px; flex: none; }
 .tour-towns { margin: 0 0 8px; padding: 0; list-style: none; font-size: 13px; }
 .tour-towns li { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--line); padding: 2px 0; }
+/* 5.33 — one button: all Exercise 1.3 maps artistic / architectural */
+.x31-all { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; }

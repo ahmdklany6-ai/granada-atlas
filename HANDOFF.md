@@ -932,7 +932,31 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
 - Built as "5.31" in this session while another session published its own 5.31 (layer animation, §33) on `main`; both
   merged as 5.32.
 
-## 35. Build 5.33 — train pictograms and the story tour reworked (owner requests A–F of 10 Nov 2026)
+## 34. Build 5.33 — one button for all artistic maps; one artistic human map; the approved climate stack (owner request of 10 Nov 2026)
+
+- Exercise 1.3 page: **All maps artistic** / **All maps architectural** at the top of the form set the five switches at
+  once (saved per topic; each switch still works alone).
+- 05 Human dimension: one artistic version — the axonometric drawing (§32). The 300 m reach-ring version is retired from
+  the switch (code kept); an older saved `'art'` / `'axo'` both open the axonometric drawing.
+- 04 Climate: the approved version (§29 on GitLab, 9 Nov 2026) — four layers (terrain, summer vegetation, buildings,
+  summer surface heat) draped on the real terrain and stacked, seen from the south-west — replaces the isotherm version
+  on this site. Assets `data/ex13/art/climate_*` from `tools/build_ex13_climate_art.py`; the isotherm code is kept as
+  `drawClimateIso`. Strings `js/i18n_v30.js`. Test `tests/ui_test_v31.py`.
+
+## 35. Build 5.34 — the GIF opens with the animation (owner request of 10 Nov 2026, with a screen video)
+- The owner's video showed the layers growing in smoothly one after another. `layersGif` (js/ex13.js) now opens with that
+  animation: each layer grows in over six frames (`upTo: i`, `t` eased 0 → 1; 110 ms each, the last held 500 ms), then the
+  whole map (2.6 s), then each layer alone with the others faded (1.4 s each). The viewer's Play and the "Animated GIF"
+  download use the same file. Morphology's newest layer now fades in with `o.t` like the other maps.
+- Tests: `tests/ui_test_v32.py` (all five maps grow gradually), `tests/ui_test_v29.py` updated to the new frame order.
+
+## 36. Build 5.35 — climate opens as one block that comes apart bottom-up (owner request of 10 Nov 2026)
+- `drawClimate` build-up (`upTo` / `t`): step 1 fades in all four layers together as one block at the bottom; each next
+  step lifts the remaining layers by one level, so terrain, then vegetation, then buildings, then heat are left at their
+  own heights in turn. Titles appear only once a layer is apart. Focus and the whole map are unchanged. The page player
+  and the GIF use the same sequence (player durations 1.1 / 1.5 / 1.5 / 1.5 s). Test `tests/ui_test_v32.py`.
+
+## 37. Build 5.36 — train pictograms and the story tour reworked (owner requests A–F of 10 Nov 2026)
 
 - **A. Pictograms** (`js/rail_icons.js`, one definition for map, legends, tour and popups): an early electric tram (boxy
   car, clerestory roof, trolley pole, two wheels) in `palette.south.tram` on the 1931 trunk line 100 m from its north-east
@@ -968,6 +992,8 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
   getBoundingClientRect; `pad()` adds a 48 px margin. Each slide fits its own feature (base · base + towns · base + routes ·
   base + metro + tram · agglomeration · neighbourhoods). Refit on resize, language switch, card size change
   (ResizeObserver, only when the padding really changes), Back and every step.
-- Strings `js/i18n_v30.js`. Popups during the tour come only from the tour (`GA.tour.popupAt`, called first by app.js).
-- Tests: `tests/ui_test_v31.py` (new), `tests/ui_test_v25.py` updated for 7 + 4 slides. Data version `2026-11-10-v17`.
+- Strings `js/i18n_v31.js`. Popups during the tour come only from the tour (`GA.tour.popupAt`, called first by app.js).
+- Tests: `tests/ui_test_v33.py` (new), `tests/ui_test_v25.py` updated for 7 + 4 slides. Data version `2026-11-10-v21`.
 - Published on GitHub Pages (the request said GitLab; the site is on GitHub since 5.30).
+- Built as "5.33" in this session while another session published 5.33–5.35 (Exercise 1.3, §34–36) on `main`; merged and
+  released as 5.36 (file names i18n_v31 / ui_test_v33, since v30 / v31 were taken).

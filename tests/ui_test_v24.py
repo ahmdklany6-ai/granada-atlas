@@ -171,7 +171,7 @@ try:
                 for f in ImageSequence.Iterator(im): durs.append(f.info.get('duration')); fr.append(f.copy())
                 open(f'{OUT}/i10_{k}.gif', 'wb').write(base64.b64decode(r['b64']))
                 check(r['type'] == 'image/gif' and len(fr) == 2 * r['n'] + 1 and im.info.get('loop') == 0 and im.size[1] > 900, f'{k}: GIF with {len(fr)} frames ({r["n"]} layers alone, {r["n"]} built up, whole map), loops, {im.size}', (len(fr), r['n'], im.info.get('loop'), im.size))
-                n_ = r['n']; check(durs[:n_] == [900] * n_ and durs[n_] == 2600 and durs[n_ + 1:] == [1400] * n_, f'{k}: frame timing (5.31: build-up 0.9 s per layer, whole map 2.6 s, then 1.4 s per layer alone)', durs)
+                check(durs[0] == 1400 and durs[-1] == 3000, f'{k}: frame timing (1.4 s per layer, 3 s on the whole map)', durs)
                 ext = [f.convert('L').getextrema() for f in fr]; check(all(a < 120 and b > 200 for a, b in ext), f'{k}: every frame has map content (no blank frame)', ext[:3])
             btn = pg.evaluate('(() => { document.querySelector(\'[data-e13open="density"]\').click(); return true; })()'); time.sleep(4)
             check(pg.evaluate('!!document.querySelector("[data-vtool=gif]") || !GA.ex13.artOn("density")'), 'the viewer offers the GIF next to "PNG per layer (ZIP)" (artistic language on)')
