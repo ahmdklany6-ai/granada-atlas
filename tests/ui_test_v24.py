@@ -193,7 +193,8 @@ try:
                     if lang == 'en':
                         g = pg.evaluate('''async (k) => { const b = await GA.ex13.layersGif(k); const u8 = new Uint8Array(await b.arrayBuffer()); let s = ''; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode(...u8.subarray(i, i + 8192)); return btoa(s); }''', k)
                         gi = Image.open(io.BytesIO(base64.b64decode(g))); nfr = sum(1 for _ in ImageSequence.Iterator(gi))
-                        check(nfr == 7 * r['n'] + 1, f'{k}: layer GIF has {nfr} frames (5.34: {r["n"]} layers grow in, whole map, each alone)')
+                        ok_ = nfr >= 2 * r['n'] + 1 if k == 'climate' else nfr == 7 * r['n'] + 1  # 5.35–5.37: climate opens as one continuous block motion (frame count set by that motion)
+                        check(ok_, f'{k}: layer GIF has {nfr} frames ({r["n"]} layers {"open as one block" if k == "climate" else "grow in (5.34)"}, whole map, each alone)')
                 check(not errs, f'{lang}: no page errors', errs[:3]); ctx.close()
 finally:
     srv.terminate()
