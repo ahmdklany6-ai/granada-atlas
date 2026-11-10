@@ -140,7 +140,7 @@ try:
                 titles.append(pg.evaluate('document.querySelector(".tour-c-t").textContent')); legends.append(pg.evaluate('document.querySelector(".tour-c-b .lg").innerHTML'))
                 dots.append(pg.evaluate('[...document.querySelectorAll(".tour-dots i")].findIndex(e => e.classList.contains("on"))'))
                 card = pg.evaluate('document.querySelector("#tour-card").innerText')
-                if i == 1: check('91,476' in card and '25,300' in pg.evaluate('JSON.stringify(GA.tour.data.towns)'), 'layer 1: 91,476 residents (INE 2025); Armilla 25,300', card[:200])
+                if i == 1: check('91,476' in card and '25,300' in card, 'layer 1: 91,476 residents (INE 2025); Armilla 25,300 in the card list', card[:300])
                 if i == 2: check('42 %' in card and '33 %' in card and '3.6 km' in card, 'layer 2: fence housing 42 % (3.6 km), open 33 %', card[:300])
                 if i == 3: check('13 ' in card and '×1.49' in card and '5.8 km' in card and '3.9 km' in card, 'layer 3 (route A): 13 dead ends; 5.8 km instead of 3.9 km (×1.49)', card[:400])
                 if i == 4: check('13 ' in card and '×1.29' in card and '6.9 km' in card and '5.4 km' in card, 'layer 4 (route B): 6.9 km instead of 5.4 km (×1.29)', card[:400])
