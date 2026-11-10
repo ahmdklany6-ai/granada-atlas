@@ -225,7 +225,7 @@
     if (step === 3 && layer <= 3) { const key = METRIC[layer - 1];
       D.area.features.forEach(f => { const p = f.properties, v = valTxt(key, p);
         const val = v == null ? `<span class="v miss">${esc(t('x33.miss.' + key))}</span>` : `<span class="v" dir="ltr">${esc(v)}</span>`;
-        out.push({ id: 'm-' + p.ine, ll: p.lp, html: `<b dir="auto">${esc(nmL(p.name))}</b>${val}`, alt: val, cls: 'muni' + (p.five ? ' five' : ''), prio: p.five || p.name === 'Granada' ? 1 : 2, ring: ringsOf(f.geometry)[0] }); }); }
+        out.push({ id: 'm-' + p.ine, ll: p.lp, html: val, cls: 'muni' + (p.five ? ' five' : ''), prio: p.five || p.name === 'Granada' ? 1 : 2, ring: ringsOf(f.geometry)[0] }); }); } // 5.39 (owner): the value alone, small, in the middle; the name is in the popup
     return out;
   }
   function renderLabels() {

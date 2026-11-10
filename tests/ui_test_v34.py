@@ -1,4 +1,4 @@
-"""v34 — build 5.39: the identity map (Exercise 1.3 page 00) as an illustrated map: central Granada 5 × 5 km with its
+"""v34 — build 5.40: the identity map (Exercise 1.3 page 00) as an illustrated map: central Granada 5 × 5 km with its
 landmarks drawn in 3D line at their real positions (owner request with a reference image, 10 Nov 2026).
 Checks: default stays the locator map; the page-00 switch saves 'art' and the page changes; the drawing uses the studio
 red and every landmark sits inside the 5 km extent; the all-artistic button switches page 00 too, the all-architectural
@@ -28,7 +28,7 @@ try:
         pg = ctx.new_page(); V3.stub3(pg); errs = []
         pg.on('pageerror', lambda e: 'rtl-text' not in str(e) and errs.append('PAGE ' + str(e)[:300]))
         pg.goto(f'http://127.0.0.1:{PORT}/index.html'); pg.wait_for_function('window.GA && GA.app && GA.ex13 && GA.ex13ident', timeout=90000)
-        ver = json.load(open(os.path.join(ROOT, 'version.json')))['build']; check(ver >= "5.39" and pg.evaluate('window.GA_BUILD') == ver, f'build {ver}')
+        ver = json.load(open(os.path.join(ROOT, 'version.json')))['build']; check(ver >= "5.40" and pg.evaluate('window.GA_BUILD') == ver, f'build {ver}')
         pg.evaluate('''() => { const p = GA.app.store.get(); p.ex13 = Object.assign(p.ex13 || {}, { students: 'Keep Me' }); GA.app.store.save(); }''')
         pg.evaluate('GA.i18n.setLang("en")'); pg.evaluate('GA.ex13.load()'); time.sleep(0.5)
         check(pg.evaluate('GA.ex13.idArt()') is False, 'default: the locator map')

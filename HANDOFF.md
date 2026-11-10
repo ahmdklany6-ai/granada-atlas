@@ -990,7 +990,7 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
   arrows (`symbol-placement: line`, canvas chevrons); start/end circles with names; the figures on the map from the data
   (walk_m / straight_m / ratio, unchanged). Towns, metro, tram and pictograms fade to 30 % (`palette.tour.fade`).
 - **D. Step 3 maps**: fills at 0.5 (`palette.tour.choroAlpha`; "no index" at 0.3) with the legend swatches at the same
-  opacity; white municipal outlines; the five towns' red outline on top. A label on every municipality: name above the
+  opacity; white municipal outlines; the five towns' red outline on top. A label on every municipality (5.39, owner: the value alone, small, no name — the name is in the popup):
   value (value alone where crowded), at the polygon's pole of inaccessibility (`GA.tour.polylabel`), moved to the nearest
   free spot with a leader line when crowded; missing values written as missing; numbers LTR. Placement is one greedy
   pass in screen space (priority: the five towns and Granada, then small polygons first), re-run on every map move;
@@ -1009,8 +1009,9 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
 - Published on GitHub Pages (the request said GitLab; the site is on GitHub since 5.30).
 - Built as "5.33" in this session while another session published 5.33–5.35 (Exercise 1.3, §34–36) on `main`; merged and
   released as 5.38 (5.36 and 5.37 were then taken by the same session's climate updates) (file names i18n_v31 / ui_test_v33, since v30 / v31 were taken).
+- 5.39 (owner, same day): step-3 labels show the value only, 10.5 px, red for the five towns; names only in the popup.
 
-## 40. Build 5.39 — the identity card as one illustrated map (owner request of 10 Nov 2026, with reference images)
+## 40. Build 5.40 — the identity card as one illustrated map (owner request of 10 Nov 2026, with reference images)
 - Exercise 1.3 page 00 has its own Architectural / Artistic switch (`e.idStyle`, saved in the project); the
   "All maps artistic / architectural" buttons switch it too. Architectural = the former locator page, unchanged.
 - Artistic (`identityArt` in `js/ex13.js`, renderer `js/ex13_ident.js`): one big illustrated map over the whole A3 page

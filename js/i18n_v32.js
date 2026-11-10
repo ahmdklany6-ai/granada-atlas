@@ -1,4 +1,4 @@
-/* v32 strings (build 5.39): the identity map (page 00 of Exercise 1.3) as an illustrated map — central Granada with its
+/* v32 strings (build 5.40): the identity map (page 00 of Exercise 1.3) as an illustrated map — central Granada with its
    landmarks drawn in 3D line. [ar, he, en]. Numbers stay left-to-right. */
 (function (root) {
   root.GA.i18n.add({
