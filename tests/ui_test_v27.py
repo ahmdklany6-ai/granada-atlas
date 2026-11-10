@@ -156,12 +156,17 @@ try:
                 subprocess.run(['pdftoppm', '-r', str(DPI), '-f', str(pno), '-l', str(pno), '-png', pdf, os.path.join(OUT, f'mp{pno}')], check=True)
                 im = Image.open([os.path.join(OUT, f) for f in sorted(os.listdir(OUT)) if f.startswith(f'mp{pno}')][0]).convert('RGB'); W_, H_ = im.size; px = im.load(); mm = DPI / 25.4
                 red = lambda c: c[0] > 120 and c[1] < 80 and c[2] < 80 and c[0] - c[1] > 70
-                y = int(150 * mm); xs = [x for x in range(W_) if red(px[x, y])]
-                left = [x for x in xs if x < 20 * mm]; right = [x for x in xs if x > 400 * mm]
-                width = (sum(right) / len(right) - sum(left) / len(left)) / mm if left and right else None
-                x = int(200 * mm); ys = [yy for yy in range(H_) if red(px[int(10 * mm), yy])]
-                height = (max(ys) - min(ys)) / mm if ys else None
-                check(width and abs(width - 400) < 0.8 and height and abs(height - 200) < 1.2, f'{name}: the model outline measures {width and round(width, 1)} mm wide (400) and {height and round(height, 1)} mm of its height on this sheet (200; two sheets = 400)', (width, height))
+                # the outline's own outer edges: the left line lies in 8–12 mm, the right one in 408–412 mm (0.5 mm thick);
+                # outer edge to outer edge = 400.5 mm. Rows 60–240 mm (inside the model part, below the red header text).
+                ws = []
+                for ymm in range(60, 241, 20):
+                    y = int(ymm * mm); L_ = [x for x in range(int(8 * mm), int(12 * mm)) if red(px[x, y])]; R_ = [x for x in range(int(408 * mm), int(412 * mm)) if red(px[x, y])]
+                    if L_ and R_: ws.append((max(R_) + 1 - min(L_)) / mm - 0.5)
+                width = sorted(ws)[len(ws) // 2] if ws else None
+                # the left line's run inside 40–270 mm: continuous from the model top to its bottom (or the join)
+                col = int(10 * mm); ys = [yy for yy in range(int(40 * mm), int(270 * mm)) if any(red(px[xx, yy]) for xx in range(col - 1, col + 2))]
+                height = (max(ys) + 1 - min(ys)) / mm if ys else None; cont = ys and len(ys) >= 0.97 * (max(ys) + 1 - min(ys))
+                check(width and abs(width - 400) < 0.6 and height and abs(height - 200) < 1.0 and cont, f'{name}: the model outline measures {width and round(width, 1)} mm wide (400) and {height and round(height, 1)} mm of its height on this sheet (200; two sheets = 400)', (width, height))
             check(not errs, 'no page errors (model sheets)', errs[:3]); ctx.close()
         b.close()
 finally:

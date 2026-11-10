@@ -71,7 +71,7 @@
   const fromWorld = (p, z) => [p[0] / WS(z) * 360 - 180, Math.atan(Math.sinh(Math.PI * (1 - 2 * p[1] / WS(z)))) * 180 / Math.PI];
   class Cancelled extends Error { constructor() { super(t('v17.cancelled')); this.cancelled = true; } }
   async function mapRenderer(frameMm, dpi, denom, q, opt) {
-    opt = opt || {}; const ctl = opt.ctl || {}; const main = root.GA.app.map; const c = opt.center ? new maplibregl.LngLat(opt.center[0], opt.center[1]) : main.getCenter(); // 5.29: model sheets render around their own centre const pr = dpi / 96; const wPx = q.w, hPx = q.h;
+    opt = opt || {}; const ctl = opt.ctl || {}; const main = root.GA.app.map; const c = opt.center ? new maplibregl.LngLat(opt.center[0], opt.center[1]) : main.getCenter(); /* 5.29: model sheets render around their own centre */ const pr = dpi / 96; const wPx = q.w, hPx = q.h;
     const mppCss = denom * 0.0254 / 96; // ground metres per CSS px at 1:N (1 CSS px = 1/96 in on paper)
     const zoom = Math.log2(40075016.686 * Math.cos(c.lat * Math.PI / 180) / (512 * mppCss));
     const L = root.GA.app.L; if (L && L.printPrepare) await L.printPrepare(zoom);
