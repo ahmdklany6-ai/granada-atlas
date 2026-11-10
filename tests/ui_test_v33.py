@@ -11,7 +11,7 @@
      the straight lines in the route colours, dashed; arrows; start/end circles with names; the figures "5.8 km walking vs
      3.9 km straight · ×1.49" and "6.9 vs 5.4 km · ×1.29"; metro, tram and towns faded to 30 %; legend = map.
   D. Step 3 maps: fills 0.45–0.55 with the legend at the same opacity; white municipal outlines; red outline of the five
-     towns on top; 34 labels (name above value, or value alone where crowded), label point inside its polygon, no two
+     towns on top; 34 labels (5.39: the value alone, small, no name), label point inside its polygon, no two
      labels overlap, none under the card or controls, leader line where the label left its polygon; missing values
      written as missing; numbers left-to-right; popup with name, value, year, source.
   E. Step 3 has four slides (the southern-axis slide is gone): four dots; "Next layer" disabled on the last, "Previous"
@@ -257,10 +257,15 @@ try:
                 have = [r for r in Lb['R'] if r['id'] not in miss]
                 check(all('dir="ltr"' in r['html'] for r in have), f'{tg}: values left-to-right')
                 if lang == 'en' and key == 'chg':
-                    g = next(r for r in Lb['R'] if 'Granada' in r['txt']); check('−0.8 %' in g['txt'] and g['txt'].index('Granada') < g['txt'].index('−0.8'), f'{tg}: "Granada" above "−0.8 %"', g['txt'])
+                    names = pg.evaluate('GA.tour.data.area.features.map(f => f.properties.name)')
+                    check(not [r['txt'] for r in Lb['R'] if any(nm in r['txt'] for nm in names)], f'{tg}: labels carry the value only (5.39: no municipality names on the map)', [r['txt'] for r in Lb['R']][:5])
+                    sz = pg.evaluate('getComputedStyle(document.querySelector("#tour-lbls .tour-lbl.muni .v")).fontSize'); check(float(sz[:-2]) <= 11, f'{tg}: values in a small font ({sz})')
+                    g = pg.evaluate('(() => { const e = document.querySelector("#tour-lbls .tour-lbl[data-id=\'m-18087\']"); return e ? e.innerText : ""; })()'); check('−0.8 %' in g, f'{tg}: Granada reads −0.8 %', g)
                 # popup on Granada
                 pg.evaluate('(() => { const m = GA.app.map; m.stop(); const ll = GA.tour.data.area.features.find(f => f.properties.name === "Granada").properties.lp; const p = m.project(ll); GA.tour.popupAt({ point: p, lngLat: m.unproject(p) }); })()'); time.sleep(0.5)
                 pop = pg.evaluate('(document.querySelector(".tour-pop") || {}).innerText || ""')
+                top = pg.evaluate('(() => { const p = document.querySelector(".tour-pop .maplibregl-popup-content"); if (!p) return null; const r = p.getBoundingClientRect(); const e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return !!(e && e.closest(".tour-pop")); })()')
+                check(top, f'{tg}: the popup is drawn above the labels')
                 yr = {'chg': '2015–2025', 'inc': '2024', 'rent': '2024'}[key]; src = {'chg': '2871', 'inc': '31025', 'rent': '59060'}[key]
                 check(S['names'][0] and pg.evaluate('GA.i18n.t("x33.nm.granada")') in pop and yr in pop and src in pop, f'{tg}: popup with name, value, year {yr} and source {src}', pop[:200])
                 if lang == 'en' or (lang == 'ar' and key == 'chg'): pg.screenshot(path=f'{OUT}/D_{key}_{lang}.png')
