@@ -967,3 +967,19 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
   motion (24 frames × 70 ms, no pause), holds, then the whole map and each layer as before.
 - Each climate layer is composited once with its outline into its own canvas (`KA.lay`), so each animation frame draws
   four bitmaps instead of eight images. Test `tests/ui_test_v32.py`.
+
+## 39. Build 5.38 — the identity card as one illustrated map (owner request of 10 Nov 2026, with reference images)
+- Exercise 1.3 page 00 has its own Architectural / Artistic switch (`e.idStyle`, saved in the project); the
+  "All maps artistic / architectural" buttons switch it too. Architectural = the former locator page, unchanged.
+- Artistic (`identityArt` in `js/ex13.js`, renderer `js/ex13_ident.js`): one big illustrated map over the whole A3 page
+  (5.42 × 7.67 km of central Granada, EPSG:25830, north up): every OSM street thin, Darro / Genil / Beiro, parks with
+  small trees, the hills outside the built city cream with IGN 10 m contours, district names in spaced capitals, and
+  13 landmarks drawn as small 3D line drawings (studio red) at their OSM / Overture positions — Alhambra, Generalife,
+  cathedral + Capilla Real, Mirador de San Nicolás, Abadía del Sacromonte, Cartuja, Hospital Real, San Juan de Dios,
+  Plaza de Toros, Palacio de Congresos, Parque de las Ciencias, Estadio Nuevo Los Cármenes. The drawings are schematic
+  (shapes simplified, enlarged, not to scale, not measured) and the page says so.
+- The information is written in red in the top end corner (name in Latin / Arabic / Hebrew script, country, students,
+  population / area / density with source and date, residents change 2015→2025 from INE via `tour_area`); the synthesis
+  sits in the empty bottom start corner; one small line of note + sources along the bottom edge.
+- `tools/build_ex13_ident.py` → `data/ex13/art/ident.json` (es-atlas outlines, a DEM section — kept for later use; the
+  owner chose the single-map page without locator maps or section). Strings `js/i18n_v31.js`. Test `tests/ui_test_v33.py`.
