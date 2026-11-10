@@ -170,8 +170,8 @@ try:
                 im = Image.open(io.BytesIO(base64.b64decode(r['b64']))); fr = []; durs = []
                 for f in ImageSequence.Iterator(im): durs.append(f.info.get('duration')); fr.append(f.copy())
                 open(f'{OUT}/i10_{k}.gif', 'wb').write(base64.b64decode(r['b64']))
-                check(r['type'] == 'image/gif' and len(fr) == 2 * r['n'] + 1 and im.info.get('loop') == 0 and im.size[1] > 900, f'{k}: GIF with {len(fr)} frames ({r["n"]} layers alone, {r["n"]} built up, whole map), loops, {im.size}', (len(fr), r['n'], im.info.get('loop'), im.size))
-                check(durs[0] == 1400 and durs[-1] == 3000, f'{k}: frame timing (1.4 s per layer, 3 s on the whole map)', durs)
+                check(r['type'] == 'image/gif' and len(fr) == 7 * r['n'] + 1 and im.info.get('loop') == 0 and im.size[1] > 900, f'{k}: GIF with {len(fr)} frames (5.34: each of {r["n"]} layers grows in over 6 frames, whole map, each layer alone), loops, {im.size}', (len(fr), r['n'], im.info.get('loop'), im.size))
+                n_ = r['n']; check(durs[:6 * n_] == [110, 110, 110, 110, 110, 500] * n_ and durs[6 * n_] == 2600 and durs[6 * n_ + 1:] == [1400] * n_, f'{k}: frame timing (5.34: growth 5 × 0.11 s + 0.5 s hold per layer, whole map 2.6 s, then 1.4 s per layer alone)', durs)
                 ext = [f.convert('L').getextrema() for f in fr]; check(all(a < 120 and b > 200 for a, b in ext), f'{k}: every frame has map content (no blank frame)', ext[:3])
             btn = pg.evaluate('(() => { document.querySelector(\'[data-e13open="density"]\').click(); return true; })()'); time.sleep(4)
             check(pg.evaluate('!!document.querySelector("[data-vtool=gif]") || !GA.ex13.artOn("density")'), 'the viewer offers the GIF next to "PNG per layer (ZIP)" (artistic language on)')
@@ -193,7 +193,7 @@ try:
                     if lang == 'en':
                         g = pg.evaluate('''async (k) => { const b = await GA.ex13.layersGif(k); const u8 = new Uint8Array(await b.arrayBuffer()); let s = ''; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode(...u8.subarray(i, i + 8192)); return btoa(s); }''', k)
                         gi = Image.open(io.BytesIO(base64.b64decode(g))); nfr = sum(1 for _ in ImageSequence.Iterator(gi))
-                        check(nfr == 2 * r['n'] + 1, f'{k}: layer GIF has {nfr} frames ({r["n"]} layers alone, built up, whole map)')
+                        check(nfr == 7 * r['n'] + 1, f'{k}: layer GIF has {nfr} frames (5.34: {r["n"]} layers grow in, whole map, each alone)')
                 check(not errs, f'{lang}: no page errors', errs[:3]); ctx.close()
 finally:
     srv.terminate()
