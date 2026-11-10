@@ -942,3 +942,121 @@ body.atlas.atl-nolegend #legend { display: none !important; }
   .atl-cards { grid-template-columns: 1fr; }
   .atl-back { top: 8px; }
 }
+
+/* 5.26: letter-spacing and upper-casing are Latin typography. In Arabic they break the joined letters apart
+   ("أ ط ل س"), in Hebrew they only spread the word — so both are switched off for RTL pages and for any element
+   marked as Arabic or Hebrew inside an English page. */
+html[dir="rtl"] *, :lang(ar), :lang(ar) *, :lang(he), :lang(he) * { letter-spacing: 0 !important; text-transform: none !important; }
+/* 5.26: the map legend leads with the atlas topic; other layers fold under "also on the map". On tablets and desktops
+   the topic legend is then shown once (in the map legend), not twice; on phones the panel keeps it. */
+.legend .lg-also { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 6px; }
+.legend .lg-also > summary { cursor: pointer; font-size: 12px; color: var(--ink-2, #555); list-style-position: inside; }
+@media (min-width: 700px) { body.atl-maplg:not(.atl-nolegend) #atl-panel .atl-lg { display: none; } }
+/* 5.26: phones keep the site title (the language buttons that needed the room live in the ☰ menu now) */
+@media (max-width: 480px) { body.atlas .brand-name { display: block; font-size: 15px; overflow: hidden; text-overflow: ellipsis; max-width: calc(100vw - 96px); } }
+
+/* ---------- 5.27 opening page and story tour (js/tour.js) ---------- */
+.tour-intro { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 24px 16px;
+  background: color-mix(in srgb, var(--paper) 74%, transparent); }
+.tour-intro[hidden] { display: none; }
+body.tour-intro-on #map { filter: grayscale(1) contrast(.85) brightness(1.04); }
+body.tour-intro-on #map, body.tour-intro-on .stage { pointer-events: none; }
+.tour-intro-in { text-align: center; max-width: 640px; }
+.tour-title { margin: 0; color: var(--red); font-weight: 700; font-size: clamp(64px, 14vw, 144px); line-height: 1.05; }
+.tour-names { margin: 10px 0 34px; color: var(--ink-2); font-weight: 400; font-size: clamp(18px, 3.2vw, 26px); }
+.tour-intro-btns { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.tour-intro-btns .btn { min-height: 48px; padding: 10px 24px; font-size: 17px; border-radius: 3px; }
+.tour-btn-red { background: var(--red); border-color: var(--red); color: var(--white); font-weight: 600; }
+.tour-btn-red:hover { background: var(--red-2); border-color: var(--red-2); }
+.tour-btn-white { background: var(--white); border-color: var(--red); color: var(--red); }
+.tour-btn-white:hover { background: var(--red-soft); }
+.tour-langs { margin-top: 30px; display: inline-flex; gap: 4px; }
+.tour-langs button { border: 1px solid transparent; background: none; color: var(--ink-2); font: inherit; font-size: 14px; padding: 6px 10px; min-height: 36px; border-radius: 3px; cursor: pointer; }
+.tour-langs button[aria-pressed="true"] { border-color: var(--line-2); background: var(--white); color: var(--ink); font-weight: 600; }
+.tour-langs button:focus-visible, .tour-intro-btns .btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* during the tour the atlas overlay steps aside; the map, its zoom controls and the top bar stay */
+body.tour-on #atl-panel, body.tour-on #atl-back, body.tour-on .atl-mk, body.tour-on #legend, body.tour-on #atl-burger { display: none !important; }
+.tour-card { position: absolute; bottom: 34px; inset-inline-start: 12px; z-index: 12; width: min(380px, calc(100% - 24px)); max-height: calc(100% - 60px);
+  overflow: auto; background: var(--panel); border-top: 3px solid var(--red); box-shadow: 0 2px 14px var(--shadow); padding: 12px 16px 12px; font-size: 14px; }
+.tour-card[hidden] { display: none; }
+.tour-c-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tour-plate { display: inline-block; background: var(--ink); color: var(--white); font-size: 12px; font-weight: 600; padding: 2px 8px; }
+.tour-dots { color: var(--red); font-size: 13px; letter-spacing: 3px; white-space: nowrap; direction: ltr; }
+html[dir="rtl"] .tour-dots { direction: rtl; }
+.tour-dots i { font-style: normal; }
+.tour-c-t { margin: 8px 0 6px; font-size: 19px; line-height: 1.25; color: var(--ink); }
+.tour-c-b p { margin: 0 0 8px; line-height: 1.5; }
+.tour-c-b .lg { margin: 4px 0 8px; flex-direction: column; flex-wrap: nowrap; }
+.tour-c-b .sw.dot { border-radius: 50%; }
+.tour-facts { margin: 0 0 8px; padding-inline-start: 18px; line-height: 1.55; }
+.tour-lead { font-weight: 500; }
+.tour-miss { color: var(--warn); }
+.tour-src { font-size: 12px; color: var(--ink-3); }
+.tour-keys { margin: 4px 0 8px; font-size: 12px; color: var(--ink-3); }
+.tour-btns { display: flex; flex-wrap: wrap; gap: 6px; position: sticky; bottom: -12px; background: var(--panel); padding: 8px 0 12px; margin-bottom: -12px; } /* always reachable, however long the card */
+.tour-btns .btn { min-height: 36px; }
+@media (max-width: 699px) {
+  .tour-card { inset-inline: 0; bottom: 0; width: auto; max-height: 46vh; border-radius: 10px 10px 0 0; padding: 10px 14px 12px; }
+  .tour-keys { display: none; }
+  .tour-btns .btn { min-height: 40px; flex: 1 1 auto; }
+}
+@media (prefers-reduced-motion: reduce) { .tour-card, .tour-intro { transition: none; } }
+
+/* ---------- 5.28 city growth layer controls and legend (js/layers_growth.js) ---------- */
+.gr-ctl .gr-range { display: flex; align-items: center; gap: 8px; }
+.gr-ctl .gr-range input[type=range] { flex: 1; min-width: 90px; }
+.gr-ticks { display: flex; flex-wrap: wrap; gap: 3px; margin: 2px 0 6px; }
+.gr-tick { border: 1px solid var(--line-2); background: var(--white); color: var(--ink-2); font: inherit; font-size: 11px; padding: 2px 5px; border-radius: 3px; cursor: pointer; min-height: 26px; }
+.gr-tick.on { border-color: var(--red); color: var(--red); font-weight: 600; }
+.lg.lg-col { flex-direction: column; flex-wrap: nowrap; }
+.lg li.gr-cur span { font-weight: 600; }
+.lg li.gr-dim { opacity: .45; }
+
+/* ---------- 5.29 main map screen (owner request): no zoom buttons; Draw section + 3D in one row top-right; north arrow
+   beside the scale bar bottom-left; language buttons in the top bar; the five analyses always on screen ---------- */
+body.atlas { --tb: 48px; --top: var(--tb); }
+body.atlas .topbar { height: var(--tb); }
+body.atlas .topbar .brand { flex: 0 1 auto; min-width: 0; }
+body.atlas .brand-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the five analyses + "no topic": inside the top bar on wide screens … */
+.atl-topics { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 4px; }
+.atl-tp { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; min-height: 32px; border: 1px solid var(--line-2); border-radius: 3px; background: var(--white); color: var(--ink); font: 500 12.5px/1.2 var(--f-ui); white-space: nowrap; cursor: pointer; }
+.atl-tp .atl-num { min-width: 0; }
+.atl-tp:hover { border-color: var(--red); color: var(--red); }
+.atl-tp.on { border-color: var(--red); background: var(--red-soft); color: var(--red); font-weight: 700; box-shadow: inset 0 -2px 0 var(--red); }
+.atl-tp-none { color: var(--ink-2); } .atl-tp-none.on { color: var(--ink); border-color: var(--ink-2); background: var(--paper-2); box-shadow: inset 0 -2px 0 var(--ink-2); }
+.atl-tp:focus-visible, .tb-lang button:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+/* … a strip just under the top bar below 1200 px (scrolls sideways on phones) */
+@media (max-width: 1199px) {
+  body.atlas { --top: calc(var(--tb) + 42px); }
+  .atl-topics { position: fixed; top: var(--tb); inset-inline: 0; height: 42px; justify-content: flex-start; padding: 0 8px; background: var(--white); border-bottom: 1px solid var(--line); overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; z-index: 19; }
+}
+@media (min-width: 700px) and (max-width: 1199px) { .atl-topics { justify-content: center; } }
+/* language buttons, always visible at the end of the top bar (right in English, left in Arabic / Hebrew) */
+.tb-lang { flex: none; display: inline-flex; align-items: center; gap: 2px; margin-inline-start: auto; }
+.tb-lang button { border: 1px solid transparent; background: none; color: var(--ink-2); font: 500 13px/1 var(--f-ui); padding: 6px 7px; min-height: 32px; border-radius: 3px; cursor: pointer; white-space: nowrap; }
+.tb-lang button:hover { color: var(--red); }
+.tb-lang button.on { color: var(--ink); font-weight: 700; border-color: var(--line-2); background: var(--paper-2); box-shadow: inset 0 -2px 0 var(--red); }
+.tb-lang button[lang="ar"] { font-family: "IBM Plex Sans Arabic", var(--f-ui); } .tb-lang button[lang="he"] { font-family: "IBM Plex Sans Hebrew", var(--f-ui); }
+@media (max-width: 480px) { body.atlas .brand-name { max-width: none; } .tb-lang button { padding: 6px 4px; font-size: 12px; } body.atlas .topbar { gap: 6px; padding-inline: 6px 8px; } }
+/* Draw section + 3D: one row in the top-right corner of the map, under the top bar (every language) */
+body.atlas .maplibregl-ctrl-top-right { top: 8px; right: 8px; display: flex; flex-direction: row; align-items: flex-start; gap: 6px; direction: ltr; }
+body.atlas .maplibregl-ctrl-top-right .maplibregl-ctrl { margin: 0; float: none; clear: none; }
+body.atlas .ga-3dctl { display: flex; } body.atlas .ga-3dctl button { height: 30px; }
+/* north arrow + scale bar: one small group in the bottom-left corner (every language), lifted above the atlas panel /
+   bottom sheet when they would meet (atlas.js placeNorth) */
+body.atlas .maplibregl-ctrl-bottom-left { left: 8px; bottom: 6px; display: flex; flex-direction: row; align-items: flex-end; gap: 6px; direction: ltr; }
+body.atlas .maplibregl-ctrl-bottom-left .maplibregl-ctrl { margin: 0; float: none; clear: none; }
+body.atlas .ga-north { order: -1; position: static; display: flex !important; align-items: center; justify-content: center; width: 22px; height: 28px; background: rgba(255, 255, 255, .92); border: 1px solid var(--ink); border-radius: 2px; color: var(--ink); top: auto; right: auto; }
+body.atlas .ga-north svg { width: 13px; height: 22px; }
+@media (min-width: 701px) { body.atlas .atl-panel { bottom: 42px; } body.atlas .tour-card { bottom: 42px; } } /* room for the north + scale group under them */
+body.atlas.view-3d .ga-north { display: none !important; } /* the map can be rotated in 3D: the north arrow would be wrong */
+/* 5.29 model workshop preset (js/modelprint.js) at the top of Print layout */
+.pl-model { border: 1px solid var(--red); border-inline-start-width: 3px; padding: 8px 12px; margin: 0 0 12px; background: var(--panel); }
+.pl-model > summary { cursor: pointer; font-size: 14px; } .pl-model > summary .fine { font-weight: 400; }
+.pl-model-calc { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 8px 0; padding: 6px 0; font-size: 13px; }
+.pl-model-calc .mp-big { font-size: 15px; margin: 4px 0; } .pl-model-calc .mp-big b { color: var(--red); font-size: 18px; }
+.mp-err { color: var(--warn); }
+/* the ☰ menu opens from the right in Arabic / Hebrew: Draw section + 3D move left of it so the menu never hides them */
+@media (min-width: 700px) { html[dir="rtl"] body.atlas.atl-menu .maplibregl-ctrl-top-right { right: calc(min(380px, 92vw) + 8px); } }

@@ -3,6 +3,7 @@
 # Run: python3 tests/ui_test_v2.py [output_dir]
 import json, math, os, subprocess, sys, time, base64
 from playwright.sync_api import sync_playwright
+import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__))); import _nointro  # 5.27: start on the map, not the opening page
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = sys.argv[1] if len(sys.argv) > 1 else '/tmp'
@@ -55,7 +56,7 @@ def main():
             b = p.chromium.launch(args=['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'])
             ctx = b.new_context(viewport={'width': 1500, 'height': 920}, accept_downloads=True)
             pg = ctx.new_page(); errors = []
-            pg.on('pageerror', lambda e: errors.append(str(e)))
+            pg.on('pageerror', lambda e: 'rtl-text' not in str(e) and errors.append(str(e)))  # the RTL text plugin comes from unpkg, which the test sandbox cannot reach (same filter as v11–v23)
             stub(pg)
             base = f'http://127.0.0.1:{PORT}/index.html'
 

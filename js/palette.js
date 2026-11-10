@@ -133,6 +133,30 @@
     metro: RED, metroCasing: '#FFFFFF', station: BASE.brown, tram: BASE.oxblood, trunk: BASE.khaki, tramStation: BASE.oxblood,
     estate: BASE.burgundy, science: RED, logistics: BASE.khaki, industry: D.warmGrey, village: BASE.brown, gap: BASE.brown,
   };
+  // 5.27 — story tour (js/tour.js): the base, the fence classes, the towns and the agglomeration ramps. Map paint, card
+  // legends and dot indicator read these entries.
+  P.tour = {
+    veil: D.paper, baseFill: RED, baseLine: BASE.oxblood, focus: BASE.blueGrey,
+    town: RED, townLine: '#FFFFFF', label: BASE.brown,
+    fence: { housing: RED, open: BASE.chartreuse, road: BASE.brown, green: BASE.olive, industry: D.blueDeep },
+    dead: RED, route: D.blueDeep, straight: BASE.brown,
+    band: D.khakiPale, bandLine: BASE.khaki,
+    bandlu: { residential: D.rose, industrial: D.blueDeep, green: D.oliveMid, agri: BASE.chartreuse, construction: D.warmGrey2 },
+    // population change 2015–2025 (%): < 0 · 0–5 · 5–10 · 10–15 · 15–20 · ≥ 20 — diverging around the cream "no change"
+    chg: [D.blueMid, BASE.cream, D.blush, D.rose, RED, BASE.oxblood], chgBreaks: [0, 5, 10, 15, 20],
+    // net income per person (€): < 11,000 · 11–12,500 · 12,500–14,000 · 14–15,500 · ≥ 15,500 — sequential blue
+    inc: [D.bluePale, BASE.lightBlue, D.blueMid, D.blueDeep, D.blueDark], incBreaks: [11000, 12500, 14000, 15500],
+    // rent index 2024 (2015 = 100): < 120 · 120–125 · 125–130 · ≥ 130 — sequential khaki; no index = missing (hatched)
+    rent: [D.khakiPale, BASE.khaki, BASE.burgundy, BASE.wine], rentBreaks: [120, 125, 130], missing: D.stone,
+    muni: BASE.brown, five: RED, barrio: BASE.burgundy,
+  };
+  // 5.28 — "City growth (built-up extent 1932–2020)" layer (js/layers_growth.js): one fill per period, oldest → newest
+  // (traced periods in the dark red family, GHSL epochs in the khaki family); the selected period is outlined in red.
+  // Map paint and legend read the same array.
+  P.growth = {
+    fills: [BASE.wine, BASE.oxblood, BASE.burgundy, BASE.olive, BASE.khaki, BASE.chartreuse, D.khakiPale],
+    fillAlpha: 0.32, current: RED, currentW: 2.6, lineW: 1,
+  };
   if (typeof module !== 'undefined' && module.exports) module.exports = P;
   else {
     root.GA = root.GA || {}; root.GA.palette = P;

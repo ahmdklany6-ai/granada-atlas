@@ -1,4 +1,4 @@
-# Granada Atlas — handoff (state at build 5.21, 8 Nov 2026)
+# Granada Atlas — handoff (state at build 5.30, 10 Nov 2026)
 
 This document lets a new Claude Code session continue the project without the original chat. Short operating rules
 are in `CLAUDE.md`; feature and data documentation is in `README.md`.
@@ -7,14 +7,14 @@ are in `CLAUDE.md`; feature and data documentation is in `README.md`.
 
 | Item | Value |
 | --- | --- |
-| Repository | `ahmdklany6-ai/granada-atlas` (public), branch `main` |
-| Live site | https://ahmdklany6-ai.github.io/granada-atlas/ (GitHub Pages, deploy from `main`, repo root) |
-| Current build | **5.21** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.21` asset queries) |
-| Latest feature work | Build 5.9: colour hierarchy, boundary layers, water/runoff, infrastructure, seasonal wind/rain, landmark geometries, print layout (see §13) |
-| Deployment | see §12 (5.8 deployment record) |
-| Data version | `2026-11-08-v12` in `data/manifest.json` (5.21: `boards` entry for the two Southern-axis boards; 5.20: southern-axis layers `south_metro`, `tram_1931`, `escuzar_pole`) |
+| Repository | GitHub `ahmdklany6-ai/granada-atlas` (back since 10 Nov 2026 after a one-day suspension, ticket #4976314). Work branch `claude/vigilant-ritchie-wammdd`; `main` deploys. The GitLab copy `gitlab.com/ahmdklany6/granada-atlas` is frozen at 5.29 and no longer updated |
+| Live site | **https://ahmdklany6-ai.github.io/granada-atlas/** (GitHub Pages from `main`). The GitLab site https://granada-atlas-597777.gitlab.io/ still shows 5.29 (left in place, not updated) |
+| Publishing from a cloud session | push the work branch, open a PR to `main` and merge it (GitHub MCP tools); GitHub Pages deploys `main`. Verify with the `live-check` workflow (workflow_dispatch, script `live_atlas.py`) — this sandbox cannot open *.github.io. The GitLab API route (§28–31) is retired |
+| Current build | **5.30** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.30` asset queries) |
+| Latest feature work | 5.30: back on GitHub, merged with the other session's axonometric human dimension (§32). 5.29: map screen layout + model workshop print preset (§31). 5.28: city growth extents as a normal layer, OFF by default (§30). 5.27: opening page and story tour (see §29). 5.26: fixes from the 5.25 live review, factory analysis frame, GIF export (§28) |
+| Data version | `2026-11-10-v16` in `data/manifest.json` (5.30 merge; 5.27: `base_edge`, `tour_area`; 5.26: `ex13f`) |
 
-Build history (newest first): 5.21 Southern axis page with the two research boards · 5.20 southern-axis essentials layers (metro extension, 1931 tram, Escúzar / IFMIF-DONES) on by default · 5.19 print up to 700 dpi built in strips · 5.18 print at full resolution + "Map only" template · 5.17 / 5.16 Exercise 1.3 identity card · 5.15 one card format, historical extents · 5.14 current study area red on the locator · 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
+Build history (newest first): 5.30 back on GitHub; merged with the other session's "5.26" (axonometric human dimension, now a second artistic style) · 5.29 map screen (no zoom buttons, controls top-right, north + scale, language and analysis buttons in the top bar) and the model workshop (40 × 40 cm) print preset · 5.28 city growth as a switchable layer (OFF by default) · 5.27 opening page and story tour (base → five towns → agglomeration) · 5.26 fixes from the 5.25 review (RTL typography, legend follows the topic, phone chrome, LTR numbers), old test failures fixed, factory analysis frame, metro stations, GIF export · 5.25 Atlas shell (☰ menu, WHERE × WHAT) · 5.24–5.22 Exercise 1.3 artistic maps · 5.21 Southern axis page with the two research boards · 5.20 southern-axis essentials layers (metro extension, 1931 tram, Escúzar / IFMIF-DONES) on by default · 5.19 print up to 700 dpi built in strips · 5.18 print at full resolution + "Map only" template · 5.17 / 5.16 Exercise 1.3 identity card · 5.15 one card format, historical extents · 5.14 current study area red on the locator · 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
 classified climate rasters, dashed fabric marks, historical red dots explained · 5.5/5.4 smooth building scales and
 street hierarchy at close zoom · 5.3 (v5) analysis page, viewers, unified Comparison, phone/iPad · v4/v3/v2 earlier.
 
@@ -697,12 +697,201 @@ Restructure (not a rebuild) of the opening view into a full-screen research map 
   opening view (no city fit, no growth animation) for the older suites. The old "all panels open" hook no longer opens
   Layers (the ☰ menu is an overlay).
 - Tests: `tests/ui_test_v23.py` (new). Old suites adjusted where controls moved (v2, v3, v4, v5, v7, v9, v10, v11, v19).
-  Failures that are identical on `main` (5.24) and not caused by 5.25: v3 times out at the analysis-page historical
-  snapshots; v5 analysis-page headings/KPI check and its PDF page count (11 vs 9); v7 multi-segment section after
-  Undo, reopened-section handles, iPad Finish button; v17 tile-seam ratio at A1 600–700 dpi (1.8–2.0 ×); the
-  rtl-text plugin cannot load from unpkg in the sandbox.
+  The older failures listed here at 5.25 (v3, v5, v7, v17) were fixed in 5.26 — causes in §28.
 
-## 27. Build 5.26 — Exercise 1.3 human dimension in the artistic map language (owner request of 9 Nov 2026)
+## 28. Build 5.26 — review fixes, old test failures, factory frame (owner request of 9 Nov 2026)
+
+Hosting moved to GitLab Pages while the GitHub account is suspended (see §1). Each item has its own test.
+1. **RTL typography** — letter-spacing and upper-casing break Arabic letters apart ("أ ط ل س"). `css/app.css` ends with a
+   rule that switches both off for `html[dir=rtl]` and for any `:lang(ar)` / `:lang(he)` element; the map's sea and country
+   labels get `text-letter-spacing: 0` in ar/he (`js/style.js`). Canvas/PDF text uses no tracking. Test v24 item 1 checks
+   every visible element whose own text is Arabic / Hebrew (it fails without the rule).
+2. **Map legend follows the topic** — with an atlas topic on, `#legend` starts with the topic classes (`GA.atlas.mapLegendHTML`,
+   same `legendHTML` as the panel and the map paint); every other layer that is on folds under "Also on the map (n layers)".
+   `placeLegend` (js/app.js) keeps the legend clear of the analysed area (`GA.atlas.legendAvoid`: frame / corridor / estate)
+   — beside it, else above / below, else the Legend button — and of the atlas panel (checked after the frame rule). On
+   tablets/desktop the panel's copy of the topic legend is hidden (shown once). Fits on wide screens leave 290 px for it.
+3. **Phone chrome** — the site title stays on phones (≤ 480 px; ellipsis if needed); the north arrow is placed under the
+   map control column (zoom, Draw section, 3D) by `placeNorth()` in js/atlas.js, whatever its height. 375–1280 px, ar/he/en.
+4. **Numbers stay LTR** — `GA.ltrNums(html)` / `GA.ltrNumsDOM(el)` (js/i18n_v24.js) wrap number runs (sign, range, ×, scale,
+   unit or %) in `<span dir="ltr">` in RTL only; applied to the atlas panel, map legend, popups, Southern-axis and Exercise
+   1.3 pages. "(11 %)" no longer reads "(% 11)".
+5. **v7** — the expanded map legend sat in the free map area while drawing a section, so clicks landed on it (lost vertex
+   after Undo, too few handles on the reopened section, iPad Finish disabled). While the mode banner is shown the legend
+   folds to its button and the atlas panel to its title bar.
+6. **v5** — both checks were stale, not the page: the legend reads "Current / Other study areas" since 5.14, and the
+   analysis PDF puts at most two cards per A3 page since 5.15 (identity + the pages the app planned, `GA.lastFabricPDF`).
+7. **v3** — the historical snapshots were stubbed with a uniform 1-pixel image, which the app (since 5.12) correctly treats
+   as "no coverage"; the test now serves a real picture for IGN GetMap requests. Its PDF check follows 5.15 as in v5.
+8. **v17 seams** — JPEG keeps colour at half resolution and a decoder cannot interpolate it across two separate strip
+   images, so each strip's outermost row differed slightly from the same row inside its neighbour. `js/pdf.js` now places
+   every pixel at exactly 72/dpi pt (page = pixels × 72/dpi) and clips each strip to start half the overlap (8 rows) below
+   its top, so the visible join lies inside both images. A1 600 dpi 1:50,000: 1.82 → 1.58; A1 700 dpi 1:10,000: 2.00 → 1.12.
+   Note: poppler (the reference renderer of the test) itself renders some strips about one grey level away from its own
+   decode of the same image; that part is the renderer's, not the file's.
+   v16 (sharpness): an exactly 1:1 image makes poppler use a softer path (0.889 < 0.9), so placement is 72/dpi × (1 − 1e-7);
+   `tests/pdfstrips.test.js` checks the strip PDF content stream.
+9. **Climate / Human in the artistic language** — previews approved by the owner (9 Nov 2026) and on the site:
+   `js/ex13_art.js` `drawClimate` (isotherms of the Landsat summer median, σ 1.4 smoothing, 38–56 °C; hot/cool points;
+   7 layers) and `drawHuman` (buildings faint, shops/services, 300 m reach rings, places far from any; 6 layers). Both
+   have the Architectural / Artistic switch, the layer player, PNG per layer (ZIP) and the GIF.
+10. **GIF of the layer player** — `js/gif.js` (own GIF89a encoder: per-frame 256-colour table from the frame's pixels,
+    LZW) and `GA.ex13.layersGif(k)`: each layer alone (1.4 s), then built up (0.9 s), then the whole map (3 s), looping;
+    button "Animated GIF of the layers" next to "PNG per layer (ZIP)" in the viewer. `tests/gif.test.js` decodes it with Pillow.
+12. **Factory analysis frame** — `data/ex13f/` (EPSG:25830 x 429000–441000, y 4101000–4111000, 12 × 10 km: the estate and
+    the gap to the Las Gabias terminus; it meets the city frame there). Fetched on the GitLab runner by
+    `tools/verify/ex13f_fetch.py` (ex13_fetch.py with FRAME / OUTDIR / EXTRA: + OSM buildings, streets, land use,
+    municipalities, GHSL 2020), built by `tools/build_ex13f.py` with the city's method and breaks. The atlas builds topic
+    layers per frame (factory ids end in `~f`), uses rectangular grids (`grid.nx/ny`), and computes the factory indicators
+    live inside the estate and within 1 km (`factoryIndicators`). Values as built: 13,245 modelled residents in the frame,
+    ~240 inside the estate (GHS-POP, modelled), 85 shops/services (1 inside the estate), summer surface median 48.9 °C
+    (estate 47.8 °C), 3,073 OSM buildings (0.9 % coverage; 0.61 km² probable gaps vs GHSL). City data (data/ex13) unchanged. Municipal
+    boundaries could not be fetched (Overpass overloaded), so the per-municipality row is hidden, not shown as zero.
+13. **Metro stations** — searched 9 Nov 2026 (tools/verify/stations_search.py, osm_track.py on the runner): the Junta de
+    Andalucía names seven stops (San Cayetano, La Paz, Churriana de la Vega, Arabuleila, La Gloria, Los Chopos, Las Gabias)
+    but no source publishes positions with a reuse licence; OSM still maps the extension as under construction (6 ways, no
+    stops). Stations are named in the metro legend and panel with the sources searched, never placed; the track is unchanged.
+Tests: `tests/ui_test_v24.py` (items 1, 2, 3, 4, 9, 10, 12, 13), `tests/pdfstrips.test.js`, `tests/gif.test.js`; v3, v5, v7, v17 fixed; v2/v3/v5 ignore
+only the sandbox-blocked RTL text plugin error.
+
+## 29. Build 5.27 — opening page and story tour (owner request of 10 Nov 2026)
+
+The owner's brief was written for build 5.22 on GitHub; it was implemented on top of 5.26 (atlas shell) as 5.27, with
+`js/i18n_v25.js` and `tests/ui_test_v25.py` instead of the v20 names the brief used.
+
+**What the visitor sees**
+- **Opening page** (`#tour-intro`, static markup at the top of `<body>` so it appears at once): title غرناطة / גרנדה /
+  Granada in red, the authors' names, red "Start the tour", white "Open the map of Granada", a language switch; the real map
+  behind it, desaturated (`filter: grayscale`) and not interactive. Shown on **every** load of the plain URL (no "don't
+  show again"); any hash (`#/south`, `#/print`, …) skips it; `#/tour` and the menu entry "Tour" (`#tb-tour`, first in the
+  sidebar's tools & pages) reopen it. The authors' names as confirmed by the owner on 10 Nov 2026: أحمد زيد · يارا بشير /
+  אחמד זיד · יארא בשיר / Ahmad Zid · Yara Bashir.
+- **Step 1** the base alone (outline oxblood, light fill; the rest under a cream veil): 371 ha measured on OSM, military
+  airfield since June 1922 (OSM says 21 June, the brief 20 June — so only the month is shown), Ala 78 since 1980, fence 8.7 km.
+- **Step 2** the five towns (Armilla, Churriana de la Vega, Las Gabias = OSM "Gabia Grande", Alhendín, Ogíjares) in view;
+  Space cycles: residents circles (INE 2025, change since 2015) · fence classes · dead ends + walking routes · 300 m band ·
+  metro 2026 + tram 1931 (the metro runs ≈ 20 m from the north fence, computed live).
+- **Step 3** the 34-municipality agglomeration; card: five towns +15.3 %, rest of the area +8.2 %, Granada city −0.8 %;
+  income Granada €16,893 vs Las Gabias €12,492, Churriana €13,167. Space cycles: population change · income · rent index
+  (missing €/m² explained) · city neighbourhoods (zooms to the city; section income missing) · southern axis.
+  The last Enter ends the tour on the normal map at the current view: panels closed, tour layers and sources removed.
+- Keys: Enter next step · Space / → next layer · Shift+Space / ← previous layer · Backspace previous step · Esc leave.
+  Keys typed into inputs are ignored; Space/Enter on a focused button count once (key-up swallowed). On-screen buttons:
+  Back, Previous layer, Next layer, Next / Open the map, Exit (pinned at the bottom of the card). URL: `#/tour`,
+  `#/tour/1`, `#/tour/2/3` (history.replaceState, so no extra history entries). Card on the inline-start side (left in en,
+  right in ar/he), bottom sheet under 700 px. `prefers-reduced-motion`: no flights (duration 0).
+
+**Code**: `js/tour.js` (loaded after `atlas.js`); `GA.palette.tour` (map paint and card legends read the same breaks and
+colours); CSS `.tour-*` at the end of `css/app.css`; during the tour `body.tour-on` hides the atlas panel, markers, map
+legend and ☰. `atlas.js` `raise()` now keeps the atlas layers just below any `tour-*` layers, and its opening city fit is
+skipped while the tour is on (deep links into the tour). Label layers use their own sources (`towns-l`, `barrio-l`): a
+label whose font cannot load would otherwise stop the circles / lines of the same source from drawing.
+
+**Data**: `tools/build_base_edge.py` (OSM API tiles of 0.01°, cache in `$CACHE`) → `data/vec/base_edge.json`;
+`tools/build_tour_area.py` (INE wstempus tables 2871, 31025, 59060; `ESATLAS=` path to es-atlas `municipalities.json`;
+`INE=` folder of saved responses optional) → `data/vec/tour_area.json`. Manifest entries `base_edge`, `tour_area`;
+dataVersion `2026-11-10-v15`. Values match the brief (fence housing 42 % / open 33 % / road 17 %, 13 dead ends, ×1.49 and
+×1.29, band 287 ha, five towns 91,476 residents) except: the agglomeration list on es.wikipedia now has **34**
+municipalities (with Colomera and Valderrubio), not 32; the brief's "south ring +12.5 % vs north ring +6.2 %" could not be
+reproduced without its ring definitions, so the card compares the five towns (+15.3 %), the rest of the area (+8.2 %) and
+Granada city (−0.8 %).
+
+**Missing, shown as missing**: rent in €/m² (INE IPVA is an index of change for municipalities over 10,000 residents
+only — 14 of 34; MIVAU SERPAVI refused automated download with HTTP 403 on 10 Nov 2026; listing-site figures not used);
+income by census section for the neighbourhoods (no section boundaries in the atlas yet). Base facts not re-checked on
+es.wikipedia from this session (blocked); the Ala 78 / 1980 fact is from the brief.
+
+**Tests**: `tests/ui_test_v25.py` (A opening page, B white button, C keyboard tour, D phone / iPad buttons, E reduced
+motion, F RTL side and LTR numbers). The suites written before 5.27 import `tests/_nointro.py` (patches Playwright's
+`new_context` / `new_page` to add `window.__noIntro = true`). The live check `tools/verify/live_atlas.py` opens the plain
+URL for the opening page and runs the tour on the public site, then runs the older checks with `__noIntro`.
+
+## 30. Build 5.28 — city growth as a normal layer, OFF by default (owner request of 10 Nov 2026)
+
+**Problem (5.25–5.27)**: the atlas drew Granada's built-up extents (source `atl-growth`, layers `atl-growth-fill` /
+`atl-growth-line`) by itself on the whole-city view; "Pause" only stopped the timer (`stopGrowth(true)` kept the shapes),
+`setArea('city')`, `setTopic(null)` and `init` restarted it, and there was no checkbox — it always covered the map.
+
+**Now** (`js/layers_growth.js`, loaded after `layers_south.js`; strings `js/i18n_v26.js`; colours `GA.palette.growth`):
+- one layer **`city_growth`** in the layer manager, group History: checkbox, opacity, legend, status, source line; its
+  state is saved with the other layers in `granada-atlas.layers.v1` (`on`, `opacity`, `opts.i` = period index,
+  `opts.play` = playing, `opts.only` = outline only). Default OFF.
+- OFF: fill and outline hidden, no timer (the timer checks the state at every tick and a layer-manager listener stops it
+  whenever the layer goes OFF from anywhere: checkbox, reset layers, saved project, Hide button).
+- ON: the extents up to the chosen period, older ones beneath (one fill colour per period: traced periods in the dark red
+  family, GHSL epochs in the khaki family), the chosen period outlined in red. Switching ON never starts the animation.
+  Controls in the Layers row: Play / Pause, period slider + seven period ticks (1932, 1956–1957, 1975, 1990, 2000, 2015,
+  2020), "only this period's outline". Pause keeps the period; choosing a period pauses.
+- Legend (from the same `GA.palette.growth.fills`): every period with its source kind — "approximate reconstruction from a
+  map / aerial photo" (1932 MTN50, 1956–57 AMS), GHSL observed epoch (1975, 1990, 2000) or GHSL interpolated epoch (2015,
+  2020; `observed: false` in `data/ref/history_extents.json`), plus km² for GHSL; the shown period is bold.
+- `GA.growth` is the one controller: `play()`, `pause()`, `setOn()`, `setPeriod()`, `setOnly()`, `state`, `onChange()`,
+  `buttonsHTML()` / `onButton()` for the atlas panel (city view, no topic) and the sidebar's Historical maps section,
+  which show Play or Pause and "Hide the city growth layer" from the same state.
+- The atlas no longer owns any growth source, layer or timer; `GA.atlas.state.growing` / `growthOn` read `GA.growth`.
+  No code path turns it on: area / topic changes and init leave it as the visitor set it.
+- `prefers-reduced-motion`: never plays by itself; a remembered "playing" layer opens on the latest period, still.
+- Print layout and exports draw the map's own style and the layer manager's legend / sources, so the layer is printed
+  (with its legend and source line) only when ON. `GA.printLayout.legendItems()` is exported for the test.
+
+Release note: 5.27 (opening page and story tour, §29) was never published on its own; it went live together with 5.28.
+
+**Tests**: `tests/ui_test_v26.py` (all of the above, ar / he / en); `tests/ui_test_v23.py` now expects the clean start and
+no restart on `setTopic(null)`; the live check (`tools/verify/live_atlas.py`) checks the clean start, ON from the Layers
+list with its legend, Pause, Hide from the atlas panel, and no return after a topic switch.
+
+## 31. Build 5.29 — main map screen layout and the model workshop preset (owner request of 10 Nov 2026)
+
+The owner sent an annotated screenshot of the English map screen and the Exercise 02 brief (model workshop, 11 Nov).
+
+**Map screen** (`js/app.js`, `js/atlas.js`, CSS block "5.29 main map screen" at the end of `css/app.css`):
+1. No NavigationControl. Zoom: wheel, pinch, double-click, MapLibre's own keys on the focused map, and a page-level
+   + / = / − handler (ignored while typing, with a page or dialog open, or on the opening page). The canvas carries the
+   hint as `aria-description` (`v27.zoomKeys`).
+2. Draw section + 3D: the top-right control container is a flex row at the map's top-right corner (8 px), `direction:
+   ltr`, every language. In Arabic / Hebrew, when the ☰ menu (which opens from the right) is open on a wide screen, the
+   row moves left of it.
+3. North arrow: the `.north` element is moved into the bottom-left control container next to the scale bar (one group,
+   `.ga-north`, white box like the scale bar). `atlas.js placeNorth()` now lifts that group above whatever sits at the
+   bottom-left (atlas panel open / folded / phone bottom sheet, tour card). On ≥ 701 px the atlas panel and the tour card
+   sit at bottom 42 px so the group fits under them. Hidden in 3D (the map can rotate).
+4. Language buttons `#tb-lang` (عربي · עברית · English, each in its own script and direction) at the end of the top bar
+   (right in English, mirrored to the left in Arabic / Hebrew). They call `GA.i18n.setLang`, the same state as the Display
+   section's switch; switching keeps the map view, area, topic, panels and the visitor's work.
+5. The five analyses + "no topic": `#atl-topics` in the top bar (≥ 1200 px), a 42 px strip under it below 1200 px
+   (`--top` = top bar + strip), sideways-scrolling on phones. Rendered with the ☰ menu's research list (`renderSide()`),
+   so both always show the same topic.
+
+**Model workshop (40 × 40 cm)** (`js/modelprint.js`, a collapsible block at the top of Print layout):
+- Area: the map view (largest centred square, 90 %), a saved study area (its bounding square in EPSG:25830), or a square
+  drawn on the map (two opposite corners). Exact scale = side × 1000 / 400 mm; the scale used is the next standard scale
+  up (1:100 · 200 · 250 · 500 · 1,000 · 2,000 · 2,500 · 5,000 · 10,000), so the whole area fits; the model then covers
+  400 mm × N on the ground, centred on the area. Above 1:10,000 the export is refused with the reason.
+- A 400 mm square does not fit on A3 (297 mm): plan and aerial are two A3 landscape sheets each (north / south half,
+  400 × 200 mm of model at x 10–410, y 52–252 mm), with the red model outline, crop marks outside the corners, a dashed
+  join line and "sheet 2 continues here"; sections A–B (E–W) and C–D (N–S) through the model centre are 400 mm long, one
+  sheet each, true scale (horizontal = vertical; `GA.section.draw` option `pxPerM`), with the model width marked above.
+  The section lines are drawn on the plan / aerial sheets. A section taller than the sheet at that scale is not printed
+  and the reason is reported.
+- Plan: `GA.printLayout.mapRenderer` (now exported; option `center`) — the map as shown, measured scale printed on the
+  sheet. Aerial: IGN PNOA WMS `pnoa-ma` (`OI.OrthoimageCoverage`), EPSG:25830 box in grid metres (ground × local UTM
+  scale factor), tiles ≤ 2,000 px. Output: one PDF (`GA.pdf.build`, A3L pages at 150 / 200 / 300 dpi).
+  `GA.modelPrint.last` = scale, ground size, sheets (kind, part, denom, measured, mm per metre, outline in mm).
+
+**Tests**: `tests/ui_test_v27.py` (items 1–6 at 375–1440 px in ar / he / en; the outline measured on the rendered PDF).
+Release note: published on 10 Nov 2026 at the owner's request (model workshop on 11 Nov) after v27, v24, v23, v26 and the
+node tests passed; the remaining old suites were still running one at a time — see the commit series after 5.29 for any fix.
+
+
+
+## 32. Exercise 1.3 human dimension as an axonometric drawing (other session, published on GitHub as "5.26" on 9 Nov 2026)
+
+This work was done in another session and published on GitHub `main` (commit fc73ed2) just before the account was
+suspended, while this session continued on GitLab (5.26–5.29). It was merged back in build 5.30: the human dimension now
+has TWO artistic styles — "reach rings" (this session, §28 item 9) and "axonometric" (below) — chosen in the same switch.
+Its test, originally `tests/ui_test_v24.py`, is now `tests/ui_test_v28.py` (v24 is the 5.26 review-fix suite here). The
+functions were renamed `drawHumanAxo` / `humanAxoLegend` and its strings live in `js/i18n_v24.js` with ours.
+
 
 After previews (flat layer player; then an axonometric drawing inspired by an owner reference where every layer is a 3D
 object; labels in one ordered column; a simplified version was rejected — "back as it was"):

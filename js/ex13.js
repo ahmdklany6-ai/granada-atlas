@@ -18,8 +18,11 @@
   function E() { const p = store.get(); const e = p.ex13 = p.ex13 || {}; e.frameKm = 10; e.maps = e.maps || {}; TOPICS.forEach(k => e.maps[k] = e.maps[k] || { finding: '', surprise: '' }); return e; }
   // 5.22: the morphology map can be drawn in the architectural (figure-ground) or the artistic (notation) language; saved per project
   // 5.23: the city centre too. Each topic keeps its own choice.
-  const ART_TOPICS = ['density', 'morphology', 'centre', 'human'];
-  const artOn = (k) => ART_TOPICS.includes(k) && !!root.GA.ex13art && (E().maps[k] || {}).style === 'art';
+  const ART_TOPICS = ['density', 'morphology', 'centre', 'climate', 'human']; // 5.26: climate (isotherms) and human (reach rings) approved
+  // 5.30: the human dimension has two artistic styles — 'art' (300 m reach rings) and 'axo' (axonometric drawing, HANDOFF §32)
+  const artOn = (k) => ART_TOPICS.includes(k) && !!root.GA.ex13art && ((E().maps[k] || {}).style === 'art' || (k === 'human' && (E().maps[k] || {}).style === 'axo'));
+  const axoOn = (k) => k === 'human' && artOn(k) && (E().maps[k] || {}).style === 'axo';
+  const AK = (k) => axoOn(k) ? 'humanAxo' : k; // the key of the drawing in GA.ex13art (layers, durations, data)
 
   // ---------- data (loaded once) ----------
   let DATA = null;
@@ -36,6 +39,16 @@
     DATA = { frame, density, morphology, centre, climate, human, muni, streets, fgm, fgImg };
     return DATA;
   }
+  // 5.26: the second analysis frame (Escúzar estate + the gap to the metro terminus), same structure as data/ex13
+  let FDATA = null;
+  async function loadFactory() {
+    if (FDATA) return FDATA;
+    const v = '?v=' + (root.GA_BUILD || ''); const j = (n) => fetch('data/ex13f/' + n + '.json' + v).then(r => { if (!r.ok) throw new Error('ex13f/' + n + ' ' + r.status); return r.json(); });
+    const [frame, density, morphology, centre, climate, human] = await Promise.all([j('frame'), j('density'), j('morphology'), j('centre'), j('climate'), j('human')]);
+    const src = morphology.source; const fgImg = await root.GA.ext.loadImage(src.file + v);
+    const fgm = { file: src.file.replace(/^data\//, ''), px_m: src.px_m, ox: src.ox, oy: src.oy, width: fgImg.naturalWidth || fgImg.width, height: fgImg.naturalHeight || fgImg.height };
+    FDATA = { frame, density, morphology, centre, climate, human, fgm, fgImg }; return FDATA;
+  }
   const FR = () => DATA.frame;
 
   // ---------- one map, drawn in the shared frame at (x, y), S px square ----------
@@ -51,8 +64,8 @@
     const hatch = (x0, y0, w, h, col, step, lw) => { ctx.save(); ctx.beginPath(); ctx.rect(x0, y0, w, h); ctx.clip(); ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); for (let q = -h; q < w + h; q += step) { ctx.moveTo(x0 + q, y0 + h); ctx.lineTo(x0 + q + h, y0); } ctx.stroke(); ctx.restore(); };
     if (k === 'density' && artOn(k)) {
       root.GA.ex13art.drawDensity(ctx, DATA, x, y, S, opts);
-    } else if (k === 'human' && artOn(k)) {
-      if (!root.GA.ex13art.drawHuman(ctx, DATA, x, y, S, opts)) { ctx.fillStyle = PAL().gray1; ctx.fillRect(x, y, S, S); }
+    } else if (axoOn(k)) {
+      if (!root.GA.ex13art.drawHumanAxo(ctx, DATA, x, y, S, opts)) { ctx.fillStyle = PAL().gray1; ctx.fillRect(x, y, S, S); }
     } else if (k === 'density') {
       const d = DATA.density; const cx = d.corners.x, cy = d.corners.y; const br = d.breaks; const cols = c.density;
       d.pop.forEach((row, r) => row.forEach((p, q) => { if (!p || p <= 0) return; const v = p * 100; const ci = br.filter(b => v > b).length;
@@ -61,6 +74,8 @@
       muni();
     } else if (artOn(k)) {
       if (k === 'centre') { if (!root.GA.ex13art.drawCentre(ctx, DATA, x, y, S, opts)) { ctx.fillStyle = PAL().gray1; ctx.fillRect(x, y, S, S); } }
+      else if (k === 'climate') root.GA.ex13art.drawClimate(ctx, DATA, x, y, S, opts);
+      else if (k === 'human') root.GA.ex13art.drawHuman(ctx, DATA, x, y, S, opts);
       else root.GA.ex13art.draw(ctx, DATA, x, y, S, opts);
     } else if (k === 'morphology') {
       figureGround(c.building);
@@ -114,7 +129,7 @@
     ctx.restore();
     // frame, north arrow, scale bar (same on every map)
     ctx.save(); ctx.strokeStyle = c.frame; ctx.lineWidth = 1.6 * s; ctx.strokeRect(x + 0.5, y + 0.5, S - 1, S - 1);
-    if ((k === 'density' || k === 'human') && artOn(k)) { ctx.restore(); return; } // the oblique view draws its own north, east–west scale and reference needle
+    if ((k === 'density' && artOn(k)) || axoOn(k)) { ctx.restore(); return; } // the oblique view draws its own north, east–west scale and reference needle
     const nx = x + S - 34 * s, ny = y + 22 * s; ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(nx - 16 * s, ny - 8 * s, 32 * s, 58 * s); PG.northArrow(ctx, nx, ny, 1.25 * s);
     const bx = x + 18 * s, by = y + S - 34 * s, km = 1000 / mpp; ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(bx - 8 * s, by - 26 * s, 2 * km + 120 * s, 46 * s);
     ctx.fillStyle = PAL().ink; ctx.fillRect(bx, by, km, 6 * s); ctx.strokeStyle = PAL().ink; ctx.lineWidth = 1.2 * s; ctx.strokeRect(bx, by, 2 * km, 6 * s);
@@ -127,7 +142,7 @@
   function legendItems(k) {
     const c = C(); const L = [];
     if (k === 'density') { const lab = ranges(DATA.density.breaks, t('x13.perKm2'), 0); c.density.forEach((col, i) => L.push({ sw: col, label: lab[i] })); L.push({ sw: '#FFFFFF', label: t('x13.lg.noRes') }, { line: c.muni, dash: true, label: t('x13.lg.muni') }); }
-    if (artOn(k)) return k === 'centre' ? root.GA.ex13art.centreLegend(t) : k === 'density' ? root.GA.ex13art.densityLegend(t, DATA) : k === 'human' ? root.GA.ex13art.humanLegend(t) : root.GA.ex13art.legendItems(t, DATA);
+    if (artOn(k)) return k === 'centre' ? root.GA.ex13art.centreLegend(t) : k === 'density' ? root.GA.ex13art.densityLegend(t, DATA) : k === 'climate' ? root.GA.ex13art.climateLegend(t, DATA) : k === 'human' ? (axoOn(k) ? root.GA.ex13art.humanAxoLegend(t) : root.GA.ex13art.humanLegend(t, DATA)) : root.GA.ex13art.legendItems(t, DATA);
     if (k === 'morphology') L.push({ sw: c.building, label: t('x13.lg.building') }, { sw: '#FFFFFF', label: t('x13.lg.open') }, { hatch: c.gap, label: t('x13.lg.gap') }, { line: PAL().red, dash: true, label: t('x13.lg.muni') });
     if (k === 'centre') { const br = DATA.centre.breaks; c.centre.forEach((col, i) => L.push({ sw: col, label: i < br.length - 1 ? iso(`${nf(br[i])}–${nf(br[i + 1])}`) + ' ' + t('x13.placesKm2') : t('x13.atLeast', { v: iso(nf(br[i])) }) + ' ' + t('x13.placesKm2') }));
       L.push({ peak: true, label: t('x13.lg.peak') }, { line: c.hist, dash: true, w: 2.6, label: t('x13.lg.hist') }, { line: c.whc, w: 2, label: t('x13.lg.whc') }, { line: c.street, w: 1.2, label: t('x13.lg.streets') }, { line: c.muni, dash: true, label: t('x13.lg.muni') }); }
@@ -160,6 +175,8 @@
         if (it.cross) { const r = sh * 0.42, ccx = it.text ? cx + sh * 0.5 : cx + sw / 2; ctx.strokeStyle = it.cross; ctx.lineWidth = Math.max(1.5, fs * 0.16); ctx.beginPath(); ctx.moveTo(ccx - r, cy); ctx.lineTo(ccx + r, cy); ctx.moveTo(ccx, cy - r); ctx.lineTo(ccx, cy + r); ctx.stroke();
           if (it.text) { ctx.save(); ctx.font = `700 ${Math.round(fs * 0.8)}px ${o.F}`; ctx.direction = 'ltr'; ctx.textAlign = 'left'; ctx.fillStyle = it.cross; ctx.fillText(it.text, ccx + r + 2, cy); ctx.restore(); } }
         if (it.peak) { ctx.beginPath(); ctx.arc(cx + sw / 2, cy, sh * 0.55, 0, Math.PI * 2); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.strokeStyle = c.centreLine; ctx.lineWidth = 2; ctx.stroke(); ctx.beginPath(); ctx.arc(cx + sw / 2, cy, 2, 0, Math.PI * 2); ctx.fillStyle = c.centreLine; ctx.fill(); }
+        if (it.ring) { ctx.beginPath(); ctx.arc(cx + sw / 2, cy, sh * 0.48, 0, Math.PI * 2); ctx.strokeStyle = it.ring; ctx.lineWidth = Math.max(1.2, fs * 0.09); ctx.stroke(); }
+        if (it.dot) { ctx.beginPath(); ctx.arc(cx + sw / 2, cy, sh * 0.3, 0, Math.PI * 2); ctx.fillStyle = it.dot; ctx.fill(); }
         if (it.mk === 'market') { ctx.fillStyle = c.market; ctx.fillRect(cx + sw / 2 - sh * 0.45, cy - sh * 0.45, sh * 0.9, sh * 0.9); }
         if (it.mk === 'cafe') { ctx.beginPath(); ctx.arc(cx + sw / 2, cy, sh * 0.22, 0, Math.PI * 2); ctx.fillStyle = c.cafe; ctx.fill(); }
         if (it.mk === 'play') { ctx.beginPath(); ctx.moveTo(cx + sw / 2, cy - sh * 0.45); ctx.lineTo(cx + sw / 2 + sh * 0.42, cy + sh * 0.35); ctx.lineTo(cx + sw / 2 - sh * 0.42, cy + sh * 0.35); ctx.closePath(); ctx.fillStyle = c.play; ctx.fill(); }
@@ -216,7 +233,7 @@
       out.chartTitle = t('x13.c.human'); out.chart = [{ v: s.reach_pct, col: c.park }, { v: 100 - s.reach_pct, col: c.far }];
       out.sentence = t('x13.s.human', { reach: iso(nf(s.reach_pct, 0) + ' %') });
       out.src = [t('x13.src.human', { date: iso(String(d.human.source.date).slice(0, 10)) }), t('x13.lim.human')];
-      if (artOn(k)) out.src.push(t('x24.src.art')); }
+      if (axoOn(k)) out.src.push(t('x24.src.art')); }
     if ((e.maps[k] || {}).finding && e.maps[k].finding.trim()) out.sentence = e.maps[k].finding.trim();
     return out;
   }
@@ -225,7 +242,7 @@
   const DPI_FULL = 200, PAGE = [297, 420], MAP_MM = 250;
   function pageGeom(dpi) { const k = dpi / 25.4; return { W: Math.round(PAGE[0] * k), H: Math.round(PAGE[1] * k), M: Math.round(23.5 * k), mapS: Math.round(MAP_MM * k), k }; }
   async function pageCanvas(pk, dpi, opts) {
-    await load(); if (artOn(pk)) await root.GA.ex13art.ready(pk); dpi = dpi || DPI_FULL; const G = pageGeom(dpi); const cv = document.createElement('canvas'); cv.width = G.W; cv.height = G.H; const ctx = cv.getContext('2d');
+    await load(); if (artOn(pk)) await root.GA.ex13art.ready(AK(pk)); dpi = dpi || DPI_FULL; const G = pageGeom(dpi); const cv = document.createElement('canvas'); cv.width = G.W; cv.height = G.H; const ctx = cv.getContext('2d');
     const rtl = I.dir() === 'rtl'; const F = PG.font(); const pt = (v) => Math.round(v / 72 * dpi); const x = G.M, w = G.W - 2 * G.M; const o = (size, ex) => Object.assign({ size: pt(size), F, rtl }, ex || {});
     ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, G.W, G.H); ctx.fillStyle = C().accent; ctx.fillRect(0, 0, G.W, Math.round(4 * G.k));
     // header: exercise line, number + title, question
@@ -240,7 +257,7 @@
     // under the map: legend · indicators + chart · sentence · sources
     const bx = mx, bw = G.mapS; let yy = my + G.mapS + pt(10);
     let topBox = null;
-    if ((pk === 'density' || pk === 'human') && artOn(pk)) { const ts = Math.round(G.mapS * (pk === 'human' ? 0.16 : 0.2)), gap = pt(10); const tx = rtl ? bx + bw - ts : bx; root.GA.ex13art[pk === 'human' ? 'drawHumanTop' : 'drawDensityTop'](ctx, DATA, tx, yy, ts, opts); topBox = { x: tx, y: yy, s: ts };
+    if (((pk === 'density' && artOn(pk)) || axoOn(pk))) { const ts = Math.round(G.mapS * (pk === 'human' ? 0.16 : 0.2)), gap = pt(10); const tx = rtl ? bx + bw - ts : bx; root.GA.ex13art[pk === 'human' ? 'drawHumanAxoTop' : 'drawDensityTop'](ctx, DATA, tx, yy, ts, opts); topBox = { x: tx, y: yy, s: ts };
       const capY = para(ctx, t(pk === 'human' ? 'x24.topCap' : 'x22.topCap'), tx, yy + ts + pt(1), ts, o(7, { color: PAL().ink3 }));
       const ly = legend(ctx, legendItems(pk), rtl ? bx : bx + ts + gap, yy, bw - ts - gap, o(7.6, { cols: 1 })); yy = Math.max(ly, capY) + pt(3); }
     else yy = legend(ctx, legendItems(pk), bx, yy, bw, o(8.6, { cols: pk === 'human' || pk === 'centre' || artOn(pk) ? 2 : pk === 'climate' ? 4 : 3 })) + pt(4);
@@ -336,7 +353,7 @@
       <div class="actions"><button class="btn btn-primary" id="e13-pdf">${t('e13.pdf')}</button><button class="btn" id="e13-zip">${t('e13.pngs')}</button><button class="btn" id="e13-gis">${t('x13.gis')}</button></div>
       <p class="fine">${t('x13.miroNote')}</p>
       <details class="x13-audit"><summary>${t('x13.auditH')}</summary>${auditHTML()}</details></aside>
-      <div class="e13-prev x13-prev"><p class="fine">${t('x13.prevHint')}</p>${PAGES.map(k => `<figure data-e13="${k}"><button type="button" class="e13-img" data-e13open="${k}" aria-label="${esc(t('v7.openLarge'))}: ${esc(k === 'identity' ? t('x13.idTitle') : t('e13.t.' + k))}"><span class="spin"></span></button><figcaption><b>${k === 'identity' ? '00 · ' + t('x13.idTitle') : String(TOPICS.indexOf(k) + 1).padStart(2, '0') + ' · ' + t('e13.t.' + k)}</b> <button class="btn btn-tiny" data-e13open="${k}">⤢ ${t('v7.openLarge')}</button> <button class="btn btn-tiny" data-e13png="${k}">PNG</button></figcaption></figure>`).join('')}</div></div>`;
+      <div class="e13-prev x13-prev"><p class="fine">${t('x13.prevHint')}</p>${PAGES.map(k => `<figure data-e13="${k}"><button type="button" class="e13-img" data-e13open="${k}" aria-label="${esc(t('v7.openLarge'))}: ${esc(k === 'identity' ? t('x13.idTitle') : t('e13.t.' + k))}"><span class="spin"></span></button><figcaption><b>${k === 'identity' ? '00 · ' + t('x13.idTitle') : String(TOPICS.indexOf(k) + 1).padStart(2, '0') + ' · ' + t('e13.t.' + k)}</b> <button class="btn btn-tiny" data-e13open="${k}">⤢ ${t('v7.openLarge')}</button> <button class="btn btn-tiny" data-e13png="${k}">PNG</button></figcaption></figure>`).join('')}</div></div>`; (root.GA.ltrNumsDOM || (() => {}))(body); // 5.26: numbers and units stay LTR in RTL
     ART_TOPICS.forEach(k => { const fig = body.querySelector(`[data-e13="${k}"]`); if (fig) fig.insertAdjacentHTML('beforeend', `<div class="x20-player" data-x20player="${k}" hidden></div>`); });
     const subBox = body.querySelector('#e13-sub');
     const renderSub = () => { const miss = []; if (!(e.students || '').trim()) miss.push({ label: t('v7.m.students'), go: '[data-e="students"]' });
@@ -346,16 +363,16 @@
     for (const k of PAGES) await prev(k);
     // 5.22 / 5.23 layer player (artistic maps): each layer alone (the others faint), then the map built up layer after layer —
     // drawn straight into the preview's map box, so squares can fade in smoothly — then all; loops until stopped
-    const PL = {}; const DUR = { centre: [1200, 2800, 1000, 1100, 700], morphology: [900, 900, 900, 900, 900], human: [1700, 1700, 1700, 1700, 1700, 1700], density: [800, 800, 800, 1300, 1300, 1300, 1300, 1300, 800] };
+    const PL = {}; const DUR = { centre: [1200, 2800, 1000, 1100, 700], morphology: [900, 900, 900, 900, 900], density: [800, 800, 800, 1300, 1300, 1300, 1300, 1300, 800], climate: [800, 1300, 1300, 1300, 1600, 900, 800], human: [800, 900, 900, 1800, 900, 1200], humanAxo: [1700, 1700, 1700, 1700, 1700, 1700] };
     const mapBox = (k) => { const c = body.querySelector(`[data-e13="${k}"] .e13-img canvas`); return c && c.__layout ? c : null; };
-    const paintMap = (k, o) => { const c = mapBox(k); if (!c) return; const L = c.__layout; const x = c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); drawMap(k, x, L.mapX, L.mapY, L.mapS, o); if (L.top && (k === 'density' || k === 'human')) root.GA.ex13art[k === 'human' ? 'drawHumanTop' : 'drawDensityTop'](x, DATA, L.top.x, L.top.y, L.top.s, o); };
+    const paintMap = (k, o) => { const c = mapBox(k); if (!c) return; const L = c.__layout; const x = c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); drawMap(k, x, L.mapX, L.mapY, L.mapS, o); if (L.top && (k === 'density' || axoOn(k))) root.GA.ex13art[k === 'human' ? 'drawHumanAxoTop' : 'drawDensityTop'](x, DATA, L.top.x, L.top.y, L.top.s, o); };
     const stopPlay = (k) => { const P = PL[k]; if (!P) return; P.playing = false; cancelAnimationFrame(P.raf); };
     function paintPlayer(k, cur) { const el = body.querySelector(`[data-x20player="${k}"]`); if (!el) return; const on = artOn(k); el.hidden = !on; if (!on) { stopPlay(k); return; } const P = PL[k] = PL[k] || { playing: false, focus: null };
       const items = legendItems(k).filter(i => i.layer != null); cur = cur == null ? -1 : cur;
       el.innerHTML = `<button type="button" class="btn btn-small btn-primary" data-x20play>${P.playing ? '❚❚ ' + t('x20.stop') : '▶ ' + t('x20.play')}</button><button type="button" class="btn btn-small" data-x20all>${t('x20.all')}</button>`
-        + `<span class="x20-chips">${items.map(i => `<button type="button" class="x20-chip${i.layer === cur ? ' on' : ''}" data-x20layer="${i.layer}" aria-pressed="${i.layer === cur}">${esc(i.label)}</button>`).join('')}</span>`; }
+        + `<span class="x20-chips">${items.map(i => `<button type="button" class="x20-chip${i.layer === cur ? ' on' : ''}" data-x20layer="${i.layer}" aria-pressed="${i.layer === cur}">${esc(i.label)}</button>`).join('')}</span>`; (root.GA.ltrNumsDOM || (() => {}))(el); }
     const show = (k, o) => { const P = PL[k]; P.focus = o && o.focus != null ? o.focus : null; paintPlayer(k, P.focus); paintMap(k, o); };
-    function play(k) { stopPlay(k); const P = PL[k]; P.playing = true; const nL = root.GA.ex13art.keys(k).length; const dur = DUR[k]; const seq = [];
+    function play(k) { stopPlay(k); const P = PL[k]; P.playing = true; const nL = root.GA.ex13art.keys(AK(k)).length; const dur = DUR[AK(k)]; const seq = [];
       for (let i = 0; i < nL; i++) seq.push({ o: { focus: i }, ms: 1500 }); for (let i = 1; i <= nL; i++) seq.push({ grow: i, ms: dur[i - 1] }); seq.push({ o: null, ms: 2800 });
       let n = 0, t0 = 0, cur = -2; paintPlayer(k, -1);
       const tick = (now) => { if (!P.playing || !body.isConnected) return stopPlay(k); const s = seq[n % seq.length]; if (!t0) t0 = now; const p = Math.min(1, (now - t0) / s.ms);
@@ -368,11 +385,11 @@
         if (b.dataset.x20play != null) { if (P.playing) { stopPlay(k); paintPlayer(k, -1); } else play(k); return; }
         stopPlay(k); if (b.dataset.x20all != null) return show(k, null); const L = +b.dataset.x20layer; show(k, P.focus === L ? null : { focus: L }); }; });
     const openSheet = async (k) => { const c = await pageCanvas(k); const url = URL.createObjectURL(await PG.toBlob(c)); const title = k === 'identity' ? t('x13.idTitle') : t('e13.t.' + k);
-      const sh = root.GA.viewer.image({ title, subtitle: t('e13.title'), src: url, notGIS: true, kind: 'vw-sheet', tools: `<button class="btn btn-small" data-vtool="png">PNG</button><button class="btn btn-small" data-vtool="pdf">PDF</button>${artOn(k) ? `<button class="btn btn-small" data-vtool="layers">${t('x20.layersZip')}</button>` : ''}`,
-        onTool: async (tool, btn) => { btn.disabled = true; try { if (tool === 'layers') { PG.download(await layersZip(k), fileOf(k) + '_layers_png.zip'); SUB.exported(e, 'layers:' + k); store.save(); renderSub(); return; } if (tool === 'png') PG.download(await PG.toBlob(c), fileOf(k) + '.png'); else PG.download(new Blob([root.GA.pdf.build([{ canvas: c, paper: 'A3P' }], { title: 'Granada 1.3 - ' + title })], { type: 'application/pdf' }), fileOf(k) + '.pdf'); SUB.exported(e, tool + ':' + k); store.save(); renderSub(); } finally { btn.disabled = false; } } });
+      const sh = root.GA.viewer.image({ title, subtitle: t('e13.title'), src: url, notGIS: true, kind: 'vw-sheet', tools: `<button class="btn btn-small" data-vtool="png">PNG</button><button class="btn btn-small" data-vtool="pdf">PDF</button>${artOn(k) ? `<button class="btn btn-small" data-vtool="layers">${t('x20.layersZip')}</button><button class="btn btn-small" data-vtool="gif">${t('v24.gif')}</button>` : ''}`,
+        onTool: async (tool, btn) => { btn.disabled = true; try { if (tool === 'layers') { PG.download(await layersZip(k), fileOf(k) + '_layers_png.zip'); SUB.exported(e, 'layers:' + k); store.save(); renderSub(); return; } if (tool === 'gif') { PG.download(await layersGif(k), fileOf(k) + '_layers.gif'); SUB.exported(e, 'gif:' + k); store.save(); renderSub(); return; } if (tool === 'png') PG.download(await PG.toBlob(c), fileOf(k) + '.png'); else PG.download(new Blob([root.GA.pdf.build([{ canvas: c, paper: 'A3P' }], { title: 'Granada 1.3 - ' + title })], { type: 'application/pdf' }), fileOf(k) + '.pdf'); SUB.exported(e, tool + ':' + k); store.save(); renderSub(); } finally { btn.disabled = false; } } });
       const c0 = sh.close; sh.close = (q) => { URL.revokeObjectURL(url); c0(q); }; };
     let tm; const later = (k) => { clearTimeout(tm); tm = setTimeout(() => { prev(k); if (k !== 'identity') { const a = body.querySelector(`[data-em="${k}"]`); if (a) a.closest('fieldset').querySelector('.x13-auto').textContent = content(k).sentence; } }, 400); };
-    body.onchange = async (ev) => { const el = ev.target; if (!String(el.name).startsWith('x20-style-')) return; const k = el.name.slice(10); if (!ART_TOPICS.includes(k)) return; stopPlay(k); e.maps[k].style = el.value === 'art' ? 'art' : 'arch'; store.save();
+    body.onchange = async (ev) => { const el = ev.target; if (!String(el.name).startsWith('x20-style-')) return; const k = el.name.slice(10); if (!ART_TOPICS.includes(k)) return; stopPlay(k); e.maps[k].style = el.value === 'art' ? 'art' : (el.value === 'axo' && k === 'human') ? 'axo' : 'arch'; store.save();
       await prev(k); const a = body.querySelector(`[data-em="${k}"]`); if (a) a.closest('fieldset').querySelector('.x13-auto').textContent = content(k).sentence; paintPlayer(k, -1); };
     body.oninput = (ev) => { const el = ev.target; if (String(el.name).startsWith('x20-style-')) return; if (el.dataset.e) { e[el.dataset.e] = el.value; store.save(); renderSub(); later('identity'); } if (el.dataset.em) { e.maps[el.dataset.em][el.dataset.f] = el.value; store.save(); later(el.dataset.em); } };
     body.onclick = async (ev) => { const b = ev.target.closest('button'); if (!b || !body.contains(b)) return; if (!(b.dataset.e13open || b.dataset.e13png || ['e13-pdf', 'e13-zip', 'e13-gis'].includes(b.id))) return; b.disabled = true; try {
@@ -384,17 +401,27 @@
     } catch (er) { (root.GA.toast || alert)(t('x13.exportFail') + ' ' + er.message); console.error(er); } finally { b.disabled = false; } };
   }
   function styleHTML(k) { const art = artOn(k); const nm = 'x20-style-' + k;
-    return `<div class="x20-style" role="radiogroup" aria-label="${esc(t('x20.style'))}"><span>${t('x20.style')}</span><label><input type="radio" name="${nm}" value="arch"${art ? '' : ' checked'}> ${t('x20.arch')}</label><label><input type="radio" name="${nm}" value="art"${art ? ' checked' : ''}> ${t('x20.art')}</label></div><p class="fine">${t(k === 'centre' ? 'x21.styleHint' : k === 'density' ? 'x22.styleHint' : k === 'human' ? 'x24.styleHint' : 'x20.styleHint')}</p>`; }
+    return `<div class="x20-style" role="radiogroup" aria-label="${esc(t('x20.style'))}"><span>${t('x20.style')}</span><label><input type="radio" name="${nm}" value="arch"${art ? '' : ' checked'}> ${t('x20.arch')}</label><label><input type="radio" name="${nm}" value="art"${art && !axoOn(k) ? ' checked' : ''}> ${k === 'human' ? t('x30.artRings') : t('x20.art')}</label>${k === 'human' ? `<label><input type="radio" name="${nm}" value="axo"${axoOn(k) ? ' checked' : ''}> ${t('x30.artAxo')}</label>` : ''}</div><p class="fine">${t(k === 'centre' ? 'x21.styleHint' : k === 'density' ? 'x22.styleHint' : k === 'climate' ? 'x24.styleHint.climate' : k === 'human' ? (axoOn(k) ? 'x24.styleHint' : 'x24.styleHint.human') : 'x20.styleHint')}</p>`; }
   async function layersZip(k) { // one full-resolution page per layer (that layer full, the others faint), then the whole map
-    const keys = root.GA.ex13art.keys(k); await root.GA.ex13art.ready(k); const files = []; const add = async (o, name) => { const c = await pageCanvas(k, DPI_FULL, o); const bl = await PG.toBlob(c); files.push({ name, data: new Uint8Array(await bl.arrayBuffer()) }); };
+    const keys = root.GA.ex13art.keys(AK(k)); await root.GA.ex13art.ready(AK(k)); const files = []; const add = async (o, name) => { const c = await pageCanvas(k, DPI_FULL, o); const bl = await PG.toBlob(c); files.push({ name, data: new Uint8Array(await bl.arrayBuffer()) }); };
     for (let i = 0; i < keys.length; i++) await add({ focus: i }, `${fileOf(k)}_${i + 1}_${keys[i]}.png`);
     await add(null, `${fileOf(k)}_${keys.length + 1}_all.png`);
     return new Blob([root.GA.zip.zip(files, new Date())], { type: 'application/zip' }); }
+  // 5.26: animated GIF of the layer player for Miro — each layer on its own (the others faint, as in the player), then the
+  // layers added one by one, then the whole map held longer. Whole A3 page at a screen size (≈ 1,000 px tall).
+  async function layersGif(k) {
+    const keys = root.GA.ex13art.keys(AK(k)); await root.GA.ex13art.ready(AK(k)); const frames = []; const dpi = 60;
+    const add = async (o, delay) => frames.push({ canvas: await pageCanvas(k, dpi, o), delay });
+    for (let i = 0; i < keys.length; i++) await add({ focus: i }, 1400);
+    for (let i = 1; i <= keys.length; i++) await add({ upTo: i, t: 1 }, 900);
+    await add(null, 3000);
+    return new Blob([root.GA.gif.encode(frames)], { type: 'image/gif' });
+  }
   function auditHTML() {
     const d = DATA; const v = { d: iso((d.density.stats.diff_pct > 0 ? '+' : '') + nf(d.density.stats.diff_pct, 1) + ' %'), g: iso(nf(d.morphology.stats.gap_cells)), a: iso(nf(d.morphology.stats.agree_pct, 0) + ' %'), r: iso('r = ' + nf(d.centre.stats.overture_corr, 2)), n: iso(String(d.climate.stats.scenes)) };
     const rows = TOPICS.concat(['identity']).map(k => `<tr><th scope="row">${k === 'identity' ? t('x13.idTitle') : t('e13.t.' + k)}</th><td>${t('x13.a.src.' + k)}</td><td>${t('x13.a.date.' + k, v)}</td><td>${t('x13.a.unit.' + k)}</td><td>${t('x13.a.res.' + k)}</td><td>${t('x13.a.kind.' + k)}</td><td>${t('x13.a.lim.' + k, v)}</td></tr>`).join('');
     return `<div class="tbl-wrap"><table class="x13-tbl"><thead><tr><th></th><th>${t('x13.a.h.src')}</th><th>${t('x13.a.h.date')}</th><th>${t('x13.a.h.unit')}</th><th>${t('x13.a.h.res')}</th><th>${t('x13.a.h.kind')}</th><th>${t('x13.a.h.lim')}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
   PG.register('ex13', { plate: () => t('e13.plate'), title: () => t('e13.title'), render });
-  root.GA.ex13 = { pageCanvas, drawMap, legendItems, content, gisFiles, load, layersZip, artOn, TOPICS, PAGES, POP, E, get data() { return DATA; } };
+  root.GA.ex13 = { pageCanvas, drawMap, legendItems, content, gisFiles, load, loadFactory, layersZip, layersGif, artOn, TOPICS, PAGES, POP, E, get data() { return DATA; } };
 })(window);

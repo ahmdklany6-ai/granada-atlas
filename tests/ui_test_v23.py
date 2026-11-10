@@ -2,13 +2,14 @@
 areas, every GIS layer (the Layers panel moved in), historical maps, tools and pages (the old navigation), display and
 export. WHERE (city / factory / metro) × WHAT (five topics) drive the map: topic layers from data/ex13, a reveal
 animation, the context panel (indicators for the selected area, legend from the palette classes, sources), the city
-growth animation from the documented built-up extents, markers, Back to Granada. The factory lies outside the analysis
+markers (5.28: the growth extents are a layer, OFF by default — see ui_test_v26.py), Back to Granada. The factory lies outside the analysis
 frame → "no data" with what is missing; metro-corridor figures are cross-checked with shapely. ar / he / en, phone.
 Usage: python3 tests/ui_test_v23.py  (OUT=/dir)"""
 import sys, os, time, json, subprocess, warnings
 sys.path.insert(0, os.path.dirname(__file__))
 import ui_test_v3 as V3
 from playwright.sync_api import sync_playwright
+import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__))); import _nointro  # 5.27: start on the map, not the opening page
 warnings.filterwarnings('ignore')
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORT = 8823; V3.PORT = PORT; V3.V2.PORT = PORT
@@ -55,9 +56,9 @@ try:
         bb = pg.evaluate('(() => { const b = GA.app.map.getBounds(); return [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]; })()')
         check(bb[0] < -3.762 and bb[1] < 37.081 and bb[2] > -3.59 and bb[3] > 37.20, 'the first view holds the whole city and both study areas', bb)
         check(pg.evaluate('document.querySelectorAll(".atl-mk").length') == 2, 'two clickable study-area markers (factory, metro)')
-        check(st['growing'], 'the city animation runs at start (documented built-up extents)')
-        g1 = pg.evaluate('GA.app.map.getSource("atl-growth")._data.features.length'); time.sleep(3.2); g2 = pg.evaluate('GA.app.map.getSource("atl-growth")._data.features.length')
-        check(g1 != g2 or g1 > 0, f'growth animation advances ({g1} → {g2} extents)')
+        # 5.28 (owner request): the city growth extents are a normal layer, OFF by default — the site opens on the clean map
+        gv = pg.evaluate('["ly-growth-fill", "ly-growth"].map(id => GA.app.map.getLayer(id) ? GA.app.map.getLayoutProperty(id, "visibility") : "none")')
+        check(not st['growing'] and not st['growthOn'] and gv == ['none', 'none'] and not pg.evaluate('!!GA.app.map.getSource("atl-growth")'), 'no city growth overlay at start (layer OFF, nothing drawn, no timer)', (st, gv))
         pg.screenshot(path=f'{OUT}/en_start.png')
         pg.click('#atl-burger'); time.sleep(0.5)
         secs = pg.evaluate('[...document.querySelectorAll("#atl-side .atl-sec-h .atl-sec-n")].map(e => e.innerText)')
@@ -98,15 +99,14 @@ try:
         lst = pg.evaluate('GA.atlas.indicators("climate")'); check(lst and '°C' in lst[0][1], f'corridor climate indicator {lst[:1]}')
         check(pg.evaluate('GA.atlas.topicLayers("density").every(id => GA.app.map.getLayoutProperty(id, "visibility") === "none")'), 'previous topic hidden on switch')
         pg.screenshot(path=f'{OUT}/en_metro_climate.png')
-        # ---------- WHERE: factory (no data) ----------
-        pg.evaluate('document.querySelector(".atl-mk-factory").click()'); time.sleep(3)  # the marker may lie off-screen at metro zoom
+        # ---------- WHERE: factory — since 5.26 it has its own analysis frame (data/ex13f; checked in depth by ui_test_v24 item 12) ----------
+        pg.evaluate('document.querySelector(".atl-mk-factory").click()'); time.sleep(4)  # the marker may lie off-screen at metro zoom
         txt = pg.evaluate('document.querySelector("#atl-panel").innerText'); c = pg.evaluate('GA.atlas.coverage("factory")')
-        check(not c['ok'] and c['dist'] > 8000 and 'No data for this area' in txt and 'ex13_fetch.py' in txt, f'factory: outside the analysis frame ({c["dist"]:.0f} m) → "no data" and what is missing; no invented result')
-        check(not any(ch.isdigit() and '°C' in txt for ch in '0'), 'no temperature value shown for the factory')
+        check(c['ok'] and c.get('frame') == 'factory' and 'No data for this area' not in txt and '°C' in txt, 'factory: its own analysis frame — real climate values, no "no data" block', (c, txt[:200]))
         pg.screenshot(path=f'{OUT}/en_factory_climate.png')
         pg.click('#atl-back'); time.sleep(2.5)
         st = pg.evaluate('GA.atlas.state'); check(st['area'] == 'city' and pg.evaluate('document.querySelector("#atl-back").hidden'), 'Back to Granada → city', st)
-        pg.evaluate('GA.atlas.setTopic(null)'); time.sleep(1.5); check(pg.evaluate('GA.atlas.state.growing'), 'no topic at city scale → the city animation runs again')
+        pg.evaluate('GA.atlas.setTopic(null)'); time.sleep(1.5); check(not pg.evaluate('GA.atlas.state.growing') and not pg.evaluate('GA.growth.state.on'), 'no topic at city scale → the city growth stays OFF (5.28: only the visitor switches it on)')
         for k in ['morphology', 'centre', 'human']:
             pg.evaluate(f'GA.atlas.setTopic("{k}")'); time.sleep(6)
             ids = pg.evaluate(f'GA.atlas.topicLayers("{k}")'); shown = pg.evaluate(f'GA.atlas.topicLayers("{k}").filter(id => GA.app.map.getLayoutProperty(id, "visibility") === "visible").length')

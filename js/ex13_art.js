@@ -189,14 +189,103 @@
       .concat(cols.map((col, k) => ({ needles: col, label: t(R[k], { n: '‎' + Nd.count[k].toLocaleString('en-US') + '‎' }), layer: 3 + k })))
       .concat([{ text: 'A', cross: P.ink, label: t('x22.lg.labels', { v: '‎' + Math.round(Nd.top.v).toLocaleString('en-US') + '‎' }), layer: 8 }]);
   }
+
+  // ---------- 5.26 (approved preview): CLIMATE as isotherms and HUMAN DIMENSION as 300 m reach rings ----------
+  // Same frame, same Landsat / OSM data as the Exercise 1.3 maps; colours only from the palette. Layers follow the player.
+  const KLKEYS = ['base', 'cool', 'warm', 'hot', 'hottest', 'veg', 'marks'];
+  const HKEYS = ['base', 'buildings', 'areas', 'rings', 'places', 'far'];
+  let ISO = null;
+  function isotherms(D) { // Gaussian-smoothed LST (σ = 1.4 cells), marching squares at every whole degree
+    if (ISO && ISO.src === D) return ISO; const g = D.climate.grid, L = D.climate.lst, nx = g.nx || g.n, ny = g.ny || g.n;
+    const vals = []; L.forEach(r => r.forEach(v => { if (v != null) vals.push(v); })); vals.sort((a, b) => a - b); const med = vals[Math.floor(vals.length / 2)];
+    let A = new Float64Array(nx * ny); for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const v = L[j][i]; A[j * nx + i] = v == null ? med : v; }
+    const sg = 1.4, R = 4, K = []; let ks = 0; for (let d = -R; d <= R; d++) { const w = Math.exp(-d * d / (2 * sg * sg)); K.push(w); ks += w; } for (let d = 0; d < K.length; d++) K[d] /= ks;
+    const blur = (src, horiz) => { const out = new Float64Array(nx * ny); for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { let a = 0; for (let d = -R; d <= R; d++) { const ii = horiz ? Math.min(nx - 1, Math.max(0, i + d)) : i, jj = horiz ? j : Math.min(ny - 1, Math.max(0, j + d)); a += src[jj * nx + ii] * K[d + R]; } out[j * nx + i] = a; } return out; };
+    A = blur(blur(A, true), false);
+    const lines = {}; for (let lv = 38; lv <= 56; lv++) { const seg = []; const at = (i, j) => A[j * nx + i];
+      for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) { const a = at(i, j), b = at(i + 1, j), c = at(i + 1, j + 1), d = at(i, j + 1); const k = (a >= lv) | ((b >= lv) << 1) | ((c >= lv) << 2) | ((d >= lv) << 3); if (k === 0 || k === 15) continue;
+        const e = { t: [i + (lv - a) / (b - a), j], r: [i + 1, j + (lv - b) / (c - b)], b: [i + (lv - d) / (c - d), j + 1], l: [i, j + (lv - a) / (d - a)] };
+        const P = { 1: [['l', 't']], 2: [['t', 'r']], 3: [['l', 'r']], 4: [['r', 'b']], 5: [['l', 't'], ['r', 'b']], 6: [['t', 'b']], 7: [['l', 'b']], 8: [['b', 'l']], 9: [['t', 'b']], 10: [['t', 'r'], ['b', 'l']], 11: [['r', 'b']], 12: [['r', 'l']], 13: [['t', 'r']], 14: [['l', 't']] }[k];
+        P.forEach(([u, v]) => seg.push([e[u], e[v]])); }
+      if (seg.length) lines[lv] = seg; }
+    let hi = 0, lo = 0; for (let q = 1; q < nx * ny; q++) { if (A[q] > A[hi]) hi = q; if (A[q] < A[lo]) lo = q; }
+    const cellV = (q) => { const v = L[Math.floor(q / nx)][q % nx]; return v == null ? null : v; };
+    return (ISO = { src: D, A, nx, ny, lines, hot: { i: hi % nx, j: Math.floor(hi / nx), v: cellV(hi) }, cool: { i: lo % nx, j: Math.floor(lo / nx), v: cellV(lo) } });
+  }
+  const isoClass = (lv) => lv < 43 ? 1 : lv < 47 ? 2 : lv < 49 ? 3 : 4; // layers cool / warm / hot / hottest
+  function baseLayer(ctx, D, s, X, Y, t) { const P = GA.palette, F = D.frame; ctx.save(); ctx.globalAlpha *= t;
+    ctx.strokeStyle = P.ex13.street; ctx.lineWidth = Math.max(0.5, 0.6 * s); ctx.beginPath(); for (let v = F.x0; v <= F.x1; v += 500) { ctx.moveTo(X(v), Y(F.y0)); ctx.lineTo(X(v), Y(F.y1)); } for (let v = F.y0; v <= F.y1; v += 500) { ctx.moveTo(X(F.x0), Y(v)); ctx.lineTo(X(F.x1), Y(v)); } ctx.stroke();
+    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2.4 * s; ctx.lineCap = 'round'; D.streets.forEach(ls => { ctx.beginPath(); ls.forEach(l => l.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); ctx.stroke(); });
+    ctx.beginPath(); D.muni.forEach(r => r.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); ctx.strokeStyle = P.ex13art.muni; ctx.lineWidth = 1.1 * s; ctx.setLineDash([5 * s, 4 * s]); ctx.stroke(); ctx.setLineDash([]); ctx.restore(); }
+  function runLayers(L, o) { const f = o.focus; L.forEach((fn, i) => { if (i === f) return; const a = layerAlpha(o, i), tt = layerT(o, i); if (a <= 0.005 || tt <= 0) return; ctx_save(fn, a, tt); }); if (f != null) ctx_save(L[f], 1, 1); }
+  let _ctx = null; const ctx_save = (fn, a, tt) => { _ctx.save(); _ctx.globalAlpha = a; fn(tt); _ctx.restore(); };
+  function drawClimate(ctx, D, x, y, S, o) {
+    o = o || {}; const I = isotherms(D), P = GA.palette, E = P.ex13, F = D.frame, g = D.climate.grid, s = S / 1000, mpp = (F.x1 - F.x0) / 1000, cols = E.lst, br = D.climate.breaks;
+    const X = (u) => (u - F.x0) / mpp * s, Y = (v) => (F.y1 - v) / mpp * s; const GX = (gi) => X(g.x0 + (gi + 0.5) * g.cell), GY = (gj) => Y(g.y1 - (gj + 0.5) * g.cell);
+    const colOf = (lv) => cols[br.filter(b => lv >= b).length]; const font = (sz, w) => `${w || 600} ${Math.round(sz * s)}px ${root.GA.pages.font()}`;
+    ctx.save(); ctx.translate(x, y); ctx.beginPath(); ctx.rect(0, 0, S, S); ctx.clip(); ctx.fillStyle = P.ex13art.paper; ctx.fillRect(0, 0, S, S); _ctx = ctx;
+    const iso = (cls) => (t) => { if (cls === 4) { // the hottest ground (≥ 49 °C) tinted under its lines
+          const k = 4, cv = document.createElement('canvas'); cv.width = I.nx * k; cv.height = I.ny * k; const cx = cv.getContext('2d'); const im = cx.createImageData(cv.width, cv.height); const rgb = P.rgb(P.red);
+          for (let jj = 0; jj < cv.height; jj++) for (let ii = 0; ii < cv.width; ii++) { const fx = Math.min(I.nx - 1.001, Math.max(0, (ii + 0.5) / k - 0.5)), fy = Math.min(I.ny - 1.001, Math.max(0, (jj + 0.5) / k - 0.5)); const i0 = Math.floor(fx), j0 = Math.floor(fy), ax = fx - i0, ay = fy - j0;
+            const v = (1 - ax) * (1 - ay) * I.A[j0 * I.nx + i0] + ax * (1 - ay) * I.A[j0 * I.nx + i0 + 1] + (1 - ax) * ay * I.A[(j0 + 1) * I.nx + i0] + ax * ay * I.A[(j0 + 1) * I.nx + i0 + 1]; if (v < 49) continue; const q = (jj * cv.width + ii) * 4; im.data[q] = rgb[0]; im.data[q + 1] = rgb[1]; im.data[q + 2] = rgb[2]; im.data[q + 3] = 44; }
+          cx.putImageData(im, 0, 0); ctx.globalAlpha *= t; ctx.drawImage(cv, X(g.x0), Y(g.y1), (I.nx * g.cell) / mpp * s, (I.ny * g.cell) / mpp * s); }
+        Object.keys(I.lines).map(Number).filter(lv => isoClass(lv) === cls).forEach(lv => { ctx.strokeStyle = colOf(lv); ctx.lineWidth = (0.6 + Math.max(0, lv - 44) * 0.38) * s; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+          const segs = I.lines[lv]; const n = t >= 1 ? segs.length : Math.floor(segs.length * t); ctx.beginPath(); for (let q = 0; q < n; q++) { const [a, b] = segs[q]; ctx.moveTo(GX(a[0]), GY(a[1])); ctx.lineTo(GX(b[0]), GY(b[1])); } ctx.stroke(); }); };
+    const L = [(t) => baseLayer(ctx, D, s, X, Y, t), iso(1), iso(2), iso(3), iso(4),
+      (t) => { ctx.globalAlpha *= t; ctx.fillStyle = P.base.olive; const V = D.climate.ndvi; for (let j = 0; j < I.ny; j++) for (let i = 0; i < I.nx; i++) { const v = V[j] && V[j][i]; if (v == null || v < 0.4) continue; ctx.beginPath(); ctx.arc(GX(i), GY(j), 1.5 * s, 0, Math.PI * 2); ctx.fill(); } },
+      (t) => { ctx.globalAlpha *= t; ctx.direction = 'ltr'; [['hot', I.hot], ['cool', I.cool]].forEach(([k, p]) => { const px = GX(p.i), py = GY(p.j), r = 9 * s; ctx.strokeStyle = P.ink; ctx.lineWidth = 2 * s; ctx.beginPath(); ctx.moveTo(px - r, py); ctx.lineTo(px + r, py); ctx.moveTo(px, py - r); ctx.lineTo(px, py + r); ctx.stroke();
+          if (p.v == null) return; const tx = String(p.v.toFixed(1)) + ' °C'; ctx.font = font(16); const w = ctx.measureText(tx).width; const lx = Math.min(S - w - 14 * s, px + 12 * s), ly = Math.max(26 * s, py - 10 * s); ctx.fillStyle = 'rgba(255,255,255,.88)'; ctx.fillRect(lx - 4 * s, ly - 17 * s, w + 8 * s, 22 * s); ctx.fillStyle = P.ink; ctx.textAlign = 'left'; ctx.fillText(tx, lx, ly); }); }];
+    runLayers(L, o); ctx.restore(); return true;
+  }
+  function climateLegend(t, D) {
+    const P = GA.palette, cols = P.ex13.lst, I = isotherms(D);
+    return [{ line: P.ex13.street, w: 1, label: t('x24.lg.base'), layer: 0 },
+      { line: cols[0], w: 0.8, label: t('x24.lg.cool'), layer: 1 }, { line: cols[3], w: 1.4, label: t('x24.lg.warm'), layer: 2 }, { line: cols[4], w: 2.2, label: t('x24.lg.hot'), layer: 3 },
+      { line: cols[6], w: 3, sw: null, label: t('x24.lg.hottest'), layer: 4 }, { dot: P.base.olive, label: t('x24.lg.veg'), layer: 5 },
+      { cross: P.ink, label: t('x24.lg.marks', { h: '‎' + (I.hot.v == null ? '—' : I.hot.v.toFixed(1)) + ' °C‎', c: '‎' + (I.cool.v == null ? '—' : I.cool.v.toFixed(1)) + ' °C‎' }), layer: 6 },
+      { line: P.ex13art.muni, dash: true, label: t('x13.lg.muni') }];
+  }
+  function humanData(D) { const H = D.human, cx = D.density.corners.x, cy = D.density.corners.y, pop = D.density.pop; const cent = [];
+    ['square', 'park'].forEach(k => (H.areas[k] || []).forEach(a => { const r = a.p[0]; if (!r || !r.length) return; cent.push([r.reduce((s, p) => s + p[0], 0) / r.length, r.reduce((s, p) => s + p[1], 0) / r.length, k]); }));
+    ['market', 'square_pt'].forEach(k => (H.points[k] || []).forEach(p => cent.push([p[0], p[1], k])));
+    const far = H.far.map(([r, q]) => ({ x: (cx[r][q] + cx[r + 1][q + 1]) / 2, y: (cy[r][q] + cy[r + 1][q + 1]) / 2, p: pop[r][q] || 0 }));
+    return { cent, far }; }
+  function drawHuman(ctx, D, x, y, S, o) {
+    o = o || {}; const P = GA.palette, B = P.base, E = P.ex13, F = D.frame, s = S / 1000, mpp = (F.x1 - F.x0) / 1000, H = D.human, hd = humanData(D);
+    const X = (u) => (u - F.x0) / mpp * s, Y = (v) => (F.y1 - v) / mpp * s;
+    ctx.save(); ctx.translate(x, y); ctx.beginPath(); ctx.rect(0, 0, S, S); ctx.clip(); ctx.fillStyle = P.ex13art.paper; ctx.fillRect(0, 0, S, S); _ctx = ctx;
+    const L = [(t) => baseLayer(ctx, D, s, X, Y, t),
+      (t) => { const g = D.fgm; if (!D.fgImg) return; const sx = (F.x0 - g.ox) / g.px_m, sy = (g.oy - F.y1) / g.px_m, sw = (F.x1 - F.x0) / g.px_m; const tmp = document.createElement('canvas'); tmp.width = tmp.height = Math.round(S); const tc = tmp.getContext('2d');
+        tc.drawImage(D.fgImg, sx, sy, sw, sw, 0, 0, tmp.width, tmp.height); tc.globalCompositeOperation = 'lighten'; tc.fillStyle = P.base.cream; tc.fillRect(0, 0, tmp.width, tmp.height); // buildings faint (warm grey), ground white
+        ctx.globalAlpha *= t * 0.75; ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(tmp, 0, 0, S, S); },
+      (t) => { ctx.globalAlpha *= t; [['park', B.olive, 0.55], ['square', B.red, 0.85]].forEach(([k, col, a]) => (H.areas[k] || []).forEach(ar => { ctx.beginPath(); ar.p.forEach(r => r.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); ctx.globalAlpha = t * a; ctx.fillStyle = col; ctx.fill('evenodd'); })); },
+      (t) => { const n = t >= 1 ? hd.cent.length : Math.floor(hd.cent.length * t); for (let q = 0; q < n; q++) { const [cx, cy, k] = hd.cent[q]; ctx.beginPath(); ctx.arc(X(cx), Y(cy), 300 / mpp * s, 0, Math.PI * 2); ctx.strokeStyle = k === 'market' ? B.oxblood : B.blueGrey; ctx.lineWidth = (k === 'market' ? 1.2 : 0.7) * s; ctx.globalAlpha = 0.9; ctx.stroke(); } },
+      (t) => { ctx.globalAlpha *= t; const pt = (k, fn) => (H.points[k] || []).forEach(p => fn(X(p[0]), Y(p[1])));
+        pt('cafe', (px, py) => { ctx.fillStyle = B.brown; ctx.beginPath(); ctx.arc(px, py, 1.6 * s, 0, Math.PI * 2); ctx.fill(); });
+        pt('playground', (px, py) => { ctx.fillStyle = B.khaki; ctx.beginPath(); ctx.moveTo(px, py - 4 * s); ctx.lineTo(px + 3.6 * s, py + 3 * s); ctx.lineTo(px - 3.6 * s, py + 3 * s); ctx.closePath(); ctx.fill(); });
+        pt('civic', (px, py) => { ctx.fillStyle = '#FFFFFF'; ctx.strokeStyle = B.blueGrey; ctx.lineWidth = 1.6 * s; ctx.beginPath(); ctx.arc(px, py, 3.6 * s, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); });
+        pt('market', (px, py) => { ctx.fillStyle = B.oxblood; ctx.fillRect(px - 5 * s, py - 5 * s, 10 * s, 10 * s); }); },
+      (t) => { ctx.globalAlpha *= t; ctx.fillStyle = B.red; ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 0.6 * s; hd.far.forEach(f => { const r = Math.max(2.2, Math.sqrt(f.p) * 0.55) * s; ctx.beginPath(); ctx.arc(X(f.x), Y(f.y), r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }); }];
+    runLayers(L, o); ctx.restore(); return true;
+  }
+  function humanLegend(t, D) {
+    const P = GA.palette, B = P.base, hd = humanData(D);
+    return [{ line: P.ex13.street, w: 1, label: t('x24.lg.base'), layer: 0 }, { sw: P.base.cream, label: t('x24.lg.buildings'), layer: 1 },
+      { sw: B.red, alpha: 0.85, label: t('x13.lg.square'), layer: 2 }, { sw: B.olive, alpha: 0.55, label: t('x13.lg.park'), layer: 2 },
+      { ring: B.blueGrey, label: t('x24.lg.rings', { n: '‎' + hd.cent.length.toLocaleString('en-US') + '‎' }), layer: 3 },
+      { mk: 'market', label: t('x13.lg.market'), layer: 4 }, { mk: 'cafe', label: t('x13.lg.cafe'), layer: 4 }, { mk: 'play', label: t('x13.lg.play'), layer: 4 }, { mk: 'civic', label: t('x13.lg.civic'), layer: 4 },
+      { dot: B.red, label: t('x24.lg.far', { n: '‎' + hd.far.length.toLocaleString('en-US') + '‎' }), layer: 5 }];
+  }
+
+  // ---------- HUMAN DIMENSION, second artistic style: the axonometric drawing (other session, merged in 5.30 — HANDOFF §32) ----------
   // ---------- 5.26: the human dimension — the city as used, each layer a 3D object over a line drawing of the frame, seen from
   // the south-west (assets from tools/build_ex13_human.py). Heights are scales for the values, stated in the legend. ----------
-  const HKEYS = ['residents', 'commerce', 'streets', 'buses', 'meeting', 'visitors'];
+  const HAXKEYS = ['residents', 'commerce', 'streets', 'buses', 'meeting', 'visitors'];
   let HA = null, HAp = null;
   function loadHuman() { if (HAp) return HAp; const v = '?v=' + (root.GA_BUILD || ''), dir = 'data/ex13/art/';
     HAp = Promise.all([fetch(dir + 'human_art.json' + v).then(r => { if (!r.ok) throw new Error('human_art.json ' + r.status); return r.json(); }), new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('human_ground.png')); i.src = dir + 'human_ground.png' + v; })])
       .then(([d, g]) => (HA = Object.assign(d, { ground: g }))).catch(e => { HAp = null; throw e; }); return HAp; }
-  function drawHuman(ctx, D, x, y, S, o) {
+  function drawHumanAxo(ctx, D, x, y, S, o) {
     o = o || {}; if (!HA) return false; const DT = HA, P = GA.palette, H = P.ex13art.human, INK = P.ink, MONO = root.GA.pages.font();
     const K = 0.56, OX = 500, OY = 960; const PR = (px, py, z) => { const a = px, b = 1000 - py; return [OX + 0.866 * K * (a - b), OY - 0.5 * K * (a + b) - (z || 0)]; }; const depth = (px, py) => px + (1000 - py);
     const fmt = (n) => Number(n).toLocaleString('en-US'); const ctr = (pts) => pts.reduce((q, p) => [q[0] + p[0] / pts.length, q[1] + p[1] / pts.length], [0, 0]);
@@ -246,7 +335,7 @@
     const a0 = PR(0, 1000, 0), a1 = PR(200, 1000, 0); ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(a0[0], a0[1] + 18); ctx.lineTo(a1[0], a1[1] + 18); ctx.stroke(); ctx.font = '500 12px ' + MONO; ctx.textAlign = 'left'; ctx.fillText('2 km', a1[0] + 6, a1[1] + 22);
     ctx.restore(); return true;
   }
-  function drawHumanTop(ctx, D, x, y, S, o) {
+  function drawHumanAxoTop(ctx, D, x, y, S, o) {
     o = o || {}; if (!HA) return; const DT = HA, P = GA.palette, H = P.ex13art.human; const k = S / 1000; const al = (i) => layerAlpha(o, i) * (layerT(o, i) > 0 ? 1 : 0);
     ctx.save(); ctx.translate(x, y); ctx.beginPath(); ctx.rect(0, 0, S, S); ctx.clip(); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, S, S); ctx.globalAlpha = 0.9; ctx.drawImage(DT.ground, 0, 0, S, S); ctx.scale(k, k);
     const poly = (r) => { ctx.beginPath(); r.forEach((p, n) => n ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); }; const sq = (px, py, h) => ctx.fillRect(px - h, py - h, 2 * h, 2 * h); const mx = DT.stops[0].t, C1 = DT.peaks.find(p => p.rank === 1) || DT.peaks[0];
@@ -261,7 +350,7 @@
     lay.forEach((fn, i) => { const a = al(i); if (a <= 0.01 || i === o.focus) return; ctx.globalAlpha = a; fn(); }); if (o.focus != null) { ctx.globalAlpha = 1; lay[o.focus](); }
     ctx.globalAlpha = 1; ctx.setTransform(ctx.getTransform().scale(1 / k, 1 / k)); ctx.strokeStyle = P.ink; ctx.lineWidth = Math.max(1, 1.6 * k); ctx.strokeRect(0.5, 0.5, S - 1, S - 1); root.GA.pages.northArrow(ctx, S - 30 * k, 16 * k, 1.6 * k); ctx.restore();
   }
-  function humanLegend(t) {
+  function humanAxoLegend(t) {
     const P = GA.palette, H = P.ex13art.human, n = (v) => '‎' + Number(v).toLocaleString('en-US') + '‎';
     if (!HA) return [];
     return [
@@ -273,7 +362,6 @@
       { sw: H.hotel, label: t('x24.lg.hotels', { n: n(HA.hotels.length) }), layer: 5 },
     ];
   }
-  root.GA.ex13art = { KEYS, CKEYS, DKEYS, HKEYS, CELL, prepare, draw, legendItems, loadCentre, loadHuman, drawHuman, drawHumanTop, humanLegend, get human() { return HA; },
-    ready: (k) => (k === 'centre' || k === 'density') ? loadCentre() : k === 'human' ? Promise.all([loadCentre(), loadHuman()]) : Promise.resolve(), keys: (k) => k === 'centre' ? CKEYS : k === 'density' ? DKEYS : k === 'human' ? HKEYS : KEYS,
-    drawCentre, centreLegend, drawDensity, drawDensityTop, densityLegend, densityStats: (D) => needles(D), get centre() { return CA; }, get grid() { return G; } };
+  root.GA.ex13art = { KEYS, CKEYS, DKEYS, CELL, prepare, draw, legendItems, loadCentre, ready: (k) => (k === 'centre' || k === 'density') ? loadCentre() : k === 'humanAxo' ? Promise.all([loadCentre(), loadHuman()]) : Promise.resolve(), keys: (k) => k === 'centre' ? CKEYS : k === 'density' ? DKEYS : k === 'climate' ? KLKEYS : k === 'human' ? HKEYS : k === 'humanAxo' ? HAXKEYS : KEYS,
+    drawCentre, centreLegend, drawDensity, drawDensityTop, densityLegend, drawClimate, climateLegend, drawHuman, humanLegend, HAXKEYS, loadHuman, drawHumanAxo, drawHumanAxoTop, humanAxoLegend, get human() { return HA; }, densityStats: (D) => needles(D), get centre() { return CA; }, get grid() { return G; } };
 })(window);

@@ -34,21 +34,31 @@
   // exactly `dpi` pixels per inch: x/y/w/h in page pixels → points (× 72 / dpi); later strips are drawn over earlier ones,
   // so strips that overlap by a few rows leave no hairline between them in any viewer.
   // strips: [{ bytes: Uint8Array (JPEG), w, h, x, y }] (pixels); paper: [Wpt, Hpt]
-  // pagePx: the page in pixels — the pixel grid is scaled to the exact paper size (Wpt / Wpx, Hpt / Hpx; differs from 72 / dpi
-  // by < 0.01 % because paper sizes are not whole pixels), so a viewer at `dpi` maps each image pixel onto one device pixel.
+  // pagePx: the page in pixels. 5.26: every pixel is exactly 72 / dpi pt; the page stays exactly the paper size (pixels × 72 / dpi
+  // is within one pixel of it). Scaling the grid to the paper instead (Wpt / Wpx, off by ~7 ppm) drifted each strip off the device pixel
+  // grid by up to 0.1 px, so a viewer at `dpi` resampled neighbouring strips with different sub-pixel phases — a faint step
+  // at every strip edge. Now each image pixel falls on one device pixel at `dpi`.
   function buildStrips(strips, paper, dpi, meta, pagePx) {
     const enc = new TextEncoder(); const chunks = []; let len = 0; const offsets = [];
     const push = (x) => { const b = typeof x === 'string' ? enc.encode(x) : x; chunks.push(b); len += b.length; };
     const obj = (n, body) => { offsets[n] = len; push(`${n} 0 obj\n`); body.forEach(push); push('\nendobj\n'); };
     push('%PDF-1.4\n%xxxx\n');
-    const [W, H] = paper; const sx = pagePx ? W / pagePx[0] : 72 / dpi, sy = pagePx ? H / pagePx[1] : 72 / dpi; const f = (v) => (Math.round(v * 1e6) / 1e6).toString();
+    const W = paper[0], H = paper[1]; const sx = 72 / dpi * (1 - 1e-7), sy = sx; const f = (v) => (Math.round(v * 1e6) / 1e6).toString();
+    // the page is exactly the paper size (v10); the pixel grid is anchored at the top-left and the < 1 px left over at the
+    // right / bottom edge is page margin or trimmed. sx: 1 − 1e-7 because poppler draws an image at exactly 1:1 through a softer path; 0.002 px over an A1 page keeps the pixel grid
     obj(1, ['<< /Type /Catalog /Pages 2 0 R >>']);
     obj(2, ['<< /Type /Pages /Count 1 /Kids [4 0 R] >>']);
     const esc = (x) => String(x || '').replace(/[^\x20-\x7E]/g, '?').replace(/([()\\])/g, '\\$1');
     obj(3, [`<< /Producer (Granada Atlas) /Title (${esc(meta && meta.title)}) /CreationDate (D:${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)}Z) >>`]);
     const xo = strips.map((p, i) => `/Im${i} ${6 + i} 0 R`).join(' ');
-    const content = strips.map((p, i) => `q ${f(p.w * sx)} 0 0 ${f(p.h * sy)} ${f(p.x * sx)} ${f(H - (p.y + p.h) * sy)} cm /Im${i} Do Q`).join('\n');
-    obj(4, [`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W.toFixed(2)} ${H.toFixed(2)}] /Resources << /XObject << ${xo} >> >> /Contents 5 0 R >>`]);
+    // 5.26: strips overlap (each repeats rows of the next). JPEG keeps colour at half resolution and a decoder cannot
+    // interpolate it across two separate images, so the first / last rows of a strip differ slightly in colour from the
+    // same rows inside its neighbour — a faint line at every strip edge. Each strip after the first is therefore clipped to
+    // start half the overlap (≤ 8 rows) below its own top edge: the visible join lies inside both images, away from edges.
+    const content = strips.map((p, i) => { const q = strips[i - 1]; const ov = q && q.x === p.x ? Math.max(0, q.y + q.h - p.y) : 0; const c = Math.min(8, Math.floor(ov / 2));
+      const img = `${f(p.w * sx)} 0 0 ${f(p.h * sy)} ${f(p.x * sx)} ${f(H - (p.y + p.h) * sy)} cm /Im${i} Do`;
+      return c ? `q ${f(p.x * sx)} ${f(H - (p.y + p.h) * sy)} ${f(p.w * sx)} ${f((p.h - c) * sy)} re W n ${img} Q` : `q ${img} Q`; }).join('\n');
+    obj(4, [`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${f(W)} ${f(H)}] /Resources << /XObject << ${xo} >> >> /Contents 5 0 R >>`]);
     obj(5, [`<< /Length ${content.length} >>\nstream\n${content}\nendstream`]);
     strips.forEach((p, i) => obj(6 + i, [`<< /Type /XObject /Subtype /Image /Width ${p.w} /Height ${p.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${p.bytes.length} >>\nstream\n`, p.bytes, '\nendstream']));
     const total = 6 + strips.length; const xref = len;
