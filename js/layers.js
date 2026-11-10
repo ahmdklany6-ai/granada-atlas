@@ -289,7 +289,11 @@
     const KEY = 'granada-atlas.layers.v1';
     let saved = {}; try { saved = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { }
     defs.forEach(d => { const sv = (saved.layers || {})[d.id] || {}; S[d.id] = Object.assign({ status: 'idle' }, d.def, sv, { opts: Object.assign({}, (d.def && d.def.opts) || {}, sv.opts || {}) }); });
-    order = (saved.order || []).filter(id => byId[id]); { const had = order.length > 0; const missing = defs.slice().reverse().filter(d => !order.includes(d.id)).map(d => d.id); order = had ? missing.concat(order) : missing; } // top-first; layers added in a later version go on top
+    order = (saved.order || []).filter(id => byId[id]); { const had = order.length > 0; const missing = defs.slice().reverse().filter(d => !order.includes(d.id)).map(d => d.id);
+      // top-first; layers added in a later version go on top — but never above the "Essentials: southern axis" group (5.28:
+      // the city growth layer goes just under the metro / tram / Escúzar lines, so its fills never tint them)
+      const ess = (id) => byId[id] && byId[id].group === 'south'; const ms = missing.filter(ess), mo = missing.filter(id => !ess(id));
+      if (!had) order = ms.concat(mo); else { let k = 0; while (k < order.length && ess(order[k])) k++; order = ms.concat(order.slice(0, k), mo, order.slice(k)); } }
     if (saved.scope) scope = saved.scope;
     function persist() { try { const L = {}; defs.forEach(d => L[d.id] = { on: S[d.id].on, opacity: S[d.id].opacity, metric: S[d.id].metric, opts: S[d.id].opts }); localStorage.setItem(KEY, JSON.stringify({ layers: L, order: order.filter(id => byId[id]), scope })); } catch (e) { } }
 
