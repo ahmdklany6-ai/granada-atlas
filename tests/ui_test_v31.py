@@ -132,7 +132,7 @@ try:
                 pg.evaluate('GA.app.map.jumpTo({ center: [-3.631, 37.143], zoom: 15 })'); time.sleep(2.5)
                 for k in ('metro', 'tram'):
                     xy = pg.evaluate('(ll) => { const p = GA.app.map.project(ll); return [p.x, p.y]; }', P[k])
-                    r = pg.evaluate('(xy) => { const r = GA.app.L.popupAt({ x: xy[0], y: xy[1] }); return r ? { id: r.def.id, layer: r.feature.layer.id, html: r.html } : null; }', xy)
+                    r = pg.evaluate('(xy) => { const m = GA.app.map; const r = GA.app.L.popupAt({ x: xy[0], y: xy[1] }); const src = (id) => ((m.getSource(id) || {})._data || {}).features; return r ? { id: r.def.id, layer: r.feature.layer.id, html: r.html.slice(0, 60), fgeom: r.feature.geometry.coordinates, xy, zoom: m.getZoom(), tramSrc: (src("ly-tram-iconsrc") || []).map(f => [f.properties.kind, f.geometry.coordinates]), metroSrc: (src("ly-smetro-iconsrc") || []).map(f => [f.properties.kind, f.geometry.coordinates]), all: m.queryRenderedFeatures([xy[0], xy[1]]).map(q => q.layer.id).slice(0, 8) } : null; }', xy)
                     want_id, title = ('south_metro', pg.evaluate('GA.i18n.t("v18.lyMetro")')) if k == 'metro' else ('tram_1931', pg.evaluate('GA.i18n.t("v18.lgTrunk")'))
                     check(r and r['id'] == want_id and r['layer'].endswith('-iconhit') and title in r['html'], f'a click on the {k} icon opens its line popup ("{title}")', r)
                 # a print-layout map shows the icons (offscreen map copies the images from the main map): render the same frame with
