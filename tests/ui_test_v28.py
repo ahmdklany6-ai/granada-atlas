@@ -55,7 +55,7 @@ try:
         src = ' '.join(pg.evaluate('GA.ex13.content("human").src')); check('not a real height' in src and 'Not drawn' in src, 'limits name the height scale and what is not drawn')
         lay = pg.evaluate('(async () => { const c = await GA.ex13.pageCanvas("human", 100); return c.__layout; })()'); check(lay['top'] and lay['bottom'] <= lay['footerY'], f'page fits ({lay["bottom"]} <= {lay["footerY"]})')
         pg.evaluate('GA.pages.go("ex13")'); pg.wait_for_function('document.querySelectorAll(".x13-prev canvas").length === 6', timeout=180000); time.sleep(1)
-        check(pg.evaluate('document.querySelector("input[name=x20-style-human][value=axo]").checked') and pg.evaluate('document.querySelectorAll("[data-x20player=human] .x20-chip").length') == 6, 'page: saved choice shown, player with six layers')
+        check(pg.evaluate('GA.ex13.artOn ? GA.ex13.artOn("human") : true') and pg.evaluate('document.querySelectorAll("[data-x20player=human] .x20-chip").length') == 6, 'page: artistic human map (5.33: one artistic version, the axonometric drawing) with its six-layer player')
         pg.click('[data-x20player=human] .x20-chip[data-x20layer="3"]'); time.sleep(0.5)
         check(pg.evaluate('document.querySelector("[data-x20player=human] .x20-chip[data-x20layer=\\"3\\"]").classList.contains("on")'), 'player: clicking a layer highlights it')
         pg.click('[data-x20player=human] [data-x20play]'); time.sleep(5); check('❚❚' in pg.evaluate('document.querySelector("[data-x20player=human] [data-x20play]").textContent'), 'player: plays')

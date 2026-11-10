@@ -1,9 +1,9 @@
-"""v33 — build 5.38: the identity map (Exercise 1.3 page 00) as an illustrated map: central Granada 5 × 5 km with its
+"""v34 — build 5.39: the identity map (Exercise 1.3 page 00) as an illustrated map: central Granada 5 × 5 km with its
 landmarks drawn in 3D line at their real positions (owner request with a reference image, 10 Nov 2026).
 Checks: default stays the locator map; the page-00 switch saves 'art' and the page changes; the drawing uses the studio
 red and every landmark sits inside the 5 km extent; the all-artistic button switches page 00 too, the all-architectural
 button switches it back; the schematic-drawing note and legend strings exist in ar / he / en; saved work is kept;
-no page errors. Usage: python3 tests/ui_test_v33.py  (OUT=/dir)"""
+no page errors. Usage: python3 tests/ui_test_v34.py  (OUT=/dir)"""
 import sys, os, time, json, subprocess, base64, io
 sys.path.insert(0, os.path.dirname(__file__))
 import ui_test_v3 as V3
@@ -11,8 +11,8 @@ from playwright.sync_api import sync_playwright
 import _nointro  # start on the map, not the opening page
 from PIL import Image
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PORT = 8833; V3.PORT = PORT; V3.V2.PORT = PORT
-OUT = os.environ.get('OUT', '/tmp/v33shots'); os.makedirs(OUT, exist_ok=True)
+PORT = 8834; V3.PORT = PORT; V3.V2.PORT = PORT
+OUT = os.environ.get('OUT', '/tmp/v34shots'); os.makedirs(OUT, exist_ok=True)
 fails = []
 def check(cond, msg, extra=''):
     print(('ok   ' if cond else 'FAIL ') + msg + (f'  [{extra}]' if extra != '' and not cond else ''), flush=True)
@@ -28,7 +28,7 @@ try:
         pg = ctx.new_page(); V3.stub3(pg); errs = []
         pg.on('pageerror', lambda e: 'rtl-text' not in str(e) and errs.append('PAGE ' + str(e)[:300]))
         pg.goto(f'http://127.0.0.1:{PORT}/index.html'); pg.wait_for_function('window.GA && GA.app && GA.ex13 && GA.ex13ident', timeout=90000)
-        ver = json.load(open(os.path.join(ROOT, 'version.json')))['build']; check(ver >= '5.38' and pg.evaluate('window.GA_BUILD') == ver, f'build {ver}')
+        ver = json.load(open(os.path.join(ROOT, 'version.json')))['build']; check(ver >= "5.39" and pg.evaluate('window.GA_BUILD') == ver, f'build {ver}')
         pg.evaluate('''() => { const p = GA.app.store.get(); p.ex13 = Object.assign(p.ex13 || {}, { students: 'Keep Me' }); GA.app.store.save(); }''')
         pg.evaluate('GA.i18n.setLang("en")'); pg.evaluate('GA.ex13.load()'); time.sleep(0.5)
         check(pg.evaluate('GA.ex13.idArt()') is False, 'default: the locator map')

@@ -1062,5 +1062,24 @@ body.atlas.view-3d .ga-north { display: none !important; } /* the map can be rot
 .mp-err { color: var(--warn); }
 /* the ☰ menu opens from the right in Arabic / Hebrew: Draw section + 3D move left of it so the menu never hides them */
 @media (min-width: 700px) { html[dir="rtl"] body.atlas.atl-menu .maplibregl-ctrl-top-right { right: calc(min(380px, 92vw) + 8px); } }
+/* ---------- 5.33 tour: pictograms, labels on the map, dead-end signs ---------- */
+img.sw-rail { width: 28px; height: 18px; flex: none; vertical-align: middle; }
+.tour-lbls { position: absolute; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+.tour-lbls svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.tour-lbl { position: absolute; left: 0; top: 0; white-space: nowrap; text-align: center; line-height: 1.15; color: var(--ink);
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff, 0 0 4px #fff; font-size: 12px; }
+.tour-lbl b { display: block; font-weight: 600; font-size: 11.5px; }
+.tour-lbl .v { display: block; font-weight: 700; font-size: 12.5px; }
+.tour-lbl .v.miss { font-weight: 500; font-style: italic; color: var(--ink-3); font-size: 11px; }
+.tour-lbl.town { font-size: 14px; font-weight: 700; color: var(--red); }
+.tour-lbl.five b { color: var(--red); }
+.tour-lbl.rt { font-size: 12.5px; font-weight: 600; background: #fff; border: 2px solid currentColor; border-radius: 3px; padding: 2px 6px; text-shadow: none; }
+.tour-lbl.rt span { color: var(--ink); }
+.tour-lbl.end { font-size: 12.5px; font-weight: 700; color: var(--ink); }
+.tour-sign { position: absolute; left: 0; top: 0; width: 18px; height: 18px; }
+.tour-sign i { position: absolute; top: -7px; inset-inline-end: -9px; min-width: 15px; height: 15px; border-radius: 8px; background: var(--ink); color: #fff; font: 600 10px/15px var(--font, sans-serif); font-style: normal; text-align: center; padding: 0 3px; box-shadow: 0 0 0 1.5px #fff; }
+.tour-c-b .lg img.tour-sign-sw { width: 16px; height: 16px; flex: none; }
+.tour-towns { margin: 0 0 8px; padding: 0; list-style: none; font-size: 13px; }
+.tour-towns li { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--line); padding: 2px 0; }
 /* 5.33 — one button: all Exercise 1.3 maps artistic / architectural */
 .x31-all { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; }
