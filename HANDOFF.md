@@ -1,4 +1,4 @@
-# Granada Atlas — handoff (state at build 5.31, 10 Nov 2026)
+# Granada Atlas — handoff (state at build 5.32, 10 Nov 2026)
 
 This document lets a new Claude Code session continue the project without the original chat. Short operating rules
 are in `CLAUDE.md`; feature and data documentation is in `README.md`.
@@ -10,7 +10,7 @@ are in `CLAUDE.md`; feature and data documentation is in `README.md`.
 | Repository | GitHub `ahmdklany6-ai/granada-atlas` (back since 10 Nov 2026 after a one-day suspension, ticket #4976314). Work branch `claude/vigilant-ritchie-wammdd`; `main` deploys. The GitLab copy `gitlab.com/ahmdklany6/granada-atlas` is frozen at 5.29 and no longer updated |
 | Live site | **https://ahmdklany6-ai.github.io/granada-atlas/** (GitHub Pages from `main`). The GitLab site https://granada-atlas-597777.gitlab.io/ still shows 5.29 (left in place, not updated) |
 | Publishing from a cloud session | push the work branch, open a PR to `main` and merge it (GitHub MCP tools); GitHub Pages deploys `main`. Verify with the `live-check` workflow (workflow_dispatch, script `live_atlas.py`) — this sandbox cannot open *.github.io. The GitLab API route (§28–31) is retired |
-| Current build | **5.31** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.31` asset queries) |
+| Current build | **5.32** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.32` asset queries) |
 | Latest feature work | 5.31: north arrow to the right of the scale bar, centred glyph (§33). 5.30: back on GitHub, merged with the other session's axonometric human dimension (§32). 5.29: map screen layout + model workshop print preset (§31). 5.28: city growth extents as a normal layer, OFF by default (§30). 5.27: opening page and story tour (see §29). 5.26: fixes from the 5.25 live review, factory analysis frame, GIF export (§28) |
 | Data version | `2026-11-10-v16` in `data/manifest.json` (5.30 merge; 5.27: `base_edge`, `tour_area`; 5.26: `ex13f`) |
 
@@ -908,7 +908,16 @@ object; labels in one ordered column; a simplified version was rejected — "bac
   `tools/build_ex13_art.py`). Colours `palette.ex13art.human`. Strings `js/i18n_v24.js`. Test `tests/ui_test_v24.py`.
 - Not yet on the site: the climate "stacked layers on the terrain" preview (approved look, not integrated).
 
-## 33. Build 5.31 — north arrow beside the scale bar, centred (owner request of 10 Nov 2026)
+## 33. Build 5.31 — layer animation: build-up first, played in the large viewer (owner request of 10 Nov 2026)
+
+The layer GIF of every artistic Exercise 1.3 map now starts with the build-up (layers appear one after another, 0.9 s
+each), then the whole map (2.6 s), then each layer alone with the others faded (1.4 s each); loops. The large viewer has
+**▶ Play animation** (plays that GIF in place, zoomable; Stop returns to the still page) and **Animated GIF** downloads the
+same file without making it again. 80 dpi; built frame by frame (`GA.gif.encodeAsync`) so the page stays responsive and
+the button shows progress. (This viewer button had been published on GitLab as 5.28 and was lost in the 5.30 merge.)
+Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
+
+## 34. Build 5.32 — north arrow beside the scale bar, centred (owner request of 10 Nov 2026)
 
 - Order in the bottom-left group, every language (never mirrored): scale bar, then north arrow, 7 px apart, both 26 px
   tall with their bottoms on one line (`css/app.css` 5.29 block + 5.31 rule for `.maplibregl-ctrl-scale`).
@@ -917,7 +926,8 @@ object; labels in one ordered column; a simplified version was rejected — "bac
 - `placeNorth()` (js/atlas.js) now also keeps the group clear of the attribution (besides the atlas panel and tour card).
 - Print layout / map-only / PNG / PDF do not reuse this control: they draw their own north arrow (`GA.pages.northArrow`)
   and scale bar on the sheet, so they are unchanged.
-- Test `tests/ui_test_v29.py`: 375–1440 px × ar / he / en, panel open and folded, device scale 2, tour step 1.
-- The owner's request still said "publish to GitLab"; the site had moved back to GitHub the same day (5.30), so 5.31 is
+- Test `tests/ui_test_v30.py`: 375–1440 px × ar / he / en, panel open and folded, device scale 2, tour step 1.
+- The owner's request still said "publish to GitLab"; the site had moved back to GitHub the same day (5.30), so it is
   published on GitHub Pages.
-
+- Built as "5.31" in this session while another session published its own 5.31 (layer animation, §33) on `main`; both
+  merged as 5.32.

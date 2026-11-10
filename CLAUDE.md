@@ -34,7 +34,7 @@ deploys). From 9 to 10 Nov 2026 the GitHub account was suspended and the site ra
   OFF by default; nothing may start it by itself. Play / Pause / period / Hide everywhere go through `GA.growth` (one state).
 - Visual identity: red `#992B2A` with the owner's mood-board palette (cream, muted blues, olives, burgundies — see
   HANDOFF §3); IBM Plex Sans / Arabic / Hebrew. Colours come ONLY from `js/palette.js` (CSS reads its `--c-*`); legends must be generated from the same class definitions as the map (never hard-coded twice).
-- Every string in all three languages (`GA.i18n.add({ key: [ar, he, en] })`, newest file `js/i18n_v28.js`; add a new `i18n_vN.js` per build).
+- Every string in all three languages (`GA.i18n.add({ key: [ar, he, en] })`, newest file `js/i18n_v29.js`; add a new `i18n_vN.js` per build).
   Numbers, units and coordinates stay left-to-right inside RTL text.
 - Honesty about data: never invent heights, roofs, materials, widths, trees or any value and present it as fact.
   Estimates are labelled, schematic elements are named, missing data is shown as missing (never as zero).
@@ -45,7 +45,7 @@ deploys). From 9 to 10 Nov 2026 the GitHub account was suspended and the site ra
 - Every release: bump the build in `version.json` AND `index.html` (`window.GA_BUILD` and every `?v=` query) —
   `tests/ui_test_v4.py` checks they agree. Data changes also bump `dataVersion` in `data/manifest.json`.
 - Run locally: `python3 -m http.server 8000` in the repo root (for your own testing only).
-- Tests: `for t in tests/*.test.js; do node $t; done` and `python3 tests/ui_test_vN.py` (N = 2…29; Playwright +
+- Tests: `for t in tests/*.test.js; do node $t; done` and `python3 tests/ui_test_vN.py` (N = 2…30; Playwright +
   Chromium; v6 and v8 take 10–20 min). Run browser suites ONE AT A TIME (parallel runs crash the headless GPU).
 - Check exports by opening them (pdfinfo/pdffonts/pdftoppm, Pillow, XML parse, sqlite, `tests/validate_export.py`).
 - After publishing: wait for the GitHub Pages deployment, then verify the live URL with the `live-check` workflow

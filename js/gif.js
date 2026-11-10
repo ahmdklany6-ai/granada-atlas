@@ -34,5 +34,17 @@
     }
     out.push(0x3B); return new Uint8Array(out);
   }
-  root.GA.gif = { encode };
+  // 5.28: the same file, built frame by frame with a pause between frames so the page stays responsive and can show progress
+  async function encodeAsync(frames, onFrame) {
+    const W = frames[0].canvas.width, H = frames[0].canvas.height; const parts = []; let out = [];
+    const str = (s) => { for (const c of s) out.push(c.charCodeAt(0)); }; const u16 = (v) => out.push(v & 255, (v >> 8) & 255);
+    str('GIF89a'); u16(W); u16(H); out.push(0x00, 0, 0); out.push(0x21, 0xFF, 11); str('NETSCAPE2.0'); out.push(3, 1, 0, 0, 0); parts.push(new Uint8Array(out));
+    for (let n = 0; n < frames.length; n++) { await new Promise(r => setTimeout(r, 0)); const f = frames[n]; out = [];
+      const px = f.canvas.getContext('2d').getImageData(0, 0, W, H).data; const { pal, map } = palette(px);
+      const ind = new Uint8Array(W * H); for (let i = 0, j = 0; i < px.length; i += 4, j++) ind[j] = map[((px[i] >> 3) << 10) | ((px[i + 1] >> 3) << 5) | (px[i + 2] >> 3)];
+      out.push(0x21, 0xF9, 4, 0x04); u16(Math.round((f.delay || 1000) / 10)); out.push(0, 0); out.push(0x2C); u16(0); u16(0); u16(W); u16(H); out.push(0x87);
+      pal.forEach(p => out.push(p[0], p[1], p[2])); lzw(ind, out); parts.push(new Uint8Array(out)); if (onFrame) onFrame(n + 1, frames.length); }
+    parts.push(new Uint8Array([0x3B])); const len = parts.reduce((a, b) => a + b.length, 0); const res = new Uint8Array(len); let o = 0; parts.forEach(b => { res.set(b, o); o += b.length; }); return res;
+  }
+  root.GA.gif = { encode, encodeAsync };
 })(window);

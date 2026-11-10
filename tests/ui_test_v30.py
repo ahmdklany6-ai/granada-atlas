@@ -1,18 +1,18 @@
-"""v29 — build 5.31: the map's bottom-left group (owner request).
+"""v30 — build 5.32 (the north arrow, 5.31 in this branch): the map's bottom-left group (owner request).
   - the north arrow sits to the RIGHT of the scale bar in every language (not mirrored), gap 4–10 px, bottoms within 1 px;
   - the arrow glyph is centred in its box: triangle horizontal centre and the glyph (triangle + "N") centre = box centre
     within 1 px, at device scale 1 and 2;
   - the group never overlaps the atlas panel (open / folded / phone sheet), the tour card ("Step 1 of 3") or the
     attribution.
-Widths 375, 390, 768, 1024, 1280, 1440 px in ar / he / en.  Usage: python3 tests/ui_test_v29.py (OUT=/dir)"""
+Widths 375, 390, 768, 1024, 1280, 1440 px in ar / he / en.  Usage: python3 tests/ui_test_v30.py (OUT=/dir)"""
 import sys, os, time, subprocess, warnings
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from playwright.sync_api import sync_playwright
 import _nointro
 warnings.filterwarnings('ignore')
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PORT = 8829
-OUT = os.environ.get('OUT', '/tmp/v29shots'); os.makedirs(OUT, exist_ok=True)
+PORT = 8830
+OUT = os.environ.get('OUT', '/tmp/v30shots'); os.makedirs(OUT, exist_ok=True)
 WIDTHS = [375, 390, 768, 1024, 1280, 1440]; H = {375: 812, 390: 844, 768: 1024, 1024: 768, 1280: 800, 1440: 900}
 fails = []
 def check(cond, msg, extra=''):
