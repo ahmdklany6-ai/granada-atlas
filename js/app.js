@@ -31,7 +31,10 @@
   map.addControl(new maplibregl.ScaleControl({ unit: 'metric', maxWidth: 140 }), 'bottom-left');
   { // the north arrow joins the scale bar (one small group, bottom-left)
     const n = document.querySelector('.north'), bl = document.querySelector('.maplibregl-ctrl-bottom-left');
-    if (n && bl) { n.classList.add('maplibregl-ctrl', 'ga-north'); bl.appendChild(n); } }
+    if (n && bl) { n.classList.add('maplibregl-ctrl', 'ga-north'); bl.appendChild(n); // after the scale bar: scale bar, then arrow (every language)
+      // 5.31: the glyph is pure geometry centred in a 14 × 20 view box (triangle + an "N" drawn as a path, no font metrics):
+      // the group spans x 1.5–12.5 and y 0.5–19.5, so its centre is the box centre (7, 10); the box centres the svg with flex
+      const svg = n.querySelector('svg'); if (svg) svg.outerHTML = '<svg viewBox="0 0 14 20" width="14" height="20" aria-hidden="true"><path class="ga-n-tri" d="M7 0.5 L12.5 12 L7 9.2 L1.5 12 Z" fill="currentColor"/><path class="ga-n-n" d="M4.5 19.5 V14 L9.5 19.5 V14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="miter" stroke-linecap="butt"/></svg>'; } }
   // + / − (and =, numpad) zoom from anywhere unless the visitor is typing, a page or dialog is open, or a tour is running
   document.addEventListener('keydown', (e) => {
     if (e.altKey || e.ctrlKey || e.metaKey) return; const k = e.key; const zin = k === '+' || k === '=' || k === 'Add', zout = k === '-' || k === '_' || k === 'Subtract'; if (!zin && !zout) return;

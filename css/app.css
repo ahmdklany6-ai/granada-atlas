@@ -1046,10 +1046,12 @@ body.atlas .maplibregl-ctrl-top-right .maplibregl-ctrl { margin: 0; float: none;
 body.atlas .ga-3dctl { display: flex; } body.atlas .ga-3dctl button { height: 30px; }
 /* north arrow + scale bar: one small group in the bottom-left corner (every language), lifted above the atlas panel /
    bottom sheet when they would meet (atlas.js placeNorth) */
-body.atlas .maplibregl-ctrl-bottom-left { left: 8px; bottom: 6px; display: flex; flex-direction: row; align-items: flex-end; gap: 6px; direction: ltr; }
+body.atlas .maplibregl-ctrl-bottom-left { left: 8px; bottom: 6px; display: flex; flex-direction: row; align-items: flex-end; gap: 7px; direction: ltr; }
+/* 5.31: scale bar, then north arrow, same 26 px height, bottoms on one line (every language, never mirrored) */
+body.atlas .maplibregl-ctrl-bottom-left .maplibregl-ctrl-scale { height: 26px; box-sizing: border-box; display: flex; align-items: flex-end; padding: 0 5px 3px; line-height: 1; }
 body.atlas .maplibregl-ctrl-bottom-left .maplibregl-ctrl { margin: 0; float: none; clear: none; }
-body.atlas .ga-north { order: -1; position: static; display: flex !important; align-items: center; justify-content: center; width: 22px; height: 28px; background: rgba(255, 255, 255, .92); border: 1px solid var(--ink); border-radius: 2px; color: var(--ink); top: auto; right: auto; }
-body.atlas .ga-north svg { width: 13px; height: 22px; }
+body.atlas .ga-north { position: static; display: flex !important; align-items: center; justify-content: center; width: 22px; height: 26px; box-sizing: border-box; padding: 0; background: rgba(255, 255, 255, .92); border: 1px solid var(--ink); border-radius: 2px; color: var(--ink); top: auto; right: auto; }
+body.atlas .ga-north svg { width: 14px; height: 20px; display: block; flex: none; }
 @media (min-width: 701px) { body.atlas .atl-panel { bottom: 42px; } body.atlas .tour-card { bottom: 42px; } } /* room for the north + scale group under them */
 body.atlas.view-3d .ga-north { display: none !important; } /* the map can be rotated in 3D: the north arrow would be wrong */
 /* 5.29 model workshop preset (js/modelprint.js) at the top of Print layout */

@@ -1,4 +1,4 @@
-# Granada Atlas — handoff (state at build 5.30, 10 Nov 2026)
+# Granada Atlas — handoff (state at build 5.31, 10 Nov 2026)
 
 This document lets a new Claude Code session continue the project without the original chat. Short operating rules
 are in `CLAUDE.md`; feature and data documentation is in `README.md`.
@@ -10,11 +10,11 @@ are in `CLAUDE.md`; feature and data documentation is in `README.md`.
 | Repository | GitHub `ahmdklany6-ai/granada-atlas` (back since 10 Nov 2026 after a one-day suspension, ticket #4976314). Work branch `claude/vigilant-ritchie-wammdd`; `main` deploys. The GitLab copy `gitlab.com/ahmdklany6/granada-atlas` is frozen at 5.29 and no longer updated |
 | Live site | **https://ahmdklany6-ai.github.io/granada-atlas/** (GitHub Pages from `main`). The GitLab site https://granada-atlas-597777.gitlab.io/ still shows 5.29 (left in place, not updated) |
 | Publishing from a cloud session | push the work branch, open a PR to `main` and merge it (GitHub MCP tools); GitHub Pages deploys `main`. Verify with the `live-check` workflow (workflow_dispatch, script `live_atlas.py`) — this sandbox cannot open *.github.io. The GitLab API route (§28–31) is retired |
-| Current build | **5.30** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.30` asset queries) |
-| Latest feature work | 5.30: back on GitHub, merged with the other session's axonometric human dimension (§32). 5.29: map screen layout + model workshop print preset (§31). 5.28: city growth extents as a normal layer, OFF by default (§30). 5.27: opening page and story tour (see §29). 5.26: fixes from the 5.25 live review, factory analysis frame, GIF export (§28) |
+| Current build | **5.31** (`version.json`, `window.GA_BUILD` in `index.html`, all `?v=5.31` asset queries) |
+| Latest feature work | 5.31: north arrow to the right of the scale bar, centred glyph (§33). 5.30: back on GitHub, merged with the other session's axonometric human dimension (§32). 5.29: map screen layout + model workshop print preset (§31). 5.28: city growth extents as a normal layer, OFF by default (§30). 5.27: opening page and story tour (see §29). 5.26: fixes from the 5.25 live review, factory analysis frame, GIF export (§28) |
 | Data version | `2026-11-10-v16` in `data/manifest.json` (5.30 merge; 5.27: `base_edge`, `tour_area`; 5.26: `ex13f`) |
 
-Build history (newest first): 5.30 back on GitHub; merged with the other session's "5.26" (axonometric human dimension, now a second artistic style) · 5.29 map screen (no zoom buttons, controls top-right, north + scale, language and analysis buttons in the top bar) and the model workshop (40 × 40 cm) print preset · 5.28 city growth as a switchable layer (OFF by default) · 5.27 opening page and story tour (base → five towns → agglomeration) · 5.26 fixes from the 5.25 review (RTL typography, legend follows the topic, phone chrome, LTR numbers), old test failures fixed, factory analysis frame, metro stations, GIF export · 5.25 Atlas shell (☰ menu, WHERE × WHAT) · 5.24–5.22 Exercise 1.3 artistic maps · 5.21 Southern axis page with the two research boards · 5.20 southern-axis essentials layers (metro extension, 1931 tram, Escúzar / IFMIF-DONES) on by default · 5.19 print up to 700 dpi built in strips · 5.18 print at full resolution + "Map only" template · 5.17 / 5.16 Exercise 1.3 identity card · 5.15 one card format, historical extents · 5.14 current study area red on the locator · 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
+Build history (newest first): 5.31 north arrow right of the scale bar, centred · 5.30 back on GitHub; merged with the other session's "5.26" (axonometric human dimension, now a second artistic style) · 5.29 map screen (no zoom buttons, controls top-right, north + scale, language and analysis buttons in the top bar) and the model workshop (40 × 40 cm) print preset · 5.28 city growth as a switchable layer (OFF by default) · 5.27 opening page and story tour (base → five towns → agglomeration) · 5.26 fixes from the 5.25 review (RTL typography, legend follows the topic, phone chrome, LTR numbers), old test failures fixed, factory analysis frame, metro stations, GIF export · 5.25 Atlas shell (☰ menu, WHERE × WHAT) · 5.24–5.22 Exercise 1.3 artistic maps · 5.21 Southern axis page with the two research boards · 5.20 southern-axis essentials layers (metro extension, 1931 tram, Escúzar / IFMIF-DONES) on by default · 5.19 print up to 700 dpi built in strips · 5.18 print at full resolution + "Map only" template · 5.17 / 5.16 Exercise 1.3 identity card · 5.15 one card format, historical extents · 5.14 current study area red on the locator · 5.13 olive tree cover, black study-area marks, complete analysis PDF, print scaling, PNOA blank detection · 5.12 historical place cards keep their grid with translation labels · 5.11 3D camera/terrain fix, opaque 3D, regional zoom, layers across zooms, climate snapshot, trees model + 3D trees, trilingual historical places · 5.10 legend placement, section trees in metres, street-detail view, historical framing and image cards, optional 3D · 5.9 colour hierarchy, infrastructure/water/climate layers, landmarks, print layout · 5.8 palette + grounded sections + floating panels · 5.7 street sections + submission states · 5.6 street-layer control, standalone sections,
 classified climate rasters, dashed fabric marks, historical red dots explained · 5.5/5.4 smooth building scales and
 street hierarchy at close zoom · 5.3 (v5) analysis page, viewers, unified Comparison, phone/iPad · v4/v3/v2 earlier.
 
@@ -907,3 +907,17 @@ object; labels in one ordered column; a simplified version was rejected — "bac
 - Data built once: `tools/build_ex13_human.py` → `data/ex13/art/human_ground.png`, `human_art.json` (run after
   `tools/build_ex13_art.py`). Colours `palette.ex13art.human`. Strings `js/i18n_v24.js`. Test `tests/ui_test_v24.py`.
 - Not yet on the site: the climate "stacked layers on the terrain" preview (approved look, not integrated).
+
+## 33. Build 5.31 — north arrow beside the scale bar, centred (owner request of 10 Nov 2026)
+
+- Order in the bottom-left group, every language (never mirrored): scale bar, then north arrow, 7 px apart, both 26 px
+  tall with their bottoms on one line (`css/app.css` 5.29 block + 5.31 rule for `.maplibregl-ctrl-scale`).
+- The arrow glyph is geometry, not text: a 14 × 20 SVG with the triangle and an "N" drawn as paths (`js/app.js`), the
+  group spanning x 1.5–12.5 / y 0.5–19.5 so its centre is the view-box centre; the 22 × 26 box centres the SVG with flex.
+- `placeNorth()` (js/atlas.js) now also keeps the group clear of the attribution (besides the atlas panel and tour card).
+- Print layout / map-only / PNG / PDF do not reuse this control: they draw their own north arrow (`GA.pages.northArrow`)
+  and scale bar on the sheet, so they are unchanged.
+- Test `tests/ui_test_v29.py`: 375–1440 px × ar / he / en, panel open and folded, device scale 2, tour step 1.
+- The owner's request still said "publish to GitLab"; the site had moved back to GitHub the same day (5.30), so 5.31 is
+  published on GitHub Pages.
+

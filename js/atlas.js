@@ -63,7 +63,7 @@
   // bottom-left: the atlas panel (floating, folded, or the phone bottom sheet) and the tour card — the group rises above it.
   function placeNorth() { const g = $('.maplibregl-ctrl-bottom-left'), st = $('.stage'); if (!g || !st) return;
     g.style.bottom = ''; const s = st.getBoundingClientRect(), r0 = g.getBoundingClientRect(); if (!r0.height) return;
-    let lift = 0; ['#atl-panel', '#tour-card'].forEach(sel => { const e = $(sel); if (!e || e.hidden || !e.offsetWidth || getComputedStyle(e).display === 'none') return; const q = e.getBoundingClientRect();
+    let lift = 0; ['#atl-panel', '#tour-card', '.maplibregl-ctrl-bottom-right'].forEach(sel => { const e = $(sel); if (!e || e.hidden || !e.offsetWidth || getComputedStyle(e).display === 'none') return; const q = e.getBoundingClientRect();
       const hit = !(r0.right <= q.left || r0.left >= q.right || r0.bottom <= q.top || r0.top >= q.bottom); if (hit) lift = Math.max(lift, Math.round(s.bottom - q.top + 4)); });
     if (lift) g.style.bottom = lift + 'px'; }
   // 5.29: the five analyses are always on screen — a row in the top bar (a strip under it below 1200 px, scrollable on
