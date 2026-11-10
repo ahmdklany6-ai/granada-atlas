@@ -189,6 +189,9 @@ try:
             seen = {}
             for layer, keys in ((3, ['A']), (4, ['B']), (5, ['A', 'B'])):
                 goto(pg, 2, layer)
+                try:  # the route source is prepared in the background: give it up to 10 s to draw before judging
+                    pg.wait_for_function(f'GA.app.map.queryRenderedFeatures({{ layers: {[f"tour-ends{k}" for k in keys]} }}).length >= {2 * len(keys)}', timeout=10000)
+                except Exception: pass
                 V = pg.evaluate('''() => { const m = GA.app.map; const vis = (id) => !!m.getLayer(id) && m.getLayoutProperty(id, 'visibility') === 'visible'; const P = (id, k) => m.getPaintProperty(id, k);
                   const signs = [...document.querySelectorAll('#tour-lbls .tour-sign')].map(e => { const r = e.querySelector('img').getBoundingClientRect(); return { n: +e.dataset.n, l: r.left, t: r.top, r: r.right, b: r.bottom, w: r.width }; });
                   const ov = []; for (let i = 0; i < signs.length; i++) for (let j = i + 1; j < signs.length; j++) { const a = signs[i], c = signs[j]; if (a.l < c.r - 0.5 && c.l < a.r - 0.5 && a.t < c.b - 0.5 && c.t < a.b - 0.5) ov.push([i, j]); }
