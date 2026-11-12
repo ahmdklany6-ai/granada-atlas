@@ -1,0 +1,147 @@
+{
+ "extent": [
+  439000,
+  4105000,
+  448000,
+  4113500
+ ],
+ "cell_m": 25,
+ "epsg": 25830,
+ "classes": [
+  [
+   null,
+   0,
+   "above",
+   [
+    41,
+    16,
+    12,
+    235
+   ]
+  ],
+  [
+   0,
+   15,
+   "0-15",
+   [
+    90,
+    29,
+    34,
+    200
+   ]
+  ],
+  [
+   15,
+   30,
+   "15-30",
+   [
+    153,
+    43,
+    42,
+    150
+   ]
+  ],
+  [
+   30,
+   60,
+   "30-60",
+   [
+    201,
+    139,
+    128,
+    85
+   ]
+  ]
+ ],
+ "towns": {
+  "Armilla": {
+   "ground": 669,
+   "limit": 746,
+   "allowed": 77
+  },
+  "Churriana de la Vega": {
+   "ground": 656,
+   "limit": 746,
+   "allowed": 90
+  },
+  "Las Gabias": {
+   "ground": 682,
+   "limit": 982,
+   "allowed": 300
+  },
+  "Alhendín": {
+   "ground": 739,
+   "limit": 761,
+   "allowed": 22
+  },
+  "Ogíjares": {
+   "ground": 720,
+   "limit": 899,
+   "allowed": 179
+  }
+ },
+ "files": [
+  {
+   "file": "Armilla_SO_Hoja05_H-PAPI_RWY02.kmz",
+   "vertices": 88,
+   "z": [
+    677.4,
+    1380.6
+   ]
+  },
+  {
+   "file": "LEGA_SA_Aerodromo.kmz",
+   "vertices": 21371,
+   "z": [
+    676.2,
+    781.1
+   ]
+  },
+  {
+   "file": "Armilla_SO_Hoja01_TACAN.kmz",
+   "vertices": 1512,
+   "z": [
+    750.7,
+    1538.0
+   ]
+  },
+  {
+   "file": "Armilla_SO_Hoja02_PAPI_RWY18.kmz",
+   "vertices": 86,
+   "z": [
+    676.2,
+    1379.4
+   ]
+  },
+  {
+   "file": "Armilla_SO_Hoja03_PAPI_RWY36.kmz",
+   "vertices": 86,
+   "z": [
+    701.1,
+    1404.3
+   ]
+  },
+  {
+   "file": "Armilla_SO_Hoja04_H-PAPI_RWY20.kmz",
+   "vertices": 88,
+   "z": [
+    677.6,
+    1380.8
+   ]
+  }
+ ],
+ "share_below_m": {
+  "0": 0.6,
+  "15": 4.8,
+  "30": 15.1,
+  "60": 29.6
+ },
+ "decree": "Real Decreto 118/2019, de 1 de marzo (BOE núm. 98, 24/04/2019, BOE-A-2019-6129)",
+ "reference_point_m": 701.1,
+ "thresholds_m": {
+  "18": 676.2,
+  "36": 701.1
+ },
+ "source": "Origen de los datos: Ministerio de Defensa (SDG Patrimonio, servidumbres aeronáuticas Base Aérea de Armilla, KMZ). Ground: IGN MDT25, CC BY 4.0.",
+ "method": "lowest limit surface (linear TIN between the drawn 3D lines of each file) minus ground, 25 m grid — an approximation, not the legal value"
+}

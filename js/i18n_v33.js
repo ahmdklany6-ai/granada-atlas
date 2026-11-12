@@ -1,0 +1,25 @@
+/* v33 strings (build 5.42): Exercise 2.1 (Scale) — the Base Aérea de Armilla as a closed island in the growing south.
+   City level (1:10,000): the base, its band and fence, dead ends and detours, the metro extension, the aeronautical
+   height limits (RD 118/2019, Ministry of Defence data). [ar, he, en]. Numbers stay left-to-right. */
+(function (root) {
+  root.GA.i18n.add({
+    'x34.base': ['قاعدة أرميا الجوية', 'בסיס חיל האוויר ארמייה', 'Base Aérea de Armilla'],
+    'x34.lg.base': ['القاعدة الجوية: أرض مغلقة (OSM، 371 هكتار)', 'הבסיס: שטח סגור (OSM, ‎371 ha‎)', 'Air base: closed land (OSM, 371 ha)'],
+    'x34.lg.band': ['حزام ‎300 m‎ حول السياج', 'רצועת ‎300 m‎ סביב הגדר', '300 m band around the fence'],
+    'x34.lg.fence.housing': ['السياج بجانب سكن', 'הגדר ליד מגורים', 'Fence next to housing'],
+    'x34.lg.fence.open': ['السياج بجانب أرض مفتوحة', 'הגדר ליד שטח פתוח', 'Fence next to open land'],
+    'x34.lg.fence.road': ['السياج بجانب شارع رئيسي', 'הגדר ליד כביש ראשי', 'Fence next to a main road'],
+    'x34.lg.fence.green': ['السياج بجانب حديقة أو خضرة', 'הגדר ליד גינה או ירוק', 'Fence next to parks or green'],
+    'x34.lg.fence.industry': ['السياج بجانب صناعة', 'הגדר ליד תעשייה', 'Fence next to industry'],
+    'x34.lg.route': ['طريق المشي حول القاعدة (المسافة × الخط المستقيم)', 'מסלול הליכה סביב הבסיס (מרחק × קו ישר)', 'Walking route around the base (distance × straight line)'],
+    'x34.lg.dead': ['طريق مسدود عند السياج', 'דרך ללא מוצא ליד הגדר', 'Dead end at the fence'],
+    'x34.lg.metro': ['تمديد المترو 1 قيد الإنشاء (OSM)', 'הארכת המטרו 1 בבנייה (OSM)', 'Metro line 1 extension under construction (OSM)'],
+    'x34.lg.h.above': ['الأرض أعلى من سطح القيد الجوي', 'הקרקע מעל משטח ההגבלה', 'Ground already above the height-limit surface'],
+    'x34.lg.h.0-15': ['ارتفاع مسموح ‎0–15 m‎ (تقريب)', 'גובה מותר ‎0–15 m‎ (קירוב)', 'Allowed height 0–15 m (approx.)'],
+    'x34.lg.h.15-30': ['ارتفاع مسموح ‎15–30 m‎', 'גובה מותר ‎15–30 m‎', 'Allowed height 15–30 m'],
+    'x34.lg.h.30-60': ['ارتفاع مسموح ‎30–60 m‎', 'גובה מותר ‎30–60 m‎', 'Allowed height 30–60 m'],
+    'x34.lg.built': ['مبانٍ (OSM)', 'מבנים (OSM)', 'Buildings (OSM)'],
+    'x34.lg.muni2': ['حدود البلديات (النسبة عند كل بلدة = تغيّر السكان 2015→2025، INE)', 'גבולות רשויות (האחוז ליד כל עיירה = שינוי תושבים 2015→2025, INE)', 'Municipal boundaries (the % at each town = residents change 2015→2025, INE)'],
+    'x34.lg.muni': ['حدود البلديات؛ اللون = تغيّر السكان 2015→2025 (INE)', 'גבולות רשויות; צבע = שינוי תושבים 2015→2025 (INE)', 'Municipal boundaries; tint = residents change 2015→2025 (INE)'],
+  });
+})(window);

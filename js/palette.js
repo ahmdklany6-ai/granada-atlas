@@ -155,6 +155,13 @@
     townFill: RED, townFillAlpha: 0.3, townEdge: RED, routeA: D.blueDeep, routeB: D.oliveMid, routeCase: '#FFFFFF',
     sign: { plate: D.blueDeep, bar: '#FFFFFF', stop: RED }, choroAlpha: 0.5, muniLight: '#FFFFFF', halo: '#FFFFFF', fade: 0.3,
   };
+  // 5.42 — Exercise 2.1 (Scale), Base Aérea de Armilla: the closed base, its 300 m band, the aeronautical height limits
+  // (allowed height above ground; tools/build_ex21_easements.py bakes the same four colours into data/ex21/allowed_height.png)
+  P.ex21 = {
+    base: BASE.wine, baseLine: BASE.brown, runway: '#FFFFFF', band: D.khakiPale, bandLine: BASE.khaki, built: D.stone, street: D.warmGrey2,
+    muni: D.warmGrey, metro: D.blueDark, route: D.blueDeep, straight: BASE.brown, dead: RED, town: BASE.brown,
+    height: { above: D.ink, '0-15': BASE.oxblood, '15-30': RED, '30-60': D.rose }, fence: P.tour.fence,
+  };
   // 5.28 — "City growth (built-up extent 1932–2020)" layer (js/layers_growth.js): one fill per period, oldest → newest
   // (traced periods in the dark red family, GHSL epochs in the khaki family); the selected period is outlined in red.
   // Map paint and legend read the same array.
