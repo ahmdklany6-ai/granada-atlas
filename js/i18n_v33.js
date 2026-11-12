@@ -3,6 +3,10 @@
    height limits (RD 118/2019, Ministry of Defence data). [ar, he, en]. Numbers stay left-to-right. */
 (function (root) {
   root.GA.i18n.add({
+    'x34.gap.chg': ['تغيّر السكان 2015→2025 (INE)', 'שינוי תושבים 2015→2025 (INE)', 'Residents change 2015→2025 (INE)'],
+    'x34.gap.inc': ['صافي الدخل للفرد 2024 (INE ADRH)', 'הכנסה נטו לנפש 2024 (INE ADRH)', 'Net income per person 2024 (INE ADRH)'],
+    'x34.gap.rent': ['مؤشر الإيجار 2024، 2015 = 100 (INE IPVA)', 'מדד שכר דירה 2024, 2015 = 100 (INE IPVA)', 'Rent index 2024, 2015 = 100 (INE IPVA)'],
+    'x34.gap.title': ['الفروقات: البلدات الخمس حول القاعدة مقابل مدينة غرناطة', 'הפערים: חמש העיירות סביב הבסיס מול העיר גרנדה', 'The gaps: the five towns around the base vs Granada city'],
     'x34.base': ['قاعدة أرميا الجوية', 'בסיס חיל האוויר ארמייה', 'Base Aérea de Armilla'],
     'x34.lg.base': ['القاعدة الجوية: أرض مغلقة (OSM، 371 هكتار)', 'הבסיס: שטח סגור (OSM, ‎371 ha‎)', 'Air base: closed land (OSM, 371 ha)'],
     'x34.lg.band': ['حزام ‎300 m‎ حول السياج', 'רצועת ‎300 m‎ סביב הגדר', '300 m band around the fence'],

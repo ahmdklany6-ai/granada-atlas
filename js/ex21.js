@@ -75,11 +75,43 @@
     ctx.fillText('0', bx, by - 5 * k); ctx.fillText('500', bx + km / 2, by - 5 * k); ctx.fillText('1 km', bx + km, by - 5 * k);
     return true;
   }
+  // the GAPS (owner request, 12 Nov 2026): three small maps of the agglomeration (34 municipalities, INE) — residents
+  // change 2015 → 2025, net income per person (ADRH), rent index (IPVA, 2015 = 100) — the base solid, the five towns
+  // outlined; then the same three values as bars for Granada city and each of the five towns
+  function drawGaps(ctx, x, y, w, h, o) {
+    o = o || {}; if (!D) return false; const pal = P(), T = pal.tour, C = pal.ex21; const t = o.t || ((s) => s); const F = root.GA.pages.font(); const k = o.k || w / 1000;
+    const font = (sz, wt) => `${wt || 600} ${Math.round(sz * k)}px ${F}`; const rtl = root.GA.i18n.dir() === 'rtl';
+    const cls = (v, br, cols) => { if (v == null) return null; let i = 0; while (i < br.length && v >= br[i]) i++; return cols[i]; };
+    const vars = [['chg', T.chgBreaks, T.chg, (v) => (v > 0 ? '+' : '') + v.toFixed(1) + ' %', 'x34.gap.chg'], ['inc', T.incBreaks, T.inc, (v) => '€' + Math.round(v).toLocaleString('en-US'), 'x34.gap.inc'], ['rent', T.rentBreaks, T.rent, (v) => v.toFixed(1), 'x34.gap.rent']];
+    // fit the 34 municipalities
+    let a0 = 1e12, b0 = 1e12, a1 = -1e12, b1 = -1e12; D.area.forEach(m => m.g.forEach(r => r.forEach(([u, v]) => { a0 = Math.min(a0, u); b0 = Math.min(b0, v); a1 = Math.max(a1, u); b1 = Math.max(b1, v); })));
+    const gap = 26 * k, mw = (w - 2 * gap) / 3, mh = Math.min(h * 0.62, mw * (b1 - b0) / (a1 - a0)); const sc = Math.min(mw / (a1 - a0), mh / (b1 - b0));
+    vars.forEach(([key, br, cols, fmt, title], i) => { const ox = x + (rtl ? 2 - i : i) * (mw + gap), oy = y + 34 * k; const X = (u) => ox + (u - a0) * sc + (mw - (a1 - a0) * sc) / 2, Y = (v) => oy + (b1 - v) * sc;
+      const path = (rs) => { ctx.beginPath(); rs.forEach(r => r.forEach((p, j) => j ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); ctx.closePath(); };
+      ctx.font = font(13, 700); ctx.fillStyle = pal.ink; ctx.textAlign = rtl ? 'right' : 'left'; ctx.direction = rtl ? 'rtl' : 'ltr'; ctx.textBaseline = 'alphabetic'; ctx.fillText(t(title), rtl ? ox + mw : ox, y + 16 * k);
+      D.area.forEach(m => { path(m.g); const c = cls(m.p[key], br, cols); if (c) { ctx.fillStyle = c; ctx.fill('evenodd'); } else { ctx.save(); ctx.clip('evenodd'); ctx.strokeStyle = T.missing; ctx.lineWidth = 1 * k; ctx.beginPath(); for (let q = -mh; q < mw + mh; q += 5 * k) { ctx.moveTo(ox + q, oy + mh); ctx.lineTo(ox + q + mh, oy); } ctx.stroke(); ctx.restore(); }
+        path(m.g); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 0.8 * k; ctx.stroke(); });
+      D.area.filter(m => m.p.five || m.p.name === 'Granada').forEach(m => { path(m.g); ctx.strokeStyle = m.p.five ? pal.ink : C.metro; ctx.lineWidth = (m.p.five ? 1.8 : 2.4) * k; ctx.stroke(); });
+      const base = D.edge.find(f => f.p.k === 'base'); if (base) { path(base.g); ctx.fillStyle = C.base; ctx.fill(); }
+      // class legend under the map
+      const lx = ox, ly = oy + mh + 14 * k, cw = mw / cols.length; cols.forEach((c, j) => { ctx.fillStyle = c; ctx.fillRect(lx + j * cw, ly, cw - 2 * k, 10 * k); });
+      ctx.font = font(9, 500); ctx.fillStyle = pal.ink2; ctx.textAlign = 'center'; ctx.direction = 'ltr'; br.forEach((b, j) => ctx.fillText(key === 'inc' ? (b / 1000) + 'k' : String(b), lx + (j + 1) * cw - 1 * k, ly + 22 * k)); });
+    // bars: Granada city and the five towns
+    const rows = D.area.filter(m => m.p.name === 'Granada' || m.p.five).sort((p, q) => (p.p.name === 'Granada' ? -1 : q.p.name === 'Granada' ? 1 : q.p.chg - p.p.chg));
+    const by = y + 34 * k + mh + 46 * k, rh = (y + h - by) / rows.length;
+    vars.forEach(([key, br, cols, fmt], i) => { const ox = x + (rtl ? 2 - i : i) * (mw + gap); const base0 = key === 'rent' ? 100 : 0; /* the rent index starts at 100 (2015) */ const vals = rows.map(m => m.p[key]).filter(v => v != null); const vmax = Math.max(...vals.map(v => Math.abs(v - base0))) * 1.15; const lab = 92 * k, bw = mw - lab - 54 * k;
+      rows.forEach((m, j) => { const cy = by + rh * (j + 0.5), v = m.p[key]; const bx = rtl ? ox + mw - lab : ox + lab;
+        ctx.font = font(9.5, m.p.name === 'Granada' ? 700 : 500); ctx.fillStyle = pal.ink; ctx.textAlign = rtl ? 'left' : 'right'; ctx.direction = 'ltr'; ctx.textBaseline = 'middle'; ctx.fillText(m.p.name.replace(' de la Vega', ''), rtl ? bx + 6 * k : bx - 6 * k, cy);
+        if (v == null) { ctx.fillStyle = pal.ink3; ctx.textAlign = rtl ? 'right' : 'left'; ctx.fillText('—', rtl ? bx - 4 * k : bx + 4 * k, cy); return; }
+        const L = Math.abs(v - base0) / vmax * bw; ctx.fillStyle = cls(v, br, cols); ctx.fillRect(rtl ? bx - L : bx, cy - rh * 0.3, L, rh * 0.6); ctx.strokeStyle = 'rgba(41,16,12,.25)'; ctx.lineWidth = 1; ctx.strokeRect(rtl ? bx - L : bx, cy - rh * 0.3, L, rh * 0.6);
+        ctx.fillStyle = pal.ink; ctx.font = font(9.5, 700); ctx.textAlign = rtl ? 'right' : 'left'; ctx.fillText(fmt(v), rtl ? bx - L - 5 * k : bx + L + 5 * k, cy); }); });
+    return true;
+  }
   function cityLegend(t) { const C = P().ex21, T = P().tour;
     return [{ sw: C.base, label: t('x34.lg.base') }, { hatch: C.bandLine, label: t('x34.lg.band') }]
       .concat(Object.keys(C.fence).map(c => ({ line: C.fence[c], w: 3, label: t('x34.lg.fence.' + c) })))
       .concat([{ line: C.route, w: 2, dash: true, label: t('x34.lg.route') }, { line: C.dead, w: 2, label: t('x34.lg.dead') }, { line: C.metro, w: 4, rail: true, label: t('x34.lg.metro') }])
       .concat(Object.keys(C.height).map(c => ({ sw: C.height[c], label: t('x34.lg.h.' + c) })))
       .concat([{ sw: C.built, label: t('x34.lg.built') }, { line: C.muni, dash: true, w: 1, label: t('x34.lg.muni2') }]); }
-  root.GA.ex21 = { ready, drawCity, cityLegend, CITY, get data() { return D; } };
+  root.GA.ex21 = { ready, drawCity, drawGaps, cityLegend, CITY, get data() { return D; } };
 })(window);
