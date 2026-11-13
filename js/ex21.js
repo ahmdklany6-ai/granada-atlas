@@ -133,6 +133,79 @@
     ctx.restore(); ctx.font = font(9.5, 700); ctx.fillStyle = pal.ink; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(t('x34.inset.title'), x + 8 * k, y + 16 * k);
     ctx.font = font(8, 500); ctx.fillStyle = pal.ink2; const m = D.l1.meta; ctx.fillText(t('x34.inset.meta', { n: m.stops.length, d: m.duration_min, i: m.interval_min }), x + 8 * k, y + 28 * k);
     ctx.fillText(t('x34.inset.src'), x + 8 * k, y + h - 8 * k); }
+  // ---------- AREA level (1:500): four 130 m windows on the edge (data/ex21/areas.json, tools/build_ex21_areas.py) ----------
+  let AR = null, ARp = null;
+  function readyAreas() { if (ARp) return ARp; ARp = fetch('data/ex21/areas.json?v=' + (root.GA_BUILD || '')).then(r => r.json()).then(j => (AR = j)).catch(e => { ARp = null; throw e; }); return ARp; }
+  const floorsCol = (lv) => { const b = P().band; return lv == null ? null : lv <= 2 ? b['1-2'] : lv <= 4 ? b['3-4'] : lv <= 8 ? b['5-8'] : b['9+']; };
+  function drawArea(ctx, x, y, S, id, o) {
+    o = o || {}; const A = AR && AR.areas.find(a => a.id === id); if (!A) return false; const pal = P(), C = pal.ex21, LU = pal.landuse; const t = o.t || ((s) => s); const F = root.GA.pages.font(); const k = o.k || S / 1000;
+    const e = A.extent, mpp = (e[2] - e[0]) / S; const X = (u) => x + (u - e[0]) / mpp, Y = (v) => y + (e[3] - v) / mpp; const font = (sz, wt) => `${wt || 600} ${Math.round(sz * k)}px ${F}`;
+    const path = (rs, close) => { ctx.beginPath(); rs.forEach(rr => rr.forEach(r => r.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1]))))); if (close) ctx.closePath(); };
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, S, S); ctx.clip(); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(x, y, S, S); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    // land use (OSM), light
+    A.landuse.forEach(l => { const c = { residential: LU.residential, industrial: LU.industrial, commercial: LU.commercial, retail: LU.commercial, farmland: LU.agri, meadow: LU.agri, orchard: LU.agri, grass: LU.green, construction: LU.construction }[l.lu]; if (!c) return; path(l.r, true); ctx.globalAlpha = 0.22; ctx.fillStyle = c; ctx.fill('evenodd'); ctx.globalAlpha = 1; });
+    // the base
+    path(A.base, true); ctx.fillStyle = C.base; ctx.fill('evenodd');
+    // streets and paths (OSM): width by type, paths dashed
+    const W = { motorway: 9, trunk: 8, primary: 7, secondary: 6, tertiary: 5, residential: 4, living_street: 3.5, unclassified: 4, service: 2.6, pedestrian: 3, footway: 1.4, path: 1.4, cycleway: 1.4, track: 2, steps: 1.4 };
+    A.streets.forEach(st => { const w0 = (W[st.hw] || 2) / mpp * 1.0; ctx.strokeStyle = C.street; ctx.lineWidth = Math.max(1, w0); ctx.setLineDash(/footway|path|cycleway|track|steps/.test(st.hw) ? [4 * k, 3 * k] : []); path(st.r); ctx.stroke(); ctx.setLineDash([]); });
+    // buildings by floors (OSM building:levels), outline; unknown = hatched
+    A.buildings.forEach(b => { path(b.r, true); const c = floorsCol(b.lv); if (c) { ctx.fillStyle = c; ctx.fill('evenodd'); } ctx.strokeStyle = pal.ink; ctx.lineWidth = 0.7 * k; ctx.stroke(); });
+    // trees (OSM)
+    A.trees.forEach(([u, v]) => { ctx.beginPath(); ctx.arc(X(u), Y(v), 2.2 / mpp, 0, 7); ctx.fillStyle = 'rgba(126,123,67,.35)'; ctx.fill(); ctx.strokeStyle = pal.olive; ctx.lineWidth = 0.8 * k; ctx.stroke(); });
+    // the fence by what lies outside it, dead ends, metro
+    A.fence.forEach(f => { ctx.strokeStyle = C.fence[f.c] || C.baseLine; ctx.lineWidth = 7 * k; path(f.r); ctx.stroke(); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.2 * k; ctx.setLineDash([2 * k, 5 * k]); path(f.r); ctx.stroke(); ctx.setLineDash([]); });
+    A.metro.forEach(m => { if (m.k === 'track') { ctx.strokeStyle = C.metro; ctx.lineWidth = 8 * k; path(m.r); ctx.stroke(); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 3 * k; ctx.setLineDash([9 * k, 9 * k]); path(m.r); ctx.stroke(); ctx.setLineDash([]); } });
+    A.dead.forEach(([u, v]) => { ctx.beginPath(); ctx.arc(X(u), Y(v), 9 * k, 0, 7); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.strokeStyle = C.dead; ctx.lineWidth = 3.4 * k; ctx.stroke(); ctx.beginPath(); ctx.moveTo(X(u) - 5 * k, Y(v)); ctx.lineTo(X(u) + 5 * k, Y(v)); ctx.stroke(); });
+    // street names (OSM)
+    ctx.font = font(9.5, 500); ctx.fillStyle = pal.ink2; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; const named = new Set();
+    A.streets.forEach(st => { if (!st.nm || named.has(st.nm) || /footway|path|service|track/.test(st.hw)) return; const r = st.r[0] && st.r[0][0]; if (!r || r.length < 2) return; const i = Math.floor(r.length / 2), p0 = r[Math.max(0, i - 1)], p1 = r[Math.min(r.length - 1, i)];
+      let ang = Math.atan2(-(p1[1] - p0[1]), p1[0] - p0[0]); if (ang > Math.PI / 2) ang -= Math.PI; if (ang < -Math.PI / 2) ang += Math.PI; ctx.save(); ctx.translate(X((p0[0] + p1[0]) / 2), Y((p0[1] + p1[1]) / 2)); ctx.rotate(ang); ctx.lineWidth = 3 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(st.nm, 0, 0); ctx.fillText(st.nm, 0, 0); ctx.restore(); named.add(st.nm); });
+    // section line A–A′
+    const sa = A.section.a, sb = A.section.b; ctx.strokeStyle = pal.red; ctx.lineWidth = 1.8 * k; ctx.setLineDash([10 * k, 5 * k]); ctx.beginPath(); ctx.moveTo(X(sa[0]), Y(sa[1])); ctx.lineTo(X(sb[0]), Y(sb[1])); ctx.stroke(); ctx.setLineDash([]);
+    [[sa, A.id], [sb, A.id + '′']].forEach(([p, n]) => { ctx.beginPath(); ctx.arc(X(p[0]), Y(p[1]), 11 * k, 0, 7); ctx.fillStyle = pal.red; ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.font = font(12, 700); ctx.textAlign = 'center'; ctx.fillText(n, X(p[0]), Y(p[1]) + 0.5 * k); });
+    ctx.restore(); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.2 * k; ctx.strokeRect(x + 0.5, y + 0.5, S - 1, S - 1);
+    root.GA.pages.northArrow(ctx, x + S - 26 * k, y + 18 * k, 1.2 * k);
+    // scale bar 0–10–20–50 m
+    const m50 = 50 / mpp, bx = x + 16 * k, by = y + S - 20 * k; ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(bx - 6 * k, by - 20 * k, m50 + 46 * k, 30 * k); ctx.fillStyle = pal.ink;
+    [[0, 10], [20, 30], [40, 50]].forEach(([a, b]) => ctx.fillRect(bx + a / mpp, by, (b - a) / mpp, 5 * k)); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1 * k; ctx.strokeRect(bx, by, m50, 5 * k);
+    ctx.font = font(9.5, 500); ctx.textAlign = 'center'; ctx.direction = 'ltr'; ctx.textBaseline = 'alphabetic'; ['0', '10', '20', '50 m'].forEach((s0, i) => ctx.fillText(s0, bx + [0, 10, 20, 50][i] / mpp, by - 4 * k));
+    return true;
+  }
+  // the section across the fence, true scale (1:500 both ways); building heights = floors × 3 m (estimate)
+  function drawSection(ctx, x, y, w, h, id, o) {
+    o = o || {}; const A = AR && AR.areas.find(a => a.id === id); if (!A) return false; const pal = P(), C = pal.ex21; const t = o.t || ((s) => s); const F = root.GA.pages.font(); const k = o.k || w / 1000;
+    const font = (sz, wt) => `${wt || 600} ${Math.round(sz * k)}px ${F}`; const sm = A.section.samples, L = sm[sm.length - 1][0];
+    const zmin = Math.min(...sm.map(s => s[1])) - 4; const sc = w / L; /* true scale both ways (1:500 when the map is) */ const ox = x, oy = y + h; const zTop = zmin + h / sc;
+    const X = (d) => ox + d * sc, Z = (z) => oy - (z - zmin) * sc;
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+    // ground
+    ctx.beginPath(); ctx.moveTo(X(0), oy); sm.forEach(s => ctx.lineTo(X(s[0]), Z(s[1]))); ctx.lineTo(X(L), oy); ctx.closePath(); ctx.fillStyle = pal.base.cream; ctx.fill(); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.6 * k; ctx.beginPath(); sm.forEach((s, i) => i ? ctx.lineTo(X(s[0]), Z(s[1])) : ctx.moveTo(X(s[0]), Z(s[1]))); ctx.stroke();
+    // the base side
+    const fa = A.section.fence_at_m; ctx.fillStyle = C.base; ctx.globalAlpha = 0.18; ctx.fillRect(X(fa), y, X(L) - X(fa), h); ctx.globalAlpha = 1;
+    // buildings
+    const gAt = (d) => { const i = Math.max(0, Math.min(sm.length - 1, Math.round(d))); return sm[i][1]; };
+    A.section.cuts.forEach(c => { const g = Math.min(gAt(c.s0), gAt(c.s1)); if (c.h_est == null) { ctx.strokeStyle = pal.ink3; ctx.setLineDash([3 * k, 3 * k]); ctx.strokeRect(X(c.s0), Z(g + 6), (c.s1 - c.s0) * sc, 6 * sc); ctx.setLineDash([]); return; }
+      ctx.fillStyle = floorsCol(c.lv); ctx.fillRect(X(c.s0), Z(g + c.h_est), (c.s1 - c.s0) * sc, c.h_est * sc); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1 * k; ctx.strokeRect(X(c.s0), Z(g + c.h_est), (c.s1 - c.s0) * sc, c.h_est * sc);
+      ctx.font = font(9, 600); ctx.fillStyle = pal.ink; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.fillText(c.lv + 'F', X((c.s0 + c.s1) / 2), Z(g + c.h_est) - 2 * k); });
+    // fence (height not mapped)
+    ctx.strokeStyle = C.fence[A.kind] || C.baseLine; ctx.lineWidth = 4 * k; ctx.beginPath(); ctx.moveTo(X(fa), Z(gAt(fa))); ctx.lineTo(X(fa), Z(gAt(fa) + 2.5)); ctx.stroke();
+    // the limit surface
+    const top = y + 18 * k; const ZL = (z) => z > zTop - 18 / sc * k ? top : Z(z);
+    ctx.strokeStyle = pal.red; ctx.lineWidth = 2 * k; ctx.setLineDash([12 * k, 6 * k]); ctx.beginPath(); sm.forEach((s, i) => { if (!isFinite(s[2])) return; i ? ctx.lineTo(X(s[0]), ZL(s[2])) : ctx.moveTo(X(s[0]), ZL(s[2])); }); ctx.stroke(); ctx.setLineDash([]);
+    // where the surface is higher than the drawing: a break (zigzag) on the line, the true height written
+    sm.forEach((s, i) => { if (i % 40 !== 20 || !(s[2] > zTop - 18 / sc * k)) return; const px = X(s[0]); ctx.strokeStyle = pal.red; ctx.lineWidth = 1.4 * k; ctx.beginPath(); ctx.moveTo(px - 6 * k, top + 6 * k); ctx.lineTo(px - 2 * k, top - 6 * k); ctx.lineTo(px + 2 * k, top + 6 * k); ctx.lineTo(px + 6 * k, top - 6 * k); ctx.stroke(); });
+    ctx.restore();
+    // annotations
+    const gF = gAt(fa), lF = sm[Math.round(fa)][2]; const lFy = ZL(lF); ctx.font = font(10, 700); ctx.fillStyle = pal.red; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.direction = 'ltr';
+    ctx.fillText(t('x34.sec.limit', { z: Math.round(sm[4][2]) }), X(4), Math.max(y + 14 * k, ZL(sm[4][2]) - 4 * k));
+    ctx.strokeStyle = pal.red; ctx.lineWidth = 1 * k; ctx.beginPath(); ctx.moveTo(X(fa) + 8 * k, Z(gF)); ctx.lineTo(X(fa) + 8 * k, lFy); ctx.stroke();
+    ctx.textBaseline = 'middle'; ctx.fillText(t('x34.sec.allowed', { h: Math.round(lF - gF) }), X(fa) + 12 * k, Math.min(Z(gF) - 12 * k, Math.max(y + 34 * k, (Z(gF) + lFy) / 2)));
+    ctx.fillStyle = pal.ink2; ctx.font = font(9, 500); ctx.textBaseline = 'top'; ctx.fillText(t('x34.sec.fence'), X(fa) + 6 * k, Z(gF) + 6 * k);
+    ctx.textAlign = 'left'; ctx.fillText(A.id, x, oy + 4 * k); ctx.textAlign = 'right'; ctx.fillText(A.id + '′ · ' + t('x34.sec.base'), x + w, oy + 4 * k);
+    ctx.strokeStyle = pal.ink; ctx.lineWidth = 1 * k; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    return true;
+  }
   // the legend of one map (the same entries as cityLegend, only that map's layer)
   const ONLY = { island: ['base', 'band', 'fence'], walk: ['base', 'route', 'dead'], growth: ['base', 'metro', 'muni'], height: ['base', 'height'] };
   function mapLegend(only, t) { const C = P().ex21, want = ONLY[only] || []; const out = [];
@@ -151,5 +224,5 @@
       .concat([{ line: C.route, w: 2, dash: true, label: t('x34.lg.route') }, { line: C.dead, w: 2, label: t('x34.lg.dead') }, { line: C.metro, w: 4, rail: true, label: t('x34.lg.metro') }])
       .concat(Object.keys(C.height).map(c => ({ sw: C.height[c], label: t('x34.lg.h.' + c) })))
       .concat([{ sw: C.built, label: t('x34.lg.built') }, { line: C.muni, dash: true, w: 1, label: t('x34.lg.muni2') }]); }
-  root.GA.ex21 = { ready, drawCity, drawGaps, cityLegend, mapLegend, MAPS: ['island', 'walk', 'growth', 'height'], CITY, get data() { return D; } };
+  root.GA.ex21 = { ready, readyAreas, drawArea, drawSection, get areas() { return AR; }, drawCity, drawGaps, cityLegend, mapLegend, MAPS: ['island', 'walk', 'growth', 'height'], CITY, get data() { return D; } };
 })(window);
