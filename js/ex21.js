@@ -144,6 +144,8 @@
     ctx.save(); ctx.beginPath(); ctx.rect(x, y, S, S); ctx.clip(); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(x, y, S, S); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     // land use (OSM), light
     A.landuse.forEach(l => { const c = { residential: LU.residential, industrial: LU.industrial, commercial: LU.commercial, retail: LU.commercial, farmland: LU.agri, meadow: LU.agri, orchard: LU.agri, grass: LU.green, construction: LU.construction }[l.lu]; if (!c) return; path(l.r, true); ctx.globalAlpha = 0.22; ctx.fillStyle = c; ctx.fill('evenodd'); ctx.globalAlpha = 1; });
+    // land use in the 300 m band (OSM landuse + parks; the tour's band classes)
+    (A.bandlu || []).forEach(l => { path(l.r, true); ctx.globalAlpha = 0.5; ctx.fillStyle = pal.tour.bandlu[l.c] || pal.grey3; ctx.fill('evenodd'); ctx.globalAlpha = 1; });
     // the base
     path(A.base, true); ctx.fillStyle = C.base; ctx.fill('evenodd');
     // streets and paths (OSM): width by type, paths dashed
@@ -172,7 +174,18 @@
     ctx.font = font(9.5, 500); ctx.textAlign = 'center'; ctx.direction = 'ltr'; ctx.textBaseline = 'alphabetic'; ['0', '10', '20', '50 m'].forEach((s0, i) => ctx.fillText(s0, bx + [0, 10, 20, 50][i] / mpp, by - 4 * k));
     return true;
   }
+  // key map: the base and its fence (as map 01) with the eight 1:500 windows
+  function drawAreaKey(ctx, x, y, w, h, o) { o = o || {}; if (!D || !AR) return false; const pal = P(); const t = o.t || ((s) => s); const k = o.k || w / 1000; const F = root.GA.pages.font();
+    drawCity(ctx, x, y, w, h, { t, only: 'island', k }); const E = CITY, mpp = (E.x1 - E.x0) / w; const X = (u) => x + (u - E.x0) / mpp, Y = (v) => y + (E.y1 - v) / mpp;
+    AR.areas.forEach(a => { const e = a.extent; ctx.fillStyle = 'rgba(153,43,42,.18)'; ctx.fillRect(X(e[0]), Y(e[3]), (e[2] - e[0]) / mpp, (e[3] - e[1]) / mpp); ctx.strokeStyle = pal.red; ctx.lineWidth = 2.4 * k; ctx.strokeRect(X(e[0]), Y(e[3]), (e[2] - e[0]) / mpp, (e[3] - e[1]) / mpp);
+      const cx = X((e[0] + e[2]) / 2), cy = Y(e[3]) - 14 * k; ctx.beginPath(); ctx.arc(cx, cy, 11 * k, 0, 7); ctx.fillStyle = pal.red; ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.font = `700 ${Math.round(12 * k)}px ${F}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.fillText(a.id, cx, cy + 0.5 * k); });
+    return true; }
   // the section across the fence, true scale (1:500 both ways); building heights = floors × 3 m (estimate)
+  // legend of the area maps: the band land use present in any window, floors, streets, fence, dead ends, section
+  function areaLegend(t) { const pal = P(), C = pal.ex21, b = pal.band; const used = new Set(); (AR ? AR.areas : []).forEach(a => (a.bandlu || []).forEach(l => used.add(l.c)));
+    return [{ sw: C.base, label: t('x34.lg.base') }].concat([...used].map(c => ({ sw: pal.tour.bandlu[c], alpha: 0.5, label: t('x34.lg.lu.' + c) })))
+      .concat([{ sw: b['1-2'], label: t('x34.lg.fl.12') }, { sw: b['3-4'], label: t('x34.lg.fl.34') }, { sw: b['5-8'], label: t('x34.lg.fl.58') }, { line: C.street, w: 3, label: t('x34.lg.street') }, { line: C.street, w: 1, dash: true, label: t('x34.lg.path') },
+        { line: C.fence.housing, w: 3, label: t('x34.lg.fenceAny') }, { line: C.dead, w: 2, label: t('x34.lg.dead') }, { line: pal.red, w: 1.5, dash: true, label: t('x34.lg.secline') }]); }
   function drawSection(ctx, x, y, w, h, id, o) {
     o = o || {}; const A = AR && AR.areas.find(a => a.id === id); if (!A) return false; const pal = P(), C = pal.ex21; const t = o.t || ((s) => s); const F = root.GA.pages.font(); const k = o.k || w / 1000;
     const font = (sz, wt) => `${wt || 600} ${Math.round(sz * k)}px ${F}`; const sm = A.section.samples, L = sm[sm.length - 1][0];
@@ -224,5 +237,5 @@
       .concat([{ line: C.route, w: 2, dash: true, label: t('x34.lg.route') }, { line: C.dead, w: 2, label: t('x34.lg.dead') }, { line: C.metro, w: 4, rail: true, label: t('x34.lg.metro') }])
       .concat(Object.keys(C.height).map(c => ({ sw: C.height[c], label: t('x34.lg.h.' + c) })))
       .concat([{ sw: C.built, label: t('x34.lg.built') }, { line: C.muni, dash: true, w: 1, label: t('x34.lg.muni2') }]); }
-  root.GA.ex21 = { ready, readyAreas, drawArea, drawSection, get areas() { return AR; }, drawCity, drawGaps, cityLegend, mapLegend, MAPS: ['island', 'walk', 'growth', 'height'], CITY, get data() { return D; } };
+  root.GA.ex21 = { ready, readyAreas, drawArea, drawSection, areaLegend, drawAreaKey, get areas() { return AR; }, drawCity, drawGaps, cityLegend, mapLegend, MAPS: ['island', 'walk', 'growth', 'height'], CITY, get data() { return D; } };
 })(window);

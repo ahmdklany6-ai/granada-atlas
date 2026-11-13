@@ -20,7 +20,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); KMZ = os.env
 T = Transformer.from_crs(4326, 25830, always_xy=True); F = lambda g: stransform(lambda x, y, z=None: T.transform(x, y), g)
 S = 130  # window side (m)
 AREAS = [('A', 'Churriana de la Vega', 'housing', (442470, 4110660)), ('B', 'Armilla', 'housing', (444040, 4110770)),
-         ('C', 'Ogíjares side', 'road', (443970, 4108900)), ('D', 'La Vega (south-west)', 'open', (442550, 4109280))]
+         ('C', 'Ogíjares side', 'road', (443970, 4108900)), ('D', 'La Vega (south-west)', 'open', (442550, 4109280)),
+         ('E', 'Las Gabias corner (north-west)', 'green', (441520, 4110180)), ('F', 'South-east, towards Alhendín', 'housing', (443900, 4108300)),
+         ('G', 'Farmland between Armilla and Ogíjares', 'road', (444150, 4109600)), ('H', 'North: the metro along the edge', 'housing', (443560, 4110830))]  # the metro track passes 20 m from the fence here
 FLOOR_M = 3.0
 
 
@@ -65,6 +67,7 @@ def main():
     base = F(shape(next(f for f in be if f['properties'].get('k') == 'base')['geometry'])); bc = base.centroid
     fence = [(f['properties']['c'], F(shape(f['geometry']))) for f in be if f['properties'].get('k') == 'fence']
     dead = [F(shape(f['geometry'])) for f in be if f['properties'].get('k') == 'deadend']
+    bandlu = [(f['properties']['c'], F(shape(f['geometry'])).buffer(0)) for f in be if f['properties'].get('k') == 'bandlu']  # land use in the 300 m band (OSM landuse + parks, tools/build_base_edge.py)
     metro = json.load(open(os.path.join(ROOT, 'data/vec/south_metro.json')))['features']
     trees = json.load(open(os.path.join(ROOT, 'data/vec/trees_osm.json')))
     rnd = lambda g: [[round(x - 0, 1), round(y - 0, 1)] for x, y in g.coords]
@@ -105,6 +108,7 @@ def main():
         tr = [[round(x, 1), round(y, 1)] for x, y in (T.transform(p[1], p[2]) for p in trees['pts']) if W.contains(Point(x, y))]
         fc = [{'c': c, 'r': rings(g.intersection(W))} for c, g in fence if g.intersects(W)]
         de = [[round(g.x, 1), round(g.y, 1)] for g in dead if W.contains(g)]
+        blu = [{'c': c, 'r': rings(g.intersection(W)), 'ha': round(g.intersection(W).area / 1e4, 2)} for c, g in bandlu if g.intersects(W)]
         mt = [{'k': f['properties']['k'], 'nm': f['properties'].get('nm'), 'r': rings(F(shape(f['geometry'])).intersection(W))} for f in metro if F(shape(f['geometry'])).intersects(W)]
         # section: perpendicular to the fence at p0, pointing outwards
         a = (p0.x + nx * 95, p0.y + ny * 95); b = (p0.x - nx * 35, p0.y - ny * 35); line = LineString([a, b]); n = int(line.length)
@@ -120,7 +124,7 @@ def main():
                 lv = bl['lv']; cuts.append({'s0': round(s0, 1), 's1': round(s1, 1), 'lv': lv, 'h_est': round(lv * FLOOR_M, 1) if isinstance(lv, (int, float)) else None, 'b': bl['b']})
         fence_at = round(95.0, 1)
         res.append({'id': aid, 'name': name, 'kind': kind, 'centre': [cx, cy], 'extent': [round(v, 1) for v in bb], 'side_m': S,
-                    'buildings': [{'r': b['r'], 'lv': b['lv'], 'b': b['b']} for b in blds], 'streets': streets, 'landuse': lus, 'trees': tr, 'fence': fc, 'dead': de, 'metro': mt,
+                    'buildings': [{'r': b['r'], 'lv': b['lv'], 'b': b['b']} for b in blds], 'streets': streets, 'landuse': lus, 'trees': tr, 'fence': fc, 'dead': de, 'bandlu': blu, 'metro': mt,
                     'base': rings(base.intersection(W)),
                     'section': {'a': [round(a[0], 1), round(a[1], 1)], 'b': [round(b[0], 1), round(b[1], 1)], 'fence_at_m': fence_at, 'samples': samples, 'cuts': sorted(cuts, key=lambda c: c['s0'])},
                     'stats': {'buildings': len(blds), 'with_levels': sum(1 for b in blds if b['lv']), 'dead_ends': len(de), 'trees': len(tr),
