@@ -21,13 +21,13 @@
     const ll0 = prj.inverse([CITY.x0, CITY.y0]), ll1 = prj.inverse([CITY.x1, CITY.y1]); const bb = [ll0[0], ll0[1], ll1[0], ll1[1]];
     const img = (u) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error(u)); i.src = u + v; });
     Dp = Promise.all([root.GA.data.single('base_edge'), root.GA.data.single('tour_area'), root.GA.data.single('south_metro'), root.GA.data.chunked('buildings', bb, 0, 600), root.GA.data.single('streets_major'),
-      fetch('data/ex21/easements.json' + v).then(r => r.json()), img('data/ex21/allowed_height.png')])
-      .then(([edge, area, metro, bld, streets, ease, hImg]) => { const U = (p) => prj.forward(p);
+      fetch('data/ex21/easements.json' + v).then(r => r.json()), img('data/ex21/allowed_height.png'), fetch('data/ex21/metro_l1.json' + v).then(r => r.json())])
+      .then(([edge, area, metro, bld, streets, ease, hImg, l1]) => { const U = (p) => prj.forward(p);
         const rings = (g) => g.type === 'Polygon' ? g.coordinates : g.type === 'MultiPolygon' ? g.coordinates.flat() : g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : [];
         const proj = (f) => rings(f.geometry).map(r => r.map(U));
         const seen = new Set(); const builds = []; bld.forEach(f => { const id = (f.properties || {}).id; if (id && seen.has(id)) return; seen.add(id); builds.push(proj(f)); });
         return (D = { edge: edge.features.map(f => ({ p: f.properties, g: f.geometry.type === 'Point' ? U(f.geometry.coordinates) : proj(f) })), area: area.features.map(f => ({ p: f.properties, g: proj(f) })),
-          metro: metro.features.map(f => ({ p: f.properties, g: f.geometry.type === 'Point' ? U(f.geometry.coordinates) : proj(f) })), builds, streets: (streets.features || streets).map(f => ({ p: f.properties, g: proj(f) })), ease, hImg, runway: RUNWAY.map(U) }); })
+          metro: metro.features.map(f => ({ p: f.properties, g: f.geometry.type === 'Point' ? U(f.geometry.coordinates) : proj(f) })), builds, streets: (streets.features || streets).map(f => ({ p: f.properties, g: proj(f) })), ease, hImg, runway: RUNWAY.map(U), l1: { lines: l1.lines.map(l => l.map(U)), stops: l1.stops.map(st => ({ name: st.name, p: U(st.lonlat) })), meta: l1 } }); })
       .catch(e => { Dp = null; throw e; });
     return Dp;
   }
@@ -61,6 +61,8 @@
       const r = f.g[0], m = r[Math.floor(r.length * 0.62)]; const lab = `${(f.p.walk_m / 1000).toFixed(1)} km  ×${f.p.ratio.toFixed(2)}`; ctx.font = font(10.5, 700); ctx.lineWidth = 3.2 * k; ctx.strokeStyle = '#FFFFFF'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.strokeText(lab, X(m[0]), Y(m[1]) - 10 * k); ctx.fillStyle = C.route; ctx.fillText(lab, X(m[0]), Y(m[1]) - 10 * k); });
     if (on('walk')) D.edge.filter(f => f.p.k === 'deadend').forEach(f => { const [u, v] = Array.isArray(f.g[0]) ? f.g[0][0] : f.g; ctx.beginPath(); ctx.arc(X(u), Y(v), 4.2 * k, 0, 7); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.strokeStyle = C.dead; ctx.lineWidth = 2 * k; ctx.stroke(); ctx.beginPath(); ctx.moveTo(X(u) - 2.4 * k, Y(v)); ctx.lineTo(X(u) + 2.4 * k, Y(v)); ctx.stroke(); });
     // 7 the metro extension under construction, with its two ends
+    if (on('growth')) { ctx.strokeStyle = C.metro; ctx.lineWidth = 6 * k; ctx.beginPath(); D.l1.lines.forEach(l => l.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); ctx.stroke();
+      D.l1.stops.forEach(st => { ctx.beginPath(); ctx.arc(X(st.p[0]), Y(st.p[1]), 4.6 * k, 0, 7); ctx.fillStyle = C.metro; ctx.fill(); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.6 * k; ctx.stroke(); }); }
     if (on('growth')) D.metro.forEach(f => { if (f.p.k === 'track') { ctx.strokeStyle = C.metro; ctx.lineWidth = 6 * k; path(f.g); ctx.stroke(); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2.2 * k; ctx.setLineDash([7 * k, 7 * k]); path(f.g); ctx.stroke(); ctx.setLineDash([]); }
       else { ctx.beginPath(); ctx.arc(X(f.g[0]), Y(f.g[1]), 6 * k, 0, 7); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.strokeStyle = C.metro; ctx.lineWidth = 2.6 * k; ctx.stroke(); } });
     // 8 labels: towns with their change 2015 → 2025, the base
@@ -73,6 +75,7 @@
     // frame, north, scale
     ctx.restore(); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.2 * k; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
     root.GA.pages.northArrow(ctx, x + w - 28 * k, y + 20 * k, 1.3 * k);
+    if (on('growth') && o.only === 'growth') drawLineInset(ctx, x + 14 * k, y + h - 410 * k, 250 * k, 350 * k, k, t, font);
     const km = 1000 / mpp, bx = x + 22 * k, by = y + h - 24 * k; ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(bx - 8 * k, by - 22 * k, km + 60 * k, 34 * k);
     ctx.fillStyle = pal.ink; ctx.fillRect(bx, by, km / 2, 5 * k); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1 * k; ctx.strokeRect(bx, by, km, 5 * k); ctx.font = font(10, 500); ctx.textAlign = 'center'; ctx.direction = 'ltr';
     ctx.fillText('0', bx, by - 5 * k); ctx.fillText('500', bx + km / 2, by - 5 * k); ctx.fillText('1 km', bx + km, by - 5 * k);
@@ -110,6 +113,26 @@
         ctx.fillStyle = pal.ink; ctx.font = font(9.5, 700); ctx.textAlign = rtl ? 'right' : 'left'; ctx.fillText(fmt(v), rtl ? bx - L - 5 * k : bx + L + 5 * k, cy); }); });
     return true;
   }
+  // inset for map 03: the whole line 1 today (Albolote → Granada → Armilla) and its extension past the base
+  function drawLineInset(ctx, x, y, w, h, k, t, font) { const pal = P(), C = pal.ex21; const pts = D.l1.lines.flat().concat(D.metro.filter(f => f.p.k === 'track').flatMap(f => f.g.flat()));
+    let a0 = 1e12, b0 = 1e12, a1 = -1e12, b1 = -1e12; pts.forEach(([u, v]) => { a0 = Math.min(a0, u); b0 = Math.min(b0, v); a1 = Math.max(a1, u); b1 = Math.max(b1, v); });
+    const pad = 16 * k, top = 34 * k, sc = Math.min((w - 2 * pad) / (a1 - a0), (h - top - pad - 30 * k) / (b1 - b0)); const ox = x + (w - (a1 - a0) * sc) / 2, oy = y + top;
+    const X = (u) => ox + (u - a0) * sc, Y = (v) => oy + (b1 - v) * sc; const path = (rs) => { ctx.beginPath(); rs.forEach(r => r.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); };
+    ctx.save(); ctx.fillStyle = 'rgba(255,255,255,.96)'; ctx.strokeStyle = pal.line2; ctx.lineWidth = 1; ctx.fillRect(x, y, w, h); ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+    D.area.forEach(m => { path(m.g); ctx.closePath(); if (m.p.name === 'Granada') { ctx.fillStyle = pal.gray1; ctx.fill('evenodd'); } ctx.strokeStyle = C.muni; ctx.lineWidth = 0.6 * k; ctx.stroke(); });
+    const base = D.edge.find(f => f.p.k === 'base'); if (base) { path(base.g); ctx.closePath(); ctx.fillStyle = C.base; ctx.fill(); }
+    ctx.strokeStyle = C.metro; ctx.lineWidth = 3 * k; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; D.l1.lines.forEach(l => path([l])) ; ctx.beginPath(); D.l1.lines.forEach(l => l.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); ctx.stroke();
+    D.metro.filter(f => f.p.k === 'track').forEach(f => { path(f.g); ctx.strokeStyle = C.metro; ctx.lineWidth = 3 * k; ctx.stroke(); path(f.g); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.2 * k; ctx.setLineDash([3 * k, 3 * k]); ctx.stroke(); ctx.setLineDash([]); });
+    D.l1.stops.forEach(st => { ctx.beginPath(); ctx.arc(X(st.p[0]), Y(st.p[1]), 2.4 * k, 0, 7); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.strokeStyle = C.metro; ctx.lineWidth = 1.2 * k; ctx.stroke(); });
+    // the main map's frame
+    const E = CITY; ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.4 * k; ctx.strokeRect(X(E.x0), Y(E.y1), (E.x1 - E.x0) * sc, (E.y1 - E.y0) * sc);
+    ctx.font = font(9, 700); ctx.fillStyle = pal.ink; ctx.textBaseline = 'middle'; ctx.lineWidth = 3 * k; ctx.strokeStyle = '#FFFFFF'; ctx.textAlign = 'left'; ctx.direction = 'ltr';
+    const lab = (txt, p, dx) => { ctx.strokeText(txt, X(p[0]) + dx, Y(p[1])); ctx.fillText(txt, X(p[0]) + dx, Y(p[1])); };
+    const byName = (n) => D.l1.stops.find(st => st.name === n); [['Albolote', 8], ['Recogidas', -8], ['Armilla', 8]].forEach(([n, dx]) => { const st = byName(n); if (!st) return; ctx.textAlign = dx < 0 ? 'right' : 'left'; lab(n === 'Recogidas' ? 'GRANADA' : n, st.p, dx * k); });
+    const term = D.metro.find(f => f.p.k === 'terminus'); if (term) { ctx.textAlign = 'right'; lab('Las Gabias', term.g, -7 * k); }
+    ctx.restore(); ctx.font = font(9.5, 700); ctx.fillStyle = pal.ink; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(t('x34.inset.title'), x + 8 * k, y + 16 * k);
+    ctx.font = font(8, 500); ctx.fillStyle = pal.ink2; const m = D.l1.meta; ctx.fillText(t('x34.inset.meta', { n: m.stops.length, d: m.duration_min, i: m.interval_min }), x + 8 * k, y + 28 * k);
+    ctx.fillText(t('x34.inset.src'), x + 8 * k, y + h - 8 * k); }
   // the legend of one map (the same entries as cityLegend, only that map's layer)
   const ONLY = { island: ['base', 'band', 'fence'], walk: ['base', 'route', 'dead'], growth: ['base', 'metro', 'muni'], height: ['base', 'height'] };
   function mapLegend(only, t) { const C = P().ex21, want = ONLY[only] || []; const out = [];
@@ -118,7 +141,7 @@
     if (want.includes('fence')) Object.keys(C.fence).forEach(c => out.push({ line: C.fence[c], w: 3, label: t('x34.lg.fence.' + c) }));
     if (want.includes('route')) out.push({ line: C.route, w: 2, dash: true, label: t('x34.lg.route') }, { line: C.straight, w: 1, dash: true, label: t('x34.lg.straight') });
     if (want.includes('dead')) out.push({ line: C.dead, w: 2, label: t('x34.lg.dead') });
-    if (want.includes('metro')) out.push({ line: C.metro, w: 4, rail: true, label: t('x34.lg.metro') });
+    if (want.includes('metro')) out.push({ line: C.metro, w: 4, label: t('x34.lg.l1') }, { line: C.metro, w: 4, rail: true, label: t('x34.lg.metro') });
     if (want.includes('muni')) out.push({ line: C.muni, dash: true, w: 1, label: t('x34.lg.muni2') });
     if (want.includes('height')) Object.keys(C.height).forEach(c => out.push({ sw: C.height[c], label: t('x34.lg.h.' + c) }));
     return out; }
