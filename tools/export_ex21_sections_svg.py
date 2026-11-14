@@ -219,6 +219,20 @@ def car(x, y, col=None):
 
 
 OLIVE, OLIVE2 = '#7E7B43', '#A49250'  # palette: oliveMid, khaki
+_TREES = None
+
+
+def tree_images():
+    """PNG cut-outs (transparent background) from the folder in TREE_IMAGES, if set — embedded in the SVG as images.
+    Not committed: the owner supplies them for their own sheets."""
+    global _TREES
+    if _TREES is None:
+        import base64, glob
+        from PIL import Image
+        d = os.environ.get('TREE_IMAGES'); _TREES = []
+        for f in sorted(glob.glob(os.path.join(d, '*.png'))) if d else []:
+            w, h = Image.open(f).size; _TREES.append((base64.b64encode(open(f, 'rb').read()).decode(), w, h))
+    return _TREES
 
 
 def tree(x, y, h=8.0, col=None, seed=0):
@@ -226,6 +240,10 @@ def tree(x, y, h=8.0, col=None, seed=0):
     drawn here, not copied): a trunk that splits into tapering branches; three kinds by seed — a dense round crown, an
     umbrella crown, a bare winter tree. h metres; placed only where the section crosses mapped green (OSM)."""
     import math, random
+    imgs = tree_images()
+    if imgs:  # the owner's own tree cut-outs (TREE_IMAGES folder; used at the owner's request, kept out of the repo and the site)
+        b64, pw, ph = imgs[seed % len(imgs)]; hh = h * MM; ww = hh * pw / ph
+        return f'<image class="tree-image" x="{x - ww / 2:.2f}" y="{y - hh:.2f}" width="{ww:.2f}" height="{hh:.2f}" href="data:image/png;base64,{b64}" preserveAspectRatio="none"/>'
     rnd = random.Random(seed * 7919 + 13); kind = seed % 3; t = h * MM
     segs, tips = [], []
 
