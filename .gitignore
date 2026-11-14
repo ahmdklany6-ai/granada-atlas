@@ -10,3 +10,4 @@
 granada-atlas-*.json
 __pycache__/
 node_modules/
+exports/

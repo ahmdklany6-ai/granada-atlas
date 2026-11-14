@@ -51,8 +51,10 @@ def limit_surfaces():
                 for tok in (c.text or '').split():
                     a = [float(v) for v in tok.split(',')]
                     if 600 <= a[2] <= 2600: x, y = T.transform(a[0], a[1]); pts.append((x, y, a[2]))
-        P = np.array(pts); surf.append(LinearNDInterpolator(P[:, :2], P[:, 2]))
-    return lambda x, y: float(np.nanmin([s(x, y) for s in surf] + [np.inf]))
+        P = np.array(pts); surf.append((os.path.basename(path).split('-', 1)[-1].replace('.zip', ''), LinearNDInterpolator(P[:, :2], P[:, 2])))
+    lim = lambda x, y: float(np.nanmin([f(x, y) for _, f in surf] + [np.inf]))
+    lim.which = lambda x, y: min(((n, float(f(x, y))) for n, f in surf if not np.isnan(f(x, y))), key=lambda q: q[1])[0]  # the file that sets the limit here
+    return lim
 
 
 def main():
@@ -128,7 +130,7 @@ def main():
                     'base': rings(base.intersection(W)),
                     'section': {'a': [round(a[0], 1), round(a[1], 1)], 'b': [round(b[0], 1), round(b[1], 1)], 'fence_at_m': fence_at, 'samples': samples, 'cuts': sorted(cuts, key=lambda c: c['s0'])},
                     'stats': {'buildings': len(blds), 'with_levels': sum(1 for b in blds if b['lv']), 'dead_ends': len(de), 'trees': len(tr),
-                              'limit_at_fence': round(limit(p0.x, p0.y), 1), 'ground_at_fence': round(ground(p0.x, p0.y), 1)}})
+                              'limit_at_fence': round(limit(p0.x, p0.y), 1), 'ground_at_fence': round(ground(p0.x, p0.y), 1), 'limit_file': limit.which(p0.x, p0.y)}})
         print(aid, name, kind, '| buildings', len(blds), '(levels', sum(1 for b in blds if b['lv']), ') streets', len(streets), 'landuse', len(lus), 'trees', len(tr), 'dead', len(de),
               '| section', n, 'm, cuts', len(cuts), '| ground', res[-1]['stats']['ground_at_fence'], 'limit', res[-1]['stats']['limit_at_fence'])
     out = {'areas': res, 'floor_m': FLOOR_M, 'epsg': 25830,
