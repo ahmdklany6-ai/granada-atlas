@@ -218,13 +218,47 @@ def car(x, y, col=None):
             f'<circle cx="{x - L / 2 + 0.85 * MM:.2f}" cy="{y - 0.3 * MM:.2f}" r="{0.3 * MM:.2f}" fill="{INK}"/><circle cx="{x + L / 2 - 0.85 * MM:.2f}" cy="{y - 0.3 * MM:.2f}" r="{0.3 * MM:.2f}" fill="{INK}"/>')
 
 
+OLIVE, OLIVE2 = '#7E7B43', '#A49250'  # palette: oliveMid, khaki
+
+
 def tree(x, y, h=8.0, col=None, seed=0):
-    """Schematic tree: trunk and a cloud crown, h metres — placed only on mapped green."""
-    c = col or PINK; t = h * MM; r = t * 0.26; import math
-    lobes = ''.join(f'<circle cx="{x + math.cos(i * 1.3 + seed) * r * 0.55:.2f}" cy="{y - t * 0.66 + math.sin(i * 1.7 + seed) * r * 0.4:.2f}" r="{r * (0.62 + 0.12 * ((i + seed) % 3)):.2f}" fill="{c}" fill-opacity="0.55"/>' for i in range(6))
-    return (f'<line x1="{x:.2f}" y1="{y:.2f}" x2="{x:.2f}" y2="{y - t * 0.5:.2f}" stroke="{RED}" stroke-width="{0.12 * MM:.2f}"/>'
-            f'<line x1="{x:.2f}" y1="{y - t * 0.35:.2f}" x2="{x + r * 0.5:.2f}" y2="{y - t * 0.55:.2f}" stroke="{RED}" stroke-width="{0.07 * MM:.2f}"/>'
-            f'<line x1="{x:.2f}" y1="{y - t * 0.4:.2f}" x2="{x - r * 0.45:.2f}" y2="{y - t * 0.6:.2f}" stroke="{RED}" stroke-width="{0.07 * MM:.2f}"/>' + lobes)
+    """Schematic tree (owner request, 14 Nov 2026: olive trees with branching trunks, in the spirit of a reference sheet —
+    drawn here, not copied): a trunk that splits into tapering branches; three kinds by seed — a dense round crown, an
+    umbrella crown, a bare winter tree. h metres; placed only where the section crosses mapped green (OSM)."""
+    import math, random
+    rnd = random.Random(seed * 7919 + 13); kind = seed % 3; t = h * MM
+    segs, tips = [], []
+
+    def grow(px, py, ang, length, width, depth):
+        nx, ny = px + math.cos(ang) * length, py - math.sin(ang) * length
+        segs.append((px, py, nx, ny, width))
+        if depth == 0 or length < t * 0.035: tips.append((nx, ny, depth)); return
+        n = 2 if kind != 2 or depth > 2 else 3
+        spread = (0.55 if kind == 1 else 0.42 if kind == 0 else 0.48) + rnd.uniform(-0.08, 0.08)
+        for i in range(n):
+            a = ang + spread * (i - (n - 1) / 2) * (1.5 if n == 2 else 1.0) + rnd.uniform(-0.15, 0.15)
+            if kind == 1: a = ang + (a - ang) * 1.25  # umbrella: wider, flatter
+            grow(nx, ny, a, length * rnd.uniform(0.66, 0.78), width * 0.66, depth - 1)
+
+    grow(x, y, math.pi / 2 + rnd.uniform(-0.06, 0.06), t * (0.3 if kind != 1 else 0.4), t * 0.05, 6 if kind != 2 else 7)
+    br = [f'<line x1="{a:.2f}" y1="{b:.2f}" x2="{c:.2f}" y2="{d:.2f}" stroke="{OLIVE}" stroke-width="{max(0.05, w):.2f}" stroke-linecap="round"/>' for a, b, c, d, w in segs]
+    leaves = []
+    if kind != 2:
+        # a full crown: many small leaf clusters inside an irregular envelope (denser towards the edge, open low in the
+        # middle so the branches show), plus lobes on the outline — two olive tones
+        # the crown follows the branches: its envelope is fitted to the branch tips
+        xs = [p[0] for p in tips]; ys = [p[1] for p in tips]
+        cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2 + t * 0.02
+        rx, ry = (max(xs) - min(xs)) / 2 + t * 0.06, (max(ys) - min(ys)) / 2 + t * (0.1 if kind == 0 else 0.07)
+        lob = [rnd.uniform(0.84, 1.1) for _ in range(14)]
+        edge = lambda a: lob[int((a % (2 * math.pi)) / (2 * math.pi) * 14) % 14]
+        for j in range(480):
+            a = rnd.uniform(0, 2 * math.pi); rr = rnd.random() ** 0.4 * edge(a)
+            dx, dy = math.cos(a) * rr * rx, math.sin(a) * rr * ry
+            if dy > 0.3 * ry and abs(dx) < 0.35 * rx and rnd.random() < 0.8: continue
+            r = t * rnd.uniform(0.018, 0.04)
+            leaves.append(f'<circle cx="{cx + dx:.2f}" cy="{cy + dy:.2f}" r="{r:.2f}" fill="{OLIVE if j % 3 else OLIVE2}" fill-opacity="{rnd.uniform(0.55, 0.85):.2f}"/>')
+    return f'<g class="tree-schematic">{"".join(br)}{"".join(leaves)}</g>'
 
 
 def section_svg_detail(a, ox=0.0, oy=0.0):
@@ -278,7 +312,9 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
                 if q.is_empty or q.geom_type != 'LineString': continue
                 d0, d1 = sorted([line.project(type(line)([q.coords[0], q.coords[0]]).interpolate(0)), line.project(type(line)([q.coords[-1], q.coords[-1]]).interpolate(0))])
                 d = d0 + 3
-                while d < d1 - 2: to.append(tree(X(d), Z(g_at(d)), 7 + (k % 3) * 1.5, seed=k)); d += 7.5; k += 1
+                while d < d1 - 2:
+                    room = sm[max(0, min(len(sm) - 1, int(round(d))))][2] - g_at(d) - 1.5  # schematic trees stay under the limit (their real heights are unknown)
+                    to.append(tree(X(d), Z(g_at(d)), max(4.0, min(7 + (k % 3) * 1.5, room / 1.1)), seed=k)); d += 7.5; k += 1
     to.append('</g>'); o += to
     # cut buildings: floors (3 m each), slabs in red, interiors light, people inside (schematic)
     bo = [f'<g id="buildings-cut-floors-{a["id"]}">']
