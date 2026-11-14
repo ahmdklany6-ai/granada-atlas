@@ -361,27 +361,32 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
                 s0, s1 = max(0, min(q for q, _ in st)), min(L, max(q for q, _ in st))
                 if s1 - s0 > 0.5: out.append((min(ts), s0, s1, b['lv'], b.get('b') or 'yes'))
         return out
-    back = max((behind(1), behind(-1)), key=lambda l: sum(q[2] - q[1] for q in l))
+    sign = max((1, -1), key=lambda sg: sum(q[2] - q[1] for q in behind(sg))); back = behind(sign)
+    # tree crowns read from the PNOA orthophoto (tools/build_ex21_canopy.py): those on the section plane stand in front,
+    # those behind it (≤ 40 m) are drawn faded among the façades. Heights are NOT measured: schematic, from the crown
+    # width, and always kept under the limit surface.
+    def th(d, dm, k):
+        room = sm[max(0, min(len(sm) - 1, int(round(d))))][2] - g_at(d) - 1.5
+        return max(3.0, min(1.3 * dm + 2.0 + (k % 3) * 0.6, 10.0, room / 1.1))
+    near, far = [], []
+    for k, (cx, cy, dm) in enumerate(a.get('canopy', [])):
+        q, t = proj((cx, cy))
+        if not (1 < q < L - 1): continue
+        if abs(t) <= dm / 2 + 1.5: near.append((q, dm, k))
+        elif 0 < sign * t < 40: far.append((sign * t, q, dm, k))
+    items = [(t, 'b', (s0, s1, lv, bt)) for t, s0, s1, lv, bt in back] + [(t, 't', (q, dm, k)) for t, q, dm, k in far]
     eo = [f'<g id="elevation-behind-{a["id"]}">']
-    for i, (t, s0, s1, lv, btype) in enumerate(sorted(back, key=lambda q: -q[0])):
-        g = g_at((s0 + s1) / 2); op = max(0.5, 1.0 - t / 70)
-        eo.append(f'<g opacity="{op:.2f}">' + facade(X(s0), X(s1), Z(g), int(lv), btype, i) + '</g>')
+    for i, (t, kind, v) in enumerate(sorted(items, key=lambda q: -q[0])):
+        op = max(0.5, 1.0 - t / 70)
+        if kind == 'b':
+            s0, s1, lv, bt = v; g = g_at((s0 + s1) / 2)
+            eo.append(f'<g opacity="{op:.2f}">' + facade(X(s0), X(s1), Z(g), int(lv), bt, i) + '</g>')
+        else:
+            q, dm, k = v; eo.append(f'<g class="tree-behind" opacity="{op * 0.85:.2f}">' + tree(X(q), Z(g_at(q)), th(q, dm, k), seed=k) + '</g>')
     eo.append('</g>'); o += eo
-    # mapped green crossed by the section → trees (schematic)
-    to = [f'<g id="trees-schematic-{a["id"]}">']; k = 0
-    for bl in a.get('bandlu', []):
-        if bl['c'] != 'green': continue
-        for rr in bl['r']:
-            try: poly = Polygon(rr[0], rr[1:])
-            except Exception: continue
-            seg = poly.intersection(line)
-            for q in ([seg] if seg.geom_type == 'LineString' else list(getattr(seg, 'geoms', []))):
-                if q.is_empty or q.geom_type != 'LineString': continue
-                d0, d1 = sorted([line.project(type(line)([q.coords[0], q.coords[0]]).interpolate(0)), line.project(type(line)([q.coords[-1], q.coords[-1]]).interpolate(0))])
-                d = d0 + 3
-                while d < d1 - 2:
-                    room = sm[max(0, min(len(sm) - 1, int(round(d))))][2] - g_at(d) - 1.5  # schematic trees stay under the limit (their real heights are unknown)
-                    to.append(tree(X(d), Z(g_at(d)), max(4.0, min(7 + (k % 3) * 1.5, room / 1.1)), seed=k)); d += 7.5; k += 1
+    to = [f'<g id="trees-on-section-{a["id"]}">']
+    for q, dm, k in sorted(near):
+        to.append(tree(X(q), Z(g_at(q)), th(q, dm, k), seed=k))
     to.append('</g>'); o += to
     # cut buildings: floors (3 m each), slabs in red, interiors light, people inside (schematic)
     bo = [f'<g id="buildings-cut-floors-{a["id"]}">']
@@ -446,7 +451,7 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
     for v in (0, 10, 20, 50): sb.append(f'<text x="{sx + v * MM:.2f}" y="{sy + 3.6:.2f}" {FONT} font-size="2" text-anchor="middle" fill="{INK}">{v}{" m" if v == 50 else ""}</text>')
     sb.append('</g>'); o += sb
     src = a['stats'].get('limit_file', '').replace('.kmz', '')
-    o.append(f'<g id="sources-{a["id"]}" opacity="0.9"><text x="{X(0):.2f}" y="{Z(zmin) + 12:.2f}" {FONT} font-size="1.8" fill="{INK3}">1:500 · IGN MDT25 · OSM (floors × 3 m, estimate) · {escape(src)}, Ministerio de Defensa · people, cars, trees and façades (by OSM building type): schematic</text></g>')
+    o.append(f'<g id="sources-{a["id"]}" opacity="0.9"><text x="{X(0):.2f}" y="{Z(zmin) + 12:.2f}" {FONT} font-size="1.8" fill="{INK3}">1:500 · IGN MDT25 · OSM (floors × 3 m, estimate) · {escape(src)}, Ministerio de Defensa · tree positions: PNOA aerial (IGN), approx. · people, cars, tree heights and façades (by OSM building type): schematic</text></g>')
     o.append('</g>')
     return '\n'.join(o), W, H
 
