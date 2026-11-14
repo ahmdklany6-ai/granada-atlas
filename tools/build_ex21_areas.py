@@ -96,7 +96,7 @@ def main():
         for f in chunks('buildings', bb):
             g = F(shape(f['geometry'])).buffer(0)
             if not g.intersects(W): continue
-            p = f['properties']; blds.append({'r': rings(g.intersection(W)), 'lv': p.get('lv'), 'b': p.get('b'), 'id': p.get('id'), 'g': g})
+            p = f['properties']; blds.append({'r': rings(g.intersection(W)), 'lv': p.get('lv'), 'b': p.get('b'), 'rs': p.get('rs'), 'id': p.get('id'), 'g': g})
         streets = []
         for f in chunks('streets', bb):
             g = F(shape(f['geometry']))
@@ -123,10 +123,10 @@ def main():
             for seg in ([inter] if inter.geom_type == 'LineString' else list(getattr(inter, 'geoms', []))):
                 if seg.is_empty or seg.length < 0.5: continue
                 s0, s1 = sorted([line.project(Point(seg.coords[0])), line.project(Point(seg.coords[-1]))])
-                lv = bl['lv']; cuts.append({'s0': round(s0, 1), 's1': round(s1, 1), 'lv': lv, 'h_est': round(lv * FLOOR_M, 1) if isinstance(lv, (int, float)) else None, 'b': bl['b']})
+                lv = bl['lv']; cuts.append({'s0': round(s0, 1), 's1': round(s1, 1), 'lv': lv, 'h_est': round(lv * FLOOR_M, 1) if isinstance(lv, (int, float)) else None, 'b': bl['b'], 'rs': bl.get('rs')})
         fence_at = round(95.0, 1)
         res.append({'id': aid, 'name': name, 'kind': kind, 'centre': [cx, cy], 'extent': [round(v, 1) for v in bb], 'side_m': S,
-                    'buildings': [{'r': b['r'], 'lv': b['lv'], 'b': b['b']} for b in blds], 'streets': streets, 'landuse': lus, 'trees': tr, 'fence': fc, 'dead': de, 'bandlu': blu, 'metro': mt,
+                    'buildings': [{'r': b['r'], 'lv': b['lv'], 'b': b['b'], 'rs': b.get('rs')} for b in blds], 'streets': streets, 'landuse': lus, 'trees': tr, 'fence': fc, 'dead': de, 'bandlu': blu, 'metro': mt,
                     'base': rings(base.intersection(W)),
                     'section': {'a': [round(a[0], 1), round(a[1], 1)], 'b': [round(b[0], 1), round(b[1], 1)], 'fence_at_m': fence_at, 'samples': samples, 'cuts': sorted(cuts, key=lambda c: c['s0'])},
                     'stats': {'buildings': len(blds), 'with_levels': sum(1 for b in blds if b['lv']), 'dead_ends': len(de), 'trees': len(tr),
