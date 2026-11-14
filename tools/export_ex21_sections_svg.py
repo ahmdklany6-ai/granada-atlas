@@ -224,7 +224,7 @@ SKY = '#C9D8DF'        # bluePale: the allowed envelope
 SLAB = '#452928'       # wine: cut slabs and walls
 INTERIOR = '#F6F5F0'   # paper: inside the cut buildings
 GLASS = '#7F9DAE'      # blueMid: windows
-EARTH = '#9C7A55'      # earthy brown from the slope ramp: the cut ground (one colour all along)
+CUT = '#992B2A'         # owner request: everything cut (ground, slabs, walls) in the studio red
 PEOPLE = ['#4F6E80', '#992B2A', '#7E7B43', '#74362D', '#2F4654']  # blueDeep, red, oliveMid, burgundy, blueDark
 CARS = ['#9DBCD1', '#BFB065', '#C98B80', '#BDB5AA']               # blueGrey, chartreuse, rose, warmGrey2
 # schematic façades by OSM building type (the type is mapped; the façade itself is NOT surveyed — drawn to read the type)
@@ -391,21 +391,21 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
             bo.append(f'<rect x="{x0:.2f}" y="{Z(g + 6):.2f}" width="{x1 - x0:.2f}" height="{6 * MM:.2f}" fill="none" stroke="{PINK}" stroke-width="0.35" stroke-dasharray="1,1"/>'); continue
         lv = int(c['lv']); slab = 0.35 * MM; wall = 0.3 * MM
         bo.append(f'<rect x="{x0:.2f}" y="{Z(g + lv * 3):.2f}" width="{x1 - x0:.2f}" height="{lv * 3 * MM:.2f}" fill="{INTERIOR}"/>')
-        for f in range(lv + 1): bo.append(f'<rect x="{x0:.2f}" y="{Z(g + f * 3) - (slab if f else 0):.2f}" width="{x1 - x0:.2f}" height="{slab:.2f}" fill="{SLAB}"/>')
-        bo.append(f'<rect x="{x0:.2f}" y="{Z(g + lv * 3):.2f}" width="{wall:.2f}" height="{lv * 3 * MM:.2f}" fill="{SLAB}"/><rect x="{x1 - wall:.2f}" y="{Z(g + lv * 3):.2f}" width="{wall:.2f}" height="{lv * 3 * MM:.2f}" fill="{SLAB}"/>')
+        for f in range(lv + 1): bo.append(f'<rect x="{x0:.2f}" y="{Z(g + f * 3) - (slab if f else 0):.2f}" width="{x1 - x0:.2f}" height="{slab:.2f}" fill="{CUT}"/>')
+        bo.append(f'<rect x="{x0:.2f}" y="{Z(g + lv * 3):.2f}" width="{wall:.2f}" height="{lv * 3 * MM:.2f}" fill="{CUT}"/><rect x="{x1 - wall:.2f}" y="{Z(g + lv * 3):.2f}" width="{wall:.2f}" height="{lv * 3 * MM:.2f}" fill="{CUT}"/>')
         for f in range(lv):  # window openings in the cut walls (schematic), blue glass
             for xw in (x0, x1 - wall):
                 bo.append(f'<rect x="{xw:.2f}" y="{Z(g + f * 3 + 2.3):.2f}" width="{wall:.2f}" height="{1.4 * MM:.2f}" fill="{GLASS}"/>')
-        bo.append(f'<rect x="{x0 - 0.15 * MM:.2f}" y="{Z(g + lv * 3 + 0.9):.2f}" width="{x1 - x0 + 0.3 * MM:.2f}" height="{0.9 * MM:.2f}" fill="{SLAB}"/>')  # parapet
+        bo.append(f'<rect x="{x0 - 0.15 * MM:.2f}" y="{Z(g + lv * 3 + 0.9):.2f}" width="{x1 - x0 + 0.3 * MM:.2f}" height="{0.9 * MM:.2f}" fill="{CUT}"/>')  # parapet
         if x1 - x0 > 6 * MM:
             for f in range(min(lv, 3)): bo.append(fig(x0 + (x1 - x0) * (0.3 + 0.2 * ((f + i) % 3)), Z(g + f * 3) - 0.35 * MM, (f + i) % 4, PEOPLE[(f + i) % len(PEOPLE)]))
     bo.append('</g>'); o += bo
     # cut ground: one earth colour all along; the base side marked by a light hatch (not by another colour)
     bside = [q for q in gpts if q[0] >= X(fa)]
     o.append(f'<defs><pattern id="basehatch-{a["id"]}" width="1.6" height="1.6" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><line x1="0" y1="0" x2="0" y2="1.6" stroke="#FFFFFF" stroke-width="0.25" stroke-opacity="0.6"/></pattern></defs>'
-             f'<g id="ground-cut-{a["id"]}"><polygon points="{P(gpts)} {P((x, y + 2.6 * MM) for x, y in reversed(gpts))}" fill="{EARTH}"/>'
+             f'<g id="ground-cut-{a["id"]}"><polygon points="{P(gpts)} {P((x, y + 2.6 * MM) for x, y in reversed(gpts))}" fill="{CUT}"/>'
              f'<polygon points="{P(bside)} {P((x, y + 2.6 * MM) for x, y in reversed(bside))}" fill="url(#basehatch-{a["id"]})"/>'
-             f'<polyline points="{P(gpts)}" fill="none" stroke="{SLAB}" stroke-width="0.35"/></g>')
+             f'<polyline points="{P(gpts)}" fill="none" stroke="{CUT}" stroke-width="0.35"/></g>')
     # streets crossed → cars on roads, people on paths / sidewalks (schematic)
     eo = [f'<g id="people-cars-schematic-{a["id"]}">']; used = []
     for st in a['streets']:
