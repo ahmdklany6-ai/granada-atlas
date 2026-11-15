@@ -45,13 +45,16 @@ def blurred_share(im, a):
 
 
 def main():
-    d = json.load(open(os.path.join(ROOT, 'data/ex21/areas.json'))); os.makedirs(OUT, exist_ok=True); idx = {}
+    d = json.load(open(os.environ.get('AREAS', os.path.join(ROOT, 'data/ex21/areas.json')))); os.makedirs(OUT, exist_ok=True); idx = {}  # AREAS=data/ex21/factory_areas.json OUT=data/ex21/factory_aerial for the factory set
     for a in d['areas']:
         x0, y0, x1, y1 = a['extent']; raw = get(MAP.format(x0=x0, y0=y0, x1=x1, y1=y1, s=SIZE))
         im = Image.open(io.BytesIO(raw)); assert im.size == (SIZE, SIZE), 'PNOA WMS did not return the frame'
         open(os.path.join(OUT, a['id'] + '.jpg'), 'wb').write(raw)
-        try: p = json.loads(get(INFO.format(x0=x0, y0=y0, x1=x1, y1=y1)).decode('utf-8', 'replace'))['features'][0]['properties']
-        except Exception: p = {}
+        p = {}
+        for k in range(4):  # the service sometimes answers with an empty feature list: ask again
+            try: p = json.loads(get(INFO.format(x0=x0, y0=y0, x1=x1, y1=y1)).decode('utf-8', 'replace'))['features'][0]['properties']
+            except Exception: p = {}
+            if p.get('Fecha'): break
         idx[a['id']] = {'file': a['id'] + '.jpg', 'px': SIZE, 'extent': a['extent'], 'flight': p.get('Fecha'), 'resolution_m': float(p['Resolucion']) if p.get('Resolucion') else None,
                         'base_blurred_share': blurred_share(im, a)}
         print(a['id'], len(raw) // 1000, 'kB', idx[a['id']]['flight'], idx[a['id']]['resolution_m'], 'blurred share of the base:', idx[a['id']]['base_blurred_share'])

@@ -6,11 +6,18 @@ into the atlas page (Exercise 2.1 is not in index.html yet). Not part of the sit
 import sys, time, base64, subprocess, os
 sys.path.insert(0, 'tests'); import ui_test_v3 as V3; import _nointro
 from playwright.sync_api import sync_playwright
-OUTD = sys.argv[1]; LANG = sys.argv[2] if len(sys.argv) > 2 else 'en'; PORT = 8851; V3.PORT = PORT; V3.V2.PORT = PORT
+import json
+OUTD = sys.argv[1]; LANG = sys.argv[2] if len(sys.argv) > 2 else 'en'; SET = os.environ.get('SET', 'base'); PORT = 8851
+# SET=factory: the six windows of the Escúzar estate and village (data/ex21/factory_areas.json, sections in exports/ex21_factory/sec)
+IDS = [a['id'] for a in json.load(open('data/ex21/' + ('factory_areas.json' if SET == 'factory' else 'areas.json')))['areas']]
+SEC = '/exports/ex21_factory/sec/section_' if SET == 'factory' else '/exports/ex21_sec/section_'
+SRC = ('D. G. del Catastro (buildings, floors) · OpenStreetMap (ODbL) · IGN MDT05 & PNOA (CC BY 4.0) · heights = floors × 3 m (estimate); sheds and churches: height not measured' if SET == 'factory' else
+       'OpenStreetMap (ODbL) · IGN MDT25 & PNOA (CC BY 4.0) · Origen de los datos: Ministerio de Defensa (RD 118/2019) · heights = floors × 3 m (estimate)')
+V3.PORT = PORT; V3.V2.PORT = PORT
 srv = subprocess.Popen([sys.executable, '-m', 'http.server', str(PORT), '--bind', '127.0.0.1'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
 # one page per area: 297 mm wide at 200 dpi; the 1:500 map (130 m = 260 mm) with its section (1:500) under it, then the legend
-JS = r'''async (id) => { await GA.ex21.readyAreas(); const D = 200 / 25.4, mm = (v) => Math.round(v * D);
-  const img = new Image(); img.src = '/exports/ex21_sec/section_' + id + '.svg?r=' + Date.now(); await img.decode();
+JS = r'''async ([id, SET, SEC, SRC]) => { await GA.ex21.readyAreas(SET); const D = 200 / 25.4, mm = (v) => Math.round(v * D);
+  const img = new Image(); img.src = SEC + id + '.svg?r=' + Date.now(); await img.decode();
   const sw = mm(280), sh = Math.round(sw * img.naturalHeight / img.naturalWidth);
   const t = (k, v) => GA.i18n.t(k, v); const F = GA.pages.font(); const rtl = GA.i18n.dir() === 'rtl'; const items = GA.ex21.areaLegend(t);
   const W = mm(297), mapY = mm(30), M = mm(260), secY = mapY + M + mm(8), legY = secY + sh + mm(4), rows = Math.ceil(items.length / 3), H = legY + rows * mm(9) + mm(14);
@@ -28,7 +35,7 @@ JS = r'''async (id) => { await GA.ex21.readyAreas(); const D = 200 / 25.4, mm = 
     else if (it.line) { x.strokeStyle = it.line; x.lineWidth = (it.w || 1) * 4; x.setLineDash(it.dash ? [14, 8] : []); x.beginPath(); x.moveTo(sx, yy); x.lineTo(sx + mm(9), yy); x.stroke(); x.setLineDash([]); }
     x.fillStyle = GA.palette.ink; x.textAlign = rtl ? 'right' : 'left'; x.fillText(it.label, rtl ? sx - mm(2) : sx + mm(11), yy, cw - mm(13)); });
   x.font = '400 ' + mm(2.3) + 'px ' + F; x.fillStyle = GA.palette.ink3; x.textAlign = rtl ? 'right' : 'left'; x.textBaseline = 'alphabetic';
-  x.fillText('OpenStreetMap (ODbL) · IGN MDT25 & PNOA (CC BY 4.0) · Origen de los datos: Ministerio de Defensa (RD 118/2019) · heights = floors × 3 m (estimate)', rtl ? R : L, H - mm(6));
+  x.fillText(SRC, rtl ? R : L, H - mm(6), R - L);
   return c.toDataURL('image/png'); }'''
 try:
   with sync_playwright() as p:
@@ -39,7 +46,7 @@ try:
     for s in ['js/i18n_v33.js', 'js/ex21.js']: pg.add_script_tag(url='/' + s + '?r=' + str(time.time()))
     pg.wait_for_function('!!(GA.ex21 && GA.ex21.drawArea)', timeout=20000); pg.evaluate(f'GA.i18n.setLang("{LANG}")')
     os.makedirs(OUTD, exist_ok=True)
-    for aid in 'ABCDEFGH':
-      d = pg.evaluate(JS, aid); open(os.path.join(OUTD, f'area_{aid}_{LANG}.png'), 'wb').write(base64.b64decode(d.split(',')[1])); print(aid, 'ok')
+    for aid in IDS:
+      d = pg.evaluate(JS, [aid, SET, SEC, SRC]); open(os.path.join(OUTD, f'area_{aid}_{LANG}.png'), 'wb').write(base64.b64decode(d.split(',')[1])); print(aid, 'ok')
     print('errors:', errs[:5])
 finally: srv.terminate()

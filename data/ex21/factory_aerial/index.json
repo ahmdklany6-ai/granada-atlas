@@ -1,0 +1,84 @@
+{
+ "source": "PNOA máxima actualidad, orthophoto — © Instituto Geográfico Nacional de España (IGN/CNIG), CC BY 4.0; WMS www.ign.es/wms-inspire/pnoa-ma",
+ "note": "stored as served (not edited); flight date and resolution as reported by the service for the centre of each window; base_blurred_share = share of the pixels inside the OSM base outline with almost no local variation (blurred at the source)",
+ "areas": {
+  "J": {
+   "file": "J.jpg",
+   "px": 1040,
+   "extent": [
+    433085.0,
+    4104367.0,
+    433215.0,
+    4104497.0
+   ],
+   "flight": "2022-08",
+   "resolution_m": 0.25,
+   "base_blurred_share": null
+  },
+  "K": {
+   "file": "K.jpg",
+   "px": 1040,
+   "extent": [
+    432125.0,
+    4103985.0,
+    432255.0,
+    4104115.0
+   ],
+   "flight": "2022-08",
+   "resolution_m": 0.25,
+   "base_blurred_share": null
+  },
+  "L": {
+   "file": "L.jpg",
+   "px": 1040,
+   "extent": [
+    431785.0,
+    4103557.0,
+    431915.0,
+    4103687.0
+   ],
+   "flight": "2022-08",
+   "resolution_m": 0.25,
+   "base_blurred_share": null
+  },
+  "M": {
+   "file": "M.jpg",
+   "px": 1040,
+   "extent": [
+    432150.0,
+    4103200.0,
+    432280.0,
+    4103330.0
+   ],
+   "flight": "2022-08",
+   "resolution_m": 0.25,
+   "base_blurred_share": null
+  },
+  "N": {
+   "file": "N.jpg",
+   "px": 1040,
+   "extent": [
+    432195.0,
+    4102150.0,
+    432325.0,
+    4102280.0
+   ],
+   "flight": "2022-08",
+   "resolution_m": 0.25,
+   "base_blurred_share": null
+  },
+  "P": {
+   "file": "P.jpg",
+   "px": 1040,
+   "extent": [
+    432250.0,
+    4101975.0,
+    432380.0,
+    4102105.0
+   ],
+   "flight": "2022-08",
+   "resolution_m": 0.25,
+   "base_blurred_share": null
+  }
+ }
+}

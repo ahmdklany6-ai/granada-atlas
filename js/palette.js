@@ -162,6 +162,14 @@
     muni: D.warmGrey, metro: D.blueDark, route: D.blueDeep, straight: BASE.brown, dead: RED, town: BASE.brown,
     height: { above: D.ink, '0-15': BASE.oxblood, '15-30': RED, '30-60': D.rose }, fence: P.tour.fence,
   };
+  // Exercise 2.1, "the factory": the Escúzar estate (CITAI) and the village beside it (js/ex21.js drawFactory). Plots by kind,
+  // land around by class, buildings by period of construction (old = blues, since 2000 = reds), the village in dark blue.
+  P.ex21f = {
+    estate: D.redSoft, estateLine: BASE.wine, village: D.blueDark, bus: D.blueDeep, stop: D.blueDark, route: RED, straight: BASE.brown,
+    kind: { science: D.blueDeep, logistics: RED, industry: BASE.burgundy, energy: BASE.khaki, quarry: D.warmGrey },
+    land: { solar: D.blueDeep, farmland: D.khakiPale, orchard: D.oliveMid, quarry: D.warmGrey2, wood: BASE.olive, water: BASE.lightBlue, residential: D.blush, cemetery: D.stone },
+    period: { pre_1940: D.blueDark, '1940_1979': D.blueMid, '1980_1999': D.bluePale, '2000_2009': D.rose, '2010_2019': RED, '2020_plus': BASE.oxblood },
+  };
   // 5.28 — "City growth (built-up extent 1932–2020)" layer (js/layers_growth.js): one fill per period, oldest → newest
   // (traced periods in the dark red family, GHSL epochs in the khaki family); the selected period is outlined in red.
   // Map paint and legend read the same array.

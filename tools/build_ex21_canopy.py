@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw
 from scipy import ndimage
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-P = os.path.join(ROOT, 'data/ex21/areas.json')
+P = os.environ.get('AREAS', os.path.join(ROOT, 'data/ex21/areas.json'))  # AREAS=data/ex21/factory_areas.json for the factory set
 PX = 0.25  # m per pixel
 WMS = ('https://www.ign.es/wms-inspire/pnoa-ma?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=OI.OrthoimageCoverage&STYLES='
        '&CRS=EPSG:25830&BBOX={x0},{y0},{x1},{y1}&WIDTH={w}&HEIGHT={h}&FORMAT=image/png')
@@ -47,5 +47,5 @@ for a in d['areas']:
             px, py, r = (cx - x0) / PX, (y1 - cy) / PX, dm / 2 / PX
             dr.ellipse([px - r, py - r, px + r, py + r], outline=(153, 43, 42), width=2)
         img.save(os.path.join(CHECK, f'canopy_{a["id"]}.jpg'), quality=85)
-d['sources'] = d['sources'].rstrip('.') + '; tree crowns: detected from the PNOA orthophoto (IGN, CC BY 4.0), approximate'
+if 'tree crowns' not in d['sources']: d['sources'] = d['sources'].rstrip('.') + '; tree crowns: detected from the PNOA orthophoto (IGN, CC BY 4.0), approximate'
 json.dump(d, open(P, 'w'), separators=(',', ':'))

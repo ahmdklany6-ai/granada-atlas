@@ -137,7 +137,9 @@
     ctx.fillText(t('x34.inset.src'), x + 8 * k, y + h - 6 * k, w - 16 * k); }
   // ---------- AREA level (1:500): four 130 m windows on the edge (data/ex21/areas.json, tools/build_ex21_areas.py) ----------
   let AR = null, ARp = null;
-  function readyAreas() { if (ARp) return ARp; ARp = fetch('data/ex21/areas.json?v=' + (root.GA_BUILD || '')).then(r => r.json()).then(j => (AR = j)).catch(e => { ARp = null; throw e; }); return ARp; }
+  // two sets of 1:500 windows: 'base' (areas.json, A–H) and 'factory' (factory_areas.json, J–P); the last one asked for is the current one
+  const ARS = {}; function readyAreas(set) { const f = set === 'factory' ? 'factory_areas.json' : 'areas.json'; if (!ARS[f]) ARS[f] = fetch('data/ex21/' + f + '?v=' + (root.GA_BUILD || '')).then(r => r.json()).catch(e => { delete ARS[f]; throw e; });
+    return (ARp = ARS[f].then(j => (AR = j))); }
   // the aerial photo of a window (PNOA, IGN, CC BY 4.0; tools/build_ex21_aerial.py) and its flight date / resolution
   let AER = null, AERp = null; const AERIMG = {};
   function readyAerial() { if (AERp) return AERp; AERp = fetch('data/ex21/aerial/index.json?v=' + (root.GA_BUILD || '')).then(r => r.json()).then(j => (AER = j)).catch(e => { AERp = null; throw e; }); return AERp; }
@@ -146,7 +148,8 @@
   // legend of the aerial version: only what is drawn over the photo
   function aerialLegend(t, id) { const pal = P(), C = pal.ex21; const as = (AR ? AR.areas : []).filter(a => !id || a.id === id);
     const metro = as.some(a => (a.metro || []).some(m => m.k === 'track')), dead = as.some(a => (a.dead || []).length);
-    return [{ line: C.fence.housing, w: 2, label: t('x34.lg.fenceAny') }].concat(dead ? [{ line: C.dead, w: 2, sym: 'dead', label: t('x34.lg.dead') }] : []).concat(metro ? [{ line: C.metro, w: 3, rail: true, label: t('x34.lg.metro') }] : [])
+    return (as.some(a => (a.fence || []).length) ? [{ line: C.fence.housing, w: 2, label: t('x34.lg.fenceAny') }] : []).concat(as.some(a => (a.plots || []).length) ? [{ line: pal.ink, w: 1, dash: true, label: t('x34.lg.plot') }] : [])
+      .concat(dead ? [{ line: C.dead, w: 2, sym: 'dead', label: t('x34.lg.dead') }] : []).concat(metro ? [{ line: C.metro, w: 3, rail: true, label: t('x34.lg.metro') }] : [])
       .concat([{ line: pal.red, w: 1.5, dash: true, label: t('x34.lg.secline') }]); }
   const floorsCol = (lv) => { const b = P().band; return lv == null ? null : lv <= 2 ? b['1-2'] : lv <= 4 ? b['3-4'] : lv <= 8 ? b['5-8'] : b['9+']; };
   function drawArea(ctx, x, y, S, id, o) {
@@ -174,6 +177,8 @@
     (A.canopy || []).forEach(([u, v, dm]) => { ctx.beginPath(); ctx.arc(X(u), Y(v), Math.max(1.2, dm / 2) / mpp, 0, 7); ctx.fillStyle = 'rgba(126,123,67,.45)'; ctx.fill(); ctx.strokeStyle = pal.olive; ctx.lineWidth = 0.6 * k; ctx.stroke(); });
     A.trees.forEach(([u, v]) => { ctx.beginPath(); ctx.arc(X(u), Y(v), 2.2 / mpp, 0, 7); ctx.fillStyle = 'rgba(126,123,67,.35)'; ctx.fill(); ctx.strokeStyle = pal.olive; ctx.lineWidth = 0.8 * k; ctx.stroke(); });
     }
+    // named plots (the factory set): a dashed outline and the name
+    (A.plots || []).forEach(q => { path(q.r, true); if (aer) { ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 4 * k; ctx.stroke(); } ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.6 * k; ctx.setLineDash([8 * k, 4 * k]); ctx.stroke(); ctx.setLineDash([]); });
     // the fence by what lies outside it, dead ends, metro (over the photo: a thinner line on a white casing, so the real edge stays visible)
     if (aer) A.fence.forEach(f => { ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 5.4 * k; path(f.r); ctx.stroke(); ctx.strokeStyle = C.fence[f.c] || C.baseLine; ctx.lineWidth = 3 * k; path(f.r); ctx.stroke(); });
     else A.fence.forEach(f => { ctx.strokeStyle = C.fence[f.c] || C.baseLine; ctx.lineWidth = 7 * k; path(f.r); ctx.stroke(); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.2 * k; ctx.setLineDash([2 * k, 5 * k]); path(f.r); ctx.stroke(); ctx.setLineDash([]); });
@@ -183,6 +188,7 @@
     ctx.font = font(9.5, 500); ctx.fillStyle = pal.ink2; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; const named = new Set();
     A.streets.forEach(st => { if (!st.nm || named.has(st.nm) || /footway|path|service|track/.test(st.hw)) return; const r = st.r[0] && st.r[0][0]; if (!r || r.length < 2) return; const i = Math.floor(r.length / 2), p0 = r[Math.max(0, i - 1)], p1 = r[Math.min(r.length - 1, i)];
       let ang = Math.atan2(-(p1[1] - p0[1]), p1[0] - p0[0]); if (ang > Math.PI / 2) ang -= Math.PI; if (ang < -Math.PI / 2) ang += Math.PI; ctx.save(); ctx.translate(X((p0[0] + p1[0]) / 2), Y((p0[1] + p1[1]) / 2)); ctx.rotate(ang); ctx.lineWidth = 3 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(st.nm, 0, 0); ctx.fillText(st.nm, 0, 0); ctx.restore(); named.add(st.nm); });
+    (A.plots || []).forEach(q => { let n = 0, sx = 0, sy = 0; q.r.forEach(pg => pg[0].forEach(c => { sx += c[0]; sy += c[1]; n++; })); if (!n) return; ctx.font = font(11, 700); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 3.4 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(q.nm.replace(/ \(.*\)$/, ''), X(sx / n), Y(sy / n)); ctx.fillStyle = pal.ink; ctx.fillText(q.nm.replace(/ \(.*\)$/, ''), X(sx / n), Y(sy / n)); });
     // section line A–A′
     const sa = A.section.a, sb = A.section.b;
     if (aer) { ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 4.4 * k; ctx.beginPath(); ctx.moveTo(X(sa[0]), Y(sa[1])); ctx.lineTo(X(sb[0]), Y(sb[1])); ctx.stroke(); }
@@ -204,16 +210,20 @@
   function drawAreaKey(ctx, x, y, w, h, o) { o = o || {}; if (!D || !AR) return false; const pal = P(); const t = o.t || ((s) => s); const k = o.k || w / 1000; const F = root.GA.pages.font();
     drawCity(ctx, x, y, w, h, { t, only: 'island', k }); const E = CITY, mpp = (E.x1 - E.x0) / w; const X = (u) => x + (u - E.x0) / mpp, Y = (v) => y + (E.y1 - v) / mpp;
     AR.areas.forEach(a => { const e = a.extent; ctx.fillStyle = 'rgba(153,43,42,.18)'; ctx.fillRect(X(e[0]), Y(e[3]), (e[2] - e[0]) / mpp, (e[3] - e[1]) / mpp); ctx.strokeStyle = pal.red; ctx.lineWidth = 2.4 * k; ctx.strokeRect(X(e[0]), Y(e[3]), (e[2] - e[0]) / mpp, (e[3] - e[1]) / mpp);
-      const cx = X((e[0] + e[2]) / 2), cy = Y(e[3]) - 14 * k; ctx.beginPath(); ctx.arc(cx, cy, 11 * k, 0, 7); ctx.fillStyle = pal.red; ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.font = `700 ${Math.round(12 * k)}px ${F}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.fillText(a.id, cx, cy + 0.5 * k); });
+      const below = AR.areas.some(b => b !== a && Math.abs(b.centre[0] - a.centre[0]) < 250 && b.centre[1] > a.centre[1] && b.centre[1] - a.centre[1] < 320);   // another window just north: this letter goes under its square
+      const cx = X((e[0] + e[2]) / 2), cy = below ? Y(e[1]) + 14 * k : Y(e[3]) - 14 * k; ctx.beginPath(); ctx.arc(cx, cy, 11 * k, 0, 7); ctx.fillStyle = pal.red; ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.font = `700 ${Math.round(12 * k)}px ${F}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.fillText(a.id, cx, cy + 0.5 * k); });
     return true; }
   // legend of the key map: map 01's legend plus the 1:500 window
   function keyLegend(t) { const pal = P(); return mapLegend('island', t).concat([{ sw: pal.red, alpha: 0.18, stroke: pal.red, label: t('x34.lg.window') }]); }
   // the section across the fence, true scale (1:500 both ways); building heights = floors × 3 m (estimate)
   // legend of the area maps: the band land use present in any window, floors, streets, fence, dead ends, section
-  function areaLegend(t) { const pal = P(), C = pal.ex21, b = pal.band; const used = new Set(); (AR ? AR.areas : []).forEach(a => (a.bandlu || []).forEach(l => used.add(l.c)));
-    return [{ sw: C.base, label: t('x34.lg.base') }].concat([...used].map(c => ({ sw: pal.tour.bandlu[c], alpha: 0.5, label: t('x34.lg.lu.' + c) })))
-      .concat([{ sw: b['1-2'], label: t('x34.lg.fl.12') }, { sw: b['3-4'], label: t('x34.lg.fl.34') }, { sw: b['5-8'], label: t('x34.lg.fl.58') }, { line: C.street, w: 3, label: t('x34.lg.street') }, { line: C.street, w: 1, dash: true, label: t('x34.lg.path') },
-        { line: C.fence.housing, w: 3, label: t('x34.lg.fenceAny') }, { line: C.dead, w: 2, sym: 'dead', label: t('x34.lg.dead') }, { sw: pal.olive, alpha: 0.45, label: t('x34.lg.canopy') }, { line: pal.red, w: 1.5, dash: true, label: t('x34.lg.secline') }]); }
+  function areaLegend(t) { const pal = P(), C = pal.ex21, b = pal.band; const as = AR ? AR.areas : []; const used = new Set(); as.forEach(a => (a.bandlu || []).forEach(l => used.add(l.c)));
+    const any = (f) => as.some(f), cat = AR && AR.floors_source === 'catastro';
+    return (any(a => (a.base || []).length) ? [{ sw: C.base, label: t('x34.lg.base') }] : []).concat([...used].map(c => ({ sw: pal.tour.bandlu[c], alpha: 0.5, label: t((AR.set === 'factory' ? 'x35.lg.lu.' : 'x34.lg.lu.') + c) })))
+      .concat([{ sw: b['1-2'], label: t(cat ? 'x34.lg.fl.12c' : 'x34.lg.fl.12') }, { sw: b['3-4'], label: t('x34.lg.fl.34') }, { sw: b['5-8'], label: t('x34.lg.fl.58') }, { line: C.street, w: 3, label: t('x34.lg.street') }, { line: C.street, w: 1, dash: true, label: t('x34.lg.path') }])
+      .concat(any(a => (a.plots || []).length) ? [{ line: pal.ink, w: 1, dash: true, label: t('x34.lg.plot') }] : [])
+      .concat(any(a => (a.fence || []).length) ? [{ line: C.fence.housing, w: 3, label: t('x34.lg.fenceAny') }] : []).concat(any(a => (a.dead || []).length) ? [{ line: C.dead, w: 2, sym: 'dead', label: t('x34.lg.dead') }] : [])
+      .concat([{ sw: pal.olive, alpha: 0.45, label: t('x34.lg.canopy') }, { line: pal.red, w: 1.5, dash: true, label: t('x34.lg.secline') }]); }
   function drawSection(ctx, x, y, w, h, id, o) {
     o = o || {}; const A = AR && AR.areas.find(a => a.id === id); if (!A) return false; const pal = P(), C = pal.ex21; const t = o.t || ((s) => s); const F = root.GA.pages.font(); const k = o.k || w / 1000;
     const font = (sz, wt) => `${wt || 600} ${Math.round(sz * k)}px ${F}`; const sm = A.section.samples, L = sm[sm.length - 1][0];
@@ -267,5 +277,123 @@
       .concat([{ line: C.route, w: 2, dash: true, label: t('x34.lg.route') }, { line: C.dead, w: 2, sym: 'dead', label: t('x34.lg.dead') }, { line: C.metro, w: 4, rail: true, label: t('x34.lg.metro') }])
       .concat(Object.keys(C.height).map(c => ({ sw: C.height[c], alpha: hAlpha(c), label: t('x34.lg.h.' + c) })))
       .concat([{ sw: C.built, label: t('x34.lg.built') }, { line: C.muni, dash: true, w: 1, label: t('x34.lg.muni2') }]); }
-  root.GA.ex21 = { ready, readyAreas, readyAerial, loadAerial, aerialLegend, get aerial() { return AER; }, drawArea, drawSection, areaLegend, drawAreaKey, keyLegend, get areas() { return AR; }, drawCity, drawGaps, cityLegend, mapLegend, MAPS: ['island', 'walk', 'growth', 'height'], CITY, get data() { return D; } };
+  // ---------- THE FACTORY (owner request, 15 Nov 2026): the Escúzar estate (CITAI) and the village beside it ----------
+  // data/ex21/factory.json (tools/build_ex21_factory.py): OpenStreetMap + Catastro + IGN. One layer of information per map:
+  // o.only = 'estate' | 'access' | 'land' | 'time'. Frame 5.4 × 4.4 km = 540 × 440 mm at 1:10,000.
+  let FD = null, FDp = null;
+  function readyFactory() { if (FDp) return FDp; FDp = fetch('data/ex21/factory.json?v=' + (root.GA_BUILD || '')).then(r => r.json()).then(j => (FD = j)).catch(e => { FDp = null; throw e; }); return FDp; }
+  const FPER = [['pre_1940', 0, 1940], ['1940_1979', 1940, 1980], ['1980_1999', 1980, 2000], ['2000_2009', 2000, 2010], ['2010_2019', 2010, 2020], ['2020_plus', 2020, 9999]];
+  const fper = (yr) => { if (yr == null) return null; const q = FPER.find(c => yr >= c[1] && yr < c[2]); return q ? q[0] : null; };
+  const FKIND = ['science', 'logistics', 'industry', 'energy', 'quarry'], FLAND = ['solar', 'farmland', 'orchard', 'quarry', 'wood'];
+  function drawFactory(ctx, x, y, w, h, o) {
+    o = o || {}; if (!FD) return false; const pal = P(), C = pal.ex21, FC = pal.ex21f; const t = o.t || ((s) => s); const F = root.GA.pages.font(); const E = FD.frame, mpp = (E[2] - E[0]) / w, k = o.k || w / 1000;
+    const X = (u) => x + (u - E[0]) / mpp, Y = (v) => y + (E[3] - v) / mpp; const font = (sz, wt) => `${wt || 600} ${Math.round(sz * k)}px ${F}`; const on = (n) => o.only === n;
+    const poly = (rs) => { ctx.beginPath(); rs.forEach(pg => pg.forEach(r => { r.forEach((q, i) => i ? ctx.lineTo(X(q[0]), Y(q[1])) : ctx.moveTo(X(q[0]), Y(q[1]))); ctx.closePath(); })); };
+    const line = (rs) => { ctx.beginPath(); rs.forEach(pg => pg.forEach(r => r.forEach((q, i) => i ? ctx.lineTo(X(q[0]), Y(q[1])) : ctx.moveTo(X(q[0]), Y(q[1]))))); };
+    const halo = (s0, px, py, col, sz, wt, al) => { ctx.font = font(sz, wt); ctx.textAlign = al || 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.lineJoin = 'round'; ctx.lineWidth = 3.6 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(s0, px, py); ctx.fillStyle = col; ctx.fillText(s0, px, py); };
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip(); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(x, y, w, h); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    // o.aerial = the PNOA photo of the whole frame (as served): only the two outlines, the names, north and scale go over it
+    const aer = o.aerial || null; if (aer) { ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(aer, x, y, w, h); }
+    // 1 the land around (its own map): OSM land use and solar plants; white = not mapped in OSM
+    if (on('land') && !aer) FD.landuse.forEach(l => { poly(l.r); ctx.fillStyle = FC.land[l.c] || pal.grey3; ctx.globalAlpha = l.c === 'solar' ? 0.9 : 0.75; ctx.fill('evenodd'); ctx.globalAlpha = 1; });
+    // 2 the estate's ground
+    if (!aer) { poly(FD.estate.r); ctx.fillStyle = FC.estate; ctx.globalAlpha = on('land') ? 0.5 : 1; ctx.fill('evenodd'); ctx.globalAlpha = 1; }
+    // 3 municipal boundaries
+    if (!aer) { ctx.setLineDash([6 * k, 4 * k]); ctx.strokeStyle = C.muni; ctx.lineWidth = 1.1 * k; FD.muni.forEach(m => { line(m.r); ctx.stroke(); }); ctx.setLineDash([]); }
+    // 4 named plots by kind (map 01)
+    if (on('estate')) FD.plots.forEach(q => { const c = FC.kind[q.k] || FC.kind.industry; poly(q.r); ctx.fillStyle = c; ctx.globalAlpha = 0.4; ctx.fill('evenodd'); ctx.globalAlpha = 1; ctx.strokeStyle = c; ctx.lineWidth = 1.2 * k; ctx.stroke(); });
+    // 5 streets and roads (OSM)
+    const sw = { main: on('access') ? 3.6 : 1.8, street: 1, service: 0.7, track: 0.6 };
+    if (!aer) ['track', 'service', 'street', 'main'].forEach(c => { ctx.strokeStyle = c === 'main' && on('access') ? C.town : C.street; ctx.lineWidth = sw[c] * k; ctx.setLineDash(c === 'track' ? [3 * k, 3 * k] : []); ctx.beginPath();
+      FD.streets.forEach(st => { if (st.c !== c) return; st.r.forEach(pg => pg.forEach(r => r.forEach((q, i) => i ? ctx.lineTo(X(q[0]), Y(q[1])) : ctx.moveTo(X(q[0]), Y(q[1]))))); }); ctx.stroke(); }); ctx.setLineDash([]);
+    // 6 buildings (Catastro): solid on map 01, by period of construction on map 04, light context on the others
+    if (!aer) FD.buildings.forEach(b => { poly(b.r); if (on('time')) { const pc = fper(b.y); ctx.fillStyle = pc ? FC.period[pc] : pal.grey3; } else ctx.fillStyle = on('estate') ? pal.ink : C.built; ctx.fill('evenodd'); });
+    // 7 the estate's outline and the village's outline (OSM)
+    if (aer) { ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 5 * k; poly(FD.estate.r); ctx.stroke(); poly(FD.village.r); ctx.stroke(); }
+    poly(FD.estate.r); ctx.strokeStyle = FC.estateLine; ctx.lineWidth = 2.2 * k; ctx.stroke();
+    poly(FD.village.r); ctx.strokeStyle = FC.village; ctx.lineWidth = 2.2 * k; ctx.setLineDash([1 * k, 4.5 * k]); ctx.stroke(); ctx.setLineDash([]);
+    // 8 getting there (map 02): bus line and stops, the way by road from the village to the two plots, road numbers
+    if (on('access')) {
+      ctx.strokeStyle = FC.bus; ctx.lineWidth = 7 * k; ctx.globalAlpha = 0.35; line(FD.bus.r); ctx.stroke(); ctx.globalAlpha = 1;
+      FD.routes.filter(r => r.mode === 'road').forEach(r => { ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 4.6 * k; line(r.r); ctx.stroke(); ctx.strokeStyle = FC.route; ctx.lineWidth = 2.6 * k; ctx.setLineDash([9 * k, 5 * k]); line(r.r); ctx.stroke(); ctx.setLineDash([]); });
+      FD.bus.stops.forEach(st => { ctx.beginPath(); ctx.arc(X(st.p[0]), Y(st.p[1]), 5.2 * k, 0, 7); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.strokeStyle = FC.stop; ctx.lineWidth = 2.4 * k; ctx.stroke(); });
+      const refs = {}; FD.streets.forEach(st => { if (st.c !== 'main' || !(st.ref || st.nm)) return; const r = st.r[0][0]; let len = 0; for (let i = 1; i < r.length; i++) len += Math.hypot(r[i][0] - r[i - 1][0], r[i][1] - r[i - 1][1]); const key = st.ref ? st.ref.split(';')[0] : st.nm; if (!st.ref && len < 700) return; if (!refs[key] || len > refs[key].len) refs[key] = { len, r }; });
+      Object.keys(refs).forEach(ref => { const r = refs[ref].r, m = r[Math.floor(r.length / 2)]; const px = X(m[0]), py = Y(m[1]); ctx.font = font(10, 700); const tw = ctx.measureText(ref).width + 8 * k; ctx.fillStyle = '#FFFFFF'; ctx.strokeStyle = C.town; ctx.lineWidth = 1.2 * k; ctx.beginPath(); ctx.rect(px - tw / 2, py - 8 * k, tw, 16 * k); ctx.fill(); ctx.stroke(); ctx.fillStyle = C.town; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.fillText(ref, px, py + 0.5 * k); });
+      FD.routes.filter(r => r.mode === 'road').forEach(r => { const pts = r.r[0][0], m = pts[pts.length - 1]; halo(`${r.to}: ${r.km.toFixed(1)} km`, X(m[0]) + 12 * k, Y(m[1]) + (r.to === 'Lidl' ? -30 : 24) * k, FC.route, 11, 700, r.to === 'Lidl' ? 'center' : 'left'); });
+      FD.routes.filter(r => r.from === 'stop').forEach(r => { ctx.strokeStyle = FC.stop; ctx.lineWidth = 2 * k; ctx.setLineDash([2 * k, 5 * k]); line(r.r); ctx.stroke(); ctx.setLineDash([]); const pts = r.r[0][0], m = pts[Math.floor(pts.length * 0.45)]; halo(t('x35.walk', { km: r.km.toFixed(1) }), X(m[0]), Y(m[1]) - 14 * k, FC.stop, 10, 700); });
+    }
+    // 9 map 01: the gap between the village's edge and the estate's edge; plot names with the operators' own figures
+    if (on('estate')) {
+      const a = FD.edge_line[0], b = FD.edge_line[1]; ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.4 * k; ctx.setLineDash([4 * k, 3 * k]); ctx.beginPath(); ctx.moveTo(X(a[0]), Y(a[1])); ctx.lineTo(X(b[0]), Y(b[1])); ctx.stroke(); ctx.setLineDash([]);
+      [a, b].forEach(q => { ctx.beginPath(); ctx.arc(X(q[0]), Y(q[1]), 2.6 * k, 0, 7); ctx.fillStyle = pal.ink; ctx.fill(); });
+      halo(`${FD.village_edge_to_estate_m} m`, X((a[0] + b[0]) / 2) + 10 * k, Y((a[1] + b[1]) / 2), pal.ink, 11, 700, 'left');
+      const placed = []; if (!o.noPlotNames) FD.plots.filter(q => q.ha >= 1.5 || q.jobs || q.opened).forEach(q => { const c = FC.kind[q.k] || FC.kind.industry, nm = q.nm.replace(/ \(.*\)$/, ''), yr = q.opened && q.opened.length <= 10 ? q.opened : null;
+        ctx.font = font(10.5, 700); const tw = ctx.measureText(nm).width, th = (yr ? 28 : 15) * k; const px = X(q.c[0]); let py = Y(q.c[1]);
+        for (let n = 0; n < 8 && placed.some(b => Math.abs(b[0] - px) < (b[2] + tw) / 2 + 4 * k && Math.abs(b[1] - py) < (b[3] + th) / 2 + 2 * k); n++) py += 15 * k;
+        placed.push([px, py, tw, th]); halo(nm, px, py - (yr ? 6 * k : 0), c, 10.5, 700); if (yr) halo(yr, px, py + 7 * k, pal.ink2, 8.5, 500); });
+    }
+    // 10 names: the estate and the village with their measured sizes
+    const es = FD.estate, vi = FD.village; const ec = [(E[0] + E[2]) / 2 + 250, 4105420], vc = [vi.c[0], vi.c[1] - 520];
+    halo(t('x35.estate').toUpperCase(), X(ec[0]), Y(ec[1]), FC.estateLine, 15, 700); halo(t('x35.estate.sub', { ha: Math.round(es.ha), n: es.buildings, b: es.footprint_ha.toFixed(1), p: es.built_share_pct.toFixed(1) }), X(ec[0]), Y(ec[1]) + 17 * k, FC.estateLine, 10.5, 500);
+    halo(vi.nm.toUpperCase(), X(vc[0]), Y(vc[1]), FC.village, 15, 700); halo(t('x35.village.sub', { pop: vi.pop, y: vi.pop_year, d: vi.dwellings, n: vi.buildings, b: vi.footprint_ha.toFixed(1) }), X(vc[0]), Y(vc[1]) + 17 * k, FC.village, 10.5, 500);
+    ctx.restore(); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.2 * k; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    // corner box (top-left): map 02 the southern axis, map 04 built area per decade
+    if (on('access')) drawAxisInset(ctx, x + 14 * k, y + 14 * k, 300 * k, 215 * k, k, t, font);
+    if (on('time')) drawDecades(ctx, x + 14 * k, y + 14 * k, 300 * k, 190 * k, k, t, font);
+    root.GA.pages.northArrow(ctx, x + w - 28 * k, y + 20 * k, 1.3 * k);
+    const km = 1000 / mpp, bx = x + 22 * k, by = y + h - 24 * k; ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(bx - 8 * k, by - 22 * k, km + 60 * k, 34 * k);
+    ctx.fillStyle = pal.ink; ctx.fillRect(bx, by, km / 2, 5 * k); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1 * k; ctx.strokeRect(bx, by, km, 5 * k); ctx.font = font(10, 500); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.direction = 'ltr';
+    ctx.fillText('0', bx, by - 5 * k); ctx.fillText('500', bx + km / 2, by - 5 * k); ctx.fillText('1 km', bx + km, by - 5 * k);
+    return true;
+  }
+  // map 02's corner box: the whole southern axis — Granada's metro line 1, its extension to Las Gabias, the straight gap to the estate
+  function drawAxisInset(ctx, x, y, w, h, k, t, font) { const pal = P(), C = pal.ex21, FC = pal.ex21f; const top = 34 * k, foot = 4 * k, pad = 8 * k; const B = [427500, 4100300, 449500, 4113800];
+    const sc = Math.min((w - 2 * pad) / (B[2] - B[0]), (h - top - foot - 2 * pad) / (B[3] - B[1])); const ox = x + (w - (B[2] - B[0]) * sc) / 2, oy = y + top + pad; const X = (u) => ox + (u - B[0]) * sc, Y = (v) => oy + (B[3] - v) * sc;
+    ctx.save(); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(x, y, w, h); ctx.beginPath(); ctx.rect(x, y + top, w, h - top - foot); ctx.clip(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    const path = (rs) => { ctx.beginPath(); rs.forEach(r => r.forEach((q, i) => i ? ctx.lineTo(X(q[0]), Y(q[1])) : ctx.moveTo(X(q[0]), Y(q[1])))); };
+    if (D) { D.area.forEach(m => { path(m.g); ctx.closePath(); if (m.p.name === 'Granada') { ctx.fillStyle = pal.gray1; ctx.fill('evenodd'); } ctx.strokeStyle = C.muni; ctx.lineWidth = 0.5 * k; ctx.stroke(); });
+      const base = D.edge.find(f => f.p.k === 'base'); if (base) { path(base.g); ctx.closePath(); ctx.fillStyle = C.base; ctx.fill(); }
+      ctx.strokeStyle = C.metro; ctx.lineWidth = 2.6 * k; ctx.beginPath(); D.l1.lines.forEach(l => l.forEach((q, i) => i ? ctx.lineTo(X(q[0]), Y(q[1])) : ctx.moveTo(X(q[0]), Y(q[1])))); ctx.stroke();
+      D.metro.filter(f => f.p.k === 'track').forEach(f => { path(f.g); ctx.strokeStyle = C.metro; ctx.lineWidth = 2.6 * k; ctx.stroke(); path(f.g); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1 * k; ctx.setLineDash([3 * k, 3 * k]); ctx.stroke(); ctx.setLineDash([]); }); }
+    const es = FD.estate.r; ctx.beginPath(); es.forEach(pg => pg.forEach(r => { r.forEach((q, i) => i ? ctx.lineTo(X(q[0]), Y(q[1])) : ctx.moveTo(X(q[0]), Y(q[1]))); ctx.closePath(); })); ctx.fillStyle = FC.estate; ctx.fill('evenodd'); ctx.strokeStyle = FC.estateLine; ctx.lineWidth = 1.2 * k; ctx.stroke();
+    const g = FD.gap_line; if (g) { ctx.strokeStyle = FC.route; ctx.lineWidth = 1.6 * k; ctx.setLineDash([4 * k, 3 * k]); ctx.beginPath(); ctx.moveTo(X(g[0][0]), Y(g[0][1])); ctx.lineTo(X(g[1][0]), Y(g[1][1])); ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(X(g[0][0]), Y(g[0][1]), 3.4 * k, 0, 7); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.strokeStyle = C.metro; ctx.lineWidth = 1.6 * k; ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(X(FD.village.c[0]), Y(FD.village.c[1]), 2.6 * k, 0, 7); ctx.fillStyle = FC.village; ctx.fill();
+    const E = FD.frame; ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.2 * k; ctx.strokeRect(X(E[0]), Y(E[3]), (E[2] - E[0]) * sc, (E[3] - E[1]) * sc);
+    const lab = (s0, u, v, dx, dy, al, col, wt) => { ctx.font = font(8.5, wt || 700); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.lineWidth = 3 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(s0, X(u) + dx * k, Y(v) + dy * k); ctx.fillStyle = col || pal.ink; ctx.fillText(s0, X(u) + dx * k, Y(v) + dy * k); };
+    if (g) { lab(`${FD.gap_metro_km} km`, (g[0][0] + g[1][0]) / 2, (g[0][1] + g[1][1]) / 2, 6, 8, 'left', FC.route); lab('Las Gabias', g[0][0], g[0][1], 0, -10, 'center'); }
+    lab('Escúzar', FD.village.c[0], FD.village.c[1], 6, 4, 'left', FC.village); lab('CITAI', (E[0] + E[2]) / 2, E[3], 0, -8, 'center', FC.estateLine);
+    if (D) { const gr = D.l1.stops.find(st => st.name === 'Recogidas'); if (gr) lab('GRANADA', gr.p[0], Math.min(gr.p[1], B[3] - 600), -8, 0, 'right'); const ar = D.l1.stops.find(st => st.name === 'Armilla'); if (ar) lab('Armilla', ar.p[0], ar.p[1], 6, 8, 'left'); }
+    ctx.restore(); ctx.strokeStyle = pal.line2; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.font = font(9.5, 700); ctx.fillStyle = pal.ink; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(t('x35.inset.title', { km: FD.gap_metro_km }), x + 8 * k, y + 15 * k, w - 16 * k);
+    ctx.font = font(8, 500); ctx.fillStyle = pal.ink2; ctx.fillText(t('x35.inset.sub'), x + 8 * k, y + 28 * k, w - 16 * k); }
+  // map 04's corner box: built footprint per decade (Catastro), village and estate
+  function drawDecades(ctx, x, y, w, h, k, t, font) { const pal = P(), FC = pal.ex21f; const v = FD.village.footprint_by_decade_m2, e = FD.estate.footprint_by_decade_m2; const decs = []; for (let d = 1880; d <= 2020; d += 10) decs.push(d);
+    const val = (o2, d) => (o2[String(d)] || 0); const vmax = Math.max(...decs.map(d => val(v, d) + val(e, d))); const top = 36 * k, bot = 22 * k, pl = 34 * k, pr = 8 * k; const bw = (w - pl - pr) / decs.length, H = h - top - bot;
+    ctx.save(); ctx.fillStyle = 'rgba(255,255,255,.96)'; ctx.fillRect(x, y, w, h); ctx.strokeStyle = pal.line2; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.font = font(9.5, 700); ctx.fillStyle = pal.ink; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(t('x35.dec.title'), x + 8 * k, y + 15 * k, w - 16 * k); ctx.font = font(8, 500); ctx.fillStyle = pal.ink2; ctx.fillText(t('x35.dec.sub'), x + 8 * k, y + 28 * k, w - 16 * k);
+    decs.forEach((d, i) => { const bx = x + pl + i * bw, hv = val(v, d) / vmax * H, he = val(e, d) / vmax * H; const by = y + top + H; ctx.fillStyle = FC.village; ctx.fillRect(bx + 1 * k, by - hv, bw - 2 * k, hv); ctx.fillStyle = FC.route; ctx.fillRect(bx + 1 * k, by - hv - he, bw - 2 * k, he);
+      if (d % 20 === 0) { ctx.font = font(7.5, 500); ctx.fillStyle = pal.ink2; ctx.textAlign = 'center'; ctx.direction = 'ltr'; ctx.fillText(String(d), bx + bw / 2, by + 11 * k); } });
+    ctx.strokeStyle = pal.ink3; ctx.lineWidth = 0.8 * k; ctx.beginPath(); ctx.moveTo(x + pl, y + top + H); ctx.lineTo(x + w - pr, y + top + H); ctx.stroke();
+    ctx.font = font(7.5, 500); ctx.fillStyle = pal.ink2; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; const ha = vmax / 1e4; [0, 0.5, 1].forEach(f => ctx.fillText((ha * f).toFixed(f ? 1 : 0) + (f === 1 ? ' ha' : ''), x + pl - 3 * k, y + top + H - f * H));
+    ctx.restore(); }
+  function factoryLegend(only, t) { if (!FD) return []; const pal = P(), C = pal.ex21, FC = pal.ex21f; const out = [{ sw: FC.estate, stroke: FC.estateLine, label: t('x35.lg.estate', { ha: Math.round(FD.estate.ha) }) }, { line: FC.village, w: 2, dots: true, label: t('x35.lg.village', { ha: Math.round(FD.village.ha) }) }];
+    if (only === 'estate') { FKIND.filter(c => FD.plots.some(q => q.k === c)).forEach(c => out.push({ sw: FC.kind[c], alpha: 0.4, stroke: FC.kind[c], label: t('x35.lg.kind.' + c) }));
+      out.push({ sw: pal.ink, label: t('x35.lg.bld') }, { line: pal.ink, w: 1, dash: true, label: t('x35.lg.edge', { m: FD.village_edge_to_estate_m }) }); }
+    if (only === 'access') { const rd = FD.routes.filter(r => r.mode === 'road'); out.push({ line: C.town, w: 3, label: t('x35.lg.road') }, { line: FC.bus, w: 5, alpha: 0.35, label: t('x35.lg.bus') }, { line: FC.stop, sym: 'stop', label: t('x35.lg.stop', { n: FD.bus.stops.length }) });
+      rd.forEach(r => out.push({ line: FC.route, w: 2, dash: true, label: t('x35.lg.route', { to: r.to, km: r.km.toFixed(1), s: r.straight_km.toFixed(1) }) }));
+      FD.routes.filter(r => r.from === 'stop').forEach(r => out.push({ line: FC.stop, w: 1.5, dots: true, label: t('x35.lg.walk', { km: r.km.toFixed(1) }) })); }
+    if (only === 'land') { FLAND.filter(c => FD.land_ha[c]).forEach(c => out.push({ sw: FC.land[c], alpha: c === 'solar' ? 0.9 : 0.75, label: t('x35.lg.land.' + c, { ha: Math.round(FD.land_ha[c]) }) })); out.push({ sw: '#FFFFFF', label: t('x35.lg.land.none') }); }
+    if (only === 'time') { FPER.forEach(c => out.push({ sw: FC.period[c[0]], label: t('x35.lg.per.' + c[0]) })); }
+    if (only === 'photo') return out;
+    if (only !== 'estate' && only !== 'time') out.push({ sw: C.built, label: t('x35.lg.bld') });
+    out.push({ line: C.muni, dash: true, w: 1, label: t('x35.lg.muni') }); return out; }
+  // key map of the factory's 1:500 windows: map 01 with the windows J–P
+  function drawFactoryKey(ctx, x, y, w, h, o) { o = o || {}; if (!FD || !AR) return false; const pal = P(); const k = o.k || w / 1000; const F = root.GA.pages.font(); drawFactory(ctx, x, y, w, h, { t: o.t, only: 'estate', k, noPlotNames: true, aerial: o.aerial });
+    const E = FD.frame, mpp = (E[2] - E[0]) / w; const X = (u) => x + (u - E[0]) / mpp, Y = (v) => y + (E[3] - v) / mpp;
+    AR.areas.forEach(a => { const e = a.extent; ctx.fillStyle = 'rgba(153,43,42,.18)'; ctx.fillRect(X(e[0]), Y(e[3]), (e[2] - e[0]) / mpp, (e[3] - e[1]) / mpp); ctx.strokeStyle = pal.red; ctx.lineWidth = 2.4 * k; ctx.strokeRect(X(e[0]), Y(e[3]), (e[2] - e[0]) / mpp, (e[3] - e[1]) / mpp);
+      const cx = X((e[0] + e[2]) / 2), cy = Y(e[3]) - 14 * k; ctx.beginPath(); ctx.arc(cx, cy, 11 * k, 0, 7); ctx.fillStyle = pal.red; ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.font = `700 ${Math.round(12 * k)}px ${F}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.fillText(a.id, cx, cy + 0.5 * k); });
+    return true; }
+  root.GA.ex21 = { ready, readyAreas, readyAerial, loadAerial, aerialLegend, get aerial() { return AER; }, drawArea, drawSection, areaLegend, drawAreaKey, keyLegend, get areas() { return AR; }, drawCity, drawGaps, cityLegend, mapLegend, MAPS: ['island', 'walk', 'growth', 'height'], CITY, get data() { return D; },
+    readyFactory, drawFactory, factoryLegend, drawFactoryKey, FMAPS: ['estate', 'access', 'land', 'time'], get factory() { return FD; } };
 })(window);

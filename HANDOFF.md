@@ -1102,6 +1102,46 @@ updated, update due within six years (mid-2029). Reference point 701.1 m; thresh
 owner for the PDFs). Four more Ministry files were downloaded (`LEGA_SA_Helipuerto`, `LEGA_SR`, `LEGA_SRA`, `LEGA_TM`)
 and are **not** in the calculation; adding the helipad surface was offered, not answered.
 
+**The factory set (owner request, 15 Nov 2026: "the factory and the small town beside it — maps, aerial photos, sections,
+everything the exercise asks for").** "The factory" is the Escúzar estate (CITAI / Parque Metropolitano Industrial y
+Tecnológico: IFMIF-DONES, Lidl, Amazon, Knauf) of §22; "the town" is the village of Escúzar. Same graphic language as
+the base set; everything is in `js/ex21.js` (`readyFactory`, `drawFactory(ctx,x,y,w,h,{only:'estate'|'access'|'land'|
+'time'|'photo', aerial})`, `factoryLegend`, `drawFactoryKey`; `readyAreas('factory')` switches the 1:500 windows to the
+factory's), colours `P.ex21f`, strings `x35.*` (+ `x34.a.J…P`).
+- `tools/build_ex21_factory.py` (`CACHE` = folder for downloads) → `data/ex21/factory.json` (frame 5.4 × 4.4 km =
+  540 × 440 mm at 1:10,000) and `data/ex21/factory_areas.json` (six 130 m windows **J K L M N P**: Lidl, the IFMIF-DONES
+  plot, an empty street in the estate's centre, the south gate, the village's north edge, the village centre). Then
+  `AREAS=data/ex21/factory_areas.json python3 tools/build_ex21_canopy.py`, `AREAS=… OUT=data/ex21/factory_aerial
+  python3 tools/build_ex21_aerial.py` (and `SIZE=2080 OUT=exports/ex21_factory/aerial` for print),
+  `AREAS=… STYLE=detail OUT=exports/ex21_factory/sec python3 tools/export_ex21_sections_svg.py`. Print pages:
+  `tools/ex21_pages/factory.py` (the four maps + the frame's aerial photo, which needs
+  `exports/ex21_factory/aerial_frame.jpg`: PNOA GetMap of the frame at 4252 × 3464 px) and `SET=factory` with
+  `areas.py`, `aerial.py`, `key.py`.
+- **New sources** (two hosts added to the cloud environment with the owner's approval: `servicios.idee.es`,
+  `www.catastro.hacienda.gob.es`): **Dirección General del Catastro**, INSPIRE buildings (ATOM zip per municipality;
+  reuse is free "as long as the D. G. of the Cadastre (Ministry of Finance) is mentioned as author and owner") —
+  footprints, floors above ground per building part, use, year, dwellings; **IGN MDT05** through the WCS of
+  servicios.idee.es (`Elevacion25830_5`, format `application/asc`: 5 m cells with decimals; CC BY 4.0). OSM alone would
+  not do: it has 106 buildings in the whole frame (the village's houses are not mapped) and the atlas's 25 m terrain
+  model stops 1.7 km east of the estate.
+- **Measured** (15 Nov 2026): estate 395.3 ha on the OSM outline (**the site says 393 ha since 5.20 — the stored polygon
+  itself measures 395.3 ha projected and 395.6 ha geodesic; correct the site's figure when 2.1 is published**), 50
+  buildings, 23.0 ha of footprints (5.8 % of the estate), first building on record 2007; village 652 buildings, 593
+  dwellings, 7.8 ha of footprints, oldest building on record 1888, 826 residents (INE 2025); 718 m between the
+  village's residential land and the estate's outline; village centre → IFMIF-DONES plot 2.8 km by road (1.9 km
+  straight), → Lidl 3.9 km; the estate's bus stop → IFMIF-DONES plot 1.65 km on foot; bus line 0256 with 4 stops in
+  the frame (2 in the village, 2 in the estate — the timetable is not in the data; the team's notes say two runs each
+  way on weekdays, CTAGR timetable of 6 Oct 2025, not re-checked); solar plants 124.5 ha, quarries 25.7 ha (OSM;
+  OSM land use is partial, so these are minimum figures); 10.7 km straight from the last metro stop (§22).
+- **Honesty notes**: an industrial shed's or a church's height is **not** derived from its floor count (`hu` = height
+  unknown → dashed in the sections); floors × 3 m (estimate) only for housing, offices, shops, public buildings. No
+  aeronautical limit surface is drawn in this set. The PNOA photo is from August 2022: buildings with a later Catastro
+  year (the UGR-DONES building, 2025; Lidl, 2023) are unfinished or absent on it — the aerial pages say so. Jobs,
+  investment and opening dates are the operators' own announcements (data/vec/escuzar_pole.json), shown in a table
+  headed "not checked here".
+- **Not done yet for the factory set**: the policy check (which plan governs the estate), the phenomenon wording, the
+  human scale; publishing on the site.
+
 **Open (waiting for the owner):** language of the hand-in (he / ar / en) — it blocks the texts and the sheet; which
 four areas go on the A1; how the city maps sit on the A1 (one 1:10,000 map is 640 × 560 mm and nearly fills an
 841 × 594 mm sheet — proposal: one main map at 1:10,000 cropped to the base and its band, the other three small at
