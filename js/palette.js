@@ -153,7 +153,8 @@
     // 5.33: towns as built-up polygons (light red fill, thin red outline); the two walking routes in two colours (A blue,
     // B olive) on a white casing; the dead-end road sign (blue plate, white bar, red cross-bar); step-3 maps at half
     // opacity with white municipal outlines; labels with a white halo; fade of context layers on the streets slides
-    townFill: RED, townFillAlpha: 0.3, townEdge: RED, routeA: D.blueDeep, routeB: D.oliveMid, routeCase: '#FFFFFF',
+    townFill: RED, townFillAlpha: 0.3, townEdge: RED, townScatterAlpha: 0.14, townScatterDash: [2.5, 2], // scattered houses: lighter fill, dashed outline (5.45)
+    routeA: D.blueDeep, routeB: D.oliveMid, routeCase: '#FFFFFF',
     sign: { plate: D.blueDeep, bar: '#FFFFFF', stop: RED }, choroAlpha: 0.5, muniLight: '#FFFFFF', halo: '#FFFFFF', fade: 0.3,
   };
   // 5.28 — "City growth (built-up extent 1932–2020)" layer (js/layers_growth.js): one fill per period, oldest → newest

@@ -133,7 +133,13 @@ with sync_playwright() as p:
             if extra: extra()
             emit(f'x33_{name}_{lang}', pg.screenshot())
         slide(1, 1, 'slide1')
-        slide(2, 1, 'towns', lambda: check(len(pg.evaluate('GA.tour.labels')) == 5, f'{lang}: step 2 — five town names on the built-up areas'))
+        def towns545():  # 5.45: every residential area of the five municipalities, the name on the centre only
+            check(len(pg.evaluate('GA.tour.labels')) == 5, f'{lang}: step 2 — five town names on the built-up areas')
+            k = pg.evaluate('''() => { const fs = GA.tour.data.towns.features, n = (v) => fs.filter(f => f.properties.k === v).length; const m = GA.app.map;
+              return { core: n('core'), part: n('part'), scatter: n('scatter'), layer: !!m.getLayer('tour-towns-scatter'), drawn: [...new Set(m.queryRenderedFeatures({ layers: ['tour-towns-fill'] }).map(f => f.properties.k))].sort(),
+                chica: fs.filter(f => f.properties.nm === 'Las Gabias' && f.properties.k === 'part' && f.properties.ha === 9).length }; }''')
+            check(k['core'] == 5 and k['part'] >= 15 and k['scatter'] >= 5 and k['layer'] and k['drawn'] == ['core', 'part', 'scatter'] and k['chica'] == 1, f'{lang}: 5.45 — town centres, separate neighbourhoods / villages (Gabia Chica) and scattered houses are drawn', k)
+        slide(2, 1, 'towns', towns545)
         for ly, nm in ((3, 'streetsA'), (4, 'streetsB'), (5, 'streetsAB')):
             if lang == 'en' or ly == 5: slide(2, ly, nm, (lambda: check(sum(int(x) for x in pg.evaluate('[...document.querySelectorAll(".tour-sign")].map(e => e.dataset.n)')) == 13, f'{lang}: 13 dead-end signs')) if ly == 5 else None)
         for ly, nm in ((1, 'chg'), (2, 'inc'), (3, 'rent')):

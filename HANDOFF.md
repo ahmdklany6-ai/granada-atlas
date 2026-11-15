@@ -979,7 +979,7 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
   in both layer legends; the print layout copies the images from the main map (`styleimagemissing`), so printed maps show
   them. The positions (`AT`) keep ≥ 40 px from the Armilla station circle and the town name at zoom 13. The
   Southern-axis page boards (south_page.js) are the team's pre-rendered JPEGs and were not changed.
-- **B. Towns as built-up areas** (tour step 2, slide 1): `data/vec/tour_towns.json` from `tools/build_tour_towns.py`
+- **B. Towns as built-up areas** (tour step 2, slide 1; **replaced in 5.45 — §41**: every residential area, exact municipal limits): `data/vec/tour_towns.json` from `tools/build_tour_towns.py`
   (OSM `landuse=residential` in the town's municipality, 40 m closing, the part at the OSM place node; see README data
   table). Red fill 30 %, 1.2 px red outline, under the base outline and the lines. Names only on the map (HTML labels,
   localised: `x33.nm.*`, white halo); residents 2025 and change 2015–2025 in the card list and the popup. A town without
@@ -1030,3 +1030,57 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
 - 5.42 (owner): slide 1 on wide screens centres the base on the map, as large as fits (`centreBase()` in js/tour.js: zoomed out at most one level until the card covers no vertex of the outline; otherwise — tablets, phones — the free-area framing). Test v33 F checks both cases.
 - 5.43 (owner: the train symbols were not visible): pictograms 46 × 33 px from zoom 14 (37 px at zoom 12) on a white badge with a 1.6-unit border in the line's colour (`badge()` in js/rail_icons.js); legend images 70 %. Test v33 A: 36–46 px, still clear of stations and town names at zoom 13–16.
 - 5.44 (owner, with two photos as inspiration only — no logos or composition copied): the 1931 pictogram is an old steam locomotive (chimney, smoke `palette.south.smoke`, boiler, cab, drivers), the metro pictogram a modern high-speed train (long nose, windscreen and window band `palette.south.glass`, pantograph); 69 × 38 px from zoom 14 (icon-size 0.55 at zoom 12); metro point moved to 1 km along the track (`AT.metro`) so it clears the Armilla station and name. The 1931 line was an electric tram: the legend keeps "Tram 1931".
+
+## 41. Build 5.45 — the tour's five towns: every place with houses (owner request of 15 Nov 2026, with a marked screenshot)
+- Request: "there are places with houses that you did not mark — why? Check on the aerial photo and mark them", with four
+  areas circled between the towns: east of Armilla · south-east of the base · around Gabia Chica · between Alhendín and Ogíjares.
+- Why they were missing: 5.33–5.44 kept only the one continuous OSM residential area at each town's place node, so
+  detached neighbourhoods and villages were dropped, and houses outside OSM residential land use were never looked at.
+  Found on the way: the municipality came from the es-atlas outline (~200 m) with a 150 m margin, so the old Churriana
+  shape held 53 ha that are Las Gabias', the old Ogíjares shape 10.8 ha that are Gójar's, and the strip between Armilla
+  and Churriana was drawn twice (the darker band in the owner's screenshot).
+- What the PNOA orthophoto shows in the four circles (IGN WMS `pnoa-ma`; 1 m/px mosaic of the frame, 0.3–0.6 m/px crops):
+  1. east of Armilla: mostly the industrial estate, sports grounds, a school and fields. Housing = one terrace of 54
+     houses in the fields (0.9 ha) and a group of houses beside the estate (2.7 ha, scattered);
+  2. south-east of the base: real estates along the east fence — Ogíjares 55.7 ha, Alhendín 6.6 ha and a 1.0 ha terrace;
+  3. Gabia Chica: the village (9.0 ha), the golf-resort housing (3.1 ha) and a wide zone of houses on rural plots
+     towards Alhendín (scattered: 15.3 + 5.6 + 5.1 ha);
+  4. between Alhendín and Ogíjares: fields, olive groves, a quarry and a pond — almost no houses, so almost nothing is marked there.
+- Data: `tools/build_tour_towns.py` rewritten (its docstring is the method). `data/vec/tour_towns.json` now holds 35
+  features, one per area: `nm` (town = municipality), `ine`, `k` = `core` (the area at the town's place node) | `part`
+  (another continuous area of the municipality) | `scatter` (a group of scattered houses), `ha`, `houses` (OSM houses
+  inside); plus `method` (the rule's numbers — the popup and the legend read them) and `report`.
+  | town | centre ha | parts | parts ha | scattered | scattered ha |
+  |---|---|---|---|---|---|
+  | Armilla | 176.2 | 4 | 5.1 | 0 | 0 |
+  | Churriana de la Vega | 210.5 | 3 | 2.7 | 0 | 0 |
+  | Las Gabias | 198.0 | 6 | 237.8 | 1 | 1.4 |
+  | Alhendín | 97.4 | 6 | 56.3 | 6 | 36.7 |
+  | Ogíjares | 234.9 | 2 | 57.3 | 2 | 4.6 |
+- Municipal limits: the OSM `admin_level=8` lines cut the frame into faces, named with IGN's official polygon (WFS
+  `au:AdministrativeUnit`, `resourceid=AU_ADMINISTRATIVEUNIT_340118<INE>`, cached as `ign_muni_<INE>.json`). IGN's INSPIRE
+  outline itself is generalised (107 points for Armilla; it runs through the middle of the terrace east of Armilla, the OSM
+  line follows the road beside it), so it only names the faces. OSM and IGN differ by 2–17 ha per town, all along borders.
+  IGN's GetFeatureInfo agreed with the municipality of every area except that terrace (it sits on the line).
+- One hand cut-out (`NOT_HOUSING` in the script, a line traced on the orthophoto, about 10 m): the retail and warehouse
+  estate (big sheds, yards, car and coach parks) south of the Alhendín junction, which OSM maps as residential. Everything
+  else is as OSM maps it.
+- Looked at on the orthophoto: all 30 areas that are not a town centre, and what the new method added to the centres
+  (six estates, 0.4–2.5 ha): all housing.
+- Limits (also in `data/manifest.json`): only inside the frame (Las Gabias 40 %, Alhendín 65 % of the municipality lie
+  beyond it — not looked at); OSM residential land use includes vacant plots (Las Gabias' north-west estates, 132.5 ha,
+  have visibly unbuilt blocks); some houses in the scattered zones are not in OSM (lower bounds); `building=yes`, farm
+  and industrial buildings and lone farmhouses are not counted.
+- Display (`js/tour.js`): one MapLibre feature per area. Centres and parts: red 30 % fill, 1.2 px outline (as before).
+  Scattered houses: 14 % fill, 1 px dashed outline (`palette.tour.townScatterAlpha`, `townScatterDash`; layer
+  `tour-towns-scatter`). The town name sits on the centre only; the slide's frame is still the base + the five centres
+  (same bounding box as 5.44). Popup per kind (`x45.kind.*`): what the area is, its own area, the OSM house count for
+  scattered houses; the residents row says "whole municipality". Legend: two swatches built from the same palette values
+  as the paint (the old swatch hard-coded 33 %). The streets slides fade all three town layers.
+- Strings `js/i18n_v33.js` (`x45.*`); CSS `.tour-kind`. Data version `2026-11-15-v23`.
+- Tests: `tests/ui_test_v33.py` part B extended (13 checks per language: kinds, the owner's places marked, the retail
+  estate and open fields not marked, popups, legend, fade); `tests/ui_test_v25.py` reads the centres for "five town centres in view".
+- Network for a rebuild: `api.openstreetmap.org` and `www.ign.es`. Overpass and the Catastro hosts were blocked here; the
+  Catastro building register would close the OSM gaps in the scattered zones (not done).
+- Open: the municipalities beyond the frame; built-up land that is not housing (industrial and retail estates) is not
+  marked — offered to the owner as a separate colour.

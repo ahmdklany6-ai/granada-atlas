@@ -6,6 +6,10 @@
   B. Step 2 "Who lives around it": the five towns as built-up polygons (fill 25–35 %, thin red outline), no circles;
      drawn under the base outline and the lines; five localised names with a white halo, no figures on the map; figures in
      the card list and in a popup; legend swatch and source.
+     5.45 (owner: "places with houses are not marked"): every residential area of the five municipalities — one centre
+     per town (it carries the name), its separate neighbourhoods and villages (Gabia Chica, the estates along the base's
+     east fence) in the same red, and groups of scattered houses lighter with a dashed outline; the retail estate south of
+     the Alhendín junction is not marked; no two areas overlap; each kind has its own popup and legend swatch.
   C. "Where the streets stop": layers 3 / 4 / 5 = route A / route B / both; 13 dead-end signs at the default view and at
      zoom 13–16 (grouped signs carry a count; no two signs overlap; none hidden); two route colours with a white casing;
      the straight lines in the route colours, dashed; arrows; start/end circles with names; the figures "5.8 km walking vs
@@ -178,11 +182,17 @@ try:
             ctx, pg, errs = tour(1280, lang, 2, 1); tag = f'1280 {lang}'
             S = pg.evaluate('''() => { const m = GA.app.map, ids = m.getStyle().layers.map(l => l.id); const vis = (id) => m.getLayer(id) && m.getLayoutProperty(id, 'visibility') === 'visible';
               return { ids: ids.filter(i => i.startsWith('tour-')), circles: m.getStyle().layers.filter(l => l.id.startsWith('tour-') && l.type === 'circle' && vis(l.id)).map(l => l.id),
-                fillOp: m.getPaintProperty('tour-towns-fill', 'fill-opacity'), fillCol: m.getPaintProperty('tour-towns-fill', 'fill-color'), lineCol: m.getPaintProperty('tour-towns-line', 'line-color'), lineW: m.getPaintProperty('tour-towns-line', 'line-width'),
-                rendered: new Set(m.queryRenderedFeatures({ layers: ['tour-towns-fill'] }).map(f => f.properties.nm)).size, red: GA.palette.tour.townFill, five: GA.tour.data.towns.features.length,
+                fillOp: m.getPaintProperty('tour-towns-fill', 'fill-opacity')[3], scOp: m.getPaintProperty('tour-towns-fill', 'fill-opacity')[2], scDash: m.getPaintProperty('tour-towns-scatter', 'line-dasharray'), scCol: m.getPaintProperty('tour-towns-scatter', 'line-color'),
+                kinds: GA.tour.data.towns.features.reduce((o, f) => { const k = f.properties.nm + '|' + f.properties.k; o[k] = (o[k] || 0) + 1; return o; }, {}), drawnKinds: [...new Set(m.queryRenderedFeatures({ layers: ['tour-towns-fill'] }).map(f => f.properties.k))].sort(),
+                scDrawn: m.queryRenderedFeatures({ layers: ['tour-towns-scatter'] }).length, T: GA.palette.tour, fillCol: m.getPaintProperty('tour-towns-fill', 'fill-color'), lineCol: m.getPaintProperty('tour-towns-line', 'line-color'), lineW: m.getPaintProperty('tour-towns-line', 'line-width'),
+                rendered: new Set(m.queryRenderedFeatures({ layers: ['tour-towns-fill'] }).map(f => f.properties.nm)).size, red: GA.palette.tour.townFill, five: GA.tour.data.towns.features.filter(f => f.properties.k === 'core').length,
                 names: ['armilla', 'churriana', 'gabias', 'alhendin', 'ogijares'].map(k => GA.i18n.t('x33.nm.' + k)) }; }''')
             ids = S['ids']
             check(S['five'] == 5 and S['rendered'] == 5, f'{tag} B: five built-up polygons drawn ({S["rendered"]})', S)
+            five_nm = ('Armilla', 'Churriana de la Vega', 'Las Gabias', 'Alhendín', 'Ogíjares'); K = S['kinds']
+            check(all(K.get(nm + '|core') == 1 for nm in five_nm) and all(k.split('|')[1] in ('core', 'part', 'scatter') and k.split('|')[0] in five_nm for k in K), f'{tag} B 5.45: one centre per town; every area is a centre, a part or scattered houses of one of the five', K)
+            check(sum(v for k, v in K.items() if k.endswith('|part')) >= 15 and sum(v for k, v in K.items() if k.endswith('|scatter')) >= 5 and S['drawnKinds'] == ['core', 'part', 'scatter'] and S['scDrawn'] >= 1, f'{tag} B 5.45: separate neighbourhoods / villages and scattered houses are drawn ({S["drawnKinds"]})', (K, S['scDrawn']))
+            check(S['scOp'] == S['T']['townScatterAlpha'] and S['scOp'] < S['fillOp'] and S['scDash'] == S['T']['townScatterDash'] and S['scCol'] == S['red'], f'{tag} B 5.45: scattered houses lighter ({S["scOp"]}) with a dashed red outline', S)
             check(0.25 <= S['fillOp'] <= 0.35 and S['fillCol'] == S['red'] and S['lineCol'] == S['red'] and S['lineW'] <= 1.5, f'{tag} B: red fill at {S["fillOp"]}, thin red outline ({S["lineW"]} px)', S)
             check(not S['circles'], f'{tag} B: no circles on the towns slide', S['circles'])
             check(ids.index('tour-towns-fill') < ids.index('tour-base-line') and ids.index('tour-towns-line') < ids.index('tour-metro') and ids.index('tour-towns-line') < ids.index('tour-tram'), f'{tag} B: towns drawn under the base outline and the lines')
@@ -192,13 +202,36 @@ try:
             check(not Lb['bad'] and not Lb['under'], f'{tag} B: names do not overlap each other or the card', Lb)
             card = pg.evaluate('document.querySelector("#tour-card").innerText')
             check(all(x in card for x in ('25,300', '16,878', '23,584', '10,475', '15,239', '+7.1 %', '+21.4 %')) and 'build_tour_towns' in card, f'{tag} B: card lists residents and % change of all five; source names the method', card[:400])
-            check(pg.evaluate('document.querySelectorAll(".tour-c-b .lg li").length') >= 1 and pg.evaluate('GA.i18n.t("x33.lgTown")') in card, f'{tag} B: legend swatch for the built-up area')
+            lgs = pg.evaluate('[...document.querySelectorAll(".tour-c-b .lg li")].map(e => ({ t: e.innerText.trim(), bg: e.querySelector("i") ? e.querySelector("i").style.background : "", bd: e.querySelector("i") ? e.querySelector("i").style.borderStyle : "" }))')
+            check(len(lgs) == 3 and pg.evaluate('GA.i18n.t("x45.lgTown")') in card and 'solid' in lgs[0]['bd'] and 'dashed' in lgs[1]['bd'] and '10' in lgs[1]['t'], f'{tag} B: legend swatches for the continuous areas (solid) and the scattered houses (dashed, "10 or more")', lgs)
             # popup on a town
-            ll = pg.evaluate('GA.tour.data.towns.features.find(f => f.properties.nm === "Armilla").properties.lp')
+            ll = pg.evaluate('GA.tour.data.towns.features.find(f => f.properties.nm === "Armilla" && f.properties.k === "core").properties.lp')
             xy = pg.evaluate('(ll) => { const p = GA.app.map.project(ll); const r = GA.app.map.getCanvas().getBoundingClientRect(); return [p.x + r.left, p.y + r.top]; }', ll)
             pg.mouse.click(xy[0], xy[1]); time.sleep(0.8)
             pop = pg.evaluate('(document.querySelector(".tour-pop") || {}).innerText || ""')
             check('25,300' in pop and '7.1' in pop and S['names'][0] in pop, f'{tag} B: a click on Armilla opens its popup (residents, change)', pop[:200])
+            check(pg.evaluate('GA.i18n.t("x45.kind.core")') in pop and pg.evaluate('GA.i18n.t("x45.pop")') in pop, f'{tag} B 5.45: the popup says "town centre" and that the residents are the whole municipality\'s', pop[:300])
+            # 5.45: the places the owner marked — what stands there now (points looked at on the PNOA orthophoto)
+            AT = pg.evaluate("""() => { const inR = (p, r) => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const a = r[i], b = r[j]; if ((a[1] > p[1]) !== (b[1] > p[1]) && p[0] < (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
+              const at = (p) => GA.tour.data.towns.features.filter(f => inR(p, f.geometry.coordinates[0]) && !f.geometry.coordinates.slice(1).some(h => inR(p, h))).map(f => [f.properties.nm, f.properties.k, f.properties.ha, f.properties.houses]);
+              return { chica: at([-3.6548, 37.1245]), east: at([-3.6292, 37.1241]), fence: at([-3.6288, 37.1294]), scatter: at([-3.6509, 37.1194]), terrace: at([-3.6130, 37.1398]), shops: at([-3.6381, 37.1026]).concat(at([-3.6392, 37.1022])),
+                fields: at([-3.6260, 37.1080]).concat(at([-3.6170, 37.1340])), types: [...new Set(GA.tour.data.towns.features.map(f => f.geometry.type))] }; }""")
+            check(len(AT['chica']) == 1 and AT['chica'][0][:2] == ['Las Gabias', 'part'], f'{tag} B 5.45: Gabia Chica is marked (a part of Las Gabias, {AT["chica"][0][2] if AT["chica"] else "?"} ha)', AT['chica'])
+            check(len(AT['east']) == 1 and AT['east'][0][:2] == ['Ogíjares', 'part'] and AT['east'][0][2] > 40 and len(AT['fence']) == 1 and AT['fence'][0][:2] == ['Alhendín', 'part'], f'{tag} B 5.45: the estates along the base\'s east fence are marked (Ogíjares {AT["east"][0][2] if AT["east"] else "?"} ha, Alhendín {AT["fence"][0][2] if AT["fence"] else "?"} ha)', (AT['east'], AT['fence']))
+            check(len(AT['scatter']) == 1 and AT['scatter'][0][:2] == ['Alhendín', 'scatter'] and AT['scatter'][0][3] >= 10, f'{tag} B 5.45: the houses between Gabia Chica and Alhendín are marked as scattered houses ({AT["scatter"][0][3] if AT["scatter"] else "?"} OSM houses)', AT['scatter'])
+            check(len(AT['terrace']) == 1 and AT['terrace'][0][:2] == ['Armilla', 'part'], f'{tag} B 5.45: the terrace in the fields east of Armilla is marked (whole, in Armilla)', AT['terrace'])
+            check(not AT['shops'] and not AT['fields'], f'{tag} B 5.45: the retail estate south of the Alhendín junction and open fields are not marked', (AT['shops'], AT['fields']))
+            check(AT['types'] == ['Polygon'], f'{tag} B 5.45: one polygon per area', AT['types'])
+            for key, want_k in (('chica', 'part'), ('scatter', 'scatter')):
+                pg.evaluate('document.querySelectorAll(".maplibregl-popup-close-button").forEach(b => b.click())'); time.sleep(0.3)
+                ll2 = {'chica': [-3.6548, 37.1245], 'scatter': [-3.6509, 37.1194]}[key]
+                xy = pg.evaluate('(ll) => { const p = GA.app.map.project(ll); const r = GA.app.map.getCanvas().getBoundingClientRect(); return [p.x + r.left, p.y + r.top]; }', ll2)
+                pg.mouse.click(xy[0], xy[1]); time.sleep(0.8)
+                pop = pg.evaluate('(document.querySelector(".tour-pop") || {}).innerText || ""'); a_ha = AT[key][0][2] if AT[key] else -1
+                kind_txt = pg.evaluate('(k) => { const d = document.createElement("div"); const sc = GA.tour.data.scatter; d.innerHTML = GA.i18n.t("x45.kind." + k, { n: sc.houses_min, d: sc.within_m + "\u00A0m", o: sc.outline_m + "\u00A0m" }); return d.textContent; }', want_k)
+                check(kind_txt in pop.replace('\n', ' ') and f'{a_ha:.1f} ha' in pop and pg.evaluate(f'GA.i18n.t("x45.area.{want_k}")') in pop, f'{tag} B 5.45: a click on a {want_k} area says what it is and gives its own area ({a_ha} ha)', pop[:300])
+                if want_k == 'scatter': check(pg.evaluate('GA.i18n.t("x45.houses")') in pop and str(AT[key][0][3]) in pop and '100' in pop and '30' in pop, f'{tag} B 5.45: scattered houses: the rule (10 houses, 100 m, 30 m) and the OSM house count as a lower bound', pop[:300])
+            pg.evaluate('document.querySelectorAll(".maplibregl-popup-close-button").forEach(b => b.click())')
             if lang in ('en', 'ar'): pg.screenshot(path=f'{OUT}/B_towns_{lang}.png')
             # ---- C. the streets slides ----
             want_figs = {'en': ('5.8 km walking vs 3.9 km straight · ×1.49', '6.9 km walking vs 5.4 km straight · ×1.29')}
@@ -214,7 +247,7 @@ try:
                   return { A: ['routeA', 'routeA-case', 'straightA', 'arrowA', 'endsA'].map(k => vis('tour-' + k)), B: ['routeB', 'routeB-case', 'straightB', 'arrowB', 'endsB'].map(k => vis('tour-' + k)),
                     colA: P('tour-routeA', 'line-color'), colB: P('tour-routeB', 'line-color'), wA: P('tour-routeA', 'line-width'), wCase: P('tour-routeA-case', 'line-width'), caseCol: P('tour-routeA-case', 'line-color'),
                     sA: P('tour-straightA', 'line-color'), sB: P('tour-straightB', 'line-color'), dash: P('tour-straightA', 'line-dasharray'), sW: P('tour-straightA', 'line-width'),
-                    fade: { towns: P('tour-towns-fill', 'fill-opacity'), townsLine: P('tour-towns-line', 'line-opacity'), metro: P('tour-metro', 'line-opacity'), tram: P('tour-tram', 'line-opacity'), rail: P('tour-rail', 'icon-opacity') },
+                    fade: { towns: P('tour-towns-fill', 'fill-opacity')[3], scatter: P('tour-towns-fill', 'fill-opacity')[2], scatterLine: P('tour-towns-scatter', 'line-opacity'), townsLine: P('tour-towns-line', 'line-opacity'), metro: P('tour-metro', 'line-opacity'), tram: P('tour-tram', 'line-opacity'), rail: P('tour-rail', 'icon-opacity') },
                     vis: { towns: vis('tour-towns-fill'), metro: vis('tour-metro'), tram: vis('tour-tram') }, signs, ov, T: GA.palette.tour,
                     arrows: m.queryRenderedFeatures({ layers: ['tour-arrowA', 'tour-arrowB'].filter(vis) }).length, ends: m.queryRenderedFeatures({ layers: ['tour-endsA', 'tour-endsB'].filter(vis) }).length }; }''')
                 tg = f'{tag} C layer {layer} ({"+".join(keys)})'
@@ -223,7 +256,7 @@ try:
                 check(V['colA'] == V['T']['routeA'] and V['colB'] == V['T']['routeB'] and V['colA'] != V['colB'] and 3.5 <= V['wA'] <= 4.5 and V['wCase'] > V['wA'] + 2 and V['caseCol'] == '#FFFFFF', f'{tg}: two route colours, {V["wA"]} px on a white casing')
                 check(V['sA'] == V['colA'] and V['sB'] == V['colB'] and V['dash'] and V['sW'] < V['wA'], f'{tg}: straight lines in the route colours, thin and dashed')
                 check(V['arrows'] >= 2 * len(keys) and V['ends'] == 2 * len(keys), f'{tg}: direction arrows ({V["arrows"]}) and start/end circles ({V["ends"]})')
-                f_ = V['fade']; check(V['vis']['towns'] and V['vis']['metro'] and abs(f_['metro'] - 0.3) < 0.01 and abs(f_['tram'] - 0.3) < 0.01 and abs(f_['townsLine'] - 0.3) < 0.01 and abs(f_['towns'] - 0.3 * V['T']['townFillAlpha']) < 0.01 and abs(f_['rail'] - 0.3) < 0.01, f'{tg}: metro, tram and towns faded to 30 %', f_)
+                f_ = V['fade']; check(V['vis']['towns'] and V['vis']['metro'] and abs(f_['metro'] - 0.3) < 0.01 and abs(f_['tram'] - 0.3) < 0.01 and abs(f_['townsLine'] - 0.3) < 0.01 and abs(f_['towns'] - 0.3 * V['T']['townFillAlpha']) < 0.01 and abs(f_['scatter'] - 0.3 * V['T']['townScatterAlpha']) < 0.005 and abs(f_['scatterLine'] - 0.3) < 0.01 and abs(f_['rail'] - 0.3) < 0.01, f'{tg}: metro, tram and towns faded to 30 %', f_)
                 Lb = pg.evaluate(JS_LABELS)
                 rt = [r['txt'].replace('\n', ' ') for r in Lb['R'] if r['id'].startswith('rt-')]; ends = [r['txt'].strip() for r in Lb['R'] if r['id'].startswith('end-')]
                 check(len(rt) == len(keys) and len(ends) == 2 * len(keys) and not Lb['bad'] and not Lb['under'] and not Lb['out'], f'{tg}: route figures and start/end names placed, no overlaps', Lb)
