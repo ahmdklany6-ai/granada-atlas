@@ -394,6 +394,69 @@
     AR.areas.forEach(a => { const e = a.extent; ctx.fillStyle = 'rgba(153,43,42,.18)'; ctx.fillRect(X(e[0]), Y(e[3]), (e[2] - e[0]) / mpp, (e[3] - e[1]) / mpp); ctx.strokeStyle = pal.red; ctx.lineWidth = 2.4 * k; ctx.strokeRect(X(e[0]), Y(e[3]), (e[2] - e[0]) / mpp, (e[3] - e[1]) / mpp);
       const cx = X((e[0] + e[2]) / 2), cy = Y(e[3]) - 14 * k; ctx.beginPath(); ctx.arc(cx, cy, 11 * k, 0, 7); ctx.fillStyle = pal.red; ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.font = `700 ${Math.round(12 * k)}px ${F}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.fillText(a.id, cx, cy + 0.5 * k); });
     return true; }
+  // ---------- THE BASE OVER TIME (owner request, 15 Nov 2026): growth, crowding, possible growth (tools/build_ex21_time.py) ----------
+  let TD = null, TDp = null;
+  function readyTime() { if (TDp) return TDp; const v = '?v=' + (root.GA_BUILD || ''); const img = (u) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error(u)); i.src = u + v; });
+    TDp = Promise.all([fetch('data/ex21/time.json' + v).then(r => r.json()), img('data/ex21/built_period.png'), img('data/ex21/density.png'), img('data/ex21/edge_land.png')])
+      .then(([j, bp, de, el]) => (TD = Object.assign(j, { img: { built: bp, density: de, edge: el } }))).catch(e => { TDp = null; throw e; }); return TDp; }
+  // o.only = 'built' | 'density' | 'edge' | 'photo' (o.photo = a historical image of the same frame); the base is drawn as today's outline
+  function drawTime(ctx, x, y, w, h, o) {
+    o = o || {}; if (!D || !TD) return false; const pal = P(), C = pal.ex21; const t = o.t || ((s) => s); const F = root.GA.pages.font(); const E = CITY, mpp = (E.x1 - E.x0) / w, k = o.k || w / 1000;
+    const X = (u) => x + (u - E.x0) / mpp, Y = (v) => y + (E.y1 - v) / mpp; const font = (sz, wt) => `${wt || 600} ${Math.round(sz * k)}px ${F}`;
+    const path = (rs) => { ctx.beginPath(); rs.forEach(r => r.forEach((q, i) => i ? ctx.lineTo(X(q[0]), Y(q[1])) : ctx.moveTo(X(q[0]), Y(q[1])))); ctx.closePath(); };
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip(); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(x, y, w, h); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    const photo = o.only === 'photo';
+    if (photo && o.photo) { ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(o.photo, x, y, w, h); }
+    const base = D.edge.find(f => f.p.k === 'base');
+    if (!photo) {
+      ctx.strokeStyle = C.street; ctx.lineWidth = 0.7 * k; ctx.beginPath(); D.streets.forEach(s0 => s0.g.forEach(r => r.forEach((q, i) => i ? ctx.lineTo(X(q[0]), Y(q[1])) : ctx.moveTo(X(q[0]), Y(q[1]))))); ctx.stroke();
+      if (o.only === 'built') { ctx.imageSmoothingEnabled = true; ctx.drawImage(TD.img.built, x, y, w, h); }
+      else { ctx.fillStyle = C.built; D.builds.forEach(rs => { path(rs); ctx.fill(); }); ctx.imageSmoothingEnabled = false; ctx.globalAlpha = 0.85; ctx.drawImage(o.only === 'edge' ? TD.img.edge : TD.img.density, x, y, w, h); ctx.globalAlpha = 1; }
+      ctx.setLineDash([6 * k, 4 * k]); ctx.strokeStyle = C.muni; ctx.lineWidth = 1.1 * k; D.area.forEach(a => { path(a.g); ctx.stroke(); }); ctx.setLineDash([]);
+    }
+    if (base) { if (photo) { path(base.g); ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 4.4 * k; ctx.stroke(); path(base.g); ctx.strokeStyle = pal.red; ctx.lineWidth = 2 * k; ctx.setLineDash([8 * k, 5 * k]); ctx.stroke(); ctx.setLineDash([]); }
+      else { path(base.g); ctx.fillStyle = C.base; ctx.fill(); } }
+    // town names (and the base) — on photos with a white halo
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.direction = 'ltr';
+    D.edge.filter(f => f.p.k === 'town').forEach(f => { const [u, v] = f.g; ctx.font = font(photo ? 13 : 15, 700); ctx.lineWidth = 4 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(f.p.nm.toUpperCase(), X(u), Y(v) - 8 * k); ctx.fillStyle = C.town; ctx.fillText(f.p.nm.toUpperCase(), X(u), Y(v) - 8 * k); });
+    if (base && !photo) { const rx = X((D.runway[0][0] + D.runway[1][0]) / 2), ry = Y((D.runway[0][1] + D.runway[1][1]) / 2); ctx.fillStyle = '#FFFFFF'; ctx.font = font(14, 700); ctx.fillText(t('x34.base').toUpperCase(), rx - 60 * k, ry); }
+    ctx.restore(); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.2 * k; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    if (!o.noNorth) { if (photo) { ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(x + w - 44 * k, y + 8 * k, 32 * k, 56 * k); } root.GA.pages.northArrow(ctx, x + w - 28 * k, y + 20 * k, 1.3 * k); }
+    if (!o.noScale) { const km = 1000 / mpp, bx = x + 22 * k, by = y + h - 24 * k; ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(bx - 8 * k, by - 22 * k, km + 60 * k, 34 * k);
+      ctx.fillStyle = pal.ink; ctx.fillRect(bx, by, km / 2, 5 * k); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1 * k; ctx.strokeRect(bx, by, km, 5 * k); ctx.font = font(10, 500); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.direction = 'ltr';
+      ctx.fillText('0', bx, by - 5 * k); ctx.fillText('500', bx + km / 2, by - 5 * k); ctx.fillText('1 km', bx + km, by - 5 * k); }
+    return true;
+  }
+  const TFIVE = ['Armilla', 'Churriana de la Vega', 'Las Gabias', 'Alhendín', 'Ogíjares'];
+  const tcol = () => { const p = P(); return { 'Armilla': p.ex21.metro, 'Churriana de la Vega': p.red, 'Las Gabias': p.base.olive, 'Alhendín': p.base.khaki, 'Ogíjares': p.base.burgundy, 'Granada': p.ink3 }; };
+  // chart: dwellings in today's buildings by decade of construction, the five towns stacked (Catastro)
+  function drawDwellChart(ctx, x, y, w, h, o) { o = o || {}; const pal = P(), t = o.t || ((s) => s), k = o.k || 1, F = root.GA.pages.font(), font = (sz, wt) => `${wt || 500} ${Math.round(sz * k)}px ${F}`, col = tcol();
+    const decs = []; for (let d = 1900; d <= 2020; d += 10) decs.push(d); const val = (tn, d) => d === 1900 ? Object.entries(TD.towns[tn].dwellings_by_decade).filter(([q]) => +q < 1910).reduce((a, [, v]) => a + v, 0) : (TD.towns[tn].dwellings_by_decade[String(d)] || 0);
+    const tot = decs.map(d => TFIVE.reduce((a, tn) => a + val(tn, d), 0)); const vmax = Math.max(...tot) * 1.08; const pl = 46 * k, pb = 22 * k, pt = 10 * k; const bw = (w - pl) / decs.length, H = h - pb - pt;
+    ctx.save(); ctx.font = font(9); ctx.fillStyle = pal.ink2; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.strokeStyle = pal.line; ctx.lineWidth = 1;
+    for (let v = 0; v <= vmax; v += 2000) { const yy = y + pt + H - v / vmax * H; ctx.beginPath(); ctx.moveTo(x + pl, yy); ctx.lineTo(x + w, yy); ctx.stroke(); ctx.fillText(v.toLocaleString('en-US'), x + pl - 5 * k, yy); }
+    decs.forEach((d, i) => { let acc = 0; const bx = x + pl + i * bw; TFIVE.forEach(tn => { const v = val(tn, d); const hh = v / vmax * H; ctx.fillStyle = col[tn]; ctx.fillRect(bx + 2 * k, y + pt + H - acc - hh, bw - 4 * k, hh); acc += hh; });
+      ctx.fillStyle = pal.ink2; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.font = font(8.5); ctx.fillText(d === 1900 ? '<1910' : d + 's', bx + bw / 2, y + pt + H + 5 * k); });
+    ctx.restore(); }
+  // chart: residents 1996–2025 (INE) per town, and the scenario "the pace of 2015–2025 continues" to 2045 (dashed)
+  function drawPopChart(ctx, x, y, w, h, o) { o = o || {}; const pal = P(), k = o.k || 1, F = root.GA.pages.font(), font = (sz, wt) => `${wt || 500} ${Math.round(sz * k)}px ${F}`, col = tcol();
+    const y0 = 1996, y1 = o.noProj ? 2025 : 2045; const vmax = Math.max(...TFIVE.map(tn => o.noProj ? TD.population[tn]['2025'] : TD.projection[tn]['2045'])) * 1.1; const pl = 46 * k, pb = 22 * k, pt = 10 * k, pr = 90 * k; const W2 = w - pl - pr, H = h - pb - pt;
+    const X2 = (yr) => x + pl + (yr - y0) / (y1 - y0) * W2, Y2 = (v) => y + pt + H - v / vmax * H;
+    ctx.save(); ctx.font = font(9); ctx.fillStyle = pal.ink2; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.strokeStyle = pal.line; ctx.lineWidth = 1;
+    for (let v = 0; v <= vmax; v += 5000) { ctx.beginPath(); ctx.moveTo(x + pl, Y2(v)); ctx.lineTo(x + pl + W2, Y2(v)); ctx.stroke(); ctx.fillText(v.toLocaleString('en-US'), x + pl - 5 * k, Y2(v)); }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top'; for (let yr = 2000; yr <= y1; yr += 5) ctx.fillText(String(yr), X2(yr), y + pt + H + 5 * k);
+    if (!o.noProj) { ctx.fillStyle = 'rgba(201,216,223,.35)'; ctx.fillRect(X2(2025), y + pt, X2(y1) - X2(2025), H); }
+    TFIVE.forEach(tn => { const p = TD.population[tn]; const yrs = Object.keys(p).map(Number).sort((a, b) => a - b); ctx.strokeStyle = col[tn]; ctx.lineWidth = 2.6 * k; ctx.beginPath(); yrs.forEach((yr, i) => i ? ctx.lineTo(X2(yr), Y2(p[yr])) : ctx.moveTo(X2(yr), Y2(p[yr]))); ctx.stroke();
+      let ly = p['2025'], lx = X2(2025); if (!o.noProj) { const q = TD.projection[tn]; ctx.setLineDash([6 * k, 4 * k]); ctx.beginPath(); ctx.moveTo(X2(2025), Y2(p['2025'])); ctx.lineTo(X2(2035), Y2(q['2035'])); ctx.lineTo(X2(2045), Y2(q['2045'])); ctx.stroke(); ctx.setLineDash([]); ly = q['2045']; lx = X2(2045); }
+      ctx.fillStyle = col[tn]; ctx.font = font(9.5, 700); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(tn.replace(' de la Vega', '') + ' ' + Math.round(ly / 1000 * 10) / 10 + 'k', lx + 6 * k, Y2(ly)); });
+    ctx.restore(); }
+  function timeLegend(only, t) { const pal = P(), C = pal.ex21; const out = [{ sw: C.base, label: t('x34.lg.base') }];
+    if (only === 'built') TD.periods.forEach(([key, a, b, c]) => out.push({ sw: `rgb(${c.join(',')})`, label: t('x36.per.' + key) }));
+    if (only === 'density') TD.density_breaks.forEach(([a, b], i) => out.push({ sw: `rgb(${TD.density_colours[i].join(',')})`, alpha: 0.85, label: b > 1e8 ? t('x36.dens.top', { a }) : t('x36.dens', { a, b }) }));
+    if (only === 'edge') ['free', '30-60', '15-30', '0-15'].forEach(c => out.push({ sw: `rgb(${TD.edge_colours[c].join(',')})`, alpha: 0.85, label: t('x36.edge.' + c, { ha: TD.edge_ha[c] || 0 }) }));
+    if (only !== 'built') out.push({ sw: C.built, label: t('x34.lg.built') });
+    out.push({ line: C.muni, dash: true, w: 1, label: t('x35.lg.muni') }); return out; }
   root.GA.ex21 = { ready, readyAreas, readyAerial, loadAerial, aerialLegend, get aerial() { return AER; }, drawArea, drawSection, areaLegend, drawAreaKey, keyLegend, get areas() { return AR; }, drawCity, drawGaps, cityLegend, mapLegend, MAPS: ['island', 'walk', 'growth', 'height'], CITY, get data() { return D; },
-    readyFactory, drawFactory, factoryLegend, drawFactoryKey, FMAPS: ['estate', 'access', 'land', 'time'], get factory() { return FD; } };
+    readyFactory, drawFactory, factoryLegend, drawFactoryKey, FMAPS: ['estate', 'access', 'land', 'time'], get factory() { return FD; },
+    readyTime, drawTime, drawDwellChart, drawPopChart, timeLegend, get time() { return TD; }, TFIVE, tcol };
 })(window);

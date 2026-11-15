@@ -1151,6 +1151,23 @@ factory's), colours `P.ex21f`, strings `x35.*` (+ `x34.a.J…P`).
 - **Not done yet for the factory set**: the planning instrument, the phenomenon wording, the human scale; publishing on
   the site.
 
+**The base over time (owner request, 15 Nov 2026: how the place grew, crowding, how it could grow, how the built-up
+grew).** `tools/build_ex21_time.py` (`CATASTRO` = folder with the INSPIRE building files of Armilla 18022, Churriana
+18064, Las Gabias 18083, Ogíjares 18148, Alhendín 18015, Cúllar Vega 18058, Granada 18900; `INE` = folder with
+t2871.json; `MTN50` = the frame's 1931 GetMap) → `data/ex21/time.json`, `built_period.png` (2 m/px, colour = period of
+construction), `density.png` (dwellings/ha, 100 m cells), `edge_land.png` (open cells next to the towns, by ceiling).
+`js/ex21.js`: `readyTime`, `drawTime(…{only:'built'|'density'|'edge'|'photo', photo})`, `drawDwellChart`, `drawPopChart`,
+`timeLegend`; strings `x36.*`. Pages: `tools/ex21_pages/time.py` (the history sheet needs the ten pictures in
+`exports/ex21_time/hist/`: IGN WMS primera-edicion-mtn `MTN50`, pnoa-historico `AMS_1956-1957`, `Interministerial_1973-1986`,
+`Nacional_1981-1986`, `OLISTAT`, `SIGPAC`, `PNOA2004/2010/2016`, and pnoa-ma for 2022 — `PNOA2024` returned an empty
+image for this frame). Findings: the 1931 MTN50 shows a small "Aeródromo" (~44 ha by colour, approximate) where the
+base is now 371 ha; OLISTAT 1997–98 masks the base white; dwellings in today's buildings by decade peak in the 2000s
+(~21,500 in the five towns) and fall after 2008; residents of the five towns 2015 → 2025 +15.3 %; scenario (pace of
+2015–2025 continued): 91,476 → ~121,555 in 2045, ~14,200 more dwellings at 2.12 residents per recorded dwelling;
+hypothetical: the base's 371 ha at the towns' median density (14 dwellings/ha) ≈ 5,200 dwellings / 11,000 residents.
+Open land next to the towns (100 m cells): 513 ha with no ceiling below 60 m, 243 ha at 30–60 m, 128 ha at 15–30 m,
+39 ha at 0–15 m. All labelled as scenario / measurement, not plan.
+
 **Open (waiting for the owner):** language of the hand-in (he / ar / en) — it blocks the texts and the sheet; which
 four areas go on the A1; how the city maps sit on the A1 (one 1:10,000 map is 640 × 560 mm and nearly fills an
 841 × 594 mm sheet — proposal: one main map at 1:10,000 cropped to the base and its band, the other three small at
