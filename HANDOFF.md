@@ -1027,3 +1027,83 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
 - `tools/build_ex13_ident.py` → `data/ex13/art/ident.json` (es-atlas outlines, a DEM section — kept for later use; the
   owner chose the single-map page without locator maps or section). Strings `js/i18n_v32.js`. Test `tests/ui_test_v34.py`. Data version `2026-11-10-v22`.
 - 5.41 (owner, same day): the scale bar sits further towards the start edge.
+
+## 41. Exercise 2.1 "Scale" — IN PROGRESS on branch `claude/busy-thompson-newzwc` (not on `main`, not on the site)
+
+**State on 15 Nov 2026.** Nothing of this is loaded by `index.html` yet: no page, no script tags, no build bump, no
+tests. The work is delivered to the owner as print files (PNG / PDF / SVG) made by the scripts below. Publishing it on
+the site is a later step, only when the owner asks (then: script tags + a page + `i18n_v33` in `index.html`, a new
+`tests/ui_test_v35.py`, build bump, `dataVersion` bump, live-check).
+
+**The assignment** (studio PDF, private — never commit it): one phenomenon read at three scales — city (1:5,000 or
+1:2,000; the owner chose **1:10,000 covering the five towns**), area (**1:500** with at least one section), human
+(film, collage or photo series) — plus a policy check, remote documentation and a strategy in two sentences.
+Deadlines: Sun 15 Nov 2026 (phenomenon wording, policy excerpts, remote documentation, the maps with legend / scale /
+sources, a section, a human-scale sketch, a draft text) and Wed 18 Nov 2026 (one **A1** sheet as PDF + image, a film
+≤ 3 min or a collage with a QR code, a text ≤ 150 words).
+
+**The phenomenon (agreed with the owner):** the Base Aérea de Armilla as a closed island in the middle of the growing
+south (Armilla, Churriana de la Vega, Las Gabias, Alhendín, Ogíjares).
+
+**Owner decisions so far**
+- City level: one layer of information per map — 01 the island (base, 300 m band, fence by what lies outside),
+  02 walking (dead ends, two detours against the straight line), 03 growth + metro (line 1 today and its extension,
+  % residents change at each town, inset of the whole line), 04 the ceiling (aeronautical height limits) — plus a
+  "gaps" panel (residents change, income, rent; the five towns against Granada city).
+- Area level: eight 130 m windows **A–H** on the fence, each with a section across it. Eight do not fit on one A1:
+  the owner still has to pick four.
+- Sections as **vectors for Illustrator** (SVG, mm, 1 m = 2 mm). "Detail" style, agreed step by step: almost no words;
+  cut buildings divided into floors; **everything cut (ground, slabs, walls) in the studio red**; the rest in mixed
+  palette colours (pale-blue allowed envelope, red hatch = forbidden sky, façades by building type, people and cars in
+  several palette colours); trees are the **owner's own PNG cut-outs** (private: `TREE_IMAGES` folder, never committed;
+  without it the tool draws its own schematic trees).
+- Trees come from the aerial photo (OSM maps none in the windows); an aerial version of every area.
+- Remote documentation: covered by a collage the owner made.
+
+**Code** — `js/ex21.js` (`GA.ex21`), strings `x34.*` in `js/i18n_v33.js`, colours `P.ex21` in `js/palette.js`.
+`ready()` → `drawCity(ctx,x,y,w,h,{only:'island'|'walk'|'growth'|'height',t,k})`, `drawGaps`, `mapLegend(only,t)`,
+`cityLegend`; `readyAreas()` → `drawArea(ctx,x,y,S,id,{t,k,aerial})`, `drawSection`, `areaLegend`, `drawAreaKey`,
+`keyLegend`; `readyAerial()`, `loadAerial(id[,base])`, `aerialLegend(t,id)`. Frame of the city maps: `CITY`
+(6400 × 5600 m = 640 × 560 mm at 1:10,000). `k` scales every line and label (print pages use `KF` 3.8).
+
+**Data and tools** (all outputs in `data/ex21/`)
+| File | Tool | Source and method |
+|---|---|---|
+| `easements.json`, `allowed_height.png` | `tools/build_ex21_easements.py` (`KMZ_DIR` = folder with the Ministry's KMZ) | Ministry of Defence KMZ of RD 118/2019 (Servidumbre Operativa Hoja 01–05 + SA aeródromo; downloaded from defensa.gob.es, **not in the repo**). Lowest limit surface (linear TIN of each file's 3D lines) minus IGN MDT25. Numbers on a 25 m grid; the picture on a 5 m grid. **Approximate, not the legal value.** |
+| `metro_l1.json` | `tools/build_ex21_metro.py` | OSM relation 7183554 (26 stops, 47 min, every 8 min — OSM tags). |
+| `areas.json` | `tools/build_ex21_areas.py` (`KMZ_DIR`), **then** `tools/build_ex21_canopy.py` | OSM buildings / streets / land use, fence, dead ends, section samples (ground, limit) and cuts. The canopy tool adds `canopy` ([x, y, crown diameter]) read from the PNOA photo. **`build_ex21_areas.py` rewrites the file without `canopy` — always run the canopy tool after it.** |
+| `aerial/<id>.jpg`, `aerial/index.json` | `tools/build_ex21_aerial.py` (`SIZE`, `OUT`) | PNOA orthophoto (IGN WMS), stored as served; flight date (2022-08) and resolution (0.25 m) read from the service; `base_blurred_share` measured. |
+| section SVGs (in `exports/`, git-ignored) | `tools/export_ex21_sections_svg.py` (`STYLE=detail|poster|plain`, `ONLY`, `OUT`, `TREE_IMAGES`) | from `areas.json`. |
+| print pages (PNG at 200 dpi) | `tools/ex21_pages/city.py`, `areas.py`, `key.py`, `aerial.py` | Playwright scripts that call `GA.ex21.draw*` on a canvas; run from the repo root. Save the PNG with `dpi=(200,200)` (Pillow) so it places at true size; PDF via Pillow `resolution=200`. |
+
+**Honesty notes (keep them on the drawings)**
+- Building heights = OSM `building:levels` × 3 m (estimate); no levels = dashed outline, height unknown.
+- The limit surface is interpolated between the published lines: approximate. Which file sets the limit, by area:
+  A, B, D, E, G → `LEGA_SA_Aerodromo` (746 m; E 748.5); C → `Hoja05 H-PAPI RWY02` (713 m, ≈ 2 m allowed — a real
+  wedge edge at x ≈ 443,971, not an artefact); F → the same file (729 m, ≈ 10 m); H → `Hoja02 PAPI RWY18` (690 m, ≈ 21 m).
+- Façades behind the cut are **schematic by OSM building type**; roofs are drawn flat because no `roof:shape` is mapped
+  in the windows (the aerial photo shows tiled pitched roofs on many houses — not used yet).
+- Trees: positions from crowns detected in the PNOA photo (greenness + darkness, blobs ≥ 3 m²; hedges or dark lawns can
+  pass, small or leafless trees can be missed); heights are schematic (from the crown width, 3–10 m) and always under
+  the limit surface. People and cars are schematic. The fence height is not mapped.
+- **The official photo blurs the base** (a smooth brown surface with a sharp edge): share of the base's pixels with no
+  detail — B 100 %, C 96 %, G 100 %, H 84 %, F 24 %, A 1 %, D 0 %, E 0 %. In B the blur reaches the street edge, up
+  to about 10 m outside the OSM outline. The photo is never edited here; the page says so.
+- Credits: OpenStreetMap contributors (ODbL); IGN MDT25 and PNOA (CC BY 4.0, "PNOA © Instituto Geográfico Nacional de
+  España"); "Origen de los datos: Ministerio de Defensa" (reuse under Ley 37/2007: cite, do not distort, no implied
+  endorsement); INE tables 2871 (residents), 31025 (ADRH income), 59060 (IPVA rent, 14 of 34 municipalities).
+- Google Earth / Maps imagery is not used (no access from the sandbox, and its terms forbid copying or tracing).
+
+**Policy read so far** — Real Decreto 118/2019 (BOE-A-2019-6129; replaced RD 511/1989): art. 8 — 45 municipalities
+affected; art. 9.2 — no construction, installation or planting without the prior agreement of Defence / civil aviation;
+art. 9.3 — activities can be limited. RD 369/2023, second transitional provision: existing easements stay valid until
+updated, update due within six years (mid-2029). Reference point 701.1 m; thresholds 18 → 676.2 m, 36 → 701.1 m.
+**Not read yet:** POTAUG and the municipal plans (juntadeandalucia.es would not connect from the sandbox; ask the
+owner for the PDFs). Four more Ministry files were downloaded (`LEGA_SA_Helipuerto`, `LEGA_SR`, `LEGA_SRA`, `LEGA_TM`)
+and are **not** in the calculation; adding the helipad surface was offered, not answered.
+
+**Open (waiting for the owner):** language of the hand-in (he / ar / en) — it blocks the texts and the sheet; which
+four areas go on the A1; how the city maps sit on the A1 (one 1:10,000 map is 640 × 560 mm and nearly fills an
+841 × 594 mm sheet — proposal: one main map at 1:10,000 cropped to the base and its band, the other three small at
+1:25,000); film or collage for the human scale. **To do then:** the phenomenon sentence, the draft and final text
+(≤ 150 words) with the two-sentence strategy, a page of policy excerpts, the human-scale sketch, the A1 sheet.

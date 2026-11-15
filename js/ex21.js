@@ -138,12 +138,26 @@
   // ---------- AREA level (1:500): four 130 m windows on the edge (data/ex21/areas.json, tools/build_ex21_areas.py) ----------
   let AR = null, ARp = null;
   function readyAreas() { if (ARp) return ARp; ARp = fetch('data/ex21/areas.json?v=' + (root.GA_BUILD || '')).then(r => r.json()).then(j => (AR = j)).catch(e => { ARp = null; throw e; }); return ARp; }
+  // the aerial photo of a window (PNOA, IGN, CC BY 4.0; tools/build_ex21_aerial.py) and its flight date / resolution
+  let AER = null, AERp = null; const AERIMG = {};
+  function readyAerial() { if (AERp) return AERp; AERp = fetch('data/ex21/aerial/index.json?v=' + (root.GA_BUILD || '')).then(r => r.json()).then(j => (AER = j)).catch(e => { AERp = null; throw e; }); return AERp; }
+  function loadAerial(id, base) { const u = (base || 'data/ex21/aerial/') + id + '.jpg'; if (AERIMG[u]) return AERIMG[u];
+    return (AERIMG[u] = new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => { delete AERIMG[u]; rej(new Error('aerial ' + id)); }; im.src = u + '?v=' + (root.GA_BUILD || ''); })); }
+  // legend of the aerial version: only what is drawn over the photo
+  function aerialLegend(t, id) { const pal = P(), C = pal.ex21; const as = (AR ? AR.areas : []).filter(a => !id || a.id === id);
+    const metro = as.some(a => (a.metro || []).some(m => m.k === 'track')), dead = as.some(a => (a.dead || []).length);
+    return [{ line: C.fence.housing, w: 2, label: t('x34.lg.fenceAny') }].concat(dead ? [{ line: C.dead, w: 2, sym: 'dead', label: t('x34.lg.dead') }] : []).concat(metro ? [{ line: C.metro, w: 3, rail: true, label: t('x34.lg.metro') }] : [])
+      .concat([{ line: pal.red, w: 1.5, dash: true, label: t('x34.lg.secline') }]); }
   const floorsCol = (lv) => { const b = P().band; return lv == null ? null : lv <= 2 ? b['1-2'] : lv <= 4 ? b['3-4'] : lv <= 8 ? b['5-8'] : b['9+']; };
   function drawArea(ctx, x, y, S, id, o) {
     o = o || {}; const A = AR && AR.areas.find(a => a.id === id); if (!A) return false; const pal = P(), C = pal.ex21, LU = pal.landuse; const t = o.t || ((s) => s); const F = root.GA.pages.font(); const k = o.k || S / 1000;
     const e = A.extent, mpp = (e[2] - e[0]) / S; const X = (u) => x + (u - e[0]) / mpp, Y = (v) => y + (e[3] - v) / mpp; const font = (sz, wt) => `${wt || 600} ${Math.round(sz * k)}px ${F}`;
     const path = (rs, close) => { ctx.beginPath(); rs.forEach(rr => rr.forEach(r => r.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1]))))); if (close) ctx.closePath(); };
     ctx.save(); ctx.beginPath(); ctx.rect(x, y, S, S); ctx.clip(); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(x, y, S, S); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    // 15 Nov 2026 (owner request): o.aerial = the PNOA orthophoto of the same window (GA.ex21.loadAerial) — drawn as served,
+    // nothing edited; only the fence, dead ends, metro, street names and the section line are laid over it
+    const aer = o.aerial || null; if (aer) { ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(aer, x, y, S, S); }
+    if (!aer) {
     // land use (OSM), light
     A.landuse.forEach(l => { const c = { residential: LU.residential, industrial: LU.industrial, commercial: LU.commercial, retail: LU.commercial, farmland: LU.agri, meadow: LU.agri, orchard: LU.agri, grass: LU.green, construction: LU.construction }[l.lu]; if (!c) return; path(l.r, true); ctx.globalAlpha = 0.22; ctx.fillStyle = c; ctx.fill('evenodd'); ctx.globalAlpha = 1; });
     // land use in the 300 m band (OSM landuse + parks; the tour's band classes)
@@ -159,8 +173,10 @@
     // tree crowns read from the PNOA aerial photo (approximate; tools/build_ex21_canopy.py), true crown width
     (A.canopy || []).forEach(([u, v, dm]) => { ctx.beginPath(); ctx.arc(X(u), Y(v), Math.max(1.2, dm / 2) / mpp, 0, 7); ctx.fillStyle = 'rgba(126,123,67,.45)'; ctx.fill(); ctx.strokeStyle = pal.olive; ctx.lineWidth = 0.6 * k; ctx.stroke(); });
     A.trees.forEach(([u, v]) => { ctx.beginPath(); ctx.arc(X(u), Y(v), 2.2 / mpp, 0, 7); ctx.fillStyle = 'rgba(126,123,67,.35)'; ctx.fill(); ctx.strokeStyle = pal.olive; ctx.lineWidth = 0.8 * k; ctx.stroke(); });
-    // the fence by what lies outside it, dead ends, metro
-    A.fence.forEach(f => { ctx.strokeStyle = C.fence[f.c] || C.baseLine; ctx.lineWidth = 7 * k; path(f.r); ctx.stroke(); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.2 * k; ctx.setLineDash([2 * k, 5 * k]); path(f.r); ctx.stroke(); ctx.setLineDash([]); });
+    }
+    // the fence by what lies outside it, dead ends, metro (over the photo: a thinner line on a white casing, so the real edge stays visible)
+    if (aer) A.fence.forEach(f => { ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 5.4 * k; path(f.r); ctx.stroke(); ctx.strokeStyle = C.fence[f.c] || C.baseLine; ctx.lineWidth = 3 * k; path(f.r); ctx.stroke(); });
+    else A.fence.forEach(f => { ctx.strokeStyle = C.fence[f.c] || C.baseLine; ctx.lineWidth = 7 * k; path(f.r); ctx.stroke(); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.2 * k; ctx.setLineDash([2 * k, 5 * k]); path(f.r); ctx.stroke(); ctx.setLineDash([]); });
     A.metro.forEach(m => { if (m.k === 'track') { ctx.strokeStyle = C.metro; ctx.lineWidth = 8 * k; path(m.r); ctx.stroke(); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 3 * k; ctx.setLineDash([9 * k, 9 * k]); path(m.r); ctx.stroke(); ctx.setLineDash([]); } });
     A.dead.forEach(([u, v]) => { ctx.beginPath(); ctx.arc(X(u), Y(v), 9 * k, 0, 7); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.strokeStyle = C.dead; ctx.lineWidth = 3.4 * k; ctx.stroke(); ctx.beginPath(); ctx.moveTo(X(u) - 5 * k, Y(v)); ctx.lineTo(X(u) + 5 * k, Y(v)); ctx.stroke(); });
     // street names (OSM)
@@ -168,12 +184,18 @@
     A.streets.forEach(st => { if (!st.nm || named.has(st.nm) || /footway|path|service|track/.test(st.hw)) return; const r = st.r[0] && st.r[0][0]; if (!r || r.length < 2) return; const i = Math.floor(r.length / 2), p0 = r[Math.max(0, i - 1)], p1 = r[Math.min(r.length - 1, i)];
       let ang = Math.atan2(-(p1[1] - p0[1]), p1[0] - p0[0]); if (ang > Math.PI / 2) ang -= Math.PI; if (ang < -Math.PI / 2) ang += Math.PI; ctx.save(); ctx.translate(X((p0[0] + p1[0]) / 2), Y((p0[1] + p1[1]) / 2)); ctx.rotate(ang); ctx.lineWidth = 3 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(st.nm, 0, 0); ctx.fillText(st.nm, 0, 0); ctx.restore(); named.add(st.nm); });
     // section line A–A′
-    const sa = A.section.a, sb = A.section.b; ctx.strokeStyle = pal.red; ctx.lineWidth = 1.8 * k; ctx.setLineDash([10 * k, 5 * k]); ctx.beginPath(); ctx.moveTo(X(sa[0]), Y(sa[1])); ctx.lineTo(X(sb[0]), Y(sb[1])); ctx.stroke(); ctx.setLineDash([]);
+    const sa = A.section.a, sb = A.section.b;
+    if (aer) { ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 4.4 * k; ctx.beginPath(); ctx.moveTo(X(sa[0]), Y(sa[1])); ctx.lineTo(X(sb[0]), Y(sb[1])); ctx.stroke(); }
+    ctx.strokeStyle = pal.red; ctx.lineWidth = (aer ? 2.2 : 1.8) * k; ctx.setLineDash([10 * k, 5 * k]); ctx.beginPath(); ctx.moveTo(X(sa[0]), Y(sa[1])); ctx.lineTo(X(sb[0]), Y(sb[1])); ctx.stroke(); ctx.setLineDash([]);
     [[sa, A.id], [sb, A.id + '′']].forEach(([p, n]) => { ctx.beginPath(); ctx.arc(X(p[0]), Y(p[1]), 11 * k, 0, 7); ctx.fillStyle = pal.red; ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.font = font(12, 700); ctx.textAlign = 'center'; ctx.fillText(n, X(p[0]), Y(p[1]) + 0.5 * k); });
     ctx.restore(); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.2 * k; ctx.strokeRect(x + 0.5, y + 0.5, S - 1, S - 1);
+    if (aer) { ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(x + S - 41 * k, y + 10 * k, 30 * k, 62 * k); }
     root.GA.pages.northArrow(ctx, x + S - 26 * k, y + 18 * k, 1.2 * k);
     // scale bar 0–10–20–50 m
-    const m50 = 50 / mpp, bx = x + 16 * k, by = y + S - 20 * k; ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(bx - 6 * k, by - 20 * k, m50 + 46 * k, 30 * k); ctx.fillStyle = pal.ink;
+    // (the plate goes to the first corner where it hides neither end of the section nor a dead end: bottom-left, bottom-right, top-left)
+    const m50 = 50 / mpp, pw = m50 + 46 * k, ph = 30 * k, spots = [[x + 10 * k, y + S - 10 * k - ph], [x + S - 10 * k - pw, y + S - 10 * k - ph], [x + 10 * k, y + 10 * k]];
+    const hides = ([px, py]) => [sa, sb].concat(A.dead).some(q => { const u = X(q[0]), v = Y(q[1]); return u > px - 14 * k && u < px + pw + 14 * k && v > py - 14 * k && v < py + ph + 14 * k; });
+    const spot = spots.find(q => !hides(q)) || spots[0], bx = spot[0] + 6 * k, by = spot[1] + 20 * k; ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(bx - 6 * k, by - 20 * k, pw, ph); ctx.fillStyle = pal.ink;
     [[0, 10], [20, 30], [40, 50]].forEach(([a, b]) => ctx.fillRect(bx + a / mpp, by, (b - a) / mpp, 5 * k)); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1 * k; ctx.strokeRect(bx, by, m50, 5 * k);
     ctx.font = font(9.5, 500); ctx.textAlign = 'center'; ctx.direction = 'ltr'; ctx.textBaseline = 'alphabetic'; ['0', '10', '20', '50 m'].forEach((s0, i) => ctx.fillText(s0, bx + [0, 10, 20, 50][i] / mpp, by - 4 * k));
     return true;
@@ -245,5 +267,5 @@
       .concat([{ line: C.route, w: 2, dash: true, label: t('x34.lg.route') }, { line: C.dead, w: 2, sym: 'dead', label: t('x34.lg.dead') }, { line: C.metro, w: 4, rail: true, label: t('x34.lg.metro') }])
       .concat(Object.keys(C.height).map(c => ({ sw: C.height[c], alpha: hAlpha(c), label: t('x34.lg.h.' + c) })))
       .concat([{ sw: C.built, label: t('x34.lg.built') }, { line: C.muni, dash: true, w: 1, label: t('x34.lg.muni2') }]); }
-  root.GA.ex21 = { ready, readyAreas, drawArea, drawSection, areaLegend, drawAreaKey, keyLegend, get areas() { return AR; }, drawCity, drawGaps, cityLegend, mapLegend, MAPS: ['island', 'walk', 'growth', 'height'], CITY, get data() { return D; } };
+  root.GA.ex21 = { ready, readyAreas, readyAerial, loadAerial, aerialLegend, get aerial() { return AER; }, drawArea, drawSection, areaLegend, drawAreaKey, keyLegend, get areas() { return AR; }, drawCity, drawGaps, cityLegend, mapLegend, MAPS: ['island', 'walk', 'growth', 'height'], CITY, get data() { return D; } };
 })(window);

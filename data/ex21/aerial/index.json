@@ -1,0 +1,110 @@
+{
+ "source": "PNOA máxima actualidad, orthophoto — © Instituto Geográfico Nacional de España (IGN/CNIG), CC BY 4.0; WMS www.ign.es/wms-inspire/pnoa-ma",
+ "note": "stored as served (not edited); flight date and resolution as reported by the service for the centre of each window; base_blurred_share = share of the pixels inside the OSM base outline with almost no local variation (blurred at the source)",
+ "areas": {
+  "A": {
+   "file": "A.jpg",
+   "px": 1040,
+   "extent": [
+    442418.7,
+    4110535.0,
+    442548.7,
+    4110665.0
+   ],
+   "flight": "2022-08",
+   "resolution_m": 0.25,
+   "base_blurred_share": 0.01
+  },
+  "B": {
+   "file": "B.jpg",
+   "px": 1040,
+   "extent": [
+    443955.3,
+    4110639.5,
+    444085.3,
+    4110769.5
+   ],
+   "flight": "2022-08",
+   "resolution_m": 0.25,
+   "base_blurred_share": 1.0
+  },
+  "C": {
+   "file": "C.jpg",
+   "px": 1040,
+   "extent": [
+    443897.1,
+    4108836.2,
+    444027.1,
+    4108966.2
+   ],
+   "flight": "2022-08",
+   "resolution_m": 0.25,
+   "base_blurred_share": 0.96
+  },
+  "D": {
+   "file": "D.jpg",
+   "px": 1040,
+   "extent": [
+    442493.6,
+    4109221.6,
+    442623.6,
+    4109351.6
+   ],
+   "flight": "2022-08",
+   "resolution_m": 0.25,
+   "base_blurred_share": 0.0
+  },
+  "E": {
+   "file": "E.jpg",
+   "px": 1040,
+   "extent": [
+    441401.2,
+    4110087.0,
+    441531.2,
+    4110217.0
+   ],
+   "flight": "2022-08",
+   "resolution_m": 0.25,
+   "base_blurred_share": 0.0
+  },
+  "F": {
+   "file": "F.jpg",
+   "px": 1040,
+   "extent": [
+    443806.1,
+    4108241.1,
+    443936.1,
+    4108371.1
+   ],
+   "flight": "2022-08",
+   "resolution_m": 0.25,
+   "base_blurred_share": 0.24
+  },
+  "G": {
+   "file": "G.jpg",
+   "px": 1040,
+   "extent": [
+    443996.0,
+    4109547.1,
+    444126.0,
+    4109677.1
+   ],
+   "flight": "2022-08",
+   "resolution_m": 0.25,
+   "base_blurred_share": 1.0
+  },
+  "H": {
+   "file": "H.jpg",
+   "px": 1040,
+   "extent": [
+    443493.0,
+    4110775.6,
+    443623.0,
+    4110905.6
+   ],
+   "flight": "2022-08",
+   "resolution_m": 0.25,
+   "base_blurred_share": 0.84
+  }
+ }
+}
