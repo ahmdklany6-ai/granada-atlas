@@ -18,7 +18,7 @@ COMMON = r'''const D = 200 / 25.4, mm = (v) => Math.round(v * D); const t = (k, 
   const load = (u) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error(u)); im.src = u; });'''
 JS_HIST = r'''async ([HIST, one]) => { await GA.ex21.ready(); await GA.ex21.readyTime(); ''' + COMMON + r'''
   const TD = GA.ex21.time; const imgs = await Promise.all(HIST.map(h => load('/exports/ex21_time/hist/' + h[0] + '.jpg')));
-  const lab = (h) => h[0] === 'mtn50' ? t('x36.hist.1931', { ha: Math.round(TD.aerodrome_1931_ha) }) : h[1];
+  const lab = (h) => h[0] === 'mtn50' ? t('x36.hist.1931', { ha: GA.ex21.km2(TD.aerodrome_1931_ha) }) : h[1];
   if (one != null) { const h = HIST[one], w = 1600, hh = 1400, c = document.createElement('canvas'); c.width = w; c.height = hh; const x = c.getContext('2d');
     GA.ex21.drawTime(x, 0, 0, w, hh, { t, only: 'photo', photo: imgs[one], k: 1.6 });
     x.fillStyle = 'rgba(255,255,255,.92)'; x.font = '700 64px ' + F; const s = lab(h); const tw = Math.min(x.measureText(s).width, w - 120); x.fillRect(40, 40, tw + 48, 92); x.fillStyle = GA.palette.red; x.textBaseline = 'middle'; x.textAlign = 'left'; x.direction = 'ltr'; x.fillText(s, 64, 88, w - 140);
@@ -31,7 +31,7 @@ JS_HIST = r'''async ([HIST, one]) => { await GA.ex21.ready(); await GA.ex21.read
     x.font = '700 ' + mm(6) + 'px ' + F; x.fillStyle = GA.palette.ink; x.textAlign = rtl ? 'right' : 'left'; x.direction = rtl ? 'rtl' : 'ltr'; x.fillText(lab(h), rtl ? fx + fw : fx, fy - mm(2.5), fw);
     GA.ex21.drawTime(x, fx, fy, fw, fh, { t, only: 'photo', photo: imgs[i], k: fw / 1000 * 1.5, noScale: i !== 0, noNorth: i !== 0 }); });
   x.font = '600 ' + mm(5) + 'px ' + F; x.fillStyle = GA.palette.ink; x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; let yy = H - mm(30);
-  x.fillText(t('x36.box.growth', { a: Math.round(TD.aerodrome_1931_ha), b: Math.round(TD.base_ha_today) }), rtl ? R : L, yy); yy += mm(8);
+  x.fillText(t('x36.box.growth', { a: GA.ex21.km2(TD.aerodrome_1931_ha), b: GA.ex21.km2(TD.base_ha_today) }), rtl ? R : L, yy); yy += mm(8);
   x.font = '400 ' + mm(3.8) + 'px ' + F; x.fillStyle = GA.palette.ink3; wrap(x, t('x36.hist.src'), R - L).forEach(ln => { x.fillText(ln, rtl ? R : L, yy); yy += mm(5.2); });
   return c.toDataURL('image/png'); }'''
 JS_MAP = r'''async ([m, KF]) => { await GA.ex21.ready(); await GA.ex21.readyTime(); ''' + COMMON + r'''
@@ -53,8 +53,8 @@ JS_MAP = r'''async ([m, KF]) => { await GA.ex21.ready(); await GA.ex21.readyTime
   if (m === 'built') GA.ex21.drawDwellChart(x, L, chY + mm(14), R - L, chH - mm(14), { t, k: KF * 1.25 }); else GA.ex21.drawPopChart(x, L, chY + mm(6), R - L, chH - mm(6), { t, k: KF * 1.25, noProj: m !== 'edge' });
   // the numbers
   x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; x.textBaseline = 'alphabetic'; x.font = '600 ' + mm(5) + 'px ' + F; x.fillStyle = GA.palette.ink; let yy = boxY + mm(6);
-  const P = TD.projection.five, S = TD.base_scenario; const lines = m === 'edge' ? [t('x36.box.need', { a: P['2025'].toLocaleString('en-US'), b: P['2045'].toLocaleString('en-US'), n: P.dwellings_needed_2045.toLocaleString('en-US'), p: S.persons_per_dwelling }), t('x36.box.scen', { ha: S.base_ha, d: S.median_dw_per_ha, n: S.dwellings.toLocaleString('en-US'), r: S.residents.toLocaleString('en-US') })]
-    : m === 'built' ? [t('x36.box.growth', { a: Math.round(TD.aerodrome_1931_ha), b: Math.round(TD.base_ha_today) })] : [GA.ex21.TFIVE.map(tn => tn.replace(' de la Vega', '') + ': ' + TD.towns[tn].persons_per_dwelling).join(' · ') + '  ·  ' + t('x36.ppd')];
+  const P = TD.projection.five, S = TD.base_scenario; const lines = m === 'edge' ? [t('x36.box.need', { a: P['2025'].toLocaleString('en-US'), b: P['2045'].toLocaleString('en-US'), n: P.dwellings_needed_2045.toLocaleString('en-US'), p: S.persons_per_dwelling }), t('x36.box.scen', { ha: GA.ex21.km2(S.base_ha), d: Math.round(S.median_dw_per_ha * 100).toLocaleString('en-US'), n: S.dwellings.toLocaleString('en-US'), r: S.residents.toLocaleString('en-US') })]
+    : m === 'built' ? [t('x36.box.growth', { a: GA.ex21.km2(TD.aerodrome_1931_ha), b: GA.ex21.km2(TD.base_ha_today) })] : [GA.ex21.TFIVE.map(tn => tn.replace(' de la Vega', '') + ': ' + TD.towns[tn].persons_per_dwelling).join(' · ') + '  ·  ' + t('x36.ppd')];
   lines.forEach(s => wrap(x, s, R - L).forEach(ln => { x.fillText(ln, rtl ? R : L, yy); yy += mm(7); }));
   x.font = '400 ' + mm(4) + 'px ' + F; x.fillStyle = GA.palette.ink3; wrap(x, t('x36.src.' + m), R - L).forEach((ln, i) => x.fillText(ln, rtl ? R : L, srcY + mm(4) + i * mm(5.6)));
   return c.toDataURL('image/png'); }'''

@@ -19,7 +19,7 @@ JS = r'''async ([m, DPI, KF]) => { await GA.ex21.ready(); await GA.ex21.readyFac
   const legY = mapY + MH + mm(12), tbY = legY + rows * mm(13) + mm(6), srcY = tbY + tbH + mm(4), H = srcY + mm(24);
   const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); const L = mg, R = W - mg;
   const img = m === 'photo' ? await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('exports/ex21_factory/aerial_frame.jpg is missing')); im.src = '/exports/ex21_factory/aerial_frame.jpg?r=' + Date.now(); }) : null; const FLIGHT = '2022-08';
-  const title = { photo: t('x35.m.photo', { d: FLIGHT }), estate: t('x35.m.estate', { ha: Math.round(FD.estate.ha), pop: FD.village.pop }), access: t('x35.m.access', { km: FD.gap_metro_km }), land: t('x35.m.land', { ha: Math.round(FD.land_ha.solar || 0) }), time: t('x35.m.time', { v: FD.village.first_year, e: FD.estate.first_year }) }[m];
+  const title = { photo: t('x35.m.photo', { d: FLIGHT }), estate: t('x35.m.estate', { ha: GA.ex21.km2(FD.estate.ha), pop: FD.village.pop }), access: t('x35.m.access', { km: FD.gap_metro_km }), land: t('x35.m.land', { ha: GA.ex21.km2(FD.land_ha.solar || 0) }), time: t('x35.m.time', { v: FD.village.first_year, e: FD.estate.first_year }) }[m];
   x.textBaseline = 'alphabetic'; x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; x.fillStyle = GA.palette.ink;
   x.font = '700 ' + mm(11) + 'px ' + F; x.fillText(title, rtl ? R : L, mm(24), R - L);
   x.font = '500 ' + mm(6.5) + 'px ' + F; x.fillStyle = GA.palette.red; x.direction = 'ltr'; x.fillText('1:10,000', rtl ? R : L, mm(37)); x.direction = rtl ? 'rtl' : 'ltr';

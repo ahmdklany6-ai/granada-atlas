@@ -14,6 +14,8 @@
 (function (root) {
   const CITY = { x0: 440100, y0: 4106400, x1: 446500, y1: 4112000 }; // 6.4 × 5.6 km → 640 × 560 mm at 1:10,000
   const RUNWAY = [[-3.635537, 37.139086], [-3.636024, 37.127378]]; // thresholds 18 and 36 (RD 118/2019 art. 3, ETRS89)
+  // areas are written in km² (owner request, 15 Nov 2026: "nobody reads hectares"); 1 ha = 0.01 km²
+  const km2 = (ha) => { const v = (ha || 0) / 100; return v >= 10 ? v.toFixed(1) : v >= 0.1 ? v.toFixed(2) : v.toFixed(3); };
   let D = null, Dp = null;
   const P = () => root.GA.palette;
   function ready() {
@@ -71,7 +73,7 @@
       ctx.font = font(15, 700); ctx.lineWidth = 4 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(f.p.nm.toUpperCase(), px, py - 8 * k); ctx.fillStyle = C.town; ctx.fillText(f.p.nm.toUpperCase(), px, py - 8 * k);
       if (a && on('growth')) { const s = (a.p.chg > 0 ? '+' : '') + a.p.chg.toFixed(1) + ' %'; ctx.font = font(12, 600); ctx.strokeText(s + ' · 2015→2025', px, py + 9 * k); ctx.fillStyle = C.town; ctx.fillText(s + ' · 2015→2025', px, py + 9 * k); } });
     if (base) { const rx = X((D.runway[0][0] + D.runway[1][0]) / 2) - 26 * k, ry = Y((D.runway[0][1] + D.runway[1][1]) / 2); ctx.textAlign = 'right';
-      ctx.fillStyle = '#FFFFFF'; ctx.font = font(15, 700); ctx.fillText(t('x34.base').toUpperCase(), rx, ry); ctx.font = font(11, 500); ctx.fillText(`${base.p.area_ha} ha · ${base.p.perimeter_km} km`, rx, ry + 17 * k); ctx.textAlign = 'center'; }
+      ctx.fillStyle = '#FFFFFF'; ctx.font = font(15, 700); ctx.fillText(t('x34.base').toUpperCase(), rx, ry); ctx.font = font(11, 500); ctx.fillText(`${km2(base.p.area_ha)} km² · ${base.p.perimeter_km} km`, rx, ry + 17 * k); ctx.textAlign = 'center'; }
     // frame, north, scale
     ctx.restore(); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.2 * k; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
     root.GA.pages.northArrow(ctx, x + w - 28 * k, y + 20 * k, 1.3 * k);
@@ -334,8 +336,8 @@
     }
     // 10 names: the estate and the village with their measured sizes
     const es = FD.estate, vi = FD.village; const ec = [(E[0] + E[2]) / 2 + 250, 4105420], vc = [vi.c[0], vi.c[1] - 520];
-    halo(t('x35.estate').toUpperCase(), X(ec[0]), Y(ec[1]), FC.estateLine, 15, 700); halo(t('x35.estate.sub', { ha: Math.round(es.ha), n: es.buildings, b: es.footprint_ha.toFixed(1), p: es.built_share_pct.toFixed(1) }), X(ec[0]), Y(ec[1]) + 17 * k, FC.estateLine, 10.5, 500);
-    halo(vi.nm.toUpperCase(), X(vc[0]), Y(vc[1]), FC.village, 15, 700); halo(t('x35.village.sub', { pop: vi.pop, y: vi.pop_year, d: vi.dwellings, n: vi.buildings, b: vi.footprint_ha.toFixed(1) }), X(vc[0]), Y(vc[1]) + 17 * k, FC.village, 10.5, 500);
+    halo(t('x35.estate').toUpperCase(), X(ec[0]), Y(ec[1]), FC.estateLine, 15, 700); halo(t('x35.estate.sub', { ha: km2(es.ha), n: es.buildings, b: km2(es.footprint_ha), p: es.built_share_pct.toFixed(1) }), X(ec[0]), Y(ec[1]) + 17 * k, FC.estateLine, 10.5, 500);
+    halo(vi.nm.toUpperCase(), X(vc[0]), Y(vc[1]), FC.village, 15, 700); halo(t('x35.village.sub', { pop: vi.pop, y: vi.pop_year, d: vi.dwellings, n: vi.buildings, b: km2(vi.footprint_ha) }), X(vc[0]), Y(vc[1]) + 17 * k, FC.village, 10.5, 500);
     ctx.restore(); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.2 * k; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
     // corner box (top-left): map 02 the southern axis, map 04 built area per decade
     if (on('access')) drawAxisInset(ctx, x + 14 * k, y + 14 * k, 300 * k, 215 * k, k, t, font);
@@ -375,15 +377,15 @@
     decs.forEach((d, i) => { const bx = x + pl + i * bw, hv = val(v, d) / vmax * H, he = val(e, d) / vmax * H; const by = y + top + H; ctx.fillStyle = FC.village; ctx.fillRect(bx + 1 * k, by - hv, bw - 2 * k, hv); ctx.fillStyle = FC.route; ctx.fillRect(bx + 1 * k, by - hv - he, bw - 2 * k, he);
       if (d % 20 === 0) { ctx.font = font(7.5, 500); ctx.fillStyle = pal.ink2; ctx.textAlign = 'center'; ctx.direction = 'ltr'; ctx.fillText(String(d), bx + bw / 2, by + 11 * k); } });
     ctx.strokeStyle = pal.ink3; ctx.lineWidth = 0.8 * k; ctx.beginPath(); ctx.moveTo(x + pl, y + top + H); ctx.lineTo(x + w - pr, y + top + H); ctx.stroke();
-    ctx.font = font(7.5, 500); ctx.fillStyle = pal.ink2; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; const ha = vmax / 1e4; [0, 0.5, 1].forEach(f => ctx.fillText((ha * f).toFixed(f ? 1 : 0) + (f === 1 ? ' ha' : ''), x + pl - 3 * k, y + top + H - f * H));
+    ctx.font = font(7.5, 500); ctx.fillStyle = pal.ink2; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; const ha = vmax / 1e6; [0, 0.5, 1].forEach(f => ctx.fillText((ha * f).toFixed(f ? 2 : 0) + (f === 1 ? ' km²' : ''), x + pl - 3 * k, y + top + H - f * H));
     ctx.restore(); }
-  function factoryLegend(only, t) { if (!FD) return []; const pal = P(), C = pal.ex21, FC = pal.ex21f; const out = [{ sw: FC.estate, stroke: FC.estateLine, label: t('x35.lg.estate', { ha: Math.round(FD.estate.ha) }) }, { line: FC.village, w: 2, dots: true, label: t('x35.lg.village', { ha: Math.round(FD.village.ha) }) }];
+  function factoryLegend(only, t) { if (!FD) return []; const pal = P(), C = pal.ex21, FC = pal.ex21f; const out = [{ sw: FC.estate, stroke: FC.estateLine, label: t('x35.lg.estate', { ha: km2(FD.estate.ha) }) }, { line: FC.village, w: 2, dots: true, label: t('x35.lg.village', { ha: km2(FD.village.ha) }) }];
     if (only === 'estate') { FKIND.filter(c => FD.plots.some(q => q.k === c)).forEach(c => out.push({ sw: FC.kind[c], alpha: 0.4, stroke: FC.kind[c], label: t('x35.lg.kind.' + c) }));
       out.push({ sw: pal.ink, label: t('x35.lg.bld') }, { line: pal.ink, w: 1, dash: true, label: t('x35.lg.edge', { m: FD.village_edge_to_estate_m }) }); }
     if (only === 'access') { const rd = FD.routes.filter(r => r.mode === 'road'); out.push({ line: C.town, w: 3, label: t('x35.lg.road') }, { line: FC.bus, w: 5, alpha: 0.35, label: t('x35.lg.bus') }, { line: FC.stop, sym: 'stop', label: t('x35.lg.stop', { n: FD.bus.stops.length }) });
       rd.forEach(r => out.push({ line: FC.route, w: 2, dash: true, label: t('x35.lg.route', { to: r.to, km: r.km.toFixed(1), s: r.straight_km.toFixed(1) }) }));
       FD.routes.filter(r => r.from === 'stop').forEach(r => out.push({ line: FC.stop, w: 1.5, dots: true, label: t('x35.lg.walk', { km: r.km.toFixed(1) }) })); }
-    if (only === 'land') { FLAND.filter(c => FD.land_ha[c]).forEach(c => out.push({ sw: FC.land[c], alpha: c === 'solar' ? 0.9 : 0.75, label: t('x35.lg.land.' + c, { ha: Math.round(FD.land_ha[c]) }) })); out.push({ sw: '#FFFFFF', label: t('x35.lg.land.none') }); }
+    if (only === 'land') { FLAND.filter(c => FD.land_ha[c]).forEach(c => out.push({ sw: FC.land[c], alpha: c === 'solar' ? 0.9 : 0.75, label: t('x35.lg.land.' + c, { ha: km2(FD.land_ha[c]) }) })); out.push({ sw: '#FFFFFF', label: t('x35.lg.land.none') }); }
     if (only === 'time') { FPER.forEach(c => out.push({ sw: FC.period[c[0]], label: t('x35.lg.per.' + c[0]) })); }
     if (only === 'photo') return out;
     if (only !== 'estate' && only !== 'time') out.push({ sw: C.built, label: t('x35.lg.bld') });
@@ -452,11 +454,11 @@
     ctx.restore(); }
   function timeLegend(only, t) { const pal = P(), C = pal.ex21; const out = [{ sw: C.base, label: t('x34.lg.base') }];
     if (only === 'built') TD.periods.forEach(([key, a, b, c]) => out.push({ sw: `rgb(${c.join(',')})`, label: t('x36.per.' + key) }));
-    if (only === 'density') TD.density_breaks.forEach(([a, b], i) => out.push({ sw: `rgb(${TD.density_colours[i].join(',')})`, alpha: 0.85, label: b > 1e8 ? t('x36.dens.top', { a }) : t('x36.dens', { a, b }) }));
-    if (only === 'edge') ['free', '30-60', '15-30', '0-15'].forEach(c => out.push({ sw: `rgb(${TD.edge_colours[c].join(',')})`, alpha: 0.85, label: t('x36.edge.' + c, { ha: TD.edge_ha[c] || 0 }) }));
+    if (only === 'density') TD.density_breaks.forEach(([a, b], i) => out.push({ sw: `rgb(${TD.density_colours[i].join(',')})`, alpha: 0.85, label: b > 1e8 ? t('x36.dens.top', { a: (a * 100).toLocaleString('en-US') }) : t('x36.dens', { a: (a * 100).toLocaleString('en-US'), b: (b * 100).toLocaleString('en-US') }) }));
+    if (only === 'edge') ['free', '30-60', '15-30', '0-15'].forEach(c => out.push({ sw: `rgb(${TD.edge_colours[c].join(',')})`, alpha: 0.85, label: t('x36.edge.' + c, { ha: km2(TD.edge_ha[c] || 0) }) }));
     if (only !== 'built') out.push({ sw: C.built, label: t('x34.lg.built') });
     out.push({ line: C.muni, dash: true, w: 1, label: t('x35.lg.muni') }); return out; }
   root.GA.ex21 = { ready, readyAreas, readyAerial, loadAerial, aerialLegend, get aerial() { return AER; }, drawArea, drawSection, areaLegend, drawAreaKey, keyLegend, get areas() { return AR; }, drawCity, drawGaps, cityLegend, mapLegend, MAPS: ['island', 'walk', 'growth', 'height'], CITY, get data() { return D; },
-    readyFactory, drawFactory, factoryLegend, drawFactoryKey, FMAPS: ['estate', 'access', 'land', 'time'], get factory() { return FD; },
+    readyFactory, drawFactory, factoryLegend, drawFactoryKey, FMAPS: ['estate', 'access', 'land', 'time'], get factory() { return FD; }, km2,
     readyTime, drawTime, drawDwellChart, drawPopChart, timeLegend, get time() { return TD; }, TFIVE, tcol };
 })(window);
