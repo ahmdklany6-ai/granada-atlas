@@ -182,6 +182,8 @@
     AR.areas.forEach(a => { const e = a.extent; ctx.fillStyle = 'rgba(153,43,42,.18)'; ctx.fillRect(X(e[0]), Y(e[3]), (e[2] - e[0]) / mpp, (e[3] - e[1]) / mpp); ctx.strokeStyle = pal.red; ctx.lineWidth = 2.4 * k; ctx.strokeRect(X(e[0]), Y(e[3]), (e[2] - e[0]) / mpp, (e[3] - e[1]) / mpp);
       const cx = X((e[0] + e[2]) / 2), cy = Y(e[3]) - 14 * k; ctx.beginPath(); ctx.arc(cx, cy, 11 * k, 0, 7); ctx.fillStyle = pal.red; ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.font = `700 ${Math.round(12 * k)}px ${F}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.fillText(a.id, cx, cy + 0.5 * k); });
     return true; }
+  // legend of the key map: map 01's legend plus the 1:500 window
+  function keyLegend(t) { const pal = P(); return mapLegend('island', t).concat([{ sw: pal.red, alpha: 0.18, stroke: pal.red, label: t('x34.lg.window') }]); }
   // the section across the fence, true scale (1:500 both ways); building heights = floors × 3 m (estimate)
   // legend of the area maps: the band land use present in any window, floors, streets, fence, dead ends, section
   function areaLegend(t) { const pal = P(), C = pal.ex21, b = pal.band; const used = new Set(); (AR ? AR.areas : []).forEach(a => (a.bandlu || []).forEach(l => used.add(l.c)));
@@ -239,5 +241,5 @@
       .concat([{ line: C.route, w: 2, dash: true, label: t('x34.lg.route') }, { line: C.dead, w: 2, label: t('x34.lg.dead') }, { line: C.metro, w: 4, rail: true, label: t('x34.lg.metro') }])
       .concat(Object.keys(C.height).map(c => ({ sw: C.height[c], label: t('x34.lg.h.' + c) })))
       .concat([{ sw: C.built, label: t('x34.lg.built') }, { line: C.muni, dash: true, w: 1, label: t('x34.lg.muni2') }]); }
-  root.GA.ex21 = { ready, readyAreas, drawArea, drawSection, areaLegend, drawAreaKey, get areas() { return AR; }, drawCity, drawGaps, cityLegend, mapLegend, MAPS: ['island', 'walk', 'growth', 'height'], CITY, get data() { return D; } };
+  root.GA.ex21 = { ready, readyAreas, drawArea, drawSection, areaLegend, drawAreaKey, keyLegend, get areas() { return AR; }, drawCity, drawGaps, cityLegend, mapLegend, MAPS: ['island', 'walk', 'growth', 'height'], CITY, get data() { return D; } };
 })(window);

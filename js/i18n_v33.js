@@ -41,6 +41,7 @@
     'x34.lg.fenceAny': ['السياج (اللون = ما وراءه، كما في الخريطة 01)', 'הגדר (צבע = מה שמאחוריה, כמו במפה 01)', 'Fence (colour = what lies outside it, as in map 01)'],
     'x34.lg.canopy': ['تاج شجرة (من الصورة الجوية PNOA، تقريبي)', 'צמרת עץ (מתצלום האוויר PNOA, קירוב)', 'Tree crown (from the PNOA aerial photo, approx.)'],
     'x34.lg.secline': ['خط المقطع', 'קו החתך', 'Section line'],
+    'x34.lg.window': ['منطقة ‎1:500‎ (‎130 × 130 m‎) وحرفها', 'אזור ‎1:500‎ (‎130 × 130 m‎) והאות שלו', '1:500 area (130 × 130 m) and its letter'],
     'x34.key.title': ['أين المناطق الثماني (1:500) حول القاعدة', 'איפה שמונת האזורים (1:500) סביב הבסיס', 'Where the eight 1:500 areas sit around the base'],
     'x34.base': ['قاعدة أرميا الجوية', 'בסיס חיל האוויר ארמייה', 'Base Aérea de Armilla'],
     'x34.lg.base': ['القاعدة الجوية: أرض مغلقة (OSM، 371 هكتار)', 'הבסיס: שטח סגור (OSM, ‎371 ha‎)', 'Air base: closed land (OSM, 371 ha)'],
