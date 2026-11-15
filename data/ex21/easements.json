@@ -143,5 +143,6 @@
   "36": 701.1
  },
  "source": "Origen de los datos: Ministerio de Defensa (SDG Patrimonio, servidumbres aeronáuticas Base Aérea de Armilla, KMZ). Ground: IGN MDT25, CC BY 4.0.",
- "method": "lowest limit surface (linear TIN between the drawn 3D lines of each file) minus ground, 25 m grid — an approximation, not the legal value"
+ "display_cell_m": 5,
+ "method": "lowest limit surface (linear TIN between the drawn 3D lines of each file) minus ground, 25 m grid — an approximation, not the legal value; the picture is drawn on a 5 m grid (ground interpolated from the 25 m model)"
 }

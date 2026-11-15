@@ -114,25 +114,27 @@
     return true;
   }
   // inset for map 03: the whole line 1 today (Albolote → Granada → Armilla) and its extension past the base
-  function drawLineInset(ctx, x, y, w, h, k, t, font) { const pal = P(), C = pal.ex21; const pts = D.l1.lines.flat().concat(D.metro.filter(f => f.p.k === 'track').flatMap(f => f.g.flat()));
-    let a0 = 1e12, b0 = 1e12, a1 = -1e12, b1 = -1e12; pts.forEach(([u, v]) => { a0 = Math.min(a0, u); b0 = Math.min(b0, v); a1 = Math.max(a1, u); b1 = Math.max(b1, v); });
-    const pad = 16 * k, top = 34 * k, sc = Math.min((w - 2 * pad) / (a1 - a0), (h - top - pad - 30 * k) / (b1 - b0)); const ox = x + (w - (a1 - a0) * sc) / 2, oy = y + top;
+  function drawLineInset(ctx, x, y, w, h, k, t, font) { const pal = P(), C = pal.ex21; const E = CITY; const pts = D.l1.lines.flat().concat(D.metro.filter(f => f.p.k === 'track').flatMap(f => f.g.flat()));
+    // the frame holds the whole line AND the main map's frame, between a header band (title, figures) and a footer band (source)
+    let a0 = E.x0, b0 = E.y0, a1 = E.x1, b1 = E.y1; pts.forEach(([u, v]) => { a0 = Math.min(a0, u); b0 = Math.min(b0, v); a1 = Math.max(a1, u); b1 = Math.max(b1, v); });
+    const pad = 12 * k, top = 36 * k, foot = 18 * k, sc = Math.min((w - 2 * pad) / (a1 - a0), (h - top - foot - 2 * pad) / (b1 - b0)); const ox = x + (w - (a1 - a0) * sc) / 2, oy = y + top + pad;
     const X = (u) => ox + (u - a0) * sc, Y = (v) => oy + (b1 - v) * sc; const path = (rs) => { ctx.beginPath(); rs.forEach(r => r.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); };
-    ctx.save(); ctx.fillStyle = 'rgba(255,255,255,.96)'; ctx.strokeStyle = pal.line2; ctx.lineWidth = 1; ctx.fillRect(x, y, w, h); ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+    ctx.save(); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(x, y, w, h); ctx.beginPath(); ctx.rect(x, y + top, w, h - top - foot); ctx.clip();
     D.area.forEach(m => { path(m.g); ctx.closePath(); if (m.p.name === 'Granada') { ctx.fillStyle = pal.gray1; ctx.fill('evenodd'); } ctx.strokeStyle = C.muni; ctx.lineWidth = 0.6 * k; ctx.stroke(); });
     const base = D.edge.find(f => f.p.k === 'base'); if (base) { path(base.g); ctx.closePath(); ctx.fillStyle = C.base; ctx.fill(); }
-    ctx.strokeStyle = C.metro; ctx.lineWidth = 3 * k; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; D.l1.lines.forEach(l => path([l])) ; ctx.beginPath(); D.l1.lines.forEach(l => l.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); ctx.stroke();
+    ctx.strokeStyle = C.metro; ctx.lineWidth = 3 * k; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); D.l1.lines.forEach(l => l.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); ctx.stroke();
     D.metro.filter(f => f.p.k === 'track').forEach(f => { path(f.g); ctx.strokeStyle = C.metro; ctx.lineWidth = 3 * k; ctx.stroke(); path(f.g); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.2 * k; ctx.setLineDash([3 * k, 3 * k]); ctx.stroke(); ctx.setLineDash([]); });
     D.l1.stops.forEach(st => { ctx.beginPath(); ctx.arc(X(st.p[0]), Y(st.p[1]), 2.4 * k, 0, 7); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.strokeStyle = C.metro; ctx.lineWidth = 1.2 * k; ctx.stroke(); });
     // the main map's frame
-    const E = CITY; ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.4 * k; ctx.strokeRect(X(E.x0), Y(E.y1), (E.x1 - E.x0) * sc, (E.y1 - E.y0) * sc);
-    ctx.font = font(9, 700); ctx.fillStyle = pal.ink; ctx.textBaseline = 'middle'; ctx.lineWidth = 3 * k; ctx.strokeStyle = '#FFFFFF'; ctx.textAlign = 'left'; ctx.direction = 'ltr';
-    const lab = (txt, p, dx) => { ctx.strokeText(txt, X(p[0]) + dx, Y(p[1])); ctx.fillText(txt, X(p[0]) + dx, Y(p[1])); };
-    const byName = (n) => D.l1.stops.find(st => st.name === n); [['Albolote', 8], ['Recogidas', -8], ['Armilla', 8]].forEach(([n, dx]) => { const st = byName(n); if (!st) return; ctx.textAlign = dx < 0 ? 'right' : 'left'; lab(n === 'Recogidas' ? 'GRANADA' : n, st.p, dx * k); });
-    const term = D.metro.find(f => f.p.k === 'terminus'); if (term) { ctx.textAlign = 'right'; lab('Las Gabias', term.g, -7 * k); }
-    ctx.restore(); ctx.font = font(9.5, 700); ctx.fillStyle = pal.ink; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(t('x34.inset.title'), x + 8 * k, y + 16 * k);
-    ctx.font = font(8, 500); ctx.fillStyle = pal.ink2; const m = D.l1.meta; ctx.fillText(t('x34.inset.meta', { n: m.stops.length, d: m.duration_min, i: m.interval_min }), x + 8 * k, y + 28 * k);
-    ctx.fillText(t('x34.inset.src'), x + 8 * k, y + h - 8 * k); }
+    ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.4 * k; ctx.strokeRect(X(E.x0), Y(E.y1), (E.x1 - E.x0) * sc, (E.y1 - E.y0) * sc);
+    ctx.font = font(9, 700); ctx.fillStyle = pal.ink; ctx.textBaseline = 'middle'; ctx.lineWidth = 3 * k; ctx.strokeStyle = '#FFFFFF'; ctx.direction = 'ltr';
+    const lab = (txt, p, dx, dy, al) => { ctx.textAlign = al; ctx.strokeText(txt, X(p[0]) + dx, Y(p[1]) + dy); ctx.fillText(txt, X(p[0]) + dx, Y(p[1]) + dy); };
+    const byName = (n) => D.l1.stops.find(st => st.name === n); [['Albolote', 8], ['Recogidas', -8], ['Armilla', 8]].forEach(([n, dx]) => { const st = byName(n); if (st) lab(n === 'Recogidas' ? 'GRANADA' : n, st.p, dx * k, n === 'Armilla' ? 9 * k : 0, dx < 0 ? 'right' : 'left'); });
+    const term = D.metro.find(f => f.p.k === 'terminus'); if (term) lab('Las Gabias', term.g, 0, 11 * k, 'center');
+    ctx.restore(); ctx.strokeStyle = pal.line2; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.font = font(9.5, 700); ctx.fillStyle = pal.ink; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(t('x34.inset.title'), x + 8 * k, y + 16 * k, w - 16 * k);
+    ctx.font = font(8, 500); ctx.fillStyle = pal.ink2; const m = D.l1.meta; ctx.fillText(t('x34.inset.meta', { n: m.stops.length, d: m.duration_min, i: m.interval_min }), x + 8 * k, y + 29 * k, w - 16 * k);
+    ctx.fillText(t('x34.inset.src'), x + 8 * k, y + h - 6 * k, w - 16 * k); }
   // ---------- AREA level (1:500): four 130 m windows on the edge (data/ex21/areas.json, tools/build_ex21_areas.py) ----------
   let AR = null, ARp = null;
   function readyAreas() { if (ARp) return ARp; ARp = fetch('data/ex21/areas.json?v=' + (root.GA_BUILD || '')).then(r => r.json()).then(j => (AR = j)).catch(e => { ARp = null; throw e; }); return ARp; }
@@ -189,7 +191,7 @@
   function areaLegend(t) { const pal = P(), C = pal.ex21, b = pal.band; const used = new Set(); (AR ? AR.areas : []).forEach(a => (a.bandlu || []).forEach(l => used.add(l.c)));
     return [{ sw: C.base, label: t('x34.lg.base') }].concat([...used].map(c => ({ sw: pal.tour.bandlu[c], alpha: 0.5, label: t('x34.lg.lu.' + c) })))
       .concat([{ sw: b['1-2'], label: t('x34.lg.fl.12') }, { sw: b['3-4'], label: t('x34.lg.fl.34') }, { sw: b['5-8'], label: t('x34.lg.fl.58') }, { line: C.street, w: 3, label: t('x34.lg.street') }, { line: C.street, w: 1, dash: true, label: t('x34.lg.path') },
-        { line: C.fence.housing, w: 3, label: t('x34.lg.fenceAny') }, { line: C.dead, w: 2, label: t('x34.lg.dead') }, { sw: pal.olive, alpha: 0.45, label: t('x34.lg.canopy') }, { line: pal.red, w: 1.5, dash: true, label: t('x34.lg.secline') }]); }
+        { line: C.fence.housing, w: 3, label: t('x34.lg.fenceAny') }, { line: C.dead, w: 2, sym: 'dead', label: t('x34.lg.dead') }, { sw: pal.olive, alpha: 0.45, label: t('x34.lg.canopy') }, { line: pal.red, w: 1.5, dash: true, label: t('x34.lg.secline') }]); }
   function drawSection(ctx, x, y, w, h, id, o) {
     o = o || {}; const A = AR && AR.areas.find(a => a.id === id); if (!A) return false; const pal = P(), C = pal.ex21; const t = o.t || ((s) => s); const F = root.GA.pages.font(); const k = o.k || w / 1000;
     const font = (sz, wt) => `${wt || 600} ${Math.round(sz * k)}px ${F}`; const sm = A.section.samples, L = sm[sm.length - 1][0];
@@ -225,21 +227,23 @@
   }
   // the legend of one map (the same entries as cityLegend, only that map's layer)
   const ONLY = { island: ['base', 'band', 'fence'], walk: ['base', 'route', 'dead'], growth: ['base', 'metro', 'muni'], height: ['base', 'height'] };
+  // the height classes are drawn semi-transparent over the map (alpha per class in data/ex21/easements.json): the legend uses the same alpha
+  const hAlpha = (c) => { const q = D && D.ease && (D.ease.classes || []).find(k => k[2] === c); return q ? q[3][3] / 255 : 1; };
   function mapLegend(only, t) { const C = P().ex21, want = ONLY[only] || []; const out = [];
     if (want.includes('base')) out.push({ sw: C.base, label: t('x34.lg.base') });
     if (want.includes('band')) out.push({ hatch: C.bandLine, label: t('x34.lg.band') });
     if (want.includes('fence')) Object.keys(C.fence).forEach(c => out.push({ line: C.fence[c], w: 3, label: t('x34.lg.fence.' + c) }));
     if (want.includes('route')) out.push({ line: C.route, w: 2, dash: true, label: t('x34.lg.route') }, { line: C.straight, w: 1, dash: true, label: t('x34.lg.straight') });
-    if (want.includes('dead')) out.push({ line: C.dead, w: 2, label: t('x34.lg.dead') });
+    if (want.includes('dead')) out.push({ line: C.dead, w: 2, sym: 'dead', label: t('x34.lg.dead') });
     if (want.includes('metro')) out.push({ line: C.metro, w: 4, label: t('x34.lg.l1') }, { line: C.metro, w: 4, rail: true, label: t('x34.lg.metro') });
     if (want.includes('muni')) out.push({ line: C.muni, dash: true, w: 1, label: t('x34.lg.muni2') });
-    if (want.includes('height')) Object.keys(C.height).forEach(c => out.push({ sw: C.height[c], label: t('x34.lg.h.' + c) }));
+    if (want.includes('height')) Object.keys(C.height).forEach(c => out.push({ sw: C.height[c], alpha: hAlpha(c), label: t('x34.lg.h.' + c) }));
     return out; }
   function cityLegend(t) { const C = P().ex21, T = P().tour;
     return [{ sw: C.base, label: t('x34.lg.base') }, { hatch: C.bandLine, label: t('x34.lg.band') }]
       .concat(Object.keys(C.fence).map(c => ({ line: C.fence[c], w: 3, label: t('x34.lg.fence.' + c) })))
-      .concat([{ line: C.route, w: 2, dash: true, label: t('x34.lg.route') }, { line: C.dead, w: 2, label: t('x34.lg.dead') }, { line: C.metro, w: 4, rail: true, label: t('x34.lg.metro') }])
-      .concat(Object.keys(C.height).map(c => ({ sw: C.height[c], label: t('x34.lg.h.' + c) })))
+      .concat([{ line: C.route, w: 2, dash: true, label: t('x34.lg.route') }, { line: C.dead, w: 2, sym: 'dead', label: t('x34.lg.dead') }, { line: C.metro, w: 4, rail: true, label: t('x34.lg.metro') }])
+      .concat(Object.keys(C.height).map(c => ({ sw: C.height[c], alpha: hAlpha(c), label: t('x34.lg.h.' + c) })))
       .concat([{ sw: C.built, label: t('x34.lg.built') }, { line: C.muni, dash: true, w: 1, label: t('x34.lg.muni2') }]); }
   root.GA.ex21 = { ready, readyAreas, drawArea, drawSection, areaLegend, drawAreaKey, keyLegend, get areas() { return AR; }, drawCity, drawGaps, cityLegend, mapLegend, MAPS: ['island', 'walk', 'growth', 'height'], CITY, get data() { return D; } };
 })(window);
