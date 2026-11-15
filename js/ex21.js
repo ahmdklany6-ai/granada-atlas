@@ -154,6 +154,8 @@
     // buildings by floors (OSM building:levels), outline; unknown = hatched
     A.buildings.forEach(b => { path(b.r, true); const c = floorsCol(b.lv); if (c) { ctx.fillStyle = c; ctx.fill('evenodd'); } ctx.strokeStyle = pal.ink; ctx.lineWidth = 0.7 * k; ctx.stroke(); });
     // trees (OSM)
+    // tree crowns read from the PNOA aerial photo (approximate; tools/build_ex21_canopy.py), true crown width
+    (A.canopy || []).forEach(([u, v, dm]) => { ctx.beginPath(); ctx.arc(X(u), Y(v), Math.max(1.2, dm / 2) / mpp, 0, 7); ctx.fillStyle = 'rgba(126,123,67,.45)'; ctx.fill(); ctx.strokeStyle = pal.olive; ctx.lineWidth = 0.6 * k; ctx.stroke(); });
     A.trees.forEach(([u, v]) => { ctx.beginPath(); ctx.arc(X(u), Y(v), 2.2 / mpp, 0, 7); ctx.fillStyle = 'rgba(126,123,67,.35)'; ctx.fill(); ctx.strokeStyle = pal.olive; ctx.lineWidth = 0.8 * k; ctx.stroke(); });
     // the fence by what lies outside it, dead ends, metro
     A.fence.forEach(f => { ctx.strokeStyle = C.fence[f.c] || C.baseLine; ctx.lineWidth = 7 * k; path(f.r); ctx.stroke(); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.2 * k; ctx.setLineDash([2 * k, 5 * k]); path(f.r); ctx.stroke(); ctx.setLineDash([]); });
@@ -185,7 +187,7 @@
   function areaLegend(t) { const pal = P(), C = pal.ex21, b = pal.band; const used = new Set(); (AR ? AR.areas : []).forEach(a => (a.bandlu || []).forEach(l => used.add(l.c)));
     return [{ sw: C.base, label: t('x34.lg.base') }].concat([...used].map(c => ({ sw: pal.tour.bandlu[c], alpha: 0.5, label: t('x34.lg.lu.' + c) })))
       .concat([{ sw: b['1-2'], label: t('x34.lg.fl.12') }, { sw: b['3-4'], label: t('x34.lg.fl.34') }, { sw: b['5-8'], label: t('x34.lg.fl.58') }, { line: C.street, w: 3, label: t('x34.lg.street') }, { line: C.street, w: 1, dash: true, label: t('x34.lg.path') },
-        { line: C.fence.housing, w: 3, label: t('x34.lg.fenceAny') }, { line: C.dead, w: 2, label: t('x34.lg.dead') }, { line: pal.red, w: 1.5, dash: true, label: t('x34.lg.secline') }]); }
+        { line: C.fence.housing, w: 3, label: t('x34.lg.fenceAny') }, { line: C.dead, w: 2, label: t('x34.lg.dead') }, { sw: pal.olive, alpha: 0.45, label: t('x34.lg.canopy') }, { line: pal.red, w: 1.5, dash: true, label: t('x34.lg.secline') }]); }
   function drawSection(ctx, x, y, w, h, id, o) {
     o = o || {}; const A = AR && AR.areas.find(a => a.id === id); if (!A) return false; const pal = P(), C = pal.ex21; const t = o.t || ((s) => s); const F = root.GA.pages.font(); const k = o.k || w / 1000;
     const font = (sz, wt) => `${wt || 600} ${Math.round(sz * k)}px ${F}`; const sm = A.section.samples, L = sm[sm.length - 1][0];
