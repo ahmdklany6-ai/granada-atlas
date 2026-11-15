@@ -1139,8 +1139,17 @@ factory's), colours `P.ex21f`, strings `x35.*` (+ `x34.a.J…P`).
   year (the UGR-DONES building, 2025; Lidl, 2023) are unfinished or absent on it — the aerial pages say so. Jobs,
   investment and opening dates are the operators' own announcements (data/vec/escuzar_pole.json), shown in a table
   headed "not checked here".
-- **Not done yet for the factory set**: the policy check (which plan governs the estate), the phenomenon wording, the
-  human scale; publishing on the site.
+- **Policy, first pass (web search of 15 Nov 2026, pages not read in full — check before quoting)**: the estate is now
+  branded CITAI (private capital, about 400 ha reported); land for the accelerator ceded by the Ayuntamiento de Escúzar
+  to the Ministry of Science (agreement of January 2022); Junta de Andalucía, Acuerdo of 21 Feb 2023: IFMIF-DONES
+  assigned to the Unidad Aceleradora de Proyectos de Interés Estratégico; a strategic plan commissioned to the PTS
+  (March 2023); access road opened Sept 2024, a 9 km connection to the A-44 readied for public information (Oct 2025);
+  Dec 2025: €99.87 M subsidy, total investment reported as €862.47 M (the atlas still stores "~€730 M"). Escúzar is
+  **not** among the 34 POTAUG municipalities of the list the atlas uses (es.wikipedia) — to confirm in the plan. **Not
+  found**: the estate's own planning instrument (municipal plan / plan parcial). Two "áreas de oportunidad" PDFs on
+  juntadeandalucia.es turned out to be Seville's plan (POTAUS) — not used.
+- **Not done yet for the factory set**: the planning instrument, the phenomenon wording, the human scale; publishing on
+  the site.
 
 **Open (waiting for the owner):** language of the hand-in (he / ar / en) — it blocks the texts and the sheet; which
 four areas go on the A1; how the city maps sit on the A1 (one 1:10,000 map is 640 × 560 mm and nearly fills an
