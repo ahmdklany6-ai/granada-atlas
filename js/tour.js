@@ -3,7 +3,8 @@
    Step 0: the opening page over a faint, desaturated map (static markup in index.html, shown at once on the plain URL;
            deep links #/south, #/print … skip it; #/tour reopens it; window.__noIntro or ?nointro switch it off for tests).
    Step 1: the Base Aérea de Armilla alone.
-   Step 2: the five towns around it, seven layers (Space): 1 the towns' built-up areas · 2 what touches the fence ·
+   Step 2: the five towns around it, seven layers (Space): 1 where people live (5.45: every residential area of the five
+           municipalities — town centres, separate neighbourhoods and villages, scattered houses) · 2 what touches the fence ·
            3–5 where the streets stop (route A, route B, both) · 6 the 300 m band · 7 metro 2026 and tram 1931.
    Step 3: the Granada agglomeration, four layers: population change · income · rents · the city's neighbourhoods.
            The last Enter (or Esc, or Exit, or "Open the map") returns to the normal map at the current view.
@@ -77,10 +78,13 @@
     S.loading = Promise.all(['base_edge', 'tour_area', 'south_metro', 'tram_1931', 'admin', 'tour_towns'].map(n => D.single(n).catch(() => null))).then(([edge, area, metro, tram, admin, tt]) => {
       const base = edge.features.find(f => f.properties.k === 'base');
       const byName = {}; area.features.forEach(f => { byName[f.properties.name] = f.properties; });
-      const shapes = {}; ((tt && tt.features) || []).forEach(f => { shapes[f.properties.nm] = f; });
-      const townPts = edge.features.filter(f => f.properties.k === 'town');
-      const towns = townPts.filter(f => shapes[f.properties.nm]).map(f => { const m = byName[f.properties.nm] || {}; const sh = shapes[f.properties.nm];
-        return { type: 'Feature', properties: { nm: f.properties.nm, pop: m.pop2025, pop15: m.pop2015, chg: m.chg, ha: sh.properties.area_ha, lp: polylabel(ringsOf(sh.geometry)) }, geometry: sh.geometry }; });
+      // where people live (tools/build_tour_towns.py, 5.45): one feature per area, k = core (the town centre: it carries the name and
+      // the slide's frame), part (another neighbourhood or village of the municipality) or scatter (a group of scattered houses)
+      const areas = (tt && tt.features) || []; const shapes = {}; areas.forEach(f => { if (f.properties.k === 'core') shapes[f.properties.nm] = f; });
+      const townPts = edge.features.filter(f => f.properties.k === 'town'); const five = new Set(townPts.map(f => f.properties.nm));
+      const towns = areas.filter(f => five.has(f.properties.nm) && shapes[f.properties.nm]).map(f => { const p = f.properties, m = byName[p.nm] || {};
+        return { type: 'Feature', properties: { nm: p.nm, k: p.k, pop: m.pop2025, pop15: m.pop2015, chg: m.chg, ha: p.ha, houses: p.houses, lp: p.k === 'core' ? polylabel(ringsOf(f.geometry)) : null }, geometry: f.geometry }; });
+      const cores = towns.filter(f => f.properties.k === 'core');
       const townList = townPts.map(f => { const m = byName[f.properties.nm] || {}; return { nm: f.properties.nm, pop: m.pop2025, chg: m.chg, shape: !!shapes[f.properties.nm] }; });
       const ring = base.geometry.type === 'Polygon' ? base.geometry.coordinates[0] : base.geometry.coordinates[0][0];
       const track = metro && metro.features.find(f => f.properties.k === 'track');
@@ -93,8 +97,8 @@
       const dead = edge.features.filter(f => f.properties.k === 'deadend').map(f => f.geometry.coordinates);
       area.features.forEach(f => { f.properties.lp = polylabel(ringsOf(f.geometry)); });
       const rails = RI() ? RI().points(metro, tram) : { type: 'FeatureCollection', features: [] };
-      const fiveBB = bboxOf([base.geometry].concat(towns.map(f => f.geometry)));
-      S.D = { edge, area, metro, tram, barrios, base, towns: { type: 'FeatureCollection', features: towns }, townList, routes, routeFC: { type: 'FeatureCollection', features: rfs }, dead, rails, metroGap, byName,
+      const fiveBB = bboxOf([base.geometry].concat(cores.map(f => f.geometry)));
+      S.D = { edge, area, metro, tram, barrios, base, towns: { type: 'FeatureCollection', features: towns }, scatter: (tt && tt.method && tt.method.scatter) || {}, townList, routes, routeFC: { type: 'FeatureCollection', features: rfs }, dead, rails, metroGap, byName,
         bb: { 1: bboxOf([base.geometry]), 2: grow(fiveBB, 0.002), streets: bboxOf([base.geometry].concat(routes.map(r => ({ coordinates: r.coords })))), rail: bboxOf([base.geometry].concat(track ? [track.geometry] : [], tram ? tram.features.filter(f => f.geometry.type === 'LineString').map(f => f.geometry) : [])), 3: bboxOf(area.features.map(f => f.geometry)), barrio: barrios && barrios.features.length ? bboxOf(barrios.features.map(f => f.geometry)) : null } };
       return S.D;
     });
@@ -129,7 +133,7 @@
   // ---------- map layers ----------
   const ID = (k) => 'tour-' + k;
   const GROUPS = {
-    veil: ['veil'], base: ['base-fill', 'base-line'], towns: ['towns-fill', 'towns-line'], fence: ['fence'],
+    veil: ['veil'], base: ['base-fill', 'base-line'], towns: ['towns-fill', 'towns-line', 'towns-scatter'], fence: ['fence'],
     routeA: ['straightA', 'routeA-case', 'routeA', 'arrowA', 'endsA'], routeB: ['straightB', 'routeB-case', 'routeB', 'arrowB', 'endsB'],
     band: ['band', 'bandlu', 'band-line'], metro: ['metro-case', 'metro'], tram: ['tram'], rail: ['rail'],
     chg: ['chg'], inc: ['inc'], rent: ['rent'], muniLine: ['muni-line'], five: ['five'], barrio: ['barrio', 'barrio-lbl'],
@@ -142,10 +146,12 @@
       ['veil', 'band', 'base'], ['veil', 'base', 'tram', 'metro', 'rail']],
     3: [['veil', 'chg', 'muniLine', 'five'], ['veil', 'inc', 'muniLine', 'five'], ['veil', 'rent', 'muniLine', 'five'], ['veil', 'barrio']],
   };
-  const ORDER = ['veil', 'chg', 'inc', 'rent', 'muni-line', 'five', 'barrio', 'band', 'bandlu', 'band-line', 'towns-fill', 'towns-line', 'base-fill', 'base-line', 'fence', 'tram', 'metro-case', 'metro',
+  const ORDER = ['veil', 'chg', 'inc', 'rent', 'muni-line', 'five', 'barrio', 'band', 'bandlu', 'band-line', 'towns-fill', 'towns-line', 'towns-scatter', 'base-fill', 'base-line', 'fence', 'tram', 'metro-case', 'metro',
     'straightA', 'straightB', 'routeA-case', 'routeB-case', 'routeA', 'routeB', 'arrowA', 'arrowB', 'endsA', 'endsB', 'rail', 'barrio-lbl'];
-  // opacity of the layers that fade to T.fade on the streets slides (paint property, full value)
-  const FADE = { 'towns-fill': ['fill-opacity', T.townFillAlpha], 'towns-line': ['line-opacity', 1], 'metro-case': ['line-opacity', 1], metro: ['line-opacity', 1], tram: ['line-opacity', 1], rail: ['icon-opacity', 1] };
+  // opacity of the layers that fade to T.fade on the streets slides (paint property, full value: a number, or a function of the fade for an expression)
+  const SCATTER = ['==', ['get', 'k'], 'scatter'];
+  const townAlpha = (f) => ['case', SCATTER, T.townScatterAlpha * f, T.townFillAlpha * f];
+  const FADE = { 'towns-fill': ['fill-opacity', townAlpha], 'towns-line': ['line-opacity', 1], 'towns-scatter': ['line-opacity', 1], 'metro-case': ['line-opacity', 1], metro: ['line-opacity', 1], tram: ['line-opacity', 1], rail: ['icon-opacity', 1] };
   function build() {
     if (S.built || !map || !S.D) return; const D = S.D; const src = (k, data) => { if (!map.getSource(ID(k))) map.addSource(ID(k), { type: 'geojson', data }); };
     const fc = (fs) => ({ type: 'FeatureCollection', features: fs });
@@ -168,8 +174,9 @@
       band: { type: 'fill', source: ID('edge'), filter: k('band'), paint: { 'fill-color': T.band, 'fill-opacity': 0.55 } },
       bandlu: { type: 'fill', source: ID('edge'), filter: k('bandlu'), paint: { 'fill-color': ['match', ['get', 'c'], 'residential', T.bandlu.residential, 'industrial', T.bandlu.industrial, 'green', T.bandlu.green, 'agri', T.bandlu.agri, T.bandlu.construction], 'fill-opacity': 0.75 } },
       'band-line': { type: 'line', source: ID('edge'), filter: k('band'), paint: { 'line-color': T.bandLine, 'line-width': 1.4, 'line-dasharray': [3, 2] } },
-      'towns-fill': { type: 'fill', source: ID('towns'), paint: { 'fill-color': T.townFill, 'fill-opacity': T.townFillAlpha } },
-      'towns-line': { type: 'line', source: ID('towns'), paint: { 'line-color': T.townEdge, 'line-width': 1.2, 'line-opacity': 1 } },
+      'towns-fill': { type: 'fill', source: ID('towns'), paint: { 'fill-color': T.townFill, 'fill-opacity': townAlpha(1) } },
+      'towns-line': { type: 'line', source: ID('towns'), filter: ['!', SCATTER], paint: { 'line-color': T.townEdge, 'line-width': 1.2, 'line-opacity': 1 } },
+      'towns-scatter': { type: 'line', source: ID('towns'), filter: SCATTER, paint: { 'line-color': T.townEdge, 'line-width': 1, 'line-dasharray': T.townScatterDash, 'line-opacity': 1 } },
       'base-fill': { type: 'fill', source: ID('edge'), filter: k('base'), paint: { 'fill-color': T.baseFill, 'fill-opacity': 0.14 } },
       'base-line': { type: 'line', source: ID('edge'), filter: k('base'), paint: { 'line-color': T.baseLine, 'line-width': 2.6 } },
       fence: { type: 'line', source: ID('edge'), filter: k('fence'), layout: { 'line-cap': 'butt' }, paint: { 'line-color': ['match', ['get', 'c'], 'housing', F.housing, 'open', F.open, 'road', F.road, 'green', F.green, F.industry], 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 4, 16, 9] } },
@@ -203,7 +210,7 @@
   function showGroups(groups) {
     if (!S.built) return; const on = new Set(); groups.forEach(g => GROUPS[g].forEach(n => on.add(ID(n))));
     ORDER.forEach(n => { const id = ID(n); if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on.has(id) ? 'visible' : 'none'); });
-    const f = streets() ? T.fade : 1; Object.keys(FADE).forEach(n => { const id = ID(n); if (map.getLayer(id)) map.setPaintProperty(id, FADE[n][0], FADE[n][1] * f); });
+    const f = streets() ? T.fade : 1; Object.keys(FADE).forEach(n => { const id = ID(n), v = FADE[n][1]; if (map.getLayer(id)) map.setPaintProperty(id, FADE[n][0], typeof v === 'function' ? v(f) : v * f); });
     raise();
   }
 
@@ -214,7 +221,7 @@
   function itemsFor(step, layer) {
     const D = S.D; if (!D) return [];
     const out = [];
-    if (step === 2 && layer === 1) D.towns.features.forEach(f => out.push({ id: 'town-' + f.properties.nm, ll: f.properties.lp, html: `<span dir="auto">${esc(nmL(f.properties.nm))}</span>`, cls: 'town', prio: 1 }));
+    if (step === 2 && layer === 1) D.towns.features.filter(f => f.properties.k === 'core').forEach(f => out.push({ id: 'town-' + f.properties.nm, ll: f.properties.lp, html: `<span dir="auto">${esc(nmL(f.properties.nm))}</span>`, cls: 'town', prio: 1 }));
     if (step === 2 && STREETS.includes(layer)) {
       const keys = layer === 3 ? ['A'] : layer === 4 ? ['B'] : ['A', 'B'];
       D.routes.filter(r => keys.includes(r.key)).forEach(r => { const R = ROUTE[r.r], col = r.key === 'A' ? T.routeA : T.routeB, c = r.coords;
@@ -283,15 +290,16 @@
   }
 
   // ---------- popups (the tour's own; the atlas popups stay off while the tour runs) ----------
-  let pop = null;
+  let pop = null; const KIND = { core: 1, part: 1, scatter: 1 };
   function popupAt(e) {
     if (!S.on || !S.built || !map) return false; const L2 = (ids) => ids.map(ID).filter(id => map.getLayer(id) && map.getLayoutProperty(id, 'visibility') === 'visible');
     const one = (ids) => { const ls = L2(ids); return ls.length ? map.queryRenderedFeatures(e.point, { layers: ls })[0] : null; };
     let html = null;
     if (S.step === 3 && S.layer <= 3) { const f = one([METRIC[S.layer - 1]]); if (f) { const key = METRIC[S.layer - 1], p = f.properties, v = valTxt(key, p);
       html = `<b dir="auto">${esc(nmL(p.name))}</b><table><tr><td>${t('x33.val.' + key)}</td><td>${v == null ? `<em>${esc(t('tour.missing'))} — ${esc(t('x33.miss.' + key))}</em>` : L(esc(v))}</td></tr><tr><td>${t('x33.year')}</td><td>${L(esc(yearOf(key, p) || '—'))}</td></tr><tr><td>${t('tour.src')}</td><td dir="ltr">${esc(srcOf(key))}</td></tr></table>`; } }
-    if (S.step === 2) { const f = one(['towns-fill']); if (f) { const p = f.properties;
-      html = `<b dir="auto">${esc(nmL(p.nm))}</b><table><tr><td>${t('x33.pop')}</td><td>${L(nf(p.pop))}</td></tr><tr><td>${t('x33.chg')}</td><td>${pct(p.chg)}</td></tr><tr><td>${t('x33.area')}</td><td>${L(nf(p.ha, 1) + ' ha')}</td></tr></table><small>${t('x33.s2.l1src')}</small>`; } }
+    if (S.step === 2) { const f = one(['towns-fill']); if (f) { const p = f.properties, k = KIND[p.k] ? p.k : 'core';
+      const sc = S.D.scatter || {};
+      html = `<b dir="auto">${esc(nmL(p.nm))}</b><p class="tour-kind">${t('x45.kind.' + k, { n: L(nf(sc.houses_min)), d: L(nf(sc.within_m) + '\u00A0m'), o: L(nf(sc.outline_m) + '\u00A0m') })}</p><table><tr><td>${t('x45.area.' + k)}</td><td>${L(nf(p.ha, 1) + ' ha')}</td></tr>${k === 'scatter' ? `<tr><td>${t('x45.houses')}</td><td>${L(nf(p.houses))}</td></tr>` : ''}<tr><td>${t('x45.pop')}</td><td>${L(nf(p.pop))}</td></tr><tr><td>${t('x33.chg')}</td><td>${pct(p.chg)}</td></tr></table><small>${t('x45.popSrc')}</small>`; } }
     if (!html) return false;
     if (pop) pop.remove(); pop = new maplibregl.Popup({ className: 'atlas-popup tour-pop', offset: 8, maxWidth: '300px' }).setLngLat(e.lngLat).setHTML(GA.ltrNums ? GA.ltrNums(html) : html).addTo(map);
     return true;
@@ -303,7 +311,9 @@
   const railLg = () => RI() ? `<li>${RI().legendImg('metro')}<span>${t('x33.icMetro')}</span></li><li>${RI().legendImg('tram')}<span>${t('x33.icTram')}</span></li>` : '';
   function legendHTML(step, layer) {
     const D = S.D; if (!D) return '';
-    const townSw = swFill(T.townFill, t('x33.lgTown'), `;opacity:1;background:${T.townFill}55;border:1.2px solid ${T.townEdge}`);
+    const hexA = (a) => Math.round(a * 255).toString(16).padStart(2, '0'); // the map's fill opacity as #RRGGBBAA
+    const townSw = swFill(T.townFill, t('x45.lgTown'), `;opacity:1;background:${T.townFill}${hexA(T.townFillAlpha)};border:1.2px solid ${T.townEdge}`)
+      + swFill(T.townFill, t('x45.lgScatter', { n: L(nf((D.scatter || {}).houses_min)) }), `;opacity:1;background:${T.townFill}${hexA(T.townScatterAlpha)};border:1px dashed ${T.townEdge}`);
     if (step === 1) return `<ul class="lg">${swFill(T.baseFill, t('tour.lgBase'), `;opacity:.45;border:2.5px solid ${T.baseLine}`)}</ul>`;
     if (step === 2) {
       if (layer === 1) return `<ul class="lg">${townSw}${swFill(T.baseFill, t('tour.lgBase'), `;opacity:.45;border:2.5px solid ${T.baseLine}`)}</ul>`;
@@ -323,7 +333,7 @@
     const D = S.D; if (!D) return ''; const st = D.edge.stats; const A = D.area.stats;
     if (step === 1) return `<ul class="tour-facts"><li><b>${t('tour.s1.area', { ha: nf(st.area_ha) })}</b></li><li>${t('tour.s1.since')}</li><li>${t('tour.s1.ala')}</li><li>${t('tour.s1.fence', { km: nf(st.perimeter_km, 1) })}</li></ul>`;
     if (step === 2) {
-      if (layer === 1) return `<p>${t('x33.s2.l1t', { n: nf(A.five.pop2025) })}</p><ul class="tour-towns">${D.townList.map(r => `<li><span dir="auto">${esc(nmL(r.nm))}</span><span>${L(nf(r.pop))} · ${pct(r.chg)}${r.shape ? '' : ` · <em>${esc(t('x33.noShape'))}</em>`}</span></li>`).join('')}</ul>`;
+      if (layer === 1) return `<p>${t('x45.s2.l1t', { n: nf(A.five.pop2025) })}</p><ul class="tour-towns">${D.townList.map(r => `<li><span dir="auto">${esc(nmL(r.nm))}</span><span>${L(nf(r.pop))} · ${pct(r.chg)}${r.shape ? '' : ` · <em>${esc(t('x33.noShape'))}</em>`}</span></li>`).join('')}</ul>`;
       if (layer === 2) return `<p>${t('tour.s2.l2t')}</p>`;
       if (STREETS.includes(layer)) { const keys = layer === 3 ? ['A'] : layer === 4 ? ['B'] : ['A', 'B'];
         return `<p>${t('tour.s2.l3t', { n: st.deadends })}</p><ul class="tour-facts">${D.routes.filter(r => keys.includes(r.key)).map(r => `<li><b>${r.key}</b> · ${t('tour.s2.route', { a: nmL(ROUTE[r.r].a), b: nmL(ROUTE[r.r].b), w: nf(r.walk_m / 1000, 1), s: nf(r.straight_m / 1000, 1), r: nf(r.ratio, 2) })}</li>`).join('')}</ul>`; }
@@ -339,7 +349,7 @@
   }
   function srcHTML(step, layer) {
     if (step === 1) return t('tour.s1.srcTxt');
-    if (step === 2) return [t('x33.s2.l1src'), 'OpenStreetMap (ODbL) · tools/build_base_edge.py', 'OpenStreetMap (ODbL) · tools/build_base_edge.py', 'OpenStreetMap (ODbL) · tools/build_base_edge.py', 'OpenStreetMap (ODbL) · tools/build_base_edge.py', 'OpenStreetMap (ODbL) · BOE 1981', 'OpenStreetMap (ODbL) · © IGN MTN50 (1931), CC BY 4.0'][layer - 1];
+    if (step === 2) return [t('x45.s2.l1src'), 'OpenStreetMap (ODbL) · tools/build_base_edge.py', 'OpenStreetMap (ODbL) · tools/build_base_edge.py', 'OpenStreetMap (ODbL) · tools/build_base_edge.py', 'OpenStreetMap (ODbL) · tools/build_base_edge.py', 'OpenStreetMap (ODbL) · BOE 1981', 'OpenStreetMap (ODbL) · © IGN MTN50 (1931), CC BY 4.0'][layer - 1];
     return [t('tour.s2.l1src'), 'INE ADRH (31025)', 'INE IPVA (59060)', 'OpenStreetMap (ODbL)'][layer - 1] + '. ' + t('tour.s3.area', { n: S.D.area.stats.n });
   }
   function renderCard() {

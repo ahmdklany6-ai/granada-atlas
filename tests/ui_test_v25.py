@@ -118,7 +118,7 @@ try:
         if 'C' in ITEMS:
             ctx, pg, errs = boot(); before = pg.evaluate('localStorage.getItem("granada-atlas.layers.v1")')
             pg.click('#tour-start'); wait_step(pg, 1); settle(pg)
-            D = pg.evaluate('({ bb: GA.tour.data.bb, towns: GA.tour.data.towns.features.map(f => [f.properties.nm, f.properties.lp]), stats: GA.tour.data.edge.stats, area: GA.tour.data.area.stats })')
+            D = pg.evaluate('({ bb: GA.tour.data.bb, towns: GA.tour.data.towns.features.filter(f => f.properties.k === "core").map(f => [f.properties.nm, f.properties.lp]),  stats: GA.tour.data.edge.stats, area: GA.tour.data.area.stats })')
             fr = pg.evaluate('''(bb) => { const m = GA.app.map, a = m.project(bb[0]), c = m.project(bb[1]), cv = m.getCanvas().getBoundingClientRect(), r = document.querySelector('#tour-card').getBoundingClientRect();
               const free = cv.width - r.width; return { inside: Math.min(a.x, c.x) >= 0 && Math.max(a.x, c.x) <= cv.width && Math.min(a.y, c.y) >= 0 && Math.max(a.y, c.y) <= cv.height, w: Math.abs(c.x - a.x), free, full: cv.width, h: Math.abs(c.y - a.y), ch: cv.height }; }''', D['bb']['1'])
             check(fr['inside'] and fr['w'] >= 0.5 * fr['free'], f'step 1: the base fills the view (bbox inside; {fr["w"]:.0f} px of the {fr["free"]:.0f} px not under the card, {fr["h"]:.0f} of {fr["ch"]:.0f} px high)', fr)
