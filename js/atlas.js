@@ -191,7 +191,9 @@
   // which calls raise() again — an unconditional move would loop forever and the map would never become idle/loaded.
   function raise() { if (!map || !map.style) return; const want = ['atl-veil'].concat(allTopicIds(), ['atl-mask', 'atl-corr', 'atl-frame', 'atl-hl-glow', 'atl-hl-line']).filter(has);
     // 5.27: the story tour's own layers (tour-*) stay on top; the atlas layers go just below them
-    const all = map.getStyle().layers.map(l => l.id), tour = all.filter(id => id.startsWith('tour-')), ids = all.filter(id => !id.startsWith('tour-'));
+    // 5.46: the measuring line (measure-line*) stays on top too, so a measurement is never hidden under the veil or mask
+    const top = (id) => id.startsWith('tour-') || id.startsWith('measure-line');
+    const all = map.getStyle().layers.map(l => l.id), tour = all.filter(top), ids = all.filter(id => !top(id));
     if (JSON.stringify(ids.slice(ids.length - want.length)) === JSON.stringify(want)) return;
     want.forEach(id => tour.length ? map.moveLayer(id, tour[0]) : map.moveLayer(id)); }
 

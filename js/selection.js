@@ -10,7 +10,8 @@
   function create(map, opts) {
     let s = blank(); const history = []; const markers = new Map(); let dragging = null; let lastMarkerDown = 0;
     let pendingPopup = null; let cursor = null; let measure = { on: false, pts: [] };
-    const emit = () => opts.onChange && opts.onChange(api.info());
+    // the change handler can add layers (study-area mask, saved areas): the measurement goes back on top right after it
+    const emit = () => { opts.onChange && opts.onChange(api.info()); if (measure.pts.length && map.getLayer('measure-line-live')) measureOnTop(); };
 
     function blank() { return { phase: 'idle', center: null, pending: null, type: null, radius: 125, side: 250, verts: [], closed: false }; }
     const snap = () => JSON.stringify({ phase: s.phase, center: s.center, type: s.type, radius: s.radius, side: s.side, verts: s.verts, closed: s.closed });
@@ -25,8 +26,19 @@
       map.addLayer({ id: 'sel-fill', type: 'fill', source: 'sel', paint: { 'fill-color': GA.palette.mark.boundary, 'fill-opacity': 0.04 } });
       GA.fabricStyle.lineLayers('sel-line', 'sel').forEach(l => map.addLayer(l)); // 5.13: study-area boundaries are black dashed everywhere
       map.addLayer({ id: 'sel-draft', type: 'line', source: 'sel-draft', paint: { 'line-color': GA.palette.red, 'line-width': 1.4, 'line-dasharray': [2, 2] } });
-      map.addLayer({ id: 'measure-line', type: 'line', source: 'measure', paint: { 'line-color': GA.palette.ink, 'line-width': 1.4, 'line-dasharray': [1, 1.5] } });
+      // 5.46: the measured line is drawn ON TOP of every layer (the atlas veil and mask used to hide it): a white casing
+      // under a solid red line; the segment still following the cursor is dashed
+      map.addLayer({ id: 'measure-line-case', type: 'line', source: 'measure', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#FFFFFF', 'line-width': 6, 'line-opacity': 0.95 } });
+      map.addLayer({ id: 'measure-line', type: 'line', source: 'measure', filter: ['!=', ['get', 'live'], true], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': GA.palette.red, 'line-width': 2.6 } });
+      map.addLayer({ id: 'measure-line-live', type: 'line', source: 'measure', filter: ['==', ['get', 'live'], true], paint: { 'line-color': GA.palette.red, 'line-width': 2, 'line-dasharray': [2, 1.5] } });
     }
+    const MLAYERS = ['measure-line-case', 'measure-line', 'measure-line-live'];
+    function measureOnTop() { // only when something was added above it (a cheap check of the style's layer order)
+      let top = null; try { const o = map.style && map.style._order; top = o && o[o.length - 1]; } catch (e) { }
+      if (top === 'measure-line-live') return; MLAYERS.forEach(id => { if (map.getLayer(id)) map.moveLayer(id); }); }
+    const segLen = (a, b) => G.haversine(a, b);
+    function mFmt(m) { // short label on the map: metres below 1 km, kilometres above (numbers stay left-to-right)
+      return m < 1000 ? `\u2066${Math.round(m).toLocaleString('en-US')}\u2069 ${T('u.m')}` : `\u2066${(m / 1000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\u2069 ${T('u.km')}`; }
     const fc = (features) => ({ type: 'FeatureCollection', features });
     function ring() {
       if (!s.center) return null;
@@ -45,7 +57,9 @@
         if (line.length > 1) draft.push({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: line } });
       }
       map.getSource('sel-draft').setData(fc(draft));
-      map.getSource('measure').setData(fc(measure.pts.length > 1 ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: measure.pts.concat(measure.on && cursor ? [cursor] : []) } }] : []));
+      const mf = []; if (measure.pts.length > 1) mf.push({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: measure.pts } });
+      if (measure.on && cursor && measure.pts.length) mf.push({ type: 'Feature', properties: { live: true }, geometry: { type: 'LineString', coordinates: [measure.pts[measure.pts.length - 1], cursor] } });
+      map.getSource('measure').setData(fc(mf)); if (measure.pts.length) measureOnTop();
       renderHandles();
     }
 
@@ -71,9 +85,20 @@
         if (s.closed) s.verts.forEach((v, i) => { const w = s.verts[(i + 1) % s.verts.length];
           L.push({ key: 'm' + i, cls: 'h-mid', pos: [(v[0] + w[0]) / 2, (v[1] + w[1]) / 2], title: T('sel.mid'), onClick: () => { commit(); s.verts.splice(i + 1, 0, [(v[0] + w[0]) / 2, (v[1] + w[1]) / 2]); draw(); emit(); } }); });
       }
-      measure.pts.forEach((p, i) => L.push({ key: 'ms' + i, cls: 'h-measure', pos: p }));
+      // 5.46: measured points can be dragged; each segment shows its length at its middle, the end shows the total
+      const P = measure.pts;
+      // a double-click lands on the point its first click just placed, so the point itself finishes the measurement;
+      // a click on the last point finishes too
+      P.forEach((p, i) => L.push({ key: 'ms' + i, cls: 'h-measure' + (i === 0 ? ' h-measure-0' : ''), pos: p, drag: true, noHist: true, title: T('v34.m.drag'),
+        onDrag: (ll) => { P[i] = ll; }, onDbl: () => api.measureFinish(), onClick: () => { if (measure.on && i === P.length - 1 && P.length > 1) api.measureFinish(); } }));
+      for (let i = 1; i < P.length; i++) L.push({ key: 'mg' + i, cls: 'h-mlabel', pos: [(P[i - 1][0] + P[i][0]) / 2, (P[i - 1][1] + P[i][1]) / 2], text: mFmt(segLen(P[i - 1], P[i])) });
+      const live = measure.on && cursor && P.length ? cursor : null;
+      if (P.length > 2 || (live && P.length > 1)) L.push({ key: 'mt', cls: 'h-mlabel h-mtotal', pos: live || P[P.length - 1], text: T('v34.m.total') + ' ' + mFmt(G.lineLength(live ? P.concat([live]) : P)) });
+      else if (live) L.push({ key: 'mt', cls: 'h-mlabel h-mtotal', pos: live, text: mFmt(segLen(P[0], live)) });
       return L;
     }
+    // a double-click adds the same point twice (two clicks): drop points closer than half a metre to the one before
+    function dedupe() { measure.pts = measure.pts.filter((p, i, a) => i === 0 || segLen(a[i - 1], p) >= 0.5); }
     let dragStart = null;
     function renderHandles() {
       const W = want(); const keys = new Set(W.map(w => w.key));
@@ -81,9 +106,10 @@
       W.forEach(w => {
         let m = markers.get(w.key);
         if (!m) {
-          const e = el(w.cls, w.title); m = new maplibregl.Marker({ element: e, draggable: !!w.drag }).setLngLat(w.pos).addTo(map); m._cls = w.cls; markers.set(w.key, m);
+          const e = el(w.cls, w.title); if (w.text != null) { e.textContent = w.text; e.setAttribute('dir', document.documentElement.dir || 'ltr'); }
+          m = new maplibregl.Marker({ element: e, draggable: !!w.drag, anchor: w.cls.indexOf('h-mtotal') >= 0 ? 'bottom' : 'center', offset: w.cls.indexOf('h-mtotal') >= 0 ? [0, -10] : [0, 0] }).setLngLat(w.pos).addTo(map); m._cls = w.cls; markers.set(w.key, m);
           if (w.drag) {
-            m.on('dragstart', () => { dragging = w.key; commit(); const cur = want().find(x => x.key === w.key); cur && cur.onStart && cur.onStart(); });
+            m.on('dragstart', () => { dragging = w.key; if (!w.noHist) commit(); const cur = want().find(x => x.key === w.key); cur && cur.onStart && cur.onStart(); });
             m.on('drag', () => { const cur = want().find(x => x.key === w.key); const ll = m.getLngLat(); cur && cur.onDrag([ll.lng, ll.lat]); draw(); emit(); });
             m.on('dragend', () => { dragging = null; draw(); emit(); });
           }
@@ -91,6 +117,7 @@
           e.addEventListener('dblclick', (ev) => { ev.stopPropagation(); ev.preventDefault(); const cur = want().find(x => x.key === w.key); cur && cur.onDbl && cur.onDbl(); });
         } else if (dragging !== w.key) m.setLngLat(w.pos);
         if (w.title) m.getElement().title = w.title;
+        if (w.text != null) { const me = m.getElement(); if (me.textContent !== w.text) me.textContent = w.text; me.setAttribute('dir', document.documentElement.dir || 'ltr'); }
       });
     }
 
@@ -107,6 +134,13 @@
       }
       if (s.phase === 'idle' || s.phase === 'pending') { api.propose(ll); return; }
     });
+    // 5.46: double-click finishes the measurement (and does not zoom); the two clicks it starts with add one point only
+    // layers switched on later (sections, saved areas, topics) would be added above it: while the measurement is drawn,
+    // a layer added without a place goes just under it
+    { const add0 = map.addLayer.bind(map);
+      map.addLayer = function (layer, before) { if (before == null && layer && !String(layer.id).startsWith('measure-line') && map.getLayer('measure-line-case')) before = 'measure-line-case'; return add0(layer, before); }; }
+    map.on('styledata', () => { if (measure.pts.length && map.getLayer('measure-line-live')) measureOnTop(); });
+    map.on('dblclick', (e) => { if (!measure.on) return; e.preventDefault(); api.measureFinish(); });
     map.on('mousemove', (e) => { if ((s.type === 'polygon' && !s.closed && s.verts.length) || (measure.on && measure.pts.length)) { cursor = [e.lngLat.lng, e.lngLat.lat]; draw(); } });
 
     // ---------- public API ----------
@@ -149,13 +183,19 @@
         map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: { top: pad + 44, bottom: pad, left: l + pad, right: r + pad }, duration: 600, maxZoom: 17.5 }); },
       setCenterDirect(ll) { commit(); const prev = s.center; s.center = ll; if (s.type === 'polygon' && prev && s.verts.length) s.verts = G.translate(s.verts, prev, ll); if (!s.type) s.type = 'square'; s.phase = 'shape'; draw(); emit(); },
       redraw() { draw(); },
-      measureToggle(on) { measure.on = on == null ? !measure.on : on; if (!measure.on) cursor = null; draw(); emit(); return measure.on; },
+      // 5.46: starting the tool begins a new measurement; finishing keeps the line and its lengths on the map
+      measureToggle(on) { const was = measure.on; measure.on = on == null ? !measure.on : on; if (measure.on && !was) measure.pts = []; if (!measure.on) { cursor = null; dedupe(); } draw(); emit(); return measure.on; },
+      measureFinish() { if (!measure.on) return; measure.on = false; cursor = null; dedupe(); draw(); emit(); },
+      measureUndo() { if (!measure.pts.length) return; measure.pts.pop(); draw(); emit(); },
       measureClear() { measure.pts = []; draw(); emit(); },
+      measureClose() { measure.on = false; measure.pts = []; cursor = null; draw(); emit(); },
+      measurePts() { return measure.pts.map(p => p.slice()); },
       info() {
         const r = ring();
         return { phase: s.phase, type: s.type, center: s.center, pending: s.pending, radius: s.radius, side: s.side, verts: s.verts.length, closed: s.closed,
           ring: r, area: r ? G.ringArea(r) : null, perimeter: r ? G.perimeter(r) : null, selfIntersects: (s.type === 'polygon' && r) ? G.selfIntersects(r) : false,
-          canUndo: history.length > 0, measure: { on: measure.on, pts: measure.pts.length, length: G.lineLength(measure.pts) } };
+          canUndo: history.length > 0, measure: { on: measure.on, pts: measure.pts.length, length: G.lineLength(measure.pts),
+            last: measure.pts.length > 1 ? segLen(measure.pts[measure.pts.length - 2], measure.pts[measure.pts.length - 1]) : null } };
       },
       LIMITS,
     };

@@ -168,10 +168,14 @@ input[type=range] { accent-color: var(--red); }
 .h-first { width: 18px; height: 18px; background: var(--red); box-shadow: 0 0 0 4px rgba(153, 43, 42, .22); cursor: pointer; }
 .h-mid { width: 9px; height: 9px; border-radius: 50%; background: rgba(153, 43, 42, .4); border: 1px solid #FFF; cursor: copy; }
 .h-pending { width: 10px; height: 10px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 4px rgba(153, 43, 42, .2); cursor: default; }
-.h-measure { width: 7px; height: 7px; background: var(--ink); border-radius: 50%; cursor: default; }
-.h-sec { width: 14px; height: 14px; border-radius: 50%; background: #FFF; border: 2px solid var(--ink); display: flex; align-items: center; justify-content: center; font: 700 9px/1 var(--f-mono); color: var(--ink); }
-.h-sec.end { width: 20px; height: 20px; background: var(--ink); color: #FFF; font-size: 11px; }
-.h-sec-mid { width: 9px; height: 9px; border-radius: 50%; background: rgba(41, 16, 12, .35); border: 1px solid #FFF; cursor: copy; }
+/* 5.46: measuring — white points ringed in red (the first one filled), lengths as small labels on the line, the total above the end */
+.h-measure { width: 12px; height: 12px; background: var(--white); border: 2.5px solid var(--red); border-radius: 50%; cursor: grab; box-shadow: 0 0 0 1px rgba(255, 255, 255, .8); }
+.h-measure-0 { background: var(--red); }
+.h-mlabel { pointer-events: none; cursor: default; background: rgba(255, 255, 255, .94); color: var(--ink); border: 1px solid var(--red); padding: 1px 5px; font: 600 11.5px/1.35 var(--f-ui); white-space: nowrap; box-shadow: 0 2px 6px -3px rgba(0, 0, 0, .45); }
+.h-mtotal { background: var(--red); color: var(--white); border-color: var(--red); font-size: 12.5px; padding: 2px 7px; }
+.h-sec { width: 14px; height: 14px; border-radius: 50%; background: var(--white); border: 2px solid var(--ink); display: flex; align-items: center; justify-content: center; font: 700 9px/1 var(--f-mono); color: var(--ink); }
+.h-sec.end { width: 20px; height: 20px; background: var(--ink); color: var(--white); font-size: 11px; }
+.h-sec-mid { width: 9px; height: 9px; border-radius: 50%; background: rgba(41, 16, 12, .35); border: 1px solid var(--white); cursor: copy; }
 .maplibregl-canvas { cursor: crosshair; }
 
 /* popups */
@@ -192,8 +196,17 @@ input[type=range] { accent-color: var(--red); }
 .legend-t { display: flex; justify-content: space-between; width: 100%; background: none; border: 0; padding: 0 0 4px; cursor: pointer; font: 600 12px/1.3 var(--f-ui); color: var(--ink-3); text-transform: uppercase; letter-spacing: .05em; }
 .legend.min { min-width: 0; padding-bottom: 4px; } .legend.min .legend-b { display: none; }
 .legend h4:not(:first-child) { margin-top: 8px; }
-.measure-out { position: absolute; bottom: 36px; left: calc(var(--lw-eff) + 12px); z-index: 5; background: var(--ink); color: #FFF; padding: 6px 10px; font-size: 13px; }
-.measure-out .btn { background: transparent; color: #FFF; border-color: rgba(255, 255, 255, .4); }
+/* 5.46: the measuring result is at the top of the map, above every floating panel (it used to sit under the analysis panel) */
+.measure-out { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 12; width: max-content; max-width: min(400px, calc(100% - 24px)); background: var(--white); color: var(--ink); border: 1px solid var(--line); border-top: 3px solid var(--red); padding: 7px 10px 8px; font-size: 13px; box-shadow: 0 14px 34px -22px rgba(0, 0, 0, .6); }
+.measure-out .mo-h { display: flex; align-items: center; gap: 10px; justify-content: space-between; font: 600 12px var(--f-ui); color: var(--red); }
+.measure-out .mo-x { border: 0; background: none; color: var(--ink); font-size: 14px; line-height: 1; padding: 2px 4px; cursor: pointer; }
+.measure-out .mo-v { font-size: 15px; margin-top: 2px; } .measure-out .mo-v b { font-size: 19px; font-weight: 700; }
+.measure-out .mo-alt { color: var(--ink-2); font-size: 13px; } .measure-out .mo-s, .measure-out .mo-k, .measure-out .mo-hint { color: var(--ink-2); font-size: 12px; margin-top: 2px; }
+.measure-out .mo-k { font-size: 11px; } .measure-out .mo-a { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.measure-out .mo-main { background: var(--red); border-color: var(--red); color: var(--white); }
+.ga-msctl .ga-secbtn .ic-ruler { color: var(--red); } .ga-msctl .ga-secbtn[aria-pressed="true"] { background: var(--red); color: var(--white); } .ga-msctl .ga-secbtn[aria-pressed="true"] .ic-ruler { color: var(--white); }
+body.ga-measuring .maplibregl-marker:not(.h) { pointer-events: none; } /* while measuring, a click on a map label places a point */
+@media (max-width: 720px) { .measure-out .mo-k { display: none; } .measure-out { top: 50px; left: 8px; right: 8px; transform: none; width: auto; max-width: none; } }
 .mode-banner { position: absolute; top: 10px; left: calc(var(--lw-eff) + 50%); transform: translateX(-50%); z-index: 6; background: var(--ink); color: #FFF; padding: 7px 12px; font-size: 13px; display: flex; gap: 10px; align-items: center; border-inline-start: 3px solid var(--red); }
 .mode-banner .btn { background: transparent; color: #FFF; border-color: rgba(255, 255, 255, .45); }
 

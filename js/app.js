@@ -47,6 +47,12 @@
   const secCtl = { onAdd() { const d = document.createElement('div'); d.className = 'maplibregl-ctrl maplibregl-ctrl-group ga-secctl'; d.innerHTML = `<button type="button" id="map-draw-section" class="ga-secbtn"><span class="ic" aria-hidden="true">A–B</span><span class="tx"></span></button>`; d.querySelector('button').addEventListener('click', () => startSection()); this._d = d; this.label(); return d; },
     onRemove() { this._d.remove(); }, label() { if (!this._d) return; const b = this._d.querySelector('button'); b.querySelector('.tx').textContent = GA.i18n.t('v6.drawSection'); b.title = GA.i18n.t('v6.drawSectionHint'); b.setAttribute('aria-label', GA.i18n.t('v6.drawSection')); } };
   map.addControl(secCtl, 'top-right');
+  // 5.46 (owner request): Measure sits beside Draw section in the map's top-right row (it was only inside the ☰ menu)
+  const msCtl = { onAdd() { const d = document.createElement('div'); d.className = 'maplibregl-ctrl maplibregl-ctrl-group ga-secctl ga-msctl';
+      d.innerHTML = `<button type="button" id="map-measure" class="ga-secbtn" aria-pressed="false"><svg class="ic-ruler" viewBox="0 0 20 12" width="18" height="11" aria-hidden="true"><rect x="0.75" y="0.75" width="18.5" height="10.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 1v4M8 1v6M11.5 1v4M15 1v6" stroke="currentColor" stroke-width="1.3"/></svg><span class="tx"></span></button>`;
+      d.querySelector('button').addEventListener('click', () => toggleMeasure()); this._d = d; this.label(); return d; },
+    onRemove() { this._d.remove(); }, label() { if (!this._d) return; const b = this._d.querySelector('button'); b.querySelector('.tx').textContent = GA.i18n.t('v34.m.btn'); b.title = GA.i18n.t('v34.m.btnHint'); b.setAttribute('aria-label', GA.i18n.t('v34.m.btn')); } };
+  map.addControl(msCtl, 'top-right');
   map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: '© OpenStreetMap contributors (ODbL) · IGN MDT25 (CC BY 4.0) · JRC GHSL' }), 'bottom-right');
   // the map is full width under the floating panels, so MapLibre would show the long attribution expanded on tablets, where it
   // would run under the legend: start it collapsed (ⓘ, one tap to open) below 1000 px
@@ -78,7 +84,7 @@
   }
   $('#lang').addEventListener('click', (e) => { const b = e.target.closest('[data-lang]'); if (b && b.dataset.lang !== I.lang) I.setLang(b.dataset.lang); });
   I.onChange(() => {
-    renderLangSwitch(); basemap.setLang && basemap.setLang(map, I.lang); sel.redraw(); secTool.render(); secCtl.label();
+    renderLangSwitch(); basemap.setLang && basemap.setLang(map, I.lang); sel.redraw(); secTool.render(); secCtl.label(); msCtl.label();
     renderSelectPanel(sel.info()); renderLeft(); renderLayersPanel(); renderLegend(); renderDrawerIfOpen(); if (CMP.isOpen()) CMP.render();
     updateToggles();
   });
@@ -171,9 +177,26 @@
     const nameVal = $('#in-name') && $('#in-name').value;
     p.innerHTML = h;
     if (nameVal && $('#in-name') && !area) $('#in-name').value = nameVal;
-    $('#measure-out').hidden = !info.measure.on && !info.measure.pts;
-    $('#measure-out').innerHTML = `${t('measure.out', { v: fmtLen(info.measure.length) })} <button class="btn btn-tiny" id="btn-mclear">${t('clear')}</button>`;
-    $('#tb-measure').classList.toggle('on', info.measure.on);
+    renderMeasure(info.measure);
+  }
+  // 5.46: the measuring result sits at the top of the map, clear of every panel: the total in kilometres AND metres, the
+  // last segment, and the actions (remove last point, clear, finish / new measurement, close)
+  function renderMeasure(M) {
+    const box = $('#measure-out'); box.hidden = !M.on && !M.pts;
+    document.body.classList.toggle('ga-measuring', !!M.on); // map labels and symbols let measuring clicks through (css)
+    const km = (m) => `<span class="num">${nf(m / 1000, 2)}</span>\u00A0${t('u.km')}`, mt = (m) => `<span class="num">${nf(m)}</span>\u00A0${t('u.m')}`;
+    const both = (m) => m >= 1000 ? `<b>${km(m)}</b> <span class="mo-alt">(${mt(m)})</span>` : `<b>${mt(m)}</b> <span class="mo-alt">(<span class="num">${nf(m / 1000, 3)}</span>\u00A0${t('u.km')})</span>`;
+    const head = `<div class="mo-h"><span class="mo-t">${t('v34.m.title')}</span><button type="button" class="mo-x" id="btn-mclose" aria-label="${t('close')}" title="${t('close')}">✕</button></div>`;
+    let body;
+    if (M.pts < 2) body = `<div class="mo-hint">${t(M.pts ? 'v34.m.hint1' : 'v34.m.hint0')}</div>`;
+    else body = `<div class="mo-v">${both(M.length)}</div><div class="mo-s">${t('v34.m.pts', { n: '<span class="num">' + M.pts + '</span>' })} · ${t('v34.m.last')} ${M.last >= 1000 ? km(M.last) : mt(M.last)}</div>`;
+    const keys = M.on ? `<div class="mo-k">${t('v34.m.keys')}</div>` : '';
+    const acts = `<div class="mo-a"><button type="button" class="btn btn-tiny" id="btn-mundo" ${M.pts && M.on ? '' : 'disabled'}>${t('v34.m.undo')}</button><button type="button" class="btn btn-tiny" id="btn-mclear" ${M.pts ? '' : 'disabled'}>${t('clear')}</button>`
+      + (M.on ? `<button type="button" class="btn btn-tiny mo-main" id="btn-mfinish" ${M.pts > 1 ? '' : 'disabled'}>${t('v34.m.finish')}</button>` : `<button type="button" class="btn btn-tiny mo-main" id="btn-mnew">${t('v34.m.new')}</button>`) + '</div>';
+    box.innerHTML = head + body + keys + acts;
+    box.setAttribute('role', 'status'); box.setAttribute('aria-live', 'polite');
+    $('#tb-measure').classList.toggle('on', M.on);
+    const mb = $('#map-measure'); if (mb) { mb.setAttribute('aria-pressed', String(M.on)); }
   }
 
   // ---------- layers panel (right, below the study panel) ----------
@@ -326,6 +349,10 @@
       case 'btn-analyze': return analyze();
       case 'btn-gis': return openDrawer('export');
       case 'btn-mclear': return sel.measureClear();
+      case 'btn-mundo': return sel.measureUndo();
+      case 'btn-mfinish': return sel.measureFinish();
+      case 'btn-mnew': return sel.measureToggle(true);
+      case 'btn-mclose': return sel.measureClose();
       case 'btn-view-analysis': return currentAreaId && PG.go('fabric', currentAreaId);
       case 'btn-to-compare': return currentAreaId && GA.fabric.compare(currentAreaId);
       case 'mb-finish': return secTool.finish();
@@ -344,8 +371,10 @@
     if (e.target.matches('input, textarea, select')) { if (e.key === 'Enter' && (e.target.id === 'in-radius' || e.target.id === 'in-side')) e.target.blur(); return; }
     if (secTool.isDrawing()) { if (e.key === 'Enter') { e.preventDefault(); secTool.finish(); } if (e.key === 'Escape') secTool.cancel(); if (e.key === 'Backspace') secTool.undoPoint(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); sel.undo(); }
+    if (sel.info().measure.on && (e.key === 'Backspace' || e.key === 'Delete')) { e.preventDefault(); sel.measureUndo(); return; } // 5.46
+    if (sel.info().measure.on && e.key === 'Enter') { e.preventDefault(); sel.measureFinish(); return; }
     if (e.key === 'Enter') sel.closePolygon();
-    if (e.key === 'Escape') { if (sel.info().measure.on) sel.measureToggle(false); closeDrawer(); closeModal(); }
+    if (e.key === 'Escape') { if (sel.info().measure.on) sel.measureFinish(); closeDrawer(); closeModal(); }
   });
 
   // ---------- saving ----------
@@ -573,7 +602,7 @@
   // phones draw on a full-screen map and show the section afterwards; larger screens keep the analysis panel open beside the map
   // tablets (narrow side-by-side layouts) also give the whole width to the map while drawing
   const roomy = () => window.innerWidth >= 1100;
-  function startSection() { closeDrawer(); leftTab = 'sections'; const B = document.body.classList;
+  function startSection() { if (sel.info().measure.on) sel.measureFinish(); closeDrawer(); leftTab = 'sections'; const B = document.body.classList;
     if (isPhone() || !roomy()) setPhoneView('map'); else openLeft(); void B;
     renderLeft(); secTool.start(); }
   function sectionMode(mode, n) {
@@ -799,7 +828,8 @@
   });
   document.querySelectorAll('.tb-btn[data-drawer]').forEach(b => b.addEventListener('click', () => drawer === b.dataset.drawer ? closeDrawer() : openDrawer(b.dataset.drawer)));
   $('#btn-close-drawer').addEventListener('click', closeDrawer);
-  $('#tb-measure').addEventListener('click', () => { const on = sel.measureToggle(); toast(on ? t('measure.on') : t('measure.off')); });
+  function toggleMeasure() { const on = sel.measureToggle(); if (on && secTool.isDrawing()) secTool.cancel(); toast(on ? t('v34.m.on') : t('measure.off')); }
+  $('#tb-measure').addEventListener('click', toggleMeasure);
   function openWorkspace(tab) { closeDrawer(); if (PG.current) PG.close(); $('#tb-compare').classList.add('on'); CMP.open(tab); }
   $('#tb-compare').addEventListener('click', () => CMP.isOpen() ? CMP.close() : openWorkspace());
 
