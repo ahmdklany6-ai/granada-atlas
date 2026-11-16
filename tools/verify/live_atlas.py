@@ -146,5 +146,25 @@ with sync_playwright() as p:
             if lang == 'en' or ly == 1: slide(3, ly, nm, lambda: check(len(pg.evaluate('GA.tour.labels')) == 34 and not [x for x in pg.evaluate('GA.tour.labels') if x['forced']], f'{lang}: 34 municipality labels, none forced'))
         slide(3, 4, 'last', lambda: check(pg.evaluate('document.querySelectorAll(".tour-dots i").length') == 4, f'{lang}: step 3 has four slides'))
         check(not [e for e in errs if 'rtl-text' not in e], f'{lang}: no page errors (5.33 tour)', errs[:3]); ctx.close()
+    # ---- 5.46: the measuring tool (button top-right, line on top, total in km and m) ----
+    for lang in ('ar', 'en'):
+        ctx, pg, errs = boot({'width': 1440, 'height': 900}, lang=lang); time.sleep(3)
+        pg.click('#map-measure'); time.sleep(0.4)
+        free = pg.evaluate('''(() => { const box = document.getElementById('measure-out').getBoundingClientRect(), out = [];
+          for (let y = 0.30; y <= 0.62; y += 0.04) for (let x = 0.12; x <= 0.88; x += 0.04) { const X = Math.round(innerWidth * x), Y = Math.round(innerHeight * y); if (Y < box.bottom + 30) continue;
+            if ([[0, 0], [-14, 0], [14, 0], [0, -14], [0, 14]].every(([dx, dy]) => { const e = document.elementFromPoint(X + dx, Y + dy); return e && e.classList.contains('maplibregl-canvas'); })) out.push([X, Y]); } return out; })()''')
+        pts = []
+        for q in free:
+            if all(abs(q[0] - r[0]) + abs(q[1] - r[1]) > 130 for r in pts): pts.append(q)
+            if len(pts) == 3: break
+        for x, y in pts: pg.mouse.click(x, y); time.sleep(0.3)
+        pg.keyboard.press('Enter'); time.sleep(0.6)
+        st = pg.evaluate('GA.app.sel.info().measure'); box = pg.evaluate('document.getElementById("measure-out").innerText')
+        top = pg.evaluate('GA.app.map.getStyle().layers.slice(-3).map(l => l.id)')
+        km, m = pg.evaluate('GA.i18n.t("u.km")'), pg.evaluate('GA.i18n.t("u.m")')
+        check(st['pts'] == 3 and not st['on'] and top == ['measure-line-case', 'measure-line', 'measure-line-live'] and km in box and m in box
+              and pg.evaluate('document.querySelectorAll(".h-mlabel").length') == 3, f'{lang}: 5.46 — measuring: 3 points, line on top, total in km and m, lengths on the map', [st, top, box[:120]])
+        emit(f'x46_measure_{lang}', pg.screenshot())
+        check(not [e for e in errs if 'rtl-text' not in e], f'{lang}: no page errors (5.46 measure)', errs[:3]); ctx.close()
     b.close()
 n = sum(1 for c, _ in res if not c); print(f'\nLIVE RESULT atlas: {len(res) - n}/{len(res)} checks passed' + ('' if not n else ' — FAILED: ' + '; '.join(m for c, m in res if not c)), flush=True)

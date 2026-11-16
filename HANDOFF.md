@@ -1084,3 +1084,30 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
   Catastro building register would close the OSM gaps in the scattered zones (not done).
 - Open: the municipalities beyond the frame; built-up land that is not housing (industrial and retail estates) is not
   marked — offered to the owner as a separate colour.
+
+## 42. Build 5.46 — the measuring tool works, in metres and kilometres (owner request of 16 Nov 2026)
+- Request: "fix the measuring tool on the site, it doesn't work; I want it to measure in metres and kilometres".
+- Why it looked broken: the measured line (`measure-line`, 1.4 px dark dashed) was added once and every layer added later
+  went above it — the atlas veil and mask (`js/atlas.js` `raise()` kept them on top) covered it; the points were 7 px dark
+  dots; the result (`#measure-out`) sat bottom-left UNDER the analysis panel; the tool was only reachable from ☰ → Tools.
+  The distance itself was right (ellipsoidal, `GA.geo.lineLength`).
+- Now (`js/selection.js`, `js/app.js`, `css/app.css`):
+  - a **Measure** button (ruler icon) in the map's top-right row beside Draw section and 3D (`#map-measure`, text hidden
+    below 720 px like Draw section); the ☰ menu entry `#tb-measure` still works;
+  - the line is red (`palette.red`, 2.6 px) on a white casing, the segment following the cursor dashed
+    (`measure-line-case`, `measure-line`, `measure-line-live`). It stays on top: `raise()` treats `measure-line*` like the
+    tour's layers, `measureOnTop()` runs after every change, and `map.addLayer` without a `before` (wrapped in
+    `selection.create`) inserts new layers under `measure-line-case`. The print map still hides `measure-line*`;
+  - points: 12 px white with a red ring (the first filled), draggable; each segment's length is a small label at its
+    middle; the running / final total is a red label at the end. Labels: metres below 1 km, km with two decimals above;
+  - the result box is at the top centre of the map (top 50 px, full width on phones), above every panel (z-index 12): the
+    total in km AND m (`15.33 km (15,335 m)`; under 1 km `850 m (0.850 km)`), the point count, the last segment, and
+    Remove last point · Clear · Finish / New measurement · ✕;
+  - keys: Backspace / Delete remove the last point, Enter / Esc / double-click finish (double-click no longer zooms while
+    measuring; the duplicate point it adds is dropped), a click on the last point finishes (phones); a finished line stays
+    until ✕ or Clear; starting again begins a new measurement; starting a section finishes the measurement;
+  - while measuring (`body.ga-measuring`), map labels and symbols (DOM markers) let clicks through, so a click on a
+    label places a point.
+- Strings `js/i18n_v34.js` (`v34.m.*`). Test `tests/ui_test_v35.py` (ar 1440 · he 1024 · en 390 · en 1440: button in the
+  row, line on top also after a layer is switched on, red pixels on screen, labels, km and m in the box, length = an
+  independent haversine sum ± 0.5 %, keys, double-click without zoom, close, the menu entry). Live check: `live_atlas.py` 5.46 block.
