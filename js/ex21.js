@@ -458,7 +458,46 @@
     if (only === 'edge') ['free', '30-60', '15-30', '0-15'].forEach(c => out.push({ sw: `rgb(${TD.edge_colours[c].join(',')})`, alpha: 0.85, label: t('x36.edge.' + c, { ha: km2(TD.edge_ha[c] || 0) }) }));
     if (only !== 'built') out.push({ sw: C.built, label: t('x34.lg.built') });
     out.push({ line: C.muni, dash: true, w: 1, label: t('x35.lg.muni') }); return out; }
+  // ---------- WHO LIVES AROUND THE BASE (owner request, 16 Nov 2026): INE census sections (ADRH 2024) and the census by town ----------
+  let PD = null, PDp = null;
+  function readyPeople() { if (PDp) return PDp; PDp = fetch('data/ex21/people.json?v=' + (root.GA_BUILD || '')).then(r => r.json()).then(j => (PD = j)).catch(e => { PDp = null; throw e; }); return PDp; }
+  // fixed class breaks per indicator (5 classes, js/palette.js choro: light → dark)
+  const PBR = { age: [37, 39, 41, 43], u18: [16, 18, 20, 22], o65: [10, 14, 18, 22], es: [90, 93, 95, 96.5], inc: [12000, 13000, 14000, 16000], one: [22, 26, 30, 34], hh: [2.4, 2.5, 2.6, 2.7] };
+  const pcls = (k, v) => { const b = PBR[k]; let i = 0; while (i < b.length && v >= b[i]) i++; return i; };
+  function drawPeople(ctx, x, y, w, h, o) {
+    o = o || {}; if (!D || !PD) return false; const pal = P(), C = pal.ex21, ramp = pal.choro; const t = o.t || ((s) => s); const F = root.GA.pages.font(); const E = CITY, mpp = (E.x1 - E.x0) / w, k = o.k || w / 1000; const key = o.only || 'age';
+    const X = (u) => x + (u - E.x0) / mpp, Y = (v) => y + (E.y1 - v) / mpp; const font = (sz, wt) => `${wt || 600} ${Math.round(sz * k)}px ${F}`;
+    const path = (rs) => { ctx.beginPath(); rs.forEach(r => r.forEach((q, i) => i ? ctx.lineTo(X(q[0]), Y(q[1])) : ctx.moveTo(X(q[0]), Y(q[1])))); ctx.closePath(); };
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip(); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(x, y, w, h); ctx.lineJoin = 'round';
+    // the class colour fills each section; the buildings (OSM) are drawn darker over it, to show where in the section people live
+    PD.sections.forEach(sc => { const v = sc[key]; sc.r.forEach(pg => { path(pg); if (v == null) { ctx.fillStyle = '#FFFFFF'; ctx.fill(); } else { ctx.globalAlpha = 0.85; ctx.fillStyle = ramp[pcls(key, v)]; ctx.fill(); ctx.globalAlpha = 1; } ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 0.9 * k; ctx.stroke(); }); });
+    ctx.globalAlpha = 0.22; ctx.fillStyle = pal.ink; D.builds.forEach(rs => { path(rs); ctx.fill(); }); ctx.globalAlpha = 1;
+    ctx.setLineDash([6 * k, 4 * k]); ctx.strokeStyle = pal.ink3; ctx.lineWidth = 1.1 * k; D.area.forEach(a => { path(a.g); ctx.stroke(); }); ctx.setLineDash([]);
+    const base = D.edge.find(f => f.p.k === 'base'); if (base) { path(base.g); ctx.fillStyle = C.base; ctx.fill(); }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.direction = 'ltr';
+    D.edge.filter(f => f.p.k === 'town').forEach(f => { const [u, v] = f.g; ctx.font = font(o.small ? 11 : 15, 700); ctx.lineWidth = 4 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(f.p.nm.toUpperCase(), X(u), Y(v) - 8 * k); ctx.fillStyle = C.town; ctx.fillText(f.p.nm.toUpperCase(), X(u), Y(v) - 8 * k); });
+    if (base && !o.small) { const rx = X((D.runway[0][0] + D.runway[1][0]) / 2), ry = Y((D.runway[0][1] + D.runway[1][1]) / 2); ctx.fillStyle = '#FFFFFF'; ctx.font = font(14, 700); ctx.fillText(t('x34.base').toUpperCase(), rx - 60 * k, ry); }
+    ctx.restore(); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.2 * k; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    if (!o.small) { root.GA.pages.northArrow(ctx, x + w - 28 * k, y + 20 * k, 1.3 * k);
+      const km = 1000 / mpp, bx = x + 22 * k, by = y + h - 24 * k; ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(bx - 8 * k, by - 22 * k, km + 60 * k, 34 * k);
+      ctx.fillStyle = pal.ink; ctx.fillRect(bx, by, km / 2, 5 * k); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1 * k; ctx.strokeRect(bx, by, km, 5 * k); ctx.font = font(10, 500); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.direction = 'ltr';
+      ctx.fillText('0', bx, by - 5 * k); ctx.fillText('500', bx + km / 2, by - 5 * k); ctx.fillText('1 km', bx + km, by - 5 * k); }
+    return true;
+  }
+  function peopleLegend(key, t) { const pal = P(), b = PBR[key], f = (v) => key === 'inc' ? '€' + v.toLocaleString('en-US') : String(v); const u = key === 'age' || key === 'hh' || key === 'inc' ? '' : ' %';
+    const lab = [`< ${f(b[0])}${u}`, `${f(b[0])}–${f(b[1])}${u}`, `${f(b[1])}–${f(b[2])}${u}`, `${f(b[2])}–${f(b[3])}${u}`, `≥ ${f(b[3])}${u}`];
+    return lab.map((l, i) => ({ sw: pal.choro[i], alpha: 0.85, label: l })); }
+  // what the employed residents do (census, by town): 100 % bars, the branch "public administration and defence" first
+  const PBRANCH = ['public', 'trade', 'hospitality', 'health', 'education', 'office', 'industry', 'construction', 'transport', 'farming', 'other'];
+  function drawBranchBars(ctx, x, y, w, h, o) { o = o || {}; const pal = P(), t = o.t || ((s) => s), k = o.k || 1, F = root.GA.pages.font(), font = (sz, wt) => `${wt || 500} ${Math.round(sz * k)}px ${F}`;
+    const cols = { public: pal.ex21.base, trade: pal.red, hospitality: pal.rose, health: pal.blue, education: pal.base.blueGrey, office: pal.base.lightBlue, industry: pal.base.burgundy, construction: pal.base.khaki, transport: pal.base.olive, farming: pal.base.chartreuse, other: pal.grey2 };
+    const towns = ['Armilla', 'Churriana de la Vega', 'Las Gabias', 'Alhendín', 'Ogíjares', 'Granada']; const lw = 150 * k, rh = h / towns.length;
+    ctx.save(); ctx.direction = 'ltr'; towns.forEach((tn, i) => { const T = PD.towns[tn], tot = PBRANCH.reduce((a, b) => a + (T.branch[b] || 0), 0); const by = y + i * rh; let bx = x + lw;
+      ctx.font = font(11, tn === 'Granada' ? 700 : 600); ctx.fillStyle = pal.ink; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillText(tn === 'Granada' ? t('x37.granada') : tn, x + lw - 8 * k, by + rh * 0.42);
+      PBRANCH.forEach(b => { const ww = (T.branch[b] || 0) / tot * (w - lw); ctx.fillStyle = cols[b]; ctx.fillRect(bx, by + rh * 0.12, ww, rh * 0.6); if (ww > 34 * k) { ctx.fillStyle = ['public', 'trade', 'industry', 'transport', 'health'].includes(b) ? '#FFFFFF' : pal.ink; ctx.font = font(9.5, 700); ctx.textAlign = 'center'; ctx.fillText(Math.round((T.branch[b] || 0) / tot * 100) + '%', bx + ww / 2, by + rh * 0.42); } bx += ww; }); });
+    ctx.restore(); return PBRANCH.map(b => ({ sw: cols[b], label: t('x37.br.' + b) })); }
   root.GA.ex21 = { ready, readyAreas, readyAerial, loadAerial, aerialLegend, get aerial() { return AER; }, drawArea, drawSection, areaLegend, drawAreaKey, keyLegend, get areas() { return AR; }, drawCity, drawGaps, cityLegend, mapLegend, MAPS: ['island', 'walk', 'growth', 'height'], CITY, get data() { return D; },
     readyFactory, drawFactory, factoryLegend, drawFactoryKey, FMAPS: ['estate', 'access', 'land', 'time'], get factory() { return FD; }, km2,
-    readyTime, drawTime, drawDwellChart, drawPopChart, timeLegend, get time() { return TD; }, TFIVE, tcol };
+    readyTime, drawTime, drawDwellChart, drawPopChart, timeLegend, get time() { return TD; }, TFIVE, tcol,
+    readyPeople, drawPeople, peopleLegend, drawBranchBars, get people() { return PD; } };
 })(window);
