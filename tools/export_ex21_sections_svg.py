@@ -421,6 +421,12 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
              f'<g id="ground-cut-{a["id"]}"><polygon points="{P(gpts)} {P((x, y + 2.6 * MM) for x, y in reversed(gpts))}" fill="{CUT}"/>'
              + (f'<polygon points="{P(bside)} {P((x, y + 2.6 * MM) for x, y in reversed(bside))}" fill="url(#basehatch-{a["id"]})"/>' if bside else '') +
              f'<polyline points="{P(gpts)}" fill="none" stroke="{CUT}" stroke-width="0.35"/></g>')
+    # water courses crossed by the section (OSM): a blue channel cut into the ground (position from OSM; width and depth are not measured: schematic)
+    wo = [f'<g id="water-{a["id"]}">']
+    for q in s.get('water', []):
+        d = q['d']; gy = Z(g_at(d)); hw = (2.4 if q.get('ww') == 'river' else 0.9) * MM; dp = (1.4 if q.get('ww') == 'river' else 0.6) * MM
+        wo.append(f'<path d="M{X(d) - hw:.2f},{gy:.2f} Q{X(d)},{gy + 2 * dp:.2f} {X(d) + hw:.2f},{gy:.2f} Z" fill="#A9C0CB"/>')
+    wo.append('</g>'); o += wo
     # streets crossed → cars on roads, people on paths / sidewalks (schematic)
     eo = [f'<g id="people-cars-schematic-{a["id"]}">']; used = []
     for st in a['streets']:
@@ -461,7 +467,7 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
     for v in (0, 10, 20, 50): sb.append(f'<text x="{sx + v * MM:.2f}" y="{sy + 3.6:.2f}" {FONT} font-size="2" text-anchor="middle" fill="{INK}">{v}{" m" if v == 50 else ""}</text>')
     sb.append('</g>'); o += sb
     src = a['stats'].get('limit_file', '').replace('.kmz', '')
-    note = (f'1:500 · IGN MDT25 · OSM (floors × 3 m, estimate) · {escape(src)}, Ministerio de Defensa · tree positions: PNOA aerial (IGN), approx. · people, cars, tree heights and façades (by OSM building type): schematic' if has_lim else
+    note = (f'1:500 · ground IGN MDT25 · {escape(src)}, Ministerio de Defensa · buildings: D. G. del Catastro (floors × 3 m, estimate; dashed = shed or hall, height not measured) · water: OSM · trees: PNOA aerial (IGN), approx. · people, cars, tree heights, channel shapes and façades: schematic' if has_lim else
             '1:500 · ground: IGN MDT05 · buildings: D. G. del Catastro (floors × 3 m, estimate; dashed = shed or church, height not measured) · trees: PNOA aerial (IGN), approx. · people, cars, tree heights and façades (by use): schematic')
     o.append(f'<g id="sources-{a["id"]}" opacity="0.9"><text x="{X(0):.2f}" y="{Z(zmin) + 12:.2f}" {FONT} font-size="1.8" fill="{INK3}">{note}</text></g>')
     o.append('</g>')

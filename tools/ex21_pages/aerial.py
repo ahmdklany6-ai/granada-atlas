@@ -9,7 +9,7 @@ from playwright.sync_api import sync_playwright
 import json
 OUTD = sys.argv[1]; LANG = sys.argv[2] if len(sys.argv) > 2 else 'en'; SET = os.environ.get('SET', 'base'); PORT = 8854
 # SET=factory: the six windows of the Escúzar estate and village (photos in exports/ex21_factory/aerial)
-IDS = [a['id'] for a in json.load(open('data/ex21/' + ('factory_areas.json' if SET == 'factory' else 'areas.json')))['areas']]
+IDS = os.environ['IDS'].split(',') if os.environ.get('IDS') else [a['id'] for a in json.load(open('data/ex21/' + ('factory_areas.json' if SET == 'factory' else 'areas.json')))['areas']]
 AER = '/exports/ex21_factory/aerial/' if SET == 'factory' else '/exports/ex21_aerial/'
 V3.PORT = PORT; V3.V2.PORT = PORT
 srv = subprocess.Popen([sys.executable, '-m', 'http.server', str(PORT), '--bind', '127.0.0.1'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)

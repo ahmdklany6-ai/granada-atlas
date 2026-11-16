@@ -105,6 +105,32 @@
    "flight": "2022-08",
    "resolution_m": 0.25,
    "base_blurred_share": 0.84
+  },
+  "S": {
+   "file": "S.jpg",
+   "px": 1040,
+   "extent": [
+    443054.3,
+    4110678.4,
+    443184.3,
+    4110808.4
+   ],
+   "flight": "2022-08",
+   "resolution_m": 0.25,
+   "base_blurred_share": 0.71
+  },
+  "R": {
+   "file": "R.jpg",
+   "px": 1040,
+   "extent": [
+    442989.2,
+    4108728.6,
+    443119.2,
+    4108858.6
+   ],
+   "flight": "2022-08",
+   "resolution_m": 0.25,
+   "base_blurred_share": 0.01
   }
  }
 }

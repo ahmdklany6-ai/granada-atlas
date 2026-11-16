@@ -73,7 +73,7 @@
       ctx.font = font(15, 700); ctx.lineWidth = 4 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(f.p.nm.toUpperCase(), px, py - 8 * k); ctx.fillStyle = C.town; ctx.fillText(f.p.nm.toUpperCase(), px, py - 8 * k);
       if (a && on('growth')) { const s = (a.p.chg > 0 ? '+' : '') + a.p.chg.toFixed(1) + ' %'; ctx.font = font(12, 600); ctx.strokeText(s + ' · 2015→2025', px, py + 9 * k); ctx.fillStyle = C.town; ctx.fillText(s + ' · 2015→2025', px, py + 9 * k); } });
     if (base) { const rx = X((D.runway[0][0] + D.runway[1][0]) / 2) - 26 * k, ry = Y((D.runway[0][1] + D.runway[1][1]) / 2); ctx.textAlign = 'right';
-      ctx.fillStyle = '#FFFFFF'; ctx.font = font(15, 700); ctx.fillText(t('x34.base').toUpperCase(), rx, ry); ctx.font = font(11, 500); ctx.fillText(`${km2(base.p.area_ha)} km² · ${base.p.perimeter_km} km`, rx, ry + 17 * k); ctx.textAlign = 'center'; }
+      ctx.fillStyle = '#FFFFFF'; ctx.font = font(15, 700); ctx.fillText(t('x34.base').toUpperCase(), rx, ry); ctx.font = font(11, 500); ctx.direction = 'ltr'; ctx.fillText(`${km2(base.p.area_ha)} km² · ${base.p.perimeter_km} km`, rx, ry + 17 * k); ctx.textAlign = 'center'; }
     // frame, north, scale
     ctx.restore(); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.2 * k; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
     root.GA.pages.northArrow(ctx, x + w - 28 * k, y + 20 * k, 1.3 * k);
@@ -173,12 +173,16 @@
     const W = { motorway: 9, trunk: 8, primary: 7, secondary: 6, tertiary: 5, residential: 4, living_street: 3.5, unclassified: 4, service: 2.6, pedestrian: 3, footway: 1.4, path: 1.4, cycleway: 1.4, track: 2, steps: 1.4 };
     A.streets.forEach(st => { const w0 = (W[st.hw] || 2) / mpp * 1.0; ctx.strokeStyle = C.street; ctx.lineWidth = Math.max(1, w0); ctx.setLineDash(/footway|path|cycleway|track|steps/.test(st.hw) ? [4 * k, 3 * k] : []); path(st.r); ctx.stroke(); ctx.setLineDash([]); });
     // buildings by floors (OSM building:levels), outline; unknown = hatched
-    A.buildings.forEach(b => { path(b.r, true); const c = floorsCol(b.lv); if (c) { ctx.fillStyle = c; ctx.fill('evenodd'); } ctx.strokeStyle = pal.ink; ctx.lineWidth = 0.7 * k; ctx.stroke(); });
+    A.buildings.forEach(b => { path(b.r, true); if (b.hu) { ctx.fillStyle = '#FFFFFF'; ctx.fill('evenodd'); ctx.strokeStyle = pal.ink; ctx.lineWidth = 0.9 * k; ctx.setLineDash([3 * k, 2 * k]); ctx.stroke(); ctx.setLineDash([]); return; }
+      const c = floorsCol(b.lv); if (c) { ctx.fillStyle = c; ctx.fill('evenodd'); } ctx.strokeStyle = pal.ink; ctx.lineWidth = 0.7 * k; ctx.stroke(); });
     // trees (OSM)
     // tree crowns read from the PNOA aerial photo (approximate; tools/build_ex21_canopy.py), true crown width
     (A.canopy || []).forEach(([u, v, dm]) => { ctx.beginPath(); ctx.arc(X(u), Y(v), Math.max(1.2, dm / 2) / mpp, 0, 7); ctx.fillStyle = 'rgba(126,123,67,.45)'; ctx.fill(); ctx.strokeStyle = pal.olive; ctx.lineWidth = 0.6 * k; ctx.stroke(); });
     A.trees.forEach(([u, v]) => { ctx.beginPath(); ctx.arc(X(u), Y(v), 2.2 / mpp, 0, 7); ctx.fillStyle = 'rgba(126,123,67,.35)'; ctx.fill(); ctx.strokeStyle = pal.olive; ctx.lineWidth = 0.8 * k; ctx.stroke(); });
     }
+    // public places (OSM: schools, sports centres, pools, parks …) — a dotted outline; water courses (OSM) in blue
+    (A.places || []).forEach(q => { path(q.r, true); if (!aer) { ctx.fillStyle = 'rgba(79,110,128,.12)'; ctx.fill('evenodd'); } ctx.strokeStyle = aer ? '#FFFFFF' : pal.blue; ctx.lineWidth = 1.8 * k; ctx.setLineDash([2 * k, 3 * k]); ctx.stroke(); ctx.setLineDash([]); });
+    (A.water || []).forEach(q => { const big = q.ww === 'river'; ctx.strokeStyle = aer ? 'rgba(255,255,255,.9)' : '#FFFFFF'; ctx.lineWidth = (big ? 9 : 5) * k; path(q.r); ctx.stroke(); ctx.strokeStyle = pal.base.lightBlue; ctx.lineWidth = (big ? 6 : 3) * k; path(q.r); ctx.stroke(); });
     // named plots (the factory set): a dashed outline and the name
     (A.plots || []).forEach(q => { path(q.r, true); if (aer) { ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 4 * k; ctx.stroke(); } ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.6 * k; ctx.setLineDash([8 * k, 4 * k]); ctx.stroke(); ctx.setLineDash([]); });
     // the fence by what lies outside it, dead ends, metro (over the photo: a thinner line on a white casing, so the real edge stays visible)
@@ -190,6 +194,9 @@
     ctx.font = font(9.5, 500); ctx.fillStyle = pal.ink2; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; const named = new Set();
     A.streets.forEach(st => { if (!st.nm || named.has(st.nm) || /footway|path|service|track/.test(st.hw)) return; const r = st.r[0] && st.r[0][0]; if (!r || r.length < 2) return; const i = Math.floor(r.length / 2), p0 = r[Math.max(0, i - 1)], p1 = r[Math.min(r.length - 1, i)];
       let ang = Math.atan2(-(p1[1] - p0[1]), p1[0] - p0[0]); if (ang > Math.PI / 2) ang -= Math.PI; if (ang < -Math.PI / 2) ang += Math.PI; ctx.save(); ctx.translate(X((p0[0] + p1[0]) / 2), Y((p0[1] + p1[1]) / 2)); ctx.rotate(ang); ctx.lineWidth = 3 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(st.nm, 0, 0); ctx.fillText(st.nm, 0, 0); ctx.restore(); named.add(st.nm); });
+    const labelAt = (rs, txt, col) => { let n = 0, sx = 0, sy = 0; rs.forEach(pg => (pg[0] || []).forEach(c => { sx += c[0]; sy += c[1]; n++; })); if (!n || !txt) return; ctx.font = font(11, 700); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 3.4 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(txt, X(sx / n), Y(sy / n)); ctx.fillStyle = col; ctx.fillText(txt, X(sx / n), Y(sy / n)); };
+    const seenNm = new Set(); (A.places || []).forEach(q => { if (q.nm && !seenNm.has(q.nm)) { seenNm.add(q.nm); labelAt(q.r, q.nm, pal.blue); } });
+    (A.water || []).forEach(q => { if (q.nm && !seenNm.has(q.nm)) { seenNm.add(q.nm); const r = q.r[0] && q.r[0][0]; if (r && r.length > 1) { const m = r[Math.floor(r.length / 2)]; ctx.font = font(11, 700); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 3.4 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(q.nm, X(m[0]), Y(m[1]) - 12 * k); ctx.fillStyle = pal.blue; ctx.fillText(q.nm, X(m[0]), Y(m[1]) - 12 * k); } } });
     (A.plots || []).forEach(q => { let n = 0, sx = 0, sy = 0; q.r.forEach(pg => pg[0].forEach(c => { sx += c[0]; sy += c[1]; n++; })); if (!n) return; ctx.font = font(11, 700); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 3.4 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(q.nm.replace(/ \(.*\)$/, ''), X(sx / n), Y(sy / n)); ctx.fillStyle = pal.ink; ctx.fillText(q.nm.replace(/ \(.*\)$/, ''), X(sx / n), Y(sy / n)); });
     // section line A–A′
     const sa = A.section.a, sb = A.section.b;
@@ -224,6 +231,8 @@
     return (any(a => (a.base || []).length) ? [{ sw: C.base, label: t('x34.lg.base') }] : []).concat([...used].map(c => ({ sw: pal.tour.bandlu[c], alpha: 0.5, label: t((AR.set === 'factory' ? 'x35.lg.lu.' : 'x34.lg.lu.') + c) })))
       .concat([{ sw: b['1-2'], label: t(cat ? 'x34.lg.fl.12c' : 'x34.lg.fl.12') }, { sw: b['3-4'], label: t('x34.lg.fl.34') }, { sw: b['5-8'], label: t('x34.lg.fl.58') }, { line: C.street, w: 3, label: t('x34.lg.street') }, { line: C.street, w: 1, dash: true, label: t('x34.lg.path') }])
       .concat(any(a => (a.plots || []).length) ? [{ line: pal.ink, w: 1, dash: true, label: t('x34.lg.plot') }] : [])
+      .concat(any(a => (a.places || []).length) ? [{ sw: 'rgba(79,110,128,.12)', stroke: pal.blue, label: t('x34.lg.place') }] : []).concat(any(a => (a.water || []).length) ? [{ line: pal.base.lightBlue, w: 3, label: t('x34.lg.water') }] : [])
+      .concat(any(a => (a.buildings || []).some(b => b.hu)) ? [{ sw: '#FFFFFF', stroke: pal.ink, dashed: true, label: t('x34.lg.hu') }] : [])
       .concat(any(a => (a.fence || []).length) ? [{ line: C.fence.housing, w: 3, label: t('x34.lg.fenceAny') }] : []).concat(any(a => (a.dead || []).length) ? [{ line: C.dead, w: 2, sym: 'dead', label: t('x34.lg.dead') }] : [])
       .concat([{ sw: pal.olive, alpha: 0.45, label: t('x34.lg.canopy') }, { line: pal.red, w: 1.5, dash: true, label: t('x34.lg.secline') }]); }
   function drawSection(ctx, x, y, w, h, id, o) {

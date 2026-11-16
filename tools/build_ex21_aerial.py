@@ -27,9 +27,10 @@ INFO = WMS + '&REQUEST=GetFeatureInfo&LAYERS=OI.MosaicElement&QUERY_LAYERS=OI.Mo
 
 
 def get(url):
-    for i in range(4):
+    import time
+    for i in range(6):
         try: return urllib.request.urlopen(url, timeout=120).read()
-        except Exception as e: err = e
+        except Exception as e: err = e; time.sleep(3 * (i + 1))
     raise err
 
 

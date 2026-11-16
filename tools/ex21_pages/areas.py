@@ -9,7 +9,7 @@ from playwright.sync_api import sync_playwright
 import json
 OUTD = sys.argv[1]; LANG = sys.argv[2] if len(sys.argv) > 2 else 'en'; SET = os.environ.get('SET', 'base'); PORT = 8851
 # SET=factory: the six windows of the Escúzar estate and village (data/ex21/factory_areas.json, sections in exports/ex21_factory/sec)
-IDS = [a['id'] for a in json.load(open('data/ex21/' + ('factory_areas.json' if SET == 'factory' else 'areas.json')))['areas']]
+IDS = os.environ['IDS'].split(',') if os.environ.get('IDS') else [a['id'] for a in json.load(open('data/ex21/' + ('factory_areas.json' if SET == 'factory' else 'areas.json')))['areas']]
 SEC = '/exports/ex21_factory/sec/section_' if SET == 'factory' else '/exports/ex21_sec/section_'
 SRC = ('D. G. del Catastro (buildings, floors) · OpenStreetMap (ODbL) · IGN MDT05 & PNOA (CC BY 4.0) · heights = floors × 3 m (estimate); sheds and churches: height not measured' if SET == 'factory' else
        'OpenStreetMap (ODbL) · IGN MDT25 & PNOA (CC BY 4.0) · Origen de los datos: Ministerio de Defensa (RD 118/2019) · heights = floors × 3 m (estimate)')
@@ -30,7 +30,7 @@ JS = r'''async ([id, SET, SEC, SRC]) => { await GA.ex21.readyAreas(SET); const D
   x.drawImage(img, (W - sw) / 2, secY, sw, sh);
   items.forEach((it, j) => { const cw = (R - L) / 3, col = j % 3, lx = rtl ? R - (col + 1) * cw : L + col * cw, yy = legY + Math.floor(j / 3) * mm(9) + mm(4); x.font = '500 ' + mm(2.9) + 'px ' + F; x.textBaseline = 'middle';
     const sx = rtl ? lx + cw - mm(10) : lx;
-    if (it.sw) { x.globalAlpha = it.alpha || 1; x.fillStyle = it.sw; x.fillRect(sx, yy - mm(2), mm(9), mm(4)); x.globalAlpha = 1; x.strokeStyle = '#8C817A'; x.lineWidth = 1; x.strokeRect(sx, yy - mm(2), mm(9), mm(4)); }
+    if (it.sw) { x.globalAlpha = it.alpha || 1; x.fillStyle = it.sw; x.fillRect(sx, yy - mm(2), mm(9), mm(4)); x.globalAlpha = 1; x.strokeStyle = it.stroke || '#8C817A'; x.lineWidth = it.stroke ? 3 : 1; x.setLineDash(it.dashed ? [8, 5] : []); x.strokeRect(sx, yy - mm(2), mm(9), mm(4)); x.setLineDash([]); }
     if (it.sym === 'dead') { const r = mm(1.9), cx = sx + mm(4.5); x.beginPath(); x.arc(cx, yy, r, 0, 7); x.fillStyle = '#fff'; x.fill(); x.strokeStyle = it.line; x.lineWidth = mm(0.6); x.stroke(); x.beginPath(); x.moveTo(cx - r * 0.6, yy); x.lineTo(cx + r * 0.6, yy); x.stroke(); }
     else if (it.line) { x.strokeStyle = it.line; x.lineWidth = (it.w || 1) * 4; x.setLineDash(it.dash ? [14, 8] : []); x.beginPath(); x.moveTo(sx, yy); x.lineTo(sx + mm(9), yy); x.stroke(); x.setLineDash([]); }
     x.fillStyle = GA.palette.ink; x.textAlign = rtl ? 'right' : 'left'; x.fillText(it.label, rtl ? sx - mm(2) : sx + mm(11), yy, cw - mm(13)); });
