@@ -334,7 +334,7 @@
         pages.push({ canvas: cv, paper: 'A3L' });
       }
       for (const x of Xs) if (!onlyId || x.area.id === onlyId) pages.push({ canvas: await sheetCanvas(x, Xs, scale, ov), paper: 'A3L' });
-      const bytes = PDF.build(pages, { title: 'Granada Atlas - Exercise 1.2' });
+      const bytes = await PDF.buildAsync(pages, { title: 'Granada Atlas - Exercise 1.2' });
       const name = onlyId ? `exercise_1_2_${(Xs.find(x => x.area.id === onlyId) || {}).no}.pdf` : 'exercise_1_2_fabrics.pdf';
       download(new Blob([bytes], { type: 'application/pdf' }), name); root.GA.lastPDF = { bytes, pages: pages.length, scale };
       toast(t('ex.pdfDone', { n: pages.length, s: '1:' + scale.den.toLocaleString('en-US') }));

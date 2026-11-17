@@ -1111,3 +1111,19 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
 - Strings `js/i18n_v34.js` (`v34.m.*`). Test `tests/ui_test_v35.py` (ar 1440 · he 1024 · en 390 · en 1440: button in the
   row, line on top also after a layer is switched on, red pixels on screen, labels, km and m in the box, length = an
   independent haversine sum ± 0.5 %, keys, double-click without zoom, close, the menu entry). Live check: `live_atlas.py` 5.46 block.
+
+## 43. Build 5.47 — a large study area exports without freezing the page (owner report of 17 Nov 2026, screenshot)
+- Report: the owner's "Base" study area (a 4.5 km square, 2,025 ha, saved but larger than the 12 km² analysis limit)
+  opened on the analysis page, then "This page isn't responding" and no PDF.
+- Measured (Chromium, a saved 4.5 km square around the base): the PDF export blocked the page in ONE task of 162 s.
+  Profile: 158 s in canvas `closePath` inside `js/mapcard.js` — every building of the area (~14,000) went into one
+  canvas path before a single `fill`, and the browser's path work grows much faster than the shape count. The rest was
+  the synchronous JPEG encoding of the pages (`toDataURL`).
+- Fix: `mapcard.js` fills buildings and strokes streets in batches of 100 features (each building stays whole, so its
+  courtyards stay holes; overlapping buildings no longer cancel out under even-odd). `GA.pdf.buildAsync` encodes each
+  page with `canvas.toBlob` and yields between pages — used by the analysis PDF (`fabric.exportPDF`), the Ex 1.2 sheets
+  (`compare.js`) and the Ex 1.3 card (`ex13.js`); the synchronous `GA.pdf.build` stays for single-page exports.
+  `fabric.js` `state.paintAllAsync` draws the cards not yet on screen one at a time before the export.
+- Result: export 3.4 s, longest task 1.6 s (was 162 s); the page opens with no task over 0.5 s.
+- Test `tests/ui_test_v36.py` (regular CPU canvas — a software GPU's read-back would measure the test machine).
+- Not changed: areas over 12 km² still cannot be analysed (`ANALYSIS_MAX_AREA`, tiled data); they can be saved and opened.

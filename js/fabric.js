@@ -187,7 +187,9 @@
     const done = new WeakSet(); const run = (cv) => { if (done.has(cv)) return; done.add(cv); const j = jobs.find(x => x[0] === cv); j && j[1](); };
     if ('IntersectionObserver' in root) { const io = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { run(e.target); io.unobserve(e.target); } }), { rootMargin: '400px 0px' }); jobs.forEach(([cv]) => io.observe(cv)); state.io = io; }
     else jobs.forEach(([cv]) => run(cv));
-    state.paintAllNow = () => jobs.forEach(([cv]) => run(cv)); state.view = { center: v.center, mpp: v.mpp };
+    state.paintAllNow = () => jobs.forEach(([cv]) => run(cv));
+    // 5.47: the export draws the cards not yet on screen one at a time, with a pause between them (a large area's cards each take a moment)
+    state.paintAllAsync = async () => { for (const [cv] of jobs) { if (!done.has(cv)) { run(cv); await new Promise(r => setTimeout(r, 0)); } } }; state.view = { center: v.center, mpp: v.mpp };
   }
   // 5.13: historical snapshots are loaded once (also by the PDF export, which waits for them) and every image is checked:
   // IGN answers PNOA2024 and PNOA2023 over Granada with a plain white JPEG (no flight coverage — checked 3 Nov 2026), so a
@@ -379,9 +381,9 @@
     if (pages.length <= 1) return (pages[0] || {}).canvas; const W = pages[0].canvas.width, H = pages.reduce((s2, p) => s2 + p.canvas.height, 0); const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d'); let y = 0; pages.forEach(p => { g.drawImage(p.canvas, 0, y); y += p.canvas.height; }); return cv; }
   async function exportPDF(id, opts) {
     const a = areaOf(id); const b = board(id); if (!state || state.id !== id) return; root.GA.toast && root.GA.toast(t('ex.building'));
-    if (state.paintAllNow) state.paintAllNow(); await ensureHistory().catch(() => { }); // export readiness: every image loaded (or explicitly unavailable)
+    if (state.paintAllAsync) await state.paintAllAsync(); else if (state.paintAllNow) state.paintAllNow(); await ensureHistory().catch(() => { }); // export readiness: every image loaded (or explicitly unavailable)
     const pages = (await boardPages(a, b, opts)).map(p => ({ canvas: p.canvas, paper: 'A3L' }));
-    const bytes = root.GA.pdf.build(pages, { title: 'Granada Atlas — ' + a.name }); PG.download(new Blob([bytes], { type: 'application/pdf' }), `analysis_${PG.slug(a.name)}.pdf`); root.GA.lastFabricPDF = { pages: pages.length, bytes };
+    const bytes = await root.GA.pdf.buildAsync(pages, { title: 'Granada Atlas — ' + a.name }); PG.download(new Blob([bytes], { type: 'application/pdf' }), `analysis_${PG.slug(a.name)}.pdf`); root.GA.lastFabricPDF = { pages: pages.length, bytes };
   }
   function setIncludeEmpty(id, on) { const b = board(id); b.pdfEmpty = !!on; store.save(); }
 

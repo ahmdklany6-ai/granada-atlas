@@ -4,7 +4,7 @@
 (function (root) {
   const PAPER = { A3L: [1190.55, 841.89], A3P: [841.89, 1190.55], A4L: [841.89, 595.28], A4P: [595.28, 841.89] };
   function dataURLBytes(u) { const b = atob(u.split(',')[1]); const a = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; }
-  // pages: [{ canvas, paper:'A3L', title }]
+  // pages: [{ canvas, paper:'A3L', title }] — or { jpg: Uint8Array, width, height, paper } when already encoded (buildAsync)
   function build(pages, meta) {
     const enc = new TextEncoder(); const chunks = []; let len = 0; const offsets = [];
     const push = (x) => { const b = typeof x === 'string' ? enc.encode(x) : x; chunks.push(b); len += b.length; };
@@ -18,11 +18,11 @@
     obj(3, [`<< /Producer (Granada Atlas) /Title (${esc(meta && meta.title)}) /CreationDate (D:${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)}Z) >>`]);
     pages.forEach((p, i) => {
       const [W, H] = Array.isArray(p.paper) ? p.paper : PAPER[p.paper || 'A3L']; const base = 4 + i * 3;
-      const jpg = dataURLBytes(p.canvas.toDataURL('image/jpeg', p.quality || 0.9));
+      const jpg = p.jpg || dataURLBytes(p.canvas.toDataURL('image/jpeg', p.quality || 0.9)); const pw = p.jpg ? p.width : p.canvas.width, ph = p.jpg ? p.height : p.canvas.height;
       const content = `q ${W.toFixed(2)} 0 0 ${H.toFixed(2)} 0 0 cm /Im0 Do Q`;
       obj(base, [`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W.toFixed(2)} ${H.toFixed(2)}] /Resources << /XObject << /Im0 ${base + 2} 0 R >> >> /Contents ${base + 1} 0 R >>`]);
       obj(base + 1, [`<< /Length ${content.length} >>\nstream\n${content}\nendstream`]);
-      obj(base + 2, [`<< /Type /XObject /Subtype /Image /Width ${p.canvas.width} /Height ${p.canvas.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.length} >>\nstream\n`, jpg, '\nendstream']);
+      obj(base + 2, [`<< /Type /XObject /Subtype /Image /Width ${pw} /Height ${ph} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.length} >>\nstream\n`, jpg, '\nendstream']);
     });
     const xref = len; const total = 4 + n * 3;
     let x = `xref\n0 ${total}\n0000000000 65535 f \n`; for (let i = 1; i < total; i++) x += String(offsets[i]).padStart(10, '0') + ' 00000 n \n';
@@ -134,5 +134,15 @@
       },
     };
   }
-  root.GA.pdf = { build, buildStrips, PAPER, vectorPainter };
+  // 5.47: the same PDF, with each page encoded by canvas.toBlob — the browser encodes off the main thread — and a pause
+  // between pages, so a long export (a large study area: tens of A3 pages) no longer freezes the page ("isn't responding").
+  // onPage(i, n) reports progress. Falls back to the synchronous encoder where toBlob is missing.
+  function encode(canvas, q) { return new Promise((res) => { if (!canvas.toBlob) { res(dataURLBytes(canvas.toDataURL('image/jpeg', q))); return; }
+    canvas.toBlob((b) => { if (!b) { res(dataURLBytes(canvas.toDataURL('image/jpeg', q))); return; } b.arrayBuffer().then(a => res(new Uint8Array(a))); }, 'image/jpeg', q); }); }
+  async function buildAsync(pages, meta, onPage) { const done = [];
+    for (let i = 0; i < pages.length; i++) { const p = pages[i]; onPage && onPage(i, pages.length);
+      done.push({ jpg: await encode(p.canvas, p.quality || 0.9), width: p.canvas.width, height: p.canvas.height, paper: p.paper });
+      await new Promise(r => setTimeout(r, 0)); }
+    return build(done, meta); }
+  root.GA.pdf = { build, buildAsync, buildStrips, PAPER, vectorPainter };
 })(window);
