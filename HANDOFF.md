@@ -1076,6 +1076,32 @@ south (Armilla, Churriana de la Vega, Las Gabias, Alhendín, Ogíjares).
 | section SVGs (in `exports/`, git-ignored) | `tools/export_ex21_sections_svg.py` (`STYLE=detail|poster|plain`, `ONLY`, `OUT`, `TREE_IMAGES`) | from `areas.json`. |
 | print pages (PNG at 200 dpi) | `tools/ex21_pages/city.py`, `areas.py`, `key.py`, `aerial.py` | Playwright scripts that call `GA.ex21.draw*` on a canvas; run from the repo root. Save the PNG with `dpi=(200,200)` (Pillow) so it places at true size; PDF via Pillow `resolution=200`. |
 
+**Print conventions since 17 Nov 2026 (owner's notes in Granada Map Studio on the A1 sheet; he asked for the same on every
+2.1 page):**
+- **The title is written ON the map, in grey** (`P.ink3`, weight 600, a soft white glow, no plate): every `GA.ex21.draw*`
+  takes `title` and `titlePx` and draws it in the top start corner (`mapTitle`); the page scripts have no header band any
+  more. Page titles that belong to no single map (history sheet, gaps, work page), chart, table and inset titles are grey too.
+  The scale goes at the end of the title ("… · 1:500").
+- **No white plates**: the scale bar is a grey bar with haloed figures (`scaleBar`), the north arrow has the same glow
+  (`northMark`, top END corner — left on Arabic/Hebrew pages, because the title takes the right).
+- **`o.view = [x0, y0, x1, y1]`** (canvas px) = the visible window when a sheet shows only part of a map: the frame, title,
+  north arrow, scale bar and the clip are drawn on that window (`furniture` / `frameTop` in `js/ex21.js`). Sheets must keep
+  the window inside the data frame (6400 × 5600 m) — a window that ran past it showed as a blank framed strip beside each map.
+- **Names stay whole inside the window** and clear of the title and north arrow (`place`): town names are shifted inwards,
+  a place name sits on the part of its polygon that is visible, a street name goes on the first stretch where it fits.
+- **Latin names and figures on the maps are always drawn left to right** (`ctx.direction = 'ltr'` inside `drawCity` and
+  `drawArea`; the factory's `halo` picks the direction from the text). Before this, the Arabic and Hebrew pages showed
+  "km ×1.49 5.8", "2025→2015 · % 7.1+" and "′B". In `i18n_v33.js` a year range with an arrow inside Arabic/Hebrew text is
+  wrapped in LRI…PDI (U+2066/U+2069), otherwise it reads 2025→2015.
+- **The two A1 sheets** (`tools/ex21_pages/sheets2.py <out> <he|ar|en>`, 841 × 594 mm; texts and title from
+  `exports/ex21_text/text_<lang>.md`, git-ignored): sheet 1 = four maps at 1:15,000 (1931 MTN50, PNOA 2022, built-up by
+  year, mean age), each with its key line; sheet 2 = the city map at 1:10,000 with its legend + the four 1:500 areas
+  B S R C, each with its section on a common ground line. `sheet.py` is the older single sheet.
+- **Resolution**: every page script reads `DPI` (default 200; the sheets 150); line weights and `KF` are given for 200 dpi
+  and scale with it. `tools/ex21_pages/pack.py <in> <out> <lang> [dpi]` (needs `img2pdf`) turns the PNGs into RGB images with
+  the resolution stored in the file (PNG for drawings, JPEG 95 for pages with photos) and PDFs at the true page size made
+  from the same image without re-encoding. Run the scripts one after another, never in parallel.
+
 **Honesty notes (keep them on the drawings)**
 - Building heights = OSM `building:levels` × 3 m (estimate); no levels = dashed outline, height unknown.
 - The limit surface is interpolated between the published lines: approximate. Which file sets the limit, by area:

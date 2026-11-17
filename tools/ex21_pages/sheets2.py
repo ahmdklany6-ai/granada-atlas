@@ -1,10 +1,10 @@
-"""Exercise 2.1 — TWO A1 sheets (owner, 17 Nov 2026): sheet 1 = the four maps (1931, 2022, built by age, mean age) at 1:10,000; sheet 2 = the city map + the four 1:500 areas with sections.
+"""Exercise 2.1 — TWO A1 sheets (owner, 17 Nov 2026): sheet 1 = the four maps (1931, 2022, built by age, mean age) at 1:15,000 (the whole base and the towns fit; 1:10,000 cut them); sheet 2 = the city map + the four 1:500 areas with sections.
 Older notes: the A1 sheet (841 × 594 mm, landscape), Hebrew by default (owner, 16 Nov 2026), Arabic copy.
 City level: the base and its fence at TRUE 1:10,000 (cropped to the base), the four 1:500 windows marked; area level: four
 1:500 windows (B tallest blocks, S sports centre, R river, C road with the lowest ceiling), each cropped to 70 × 70 m around
 its section, with the section at 1:500; side column: 1931 map vs 2022 photo, built-up by age, mean age; the texts.
 Needs: exports/ex21_sec/section_<id>.svg (STYLE=detail), exports/ex21_time/hist/{mtn50,pnoa2022}.jpg.
-Usage: python3 tools/ex21_pages/sheet.py <out folder> [he|ar|en]"""
+Usage: python3 tools/ex21_pages/sheets2.py <out folder> [he|ar|en]   (env DPI, default 150)"""
 import sys, time, base64, subprocess, os, json
 sys.path.insert(0, 'tests'); import ui_test_v3 as V3; import _nointro
 from playwright.sync_api import sync_playwright
