@@ -162,6 +162,9 @@
     muni: D.warmGrey, metro: D.blueDark, route: D.blueDeep, straight: BASE.brown, dead: RED, town: BASE.brown,
     height: { above: D.ink, '0-15': BASE.oxblood, '15-30': RED, '30-60': D.rose }, fence: P.tour.fence,
   };
+  // Exercise 2.1, the strategy (proposal) map: the walking strip along the fence and the green corridor (olive family, apart from the
+  // fence classes and the metro)
+  P.ex21s = { strip: D.oliveMid, corridor: D.oliveMid, corridorLine: BASE.olive };
   // Exercise 2.1, "the factory": the Escúzar estate (CITAI) and the village beside it (js/ex21.js drawFactory). Plots by kind,
   // land around by class, buildings by period of construction (old = blues, since 2000 = reds), the village in dark blue.
   P.ex21f = {

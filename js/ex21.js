@@ -118,6 +118,53 @@
     if (!o.noScale) scaleBar(ctx, V[0] + 22 * k, V[3] - 24 * k, 1000 / mpp, k, font);
     return true;
   }
+  // THE STRATEGY (owner request, 17 Nov 2026: "the strategy map" — the text's third part drawn). A PROPOSAL on today's map, not
+  // a fact: (1) a public walking strip outside the whole fence (schematic width ~35 m), (2) the 13 dead ends joined to it, (3) the
+  // places it links — the Churriana sports centre (OSM, area S), the Río Dílar where it meets the fence (OSM, area R), metro line 1's
+  // Armilla stop and the extension's end at Las Gabias (OSM; the extension's seven new stops are not drawn: no source publishes their
+  // positions, see data/manifest south_metro) — and (4) a green corridor Ogíjares ↔ Alhendín past the base's south tip, where the
+  // aeronautical ceiling already keeps building low (map 04): drawn schematically, its line is not surveyed.
+  function drawStrategy(ctx, x, y, w, h, o) {
+    o = o || {}; if (!D || !AR) return false; const pal = P(), C = pal.ex21, S = pal.ex21s; const E = CITY, mpp = (E.x1 - E.x0) / w, k = o.k || w / 1000; const t = o.t || ((s) => s); const F = root.GA.pages.font();
+    const X = (u) => x + (u - E.x0) / mpp, Y = (v) => y + (E.y1 - v) / mpp; const font = (sz, wt) => `${wt || 600} ${Math.round(sz * k)}px ${F}`;
+    drawCity(ctx, x, y, w, h, Object.assign({}, o, { only: 'strategy' }));   // context: boundaries, buildings, streets, the base, town names
+    const base = D.edge.find(f => f.p.k === 'base'); if (!base) return false; const V = o.view || [x, y, x + w, y + h];
+    const path = (rs, close) => { ctx.beginPath(); rs.forEach(r => r.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); if (close) ctx.closePath(); };
+    const halo = (s0, px, py, col, sz, wt, al) => { ctx.font = font(sz, wt); ctx.textAlign = al || 'center'; ctx.textBaseline = 'middle'; ctx.direction = /[֐-ࣿ]/.test(s0) ? 'rtl' : 'ltr'; ctx.lineJoin = 'round'; ctx.lineWidth = 3.6 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(s0, px, py); ctx.fillStyle = col; ctx.fillText(s0, px, py); };
+    ctx.save(); ctx.beginPath(); ctx.rect(V[0], V[1], V[2] - V[0], V[3] - V[1]); ctx.clip(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    // 4 the green corridor (schematic): Alhendín → past the south tip → Ogíjares
+    const town = (nm) => { const f = D.edge.find(q => q.p.k === 'town' && q.p.nm === nm); return f ? f.g : null; };
+    const tip = base.g.flat().reduce((a, b) => (b[1] < a[1] ? b : a)); const al = town('Alhendín'), og = town('Ogíjares');
+    // (it passes 250 m south-east of the base's tip, through the open land under the ceiling; ends 25 % short of each town centre)
+    let cor = null; if (al && og) { const P0 = [al[0] + (tip[0] - al[0]) * 0.25, al[1] + (tip[1] - al[1]) * 0.25], P2 = [og[0] + (tip[0] - og[0]) * 0.25, og[1] + (tip[1] - og[1]) * 0.25], M = [tip[0] + 180, tip[1] - 180];
+      const C1 = [2 * M[0] - (P0[0] + P2[0]) / 2, 2 * M[1] - (P0[1] + P2[1]) / 2]; cor = { P0, P2, M };   // the curve passes through M
+      const curve = () => { ctx.beginPath(); ctx.moveTo(X(P0[0]), Y(P0[1])); ctx.quadraticCurveTo(X(C1[0]), Y(C1[1]), X(P2[0]), Y(P2[1])); };
+      curve(); ctx.strokeStyle = S.corridor; ctx.globalAlpha = 0.45; ctx.lineWidth = 220 / mpp; ctx.stroke(); ctx.globalAlpha = 1; curve(); ctx.setLineDash([10 * k, 7 * k]); ctx.strokeStyle = S.corridorLine; ctx.lineWidth = 2 * k; ctx.stroke(); ctx.setLineDash([]); }
+    // 1 the walking strip, outside the fence only (a 70 m stroke on the outline, clipped to the outside: 35 m wide), a white dashed path on it
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); base.g.forEach(r => r.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); ctx.clip('evenodd');
+    path(base.g, true); ctx.strokeStyle = S.strip; ctx.globalAlpha = 0.85; ctx.lineWidth = 2 * 35 / mpp; ctx.stroke(); ctx.globalAlpha = 1; ctx.restore();
+    path(base.g, true); ctx.strokeStyle = C.baseLine; ctx.lineWidth = 1.4 * k; ctx.stroke();
+    // 2 the dead ends, joined
+    D.edge.filter(f => f.p.k === 'deadend').forEach(f => { const [u, v] = Array.isArray(f.g[0]) ? f.g[0][0] : f.g; ctx.beginPath(); ctx.arc(X(u), Y(v), 5 * k, 0, 7); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.strokeStyle = S.strip; ctx.lineWidth = 2.6 * k; ctx.stroke(); ctx.beginPath(); ctx.moveTo(X(u) - 2.6 * k, Y(v)); ctx.lineTo(X(u) + 2.6 * k, Y(v)); ctx.moveTo(X(u), Y(v) - 2.6 * k); ctx.lineTo(X(u), Y(v) + 2.6 * k); ctx.stroke(); });
+    // metro: line 1 today and the extension (as on map 03)
+    ctx.strokeStyle = C.metro; ctx.lineWidth = 4 * k; ctx.beginPath(); D.l1.lines.forEach(l => l.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); ctx.stroke();
+    D.metro.forEach(f => { if (f.p.k === 'track') { ctx.strokeStyle = C.metro; ctx.lineWidth = 4 * k; path(f.g); ctx.stroke(); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.5 * k; ctx.setLineDash([6 * k, 6 * k]); path(f.g); ctx.stroke(); ctx.setLineDash([]); } });
+    // 3 the places the strip links (numbered; names in the legend)
+    const cen = (rs) => { let n = 0, a = 0, b = 0; rs.forEach(pg => (pg[0] || []).forEach(c => { a += c[0]; b += c[1]; n++; })); return n ? [a / n, b / n] : null; };
+    const AS = AR.areas.find(a => a.id === 'S'), ARv = AR.areas.find(a => a.id === 'R');
+    const sport = AS && (AS.places || []).find(q => /Polideportivo/.test(q.nm || '')); const riv = ARv && (ARv.water || []).find(q => q.ww === 'river' || /Dílar/.test(q.nm || ''));
+    let rivP = null; if (riv) { const r = riv.r[0] && riv.r[0][0]; if (r) { const sec = ARv.section; const m = [(sec.a[0] + sec.b[0]) / 2, (sec.a[1] + sec.b[1]) / 2]; rivP = r.reduce((p, q) => (Math.hypot(q[0] - m[0], q[1] - m[1]) < Math.hypot(p[0] - m[0], p[1] - m[1]) ? q : p)); } }
+    const st = (k0) => { const f = D.metro.find(q => q.p.k === k0); return f ? f.g : null; };
+    const pts = [[sport ? cen(sport.r) : null, 'x38.p.sport'], [rivP, 'x38.p.river'], [st('station_now'), 'x38.p.armilla'], [st('terminus'), 'x38.p.gabias']];
+    pts.forEach(([p, key], i) => { if (!p) return; const px = X(p[0]), py = Y(p[1]); ctx.beginPath(); ctx.arc(px, py, 11 * k, 0, 7); ctx.fillStyle = pal.red; ctx.fill(); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2 * k; ctx.stroke();
+      ctx.fillStyle = '#FFFFFF'; ctx.font = font(12, 700); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.fillText(String(i + 1), px, py + 0.5 * k); });
+    // labels on the map: the strip's length, the corridor
+    const bS = D.edge.find(f => f.p.k === 'base').p; const per = bS && bS.perimeter_km;
+    if (cor) { const q = [(cor.M[0] + cor.P2[0]) / 2, (cor.M[1] + cor.P2[1]) / 2]; halo(t('x38.lab.corridor'), X(q[0]), Y(q[1]) - 150 / mpp, S.corridorLine, 12, 700); }
+    ctx.restore(); return { per }; }
+  function strategyLegend(t) { const pal = P(), C = pal.ex21, S = pal.ex21s; return [{ sw: C.base, label: t('x34.lg.base') }, { line: S.strip, w: 4, label: t('x38.lg.strip') }, { line: S.strip, w: 2, sym: 'join', label: t('x38.lg.join') },
+    { sw: S.corridor, alpha: 0.35, stroke: S.corridorLine, dashed: true, label: t('x38.lg.corridor') }, { line: C.metro, w: 4, label: t('x34.lg.l1') }, { line: C.metro, w: 4, rail: true, label: t('x34.lg.metro') },
+    { num: 1, label: t('x38.p.sport') }, { num: 2, label: t('x38.p.river') }, { num: 3, label: t('x38.p.armilla') }, { num: 4, label: t('x38.p.gabias') }]; }
   // the GAPS (owner request, 12 Nov 2026): three small maps of the agglomeration (34 municipalities, INE) — residents
   // change 2015 → 2025, net income per person (ADRH), rent index (IPVA, 2015 = 100) — the base solid, the five towns
   // outlined; then the same three values as bars for Granada city and each of the five towns
@@ -546,7 +593,7 @@
       PBRANCH.forEach(b => { const ww = (T.branch[b] || 0) / tot * (w - lw); ctx.fillStyle = cols[b]; ctx.fillRect(bx, by + rh * 0.12, ww, rh * 0.6); if (ww > 34 * k) { ctx.fillStyle = ['public', 'trade', 'industry', 'transport', 'health'].includes(b) ? '#FFFFFF' : pal.ink; ctx.font = font(9.5, 700); ctx.textAlign = 'center'; ctx.fillText(Math.round((T.branch[b] || 0) / tot * 100) + '%', bx + ww / 2, by + rh * 0.42); } bx += ww; }); });
     ctx.restore(); return PBRANCH.map(b => ({ sw: cols[b], label: t('x37.br.' + b) })); }
   root.GA.ex21 = { ready, readyAreas, readyAerial, loadAerial, aerialLegend, get aerial() { return AER; }, drawArea, drawSection, areaLegend, drawAreaKey, keyLegend, get areas() { return AR; }, drawCity, drawGaps, cityLegend, mapLegend, MAPS: ['island', 'walk', 'growth', 'height'], CITY, get data() { return D; },
-    readyFactory, drawFactory, factoryLegend, drawFactoryKey, FMAPS: ['estate', 'access', 'land', 'time'], get factory() { return FD; }, km2, scaleBar, mapTitle, titleBand,
+    readyFactory, drawFactory, factoryLegend, drawFactoryKey, FMAPS: ['estate', 'access', 'land', 'time'], get factory() { return FD; }, km2, scaleBar, mapTitle, titleBand, drawStrategy, strategyLegend,
     readyTime, drawTime, drawDwellChart, drawPopChart, timeLegend, get time() { return TD; }, TFIVE, tcol,
     readyPeople, drawPeople, peopleLegend, drawBranchBars, get people() { return PD; } };
 })(window);

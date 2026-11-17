@@ -179,5 +179,16 @@
     'x34.lg.built': ['مبانٍ (OSM)', 'מבנים (OSM)', 'Buildings (OSM)'],
     'x34.lg.muni2': ['حدود البلديات (النسبة عند كل بلدة = تغيّر السكان ⁦2015→2025⁩، INE)', 'גבולות רשויות (האחוז ליד כל עיירה = שינוי תושבים ⁦2015→2025⁩, INE)', 'Municipal boundaries (the % at each town = residents change 2015→2025, INE)'],
     'x34.lg.muni': ['حدود البلديات؛ اللون = تغيّر السكان ⁦2015→2025⁩ (INE)', 'גבולות רשויות; צבע = שינוי תושבים ⁦2015→2025⁩ (INE)', 'Municipal boundaries; tint = residents change 2015→2025 (INE)'],
+    // the strategy map (owner request, 17 Nov 2026) — a proposal, drawn on today's map
+    'x38.title': ['05 · الاستراتيجية (اقتراح): القاعدة تبقى، وأطرافها تنفتح', '05 · האסטרטגיה (הצעה): הבסיס נשאר, השוליים נפתחים', '05 · The strategy (proposal): the base stays, its edges open'],
+    'x38.lg.strip': ['مسار مشي عام على طول السياج من الخارج (اقتراح)، بعرض تخطيطي نحو 35 متراً', 'רצועת הליכה ציבורית לאורך הגדר מבחוץ (הצעה), ברוחב סכמטי של כ־35 מטר', 'Public walking strip outside the fence (proposal; schematic width ~35 m)'],
+    'x38.lg.join': ['طريق مسدود اليوم، يتصل بالمسار (‎13‎)', 'דרך ללא מוצא היום, מתחברת לרצועה (‎13‎)', 'Dead end today, joined to the strip (13)'],
+    'x38.lg.corridor': ['ممر أخضر مفتوح بين أوخيخارس وألهندين، تحت السقف الجوي (اقتراح، تخطيطي)', 'מסדרון ירוק פתוח בין אוחיחארס לאלהנדין, מתחת לתקרה האווירית (הצעה, סכמטי)', 'Green corridor Ogíjares – Alhendín, under the air ceiling (proposal, schematic)'],
+    'x38.p.sport': ['المجمّع الرياضي والمسبح في تشوريانا (OSM)', 'מרכז הספורט והבריכה של צ׳וריאנה (OSM)', 'Churriana sports centre and pool (OSM)'],
+    'x38.p.river': ['نهر ديلار عند السياج (OSM)', 'נהר דילאר ליד הגדר (OSM)', 'The Río Dílar at the fence (OSM)'],
+    'x38.p.armilla': ['مترو الخط 1، محطة أرميا (OSM)', 'מטרו קו 1, תחנת ארמייה (OSM)', 'Metro line 1, Armilla stop (OSM)'],
+    'x38.p.gabias': ['نهاية تمديد المترو، لاس غابياس (OSM). مواقع محطاته الجديدة غير منشورة', 'סוף הארכת המטרו, לאס גאביאס (OSM). מיקומי התחנות החדשות לא פורסמו', 'End of the metro extension, Las Gabias (OSM; its new stops are not published)'],
+    'x38.lab.corridor': ['ممر أخضر (اقتراح)', 'מסדרון ירוק (הצעה)', 'green corridor (proposal)'],
+    'x38.src': ['المصادر: OpenStreetMap (ODbL): السياج، الطرق المسدودة، المترو، المجمّع الرياضي، النهر؛ وزارة الدفاع (RD 118/2019): السقف الجوي (الخريطة 04). المسار والممر اقتراح مرسوم تخطيطياً، ليسا مخطّطاً مقرّراً ولا قياساً.', 'מקורות: OpenStreetMap (ODbL): הגדר, הדרכים ללא מוצא, המטרו, מרכז הספורט, הנהר; משרד הביטחון הספרדי (RD 118/2019): התקרה האווירית (מפה 04). הרצועה והמסדרון הם הצעה מצוירת סכמטית, לא תוכנית מאושרת ולא מדידה.', 'Sources: OpenStreetMap contributors (ODbL): the fence, dead ends, metro, sports centre, river; Ministerio de Defensa (RD 118/2019): the aeronautical ceiling (map 04). The strip and the corridor are a proposal drawn schematically — not an approved plan, not a survey.'],
   });
 })(window);
