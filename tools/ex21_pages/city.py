@@ -11,7 +11,7 @@ DPI = float(os.environ.get('DPI', 200)); KF = float(os.environ.get('KF', 3.8)) *
 PORT = 8853; V3.PORT = PORT; V3.V2.PORT = PORT
 srv = subprocess.Popen([sys.executable, '-m', 'http.server', str(PORT), '--bind', '127.0.0.1'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
 # one page per city map at TRUE 1:10,000: the frame 6400 × 5600 m = 640 × 560 mm; title, scale, legend and sources around it
-JS = r'''async ([m, DPI, KF]) => { await GA.ex21.ready(); if (m === 'strategy') await GA.ex21.readyAreas(); const D = DPI / 25.4, mm = (v) => Math.round(v * D);
+JS = r'''async ([m, DPI, KF]) => { await GA.ex21.ready(); if (m === 'strategy') { await GA.ex21.readyAreas(); await GA.ex21.readyTime(); } const D = DPI / 25.4, mm = (v) => Math.round(v * D);
   const t = (k, v) => GA.i18n.t(k, v); const F = GA.pages.font(); const rtl = GA.i18n.dir() === 'rtl';
   const wrap = (x, s, maxW) => { const out = []; let line = ''; s.split(' ').forEach(w => { const test = line ? line + ' ' + w : w; if (x.measureText(test).width > maxW && line) { out.push(line); line = w; } else line = test; }); if (line) out.push(line); return out; };
   if (m === 'gaps') { const W = mm(420), H = mm(297), mg = mm(15); const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);

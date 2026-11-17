@@ -132,6 +132,10 @@
     const path = (rs, close) => { ctx.beginPath(); rs.forEach(r => r.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); if (close) ctx.closePath(); };
     const halo = (s0, px, py, col, sz, wt, al) => { ctx.font = font(sz, wt); ctx.textAlign = al || 'center'; ctx.textBaseline = 'middle'; ctx.direction = /[֐-ࣿ]/.test(s0) ? 'rtl' : 'ltr'; ctx.lineJoin = 'round'; ctx.lineWidth = 3.6 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(s0, px, py); ctx.fillStyle = col; ctx.fillText(s0, px, py); };
     ctx.save(); ctx.beginPath(); ctx.rect(V[0], V[1], V[2] - V[0], V[3] - V[1]); ctx.clip(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    // 0 (owner, 17 Nov: "add them") the open land next to the towns, by aeronautical ceiling — the same 100 m cells as the time map
+    // "how it could grow" (Catastro, OSM, RD 118/2019): where the towns will press on the fence next, and how high they may build there
+    if (TD && TD.img && TD.img.edge && !o.noOpenLand) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.globalAlpha = 0.45; ctx.drawImage(TD.img.edge, x, y, w, h); ctx.restore();
+      ctx.save(); const bp = D.edge.find(f => f.p.k === 'base'); path(bp.g, true); ctx.fillStyle = C.base; ctx.fill(); ctx.restore(); }   // the base stays on top
     // 4 the green corridor (schematic): Alhendín → past the south tip → Ogíjares
     const town = (nm) => { const f = D.edge.find(q => q.p.k === 'town' && q.p.nm === nm); return f ? f.g : null; };
     const tip = base.g.flat().reduce((a, b) => (b[1] < a[1] ? b : a)); const al = town('Alhendín'), og = town('Ogíjares');
@@ -139,7 +143,9 @@
     let cor = null; if (al && og) { const P0 = [al[0] + (tip[0] - al[0]) * 0.25, al[1] + (tip[1] - al[1]) * 0.25], P2 = [og[0] + (tip[0] - og[0]) * 0.25, og[1] + (tip[1] - og[1]) * 0.25], M = [tip[0] + 180, tip[1] - 180];
       const C1 = [2 * M[0] - (P0[0] + P2[0]) / 2, 2 * M[1] - (P0[1] + P2[1]) / 2]; cor = { P0, P2, M };   // the curve passes through M
       const curve = () => { ctx.beginPath(); ctx.moveTo(X(P0[0]), Y(P0[1])); ctx.quadraticCurveTo(X(C1[0]), Y(C1[1]), X(P2[0]), Y(P2[1])); };
-      curve(); ctx.strokeStyle = S.corridor; ctx.globalAlpha = 0.45; ctx.lineWidth = 220 / mpp; ctx.stroke(); ctx.globalAlpha = 1; curve(); ctx.setLineDash([10 * k, 7 * k]); ctx.strokeStyle = S.corridorLine; ctx.lineWidth = 2 * k; ctx.stroke(); ctx.setLineDash([]); }
+      // a pale band with dark olive edges, so it reads apart from the open-land cells
+      curve(); ctx.strokeStyle = S.corridorLine; ctx.lineWidth = 220 / mpp; ctx.stroke(); curve(); ctx.strokeStyle = '#FFFFFF'; ctx.globalAlpha = 0.72; ctx.lineWidth = 220 / mpp - 6 * k; ctx.stroke(); ctx.globalAlpha = 1;
+      curve(); ctx.setLineDash([10 * k, 7 * k]); ctx.strokeStyle = S.corridorLine; ctx.lineWidth = 2 * k; ctx.stroke(); ctx.setLineDash([]); }
     // 1 the walking strip, outside the fence only (a 70 m stroke on the outline, clipped to the outside: 35 m wide), a white dashed path on it
     ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); base.g.forEach(r => r.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); ctx.clip('evenodd');
     path(base.g, true); ctx.strokeStyle = S.strip; ctx.globalAlpha = 0.85; ctx.lineWidth = 2 * 35 / mpp; ctx.stroke(); ctx.globalAlpha = 1; ctx.restore();
@@ -161,9 +167,18 @@
     // labels on the map: the strip's length, the corridor
     const bS = D.edge.find(f => f.p.k === 'base').p; const per = bS && bS.perimeter_km;
     if (cor) { const q = [(cor.M[0] + cor.P2[0]) / 2, (cor.M[1] + cor.P2[1]) / 2]; halo(t('x38.lab.corridor'), X(q[0]), Y(q[1]) - 150 / mpp, S.corridorLine, 12, 700); }
-    ctx.restore(); return { per }; }
+    ctx.restore();
+    // the 2045 scenario in a corner box (time.json: the pace of 2015–2025 continued — a scenario, not a forecast)
+    if (TD && TD.projection && !o.noScenario) { const P5 = TD.projection.five, SC = TD.base_scenario; const lines = [t('x38.sc.title'), t('x36.box.need', { a: P5['2025'].toLocaleString('en-US'), b: P5['2045'].toLocaleString('en-US'), n: P5.dwellings_needed_2045.toLocaleString('en-US'), p: SC.persons_per_dwelling })];
+      const rtl = root.GA.i18n.dir() === 'rtl', bw = 470 * k, pad = 14 * k; ctx.save(); ctx.font = font(13, 500); const words = lines[1].split(' '); const wl = []; let ln = ''; words.forEach(wd => { const tt = ln ? ln + ' ' + wd : wd; if (ctx.measureText(tt).width > bw - 2 * pad && ln) { wl.push(ln); ln = wd; } else ln = tt; }); wl.push(ln);
+      const bh = pad * 2 + 22 * k + wl.length * 18 * k, bx = rtl ? V[0] + 14 * k : V[2] - 14 * k - bw, by = V[3] - 14 * k - bh;
+      ctx.fillStyle = 'rgba(255,255,255,.93)'; ctx.fillRect(bx, by, bw, bh); ctx.strokeStyle = pal.line2; ctx.lineWidth = 1 * k; ctx.strokeRect(bx, by, bw, bh);
+      ctx.direction = rtl ? 'rtl' : 'ltr'; ctx.textAlign = rtl ? 'right' : 'left'; ctx.textBaseline = 'alphabetic'; const tx = rtl ? bx + bw - pad : bx + pad;
+      ctx.font = font(14, 600); ctx.fillStyle = pal.ink3; ctx.fillText(lines[0], tx, by + pad + 12 * k, bw - 2 * pad); ctx.font = font(13, 500); ctx.fillStyle = pal.ink; wl.forEach((l2, i) => ctx.fillText(l2, tx, by + pad + 32 * k + i * 18 * k, bw - 2 * pad)); ctx.restore(); }
+    return { per }; }
   function strategyLegend(t) { const pal = P(), C = pal.ex21, S = pal.ex21s; return [{ sw: C.base, label: t('x34.lg.base') }, { line: S.strip, w: 4, label: t('x38.lg.strip') }, { line: S.strip, w: 2, sym: 'join', label: t('x38.lg.join') },
-    { sw: S.corridor, alpha: 0.35, stroke: S.corridorLine, dashed: true, label: t('x38.lg.corridor') }, { line: C.metro, w: 4, label: t('x34.lg.l1') }, { line: C.metro, w: 4, rail: true, label: t('x34.lg.metro') },
+    { sw: '#FFFFFF', stroke: S.corridorLine, label: t('x38.lg.corridor') }, { line: C.metro, w: 4, label: t('x34.lg.l1') }, { line: C.metro, w: 4, rail: true, label: t('x34.lg.metro') },
+    ...(TD ? ['free', '30-60', '15-30', '0-15'].map(c => ({ sw: `rgb(${TD.edge_colours[c].join(',')})`, alpha: 0.45, label: t('x36.edge.' + c, { ha: km2(TD.edge_ha[c] || 0) }) })) : []),
     { num: 1, label: t('x38.p.sport') }, { num: 2, label: t('x38.p.river') }, { num: 3, label: t('x38.p.armilla') }, { num: 4, label: t('x38.p.gabias') }]; }
   // the GAPS (owner request, 12 Nov 2026): three small maps of the agglomeration (34 municipalities, INE) — residents
   // change 2015 → 2025, net income per person (ADRH), rent index (IPVA, 2015 = 100) — the base solid, the five towns
