@@ -356,7 +356,7 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
     gpts = [(X(p[0]), Z(p[1])) for p in sm]; lpts = [(X(p[0]), Z(p[2])) for p in sm if p[2] < 1e9]; P = lambda pts: ' '.join(f'{x:.2f},{y:.2f}' for x, y in pts)
     o = [f'<g id="section-{a["id"]}">',
          f'<defs><pattern id="hatch-{a["id"]}" width="2.2" height="2.2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="2.2" stroke="{RED}" stroke-width="0.3" stroke-opacity="0.45"/></pattern></defs>',
-         f'<g id="forbidden-sky-{a["id"]}"><polygon points="{X(0):.2f},{oy + top:.2f} {P(lpts)} {X(L):.2f},{oy + top:.2f}" fill="url(#hatch-{a["id"]})"/></g>' if has_lim else '',
+         f'<g id="forbidden-sky-{a["id"]}"><polygon points="{X(0):.2f},{oy + top:.2f} {P(lpts)} {X(L):.2f},{oy + top:.2f}" fill="{SKY}" fill-opacity="0.45"/><polygon points="{X(0):.2f},{oy + top:.2f} {P(lpts)} {X(L):.2f},{oy + top:.2f}" fill="url(#hatch-{a["id"]})"/></g>' if has_lim else '',  # the sky goes on above the limit too (owner, 17 Nov), hatched where building is forbidden
          f'<g id="allowed-envelope-{a["id"]}"><polygon points="{P(lpts)} {P(reversed(gpts))}" fill="{SKY}" fill-opacity="0.45"/></g>' if has_lim else
          f'<g id="sky-{a["id"]}"><polygon points="{X(0):.2f},{oy + top:.2f} {X(L):.2f},{oy + top:.2f} {P(reversed(gpts))}" fill="{SKY}" fill-opacity="0.45"/></g>']
     # buildings behind the plane (≤ 40 m), light outlines with floor lines
@@ -458,7 +458,7 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
              f'<text x="{X(fa) - 4:.2f}" y="{min(Z(gf) - 8, (Z(gf) + Z(lf)) / 2):.2f}" {FONT} font-size="5" font-weight="700" text-anchor="end" fill="{RED}">{lf - gf:.0f} m</text></g>')
     if BAND:
         yb = Z(zb); zz = ''.join(f'{"M" if i == 0 else "L"}{X(0) + i * 3:.2f},{yb + (1.2 if i % 2 else -1.2):.2f} ' for i in range(int(W / 3) + 2))
-        o.append(f'<g id="height-break-{a["id"]}"><rect x="{X(0):.2f}" y="{yb - 1.6:.2f}" width="{W:.2f}" height="3.2" fill="#FFFFFF"/><path d="{zz}" fill="none" stroke="{INK3}" stroke-width="0.25"/></g>')
+        pass  # 17 Nov 2026 (owner): no zigzag break line; the band above 22 m stays compressed, the limit is written in metres
     o.append(f'<g id="letters-{a["id"]}"><text x="{X(0):.2f}" y="{Z(zmin) + 3.5:.2f}" {FONT} font-size="3.4" font-weight="700" fill="{INK}">{a["id"]}</text>'
              f'<text x="{X(L):.2f}" y="{Z(zmin) + 3.5:.2f}" {FONT} font-size="3.4" font-weight="700" text-anchor="end" fill="{INK}">{a["id"]}′</text></g>')
     sb = [f'<g id="scale-{a["id"]}">']; sx, sy = X(L) - 50 * MM, Z(zmin) + 7

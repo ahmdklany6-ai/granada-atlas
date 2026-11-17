@@ -33,9 +33,9 @@ JS = r'''async ([IDS, TX, LAB]) => { await GA.ex21.ready(); await GA.ex21.readyA
   const rule = (y) => { x.strokeStyle = pal.line2; x.lineWidth = mm(0.25); x.beginPath(); x.moveTo(mm(M), y); x.lineTo(W - mm(M), y); x.stroke(); };
   // ---- title band ----
   txt(TX.title, rtl ? W - mm(M) : mm(M), mm(28), 14, 700, pal.ink); txt(LAB.sub, rtl ? mm(M) : W - mm(M), mm(28), 4.6, 500, pal.red, rtl ? 'left' : 'right'); rule(mm(34));
-  const top = 42, rowH = 420;
+  const top = 42, rowH = 400;
   // ---- city map, true 1:10,000 (1 km = 100 mm), 330 × 326 mm, legends under it ----
-  const cw = 330, chh = 340, cX = X0(M, cw), cY = mm(top + 4); const E = GA.ex21.CITY, full = mm(640), CX = 442860, CY = 4109470;
+  const cw = 330, chh = 325, cX = X0(M, cw), cY = mm(top + 4); const E = GA.ex21.CITY, full = mm(640), CX = 442860, CY = 4109470;
   txt(LAB.city, sx(cX, mm(cw)), cY - mm(2), 3.6, 700, pal.ink, null, mm(cw));
   const ox = cX + mm(cw) / 2 - (CX - E.x0) / 6400 * full, oy = cY + mm(chh) / 2 - (E.y1 - CY) / 6400 * full;
   x.save(); x.beginPath(); x.rect(cX, cY, mm(cw), mm(chh)); x.clip(); GA.ex21.drawCity(x, ox, oy, full, full * 5600 / 6400, { t, only: 'island', k: 2.6 });
@@ -61,6 +61,9 @@ JS = r'''async ([IDS, TX, LAB]) => { await GA.ex21.ready(); await GA.ex21.readyA
   const aw0 = 841 - M - cw - G - M, aX = X0(M + cw + G, aw0); const cellW = (aw0 - G) / 2, cellH = (rowH - G) / 2, mapH = 100, secH = cellH - 6 - mapH - 3;
   txt(LAB.areas, sx(aX, mm(aw0)), mm(top + 2), 3.6, 700, pal.ink, null, mm(aw0));
   const secImgs = await Promise.all(IDS.map(id => load('/exports/ex21_sec/section_' + id + '.svg?r=' + Date.now())));
+  // the ground at the fence (d = 95 m) in each section, in mm from the SVG's top: the sections of one row are drawn with their ground on one line
+  const gy = await Promise.all(IDS.map(async id => { const sv = await (await fetch('/exports/ex21_sec/section_' + id + '.svg?r=' + Date.now())).text(); const m = sv.match(/id="ground-cut-[^"]*"><polygon points="([^"]+)"/);
+    const pts = m[1].trim().split(' ').map(q => q.split(',').map(Number)); const fx = 10 + 2 * 95; let best = pts[0]; pts.forEach(q => { if (Math.abs(q[0] - fx) < Math.abs(best[0] - fx)) best = q; }); return best[1]; }));
   IDS.forEach((id, i) => { const A = GA.ex21.areas.areas.find(a => a.id === id); const col = i % 2, row = Math.floor(i / 2);
     const px = rtl ? aX + mm(aw0) - (col + 1) * mm(cellW) - col * mm(G) : aX + col * mm(cellW + G), py = mm(top + 4 + row * (cellH + G));
     txt(t('x34.a.' + id), sx(px, mm(cellW)), py + mm(3.5), 3.3, 700, pal.ink, null, mm(cellW));
@@ -73,14 +76,13 @@ JS = r'''async ([IDS, TX, LAB]) => { await GA.ex21.ready(); await GA.ex21.readyA
     // the section, 1:500: its last (cellW / 2) metres, ending a few metres inside the fence; cropped to secH from the top, under the top pad
     const im = secImgs[i], swmm = im.naturalWidth / (96 / 25.4), shmm = im.naturalHeight / (96 / 25.4); const sy0 = my + mm(mapH + 3);
     const dEnd = Math.min(L, 95 + 22), dStart = dEnd - cellW / 2;
-    x.save(); x.beginPath(); x.rect(px, sy0, mm(cellW), mm(secH)); x.clip(); x.drawImage(im, px - mm(10 + 2 * dStart), sy0 - mm(Math.max(8, shmm - 30 - secH)), mm(swmm), mm(shmm)); x.restore(); });
+    x.save(); x.beginPath(); x.rect(px, sy0, mm(cellW), mm(secH)); x.clip(); const base = sy0 + mm(secH - 12); x.drawImage(im, px - mm(10 + 2 * dStart), base - mm(gy[i]), mm(swmm), mm(shmm)); x.restore(); });
   rule(mm(top + rowH + 6));
   // ---- bottom band: phenomenon + strategy | text | four small maps ----
-  const bY = top + rowH + 14, bH = 594 - M - 8 - bY, tw1 = 205, tw2 = 205;
+  const bY = top + rowH + 14, bH = 594 - M - 8 - bY, tw1 = 300, tw2 = 0;
   const col1 = X0(M, tw1), col2 = X0(M + tw1 + G, tw2); let ty = mm(bY + 2);
-  [[TX.h[0], TX.phen, 5.2, 700, pal.red, 1.33], [TX.h[2], TX.strat, 4.2, 600, pal.ink, 1.45]].forEach(([hd, body, sz, wt, colr, lh]) => { txt(hd, sx(col1, mm(tw1)), ty, 3.4, 700, pal.ink3); ty += mm(6); x.font = font(sz, wt); x.direction = rtl ? 'rtl' : 'ltr'; wrap(body, mm(tw1)).forEach(ln => { txt(ln, sx(col1, mm(tw1)), ty, sz, wt, colr); ty += mm(sz * lh); }); ty += mm(5); });
-  ty = mm(bY + 2); txt(TX.h[1], sx(col2, mm(tw2)), ty, 3.4, 700, pal.ink3); ty += mm(6); x.font = font(4, 400); x.direction = rtl ? 'rtl' : 'ltr'; wrap(TX.text, mm(tw2)).forEach(ln => { txt(ln, sx(col2, mm(tw2)), ty, 4, 400, pal.ink); ty += mm(6); });
-  const gw = 841 - M - tw1 - G - tw2 - G - M, gX = X0(M + tw1 + G + tw2 + G, gw), pw = (gw - 3 * G) / 4, ph = Math.min(pw * 5600 / 6400, bH - 16);
+  [[TX.h[0], TX.phen, 4.8, 700, pal.red, 1.32], [TX.h[2], TX.strat, 4, 600, pal.ink, 1.42], [TX.h[1], TX.text, 3.7, 400, pal.ink, 1.45]].forEach(([hd, body, sz, wt, colr, lh]) => { txt(hd, sx(col1, mm(tw1)), ty, 3.2, 700, pal.ink3); ty += mm(5); x.font = font(sz, wt); x.direction = rtl ? 'rtl' : 'ltr'; wrap(body, mm(tw1)).forEach(ln => { txt(ln, sx(col1, mm(tw1)), ty, sz, wt, colr); ty += mm(sz * lh); }); ty += mm(3.5); });
+  const gw = 841 - M - tw1 - G - M, gX = X0(M + tw1 + G, gw), pw = (gw - 3 * G) / 4, ph = Math.min(pw * 5600 / 6400, bH - 16);
   const [m31, p22] = await Promise.all([load('/exports/ex21_time/hist/mtn50.jpg'), load('/exports/ex21_time/hist/pnoa2022.jpg')]);
   [[m31, LAB.y1931, 'photo'], [p22, LAB.y2022, 'photo'], [null, LAB.built, 'built'], [null, LAB.age, 'age']].forEach(([im, lb, kind], j) => { const px = rtl ? gX + mm(gw) - (j + 1) * mm(pw) - j * mm(G) : gX + j * mm(pw + G), py = mm(bY + 4);
     txt(lb, sx(px, mm(pw)), py - mm(1.5), 2.8, 700, pal.ink, null, mm(pw));
