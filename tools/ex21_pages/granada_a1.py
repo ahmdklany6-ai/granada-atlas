@@ -1,6 +1,6 @@
 """Exercise 2.1 — Granada on one A1 sheet at TRUE 1:25,000 (owner, 17 Nov 2026: "a map like this one on A1 at 500 dpi, a big
 title Granada, the scale bar without a background, show the base and the five towns").
-Frame (EPSG:25830) 435,650–455,600 × 4,104,300–4,118,650 m = 798 × 574 mm at 1:25,000, on an A1 sheet (841 × 594 mm).
+Frame (EPSG:25830) 435,650–455,600 × 4,106,000–4,120,350 m = 798 × 574 mm at 1:25,000, on an A1 sheet (841 × 594 mm).
 Layers: terrain (tools/build_ex21_granada_terrain.py → exports/ex21_granada/terrain.png: IGN MDT25 tint + hillshade),
 20 m contours (IGN MDT25), land use and parks, rivers and streams, streets and roads by class, buildings by floors
 (OpenStreetMap), municipal boundaries (es-atlas / IGN), the Armilla Air Base (OSM) and the five towns' built-up cores
@@ -15,7 +15,7 @@ Image.MAX_IMAGE_PIXELS = None
 OUTD = sys.argv[1]; LANG = sys.argv[2] if len(sys.argv) > 2 else 'en'; DPI = float(os.environ.get('DPI', 500)); PORT = 8860; V3.PORT = PORT; V3.V2.PORT = PORT
 STRIPS = int(os.environ.get('STRIPS', 8))
 srv = subprocess.Popen([sys.executable, '-m', 'http.server', str(PORT), '--bind', '127.0.0.1'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
-LOAD = r'''async () => { if (window.__G) return true; const P = GA.proj.EPSG25830; const FR = [435650, 4104300, 455600, 4118650];
+LOAD = r'''async () => { if (window.__G) return true; const P = GA.proj.EPSG25830; const FR = [435650, 4106000, 455600, 4120350];
   const ll0 = P.inverse([FR[0] - 300, FR[1] - 300]), ll1 = P.inverse([FR[2] + 300, FR[3] + 300]); const bb = [ll0[0], ll0[1], ll1[0], ll1[1]];
   const U = (c) => P.forward(c); const rings = (g) => g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : g.type === 'LineString' ? [[g.coordinates]] : g.type === 'MultiLineString' ? g.coordinates.map(l => [l]) : [];
   const pj = (f) => rings(f.geometry).map(pg => pg.map(r => r.map(U)));
@@ -41,19 +41,16 @@ DRAW = r'''async ([DPI, y0, hS, LANG]) => { const G = window.__G, pal = GA.palet
   x.save(); x.beginPath(); x.rect(MX, MY, mm(mapW), mm(mapH)); x.clip(); x.lineJoin = 'round'; x.lineCap = 'round';
   // 1 terrain
   x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(G.img, MX, MY, mm(mapW), mm(mapH));
-  // 2 land use: parks and green a little greener; industry light grey; field edges thin
-  G.lu.forEach(l => { if (!vis(l.g)) return; const col = { forest: pal.base.olive, grass: pal.olive, meadow: pal.olive, orchard: pal.olive, industrial: pal.grey3, commercial: pal.grey3, retail: pal.grey3, cemetery: pal.grey2 }[l.lu]; path(l.g, true);
-    if (col) { x.globalAlpha = l.lu === 'industrial' || l.lu === 'commercial' || l.lu === 'retail' ? 0.45 : 0.22; x.fillStyle = col; x.fill('evenodd'); x.globalAlpha = 1; }
-    if (l.lu === 'farmland' || l.lu === 'orchard' || l.lu === 'meadow') { x.strokeStyle = 'rgba(255,255,255,.75)'; x.lineWidth = mm(0.12); x.stroke(); } });
-  G.pk.forEach(p => { if (!vis(p.g) || p.le !== 'park') return; path(p.g, true); x.globalAlpha = 0.35; x.fillStyle = pal.olive; x.fill('evenodd'); x.globalAlpha = 1; });
+  // 2 parks only, very light (owner, 17 Nov: no extra details)
+  G.pk.forEach(p => { if (!vis(p.g) || p.le !== 'park') return; path(p.g, true); x.globalAlpha = 0.18; x.fillStyle = pal.olive; x.fill('evenodd'); x.globalAlpha = 1; });
   // 3 contours every 20 m, index every 100 m
-  G.co.forEach(l => { if (!vis(l.g)) return; const ix = l.e % 100 === 0; path(l.g); x.strokeStyle = ix ? 'rgba(116,54,45,.45)' : 'rgba(116,54,45,.22)'; x.lineWidth = mm(ix ? 0.16 : 0.08); x.stroke(); });
+  G.co.forEach(l => { if (!vis(l.g)) return; const ix = l.e % 100 === 0; path(l.g); x.strokeStyle = ix ? 'rgba(116,54,45,.32)' : 'rgba(116,54,45,.16)'; x.lineWidth = mm(ix ? 0.14 : 0.07); x.stroke(); });
   // 4 water
   G.wa.forEach(l => { if (!vis(l.g)) return; const big = l.ww === 'river'; path(l.g); x.strokeStyle = pal.base.lightBlue; x.lineWidth = mm(big ? 0.9 : l.ww === 'canal' ? 0.35 : 0.25); x.stroke(); });
   // 5 streets: minor under major, white casing on main roads
   const cls = (hw) => /^(motorway|trunk)/.test(hw) ? 1 : /^(primary)/.test(hw) ? 2 : /^(secondary|tertiary)/.test(hw) ? 3 : /^(residential|living_street|unclassified|pedestrian|service)$/.test(hw) ? 4 : /^(track)$/.test(hw) ? 5 : /^(footway|path|cycleway|steps|bridleway)$/.test(hw) ? 6 : 0;
   const W5 = { 1: 1.15, 2: 0.85, 3: 0.55, 4: 0.22, 5: 0.14, 6: 0.1 };
-  [6, 5, 4].forEach(k0 => { x.beginPath(); G.st.forEach(st => { if (cls(st.hw) !== k0 || !vis(st.g)) return; st.g.forEach(pg => pg.forEach(r => r.forEach((p, i) => i ? x.lineTo(X(p[0]), Y(p[1])) : x.moveTo(X(p[0]), Y(p[1]))))); });
+  [4].forEach(k0 => { x.beginPath(); G.st.forEach(st => { if (cls(st.hw) !== k0 || !vis(st.g)) return; st.g.forEach(pg => pg.forEach(r => r.forEach((p, i) => i ? x.lineTo(X(p[0]), Y(p[1])) : x.moveTo(X(p[0]), Y(p[1]))))); });
     x.strokeStyle = k0 === 4 ? 'rgba(255,255,255,.95)' : 'rgba(255,255,255,.7)'; x.lineWidth = mm(W5[k0]); x.setLineDash(k0 === 6 ? [mm(0.5), mm(0.4)] : []); x.stroke(); x.setLineDash([]); });
   [3, 2, 1].forEach(k0 => { const sel = G.st.filter(st => cls(st.hw) === k0 && vis(st.g)); const draw = (wd, col) => { x.beginPath(); sel.forEach(st => st.g.forEach(pg => pg.forEach(r => r.forEach((p, i) => i ? x.lineTo(X(p[0]), Y(p[1])) : x.moveTo(X(p[0]), Y(p[1])))))); x.strokeStyle = col; x.lineWidth = mm(wd); x.stroke(); };
     draw(W5[k0] + 0.3, '#FFFFFF'); draw(W5[k0], k0 === 3 ? pal.rose : pal.red); });
@@ -66,7 +63,7 @@ DRAW = r'''async ([DPI, y0, hS, LANG]) => { const G = window.__G, pal = GA.palet
   // 8 the five towns' built-up cores: a dark outline
   G.towns.forEach(tn => { path(tn.g, true); x.strokeStyle = '#FFFFFF'; x.lineWidth = mm(1.2); x.stroke(); x.strokeStyle = pal.base.wine; x.lineWidth = mm(0.6); x.setLineDash([mm(2.4), mm(1.1)]); x.stroke(); x.setLineDash([]); });
   // 9 the base
-  if (G.base) { path(G.base, true); x.fillStyle = C.base; x.fill('evenodd'); x.strokeStyle = '#FFFFFF'; x.lineWidth = mm(0.5); x.stroke(); }
+  if (G.base) { path(G.base, true); x.globalAlpha = 0.55; x.fillStyle = C.base; x.fill('evenodd'); x.globalAlpha = 1; x.strokeStyle = C.base; x.lineWidth = mm(0.45); x.stroke(); }
   // 10 names: the five towns big, other municipalities smaller, at the centre of their buildings inside the frame; the base
   const halo = (s0, px, py, sz, wt, col) => { x.font = `${wt} ${Math.round(mm(sz))}px ${F}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.direction = 'ltr'; x.lineJoin = 'round'; x.strokeStyle = 'rgba(255,255,255,.92)'; x.lineWidth = mm(sz * 0.28); x.strokeText(s0, px, py); x.fillStyle = col; x.fillText(s0, px, py); };
   if (!window.__lab) { const inside = (pt, g) => { let ins = false; g.forEach(pg => pg.forEach(r => { for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const a = r[i], b = r[j]; if ((a[1] > pt[1]) !== (b[1] > pt[1]) && pt[0] < (b[0] - a[0]) * (pt[1] - a[1]) / (b[1] - a[1]) + a[0]) ins = !ins; } })); return ins; };
@@ -74,12 +71,13 @@ DRAW = r'''async ([DPI, y0, hS, LANG]) => { const G = window.__G, pal = GA.palet
     window.__lab = G.area.map((a, i) => acc[i][2] > 150 ? { nm: a.nm, five: a.five, p: [acc[i][0] / acc[i][2], acc[i][1] / acc[i][2]] } : null).filter(Boolean); }
   window.__lab.forEach(l => { if (l.five) return; const big = l.nm === 'Granada'; halo(big ? l.nm.toUpperCase() : l.nm, X(l.p[0]), Y(l.p[1]), big ? 9 : 4.2, big ? 700 : 600, big ? pal.ink : pal.ink2); });
   G.towns.forEach(tn => { let n = 0, a = 0, b = 0; tn.g.forEach(pg => pg[0].forEach(p => { a += p[0]; b += p[1]; n++; })); halo(tn.nm.toUpperCase(), X(a / n), Y(b / n), 6, 700, pal.base.wine); });
-  if (G.base) { let n = 0, a = 0, b = 0; G.base.forEach(pg => pg[0].forEach(p => { a += p[0]; b += p[1]; n++; })); x.font = `700 ${Math.round(mm(5.2))}px ${F}`; x.fillStyle = '#FFFFFF'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.direction = rtl ? 'rtl' : 'ltr'; x.fillText(t('x34.base').toUpperCase(), X(a / n), Y(b / n)); x.font = `500 ${Math.round(mm(3.2))}px ${F}`; x.direction = 'ltr'; x.fillText('3.71 km²', X(a / n), Y(b / n) + mm(6.5)); }
+  if (G.base) { let A = 0, a = 0, b = 0; G.base.forEach(pg => { const r = pg[0]; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const cr = r[j][0] * r[i][1] - r[i][0] * r[j][1]; A += cr; a += (r[j][0] + r[i][0]) * cr; b += (r[j][1] + r[i][1]) * cr; } }); a /= 3 * A; b /= 3 * A; const n = 1; x.font = `700 ${Math.round(mm(5.2))}px ${F}`; x.fillStyle = '#FFFFFF'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.direction = rtl ? 'rtl' : 'ltr'; x.fillText(t('x34.base').toUpperCase(), X(a / n), Y(b / n) - mm(2.4)); x.font = `500 ${Math.round(mm(3.2))}px ${F}`; x.direction = 'ltr'; x.fillText('3.71 km²', X(a / n), Y(b / n) + mm(3.4)); }
   x.restore(); x.strokeStyle = pal.ink; x.lineWidth = mm(0.35); x.strokeRect(MX, MY, mm(mapW), mm(mapH));
   // 11 title (grey, big, a soft glow, no plate), north arrow, scale bar without a background, credit
   const glow = (s0, px, py, sz, wt, col, al) => { x.save(); x.font = `${wt} ${Math.round(mm(sz))}px ${F}`; x.textAlign = al; x.textBaseline = 'alphabetic'; x.direction = rtl ? 'rtl' : 'ltr'; x.lineJoin = 'round'; x.shadowColor = '#FFFFFF'; x.shadowBlur = mm(sz * 0.35); x.strokeStyle = '#FFFFFF'; x.lineWidth = mm(sz * 0.12); for (let i = 0; i < 5; i++) x.strokeText(s0, px, py); x.shadowBlur = 0; x.shadowColor = 'transparent'; x.fillStyle = col; x.fillText(s0, px, py); x.restore(); };
   const TX = rtl ? MX + mm(mapW) - mm(8) : MX + mm(8), AL = rtl ? 'right' : 'left';
-  glow(t('x40.title'), TX, MY + mm(30), 26, 700, pal.ink3, AL); glow(t('x40.sub'), TX, MY + mm(41), 7, 600, pal.ink3, AL);
+  const plain = (s0, py, sz, wt) => { x.save(); x.font = `${wt} ${Math.round(mm(sz))}px ${F}`; x.textAlign = AL; x.textBaseline = 'alphabetic'; x.direction = rtl ? 'rtl' : 'ltr'; x.fillStyle = pal.ink3; x.fillText(s0, TX, py); x.restore(); };
+  plain(t('x40.title'), MY + mm(30), 26, 700); plain(t('x40.sub'), MY + mm(41), 7, 600);
   const nx = rtl ? MX + mm(14) : MX + mm(mapW) - mm(14); x.save(); x.shadowColor = '#FFFFFF'; x.shadowBlur = mm(1.5); GA.pages.northArrow(x, nx, MY + mm(9), mm(0.42)); x.restore(); GA.pages.northArrow(x, nx, MY + mm(9), mm(0.42));
   // scale bar: 0 – 500 – 1,000 – 2,500 m, true length (2,500 m = 100 mm), the ratio above it; grey, a white halo, no plate
   const bx = MX + mm(10), by = MY + mm(mapH) - mm(12), km = mm(100), seg = [[0, 500], [1000, 1500], [2000, 2500]]; x.save();
@@ -89,13 +87,6 @@ DRAW = r'''async ([DPI, y0, hS, LANG]) => { const G = window.__G, pal = GA.palet
   x.font = `700 ${Math.round(mm(4.6))}px ${F}`; x.textAlign = 'left'; x.strokeStyle = '#FFFFFF'; x.lineWidth = mm(1.2); x.strokeText('1:25,000', bx, by - mm(7.5)); x.fillStyle = pal.ink3; x.fillText('1:25,000', bx, by - mm(7.5));
   x.font = `500 ${Math.round(mm(2.4))}px ${F}`; x.textAlign = 'right'; x.strokeStyle = '#FFFFFF'; x.lineWidth = mm(0.7); const cr = 'OpenStreetMap contributors (ODbL) · IGN MDT25 (CC BY 4.0) · es-atlas / IGN (CC BY 4.0) · A1, 1:25,000';
   x.strokeText(cr, MX + mm(mapW) - mm(5), MY + mm(mapH) - mm(4)); x.fillStyle = pal.ink3; x.fillText(cr, MX + mm(mapW) - mm(5), MY + mm(mapH) - mm(4)); x.restore();
-  // 12 a small key, bottom end corner, no plate
-  const key = [[C.base, t('x34.lg.base'), 'sw'], [pal.base.wine, t('x40.lg.towns'), 'dash'], [pal.red, t('x40.lg.roads'), 'line'], [pal.band['5-8'], t('x40.lg.bld'), 'sw'], [pal.base.lightBlue, t('x40.lg.water'), 'line']];
-  const kx = rtl ? MX + mm(10) : MX + mm(mapW) - mm(95), ky = MY + mm(mapH) - mm(48);
-  key.forEach(([col, lab, kind], i) => { const yy = ky + i * mm(6.5), sx = rtl ? kx + mm(85) - mm(9) : kx; x.save();
-    if (kind === 'sw') { x.fillStyle = col; x.fillRect(sx, yy - mm(1.6), mm(9), mm(3.2)); x.strokeStyle = '#FFFFFF'; x.lineWidth = mm(0.3); x.strokeRect(sx, yy - mm(1.6), mm(9), mm(3.2)); }
-    else { x.strokeStyle = '#FFFFFF'; x.lineWidth = mm(1.4); x.beginPath(); x.moveTo(sx, yy); x.lineTo(sx + mm(9), yy); x.stroke(); x.strokeStyle = col; x.lineWidth = mm(kind === 'dash' ? 0.6 : 0.9); x.setLineDash(kind === 'dash' ? [mm(2.4), mm(1.1)] : []); x.beginPath(); x.moveTo(sx, yy); x.lineTo(sx + mm(9), yy); x.stroke(); x.setLineDash([]); }
-    x.restore(); glow(lab, rtl ? sx - mm(2.5) : sx + mm(11.5), yy + mm(1.2), 3.3, 600, pal.ink2, rtl ? 'right' : 'left'); });
   const blob = await new Promise(r => c.toBlob(r, 'image/png')); const buf = new Uint8Array(await blob.arrayBuffer()); let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000)); return [W, H, btoa(bin)]; }'''
 try:
   with sync_playwright() as p:
