@@ -55,8 +55,14 @@
     (spec.images || []).forEach(im => { if (!im.img) return; ctx.save(); ctx.globalAlpha = im.alpha == null ? 1 : im.alpha; ctx.imageSmoothingEnabled = true; ctx.drawImage(im.img, X(im.x0), Y(im.y1), (im.x1 - im.x0) / mpp, (im.y1 - im.y0) / mpp); ctx.restore(); });
     // context
     if (spec.context) {
-      if (spec.context.streets) { ctx.strokeStyle = spec.context.streetColor || GA.palette.line; ctx.lineWidth = 0.8; ctx.beginPath(); spec.context.streets.forEach(g => lines(utm(g), g.type).forEach(l => l.forEach((p, i) => { const q = px(p); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }))); ctx.stroke(); }
-      if (spec.context.buildings) { ctx.fillStyle = spec.context.buildingColor || GA.palette.line; ctx.beginPath(); spec.context.buildings.forEach(g => polys(utm(g), g.type).forEach(pl => path(pl))); ctx.fill('evenodd'); }
+      // 5.47: drawn in batches. One canvas path holding every building of a large study area (14,000 in a 4.5 km square)
+      // made the browser's path work grow much faster than the building count: the PDF export of such an area froze the
+      // page for minutes ("page isn't responding"). Each building stays in one batch, so its courtyards stay holes.
+      const BATCH = 100;
+      if (spec.context.streets) { ctx.strokeStyle = spec.context.streetColor || GA.palette.line; ctx.lineWidth = 0.8; ctx.beginPath();
+        spec.context.streets.forEach((g, n) => { lines(utm(g), g.type).forEach(l => l.forEach((p, i) => { const q = px(p); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); })); if ((n + 1) % BATCH === 0) { ctx.stroke(); ctx.beginPath(); } }); ctx.stroke(); }
+      if (spec.context.buildings) { ctx.fillStyle = spec.context.buildingColor || GA.palette.line; ctx.beginPath();
+        spec.context.buildings.forEach((g, n) => { polys(utm(g), g.type).forEach(pl => path(pl)); if ((n + 1) % BATCH === 0) { ctx.fill('evenodd'); ctx.beginPath(); } }); ctx.fill('evenodd'); }
     }
     // thematic layers
     (spec.layers || []).forEach(L => {
