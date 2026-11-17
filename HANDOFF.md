@@ -1113,6 +1113,18 @@ south (Armilla, Churriana de la Vega, Las Gabias, Alhendín, Ogíjares).
   sheet's 150 mm frames but soft on the A1 sheet (1:15,000 ≈ 95 dpi). `tools/fetch_ex21_hist_hi.py exports/ex21_time/hist
   mtn50 pnoa2022` fetches those two at 1 m per pixel (`<name>_hi.jpg`, four WMS tiles each, as served — the publisher's blur
   over the base stays; flight 2022-08 checked again with GetFeatureInfo); `sheets2.py` and `maps_only.py` use them when present.
+- **Map 05, the strategy (proposal)** (owner, 17 Nov): `drawStrategy` / `strategyLegend` in `js/ex21.js`, page
+  `tools/ex21_pages/city.py <out> <lang> strategy`, strings `x38.*`, colours `P.ex21s`. A walking strip outside the whole fence
+  (schematic ~35 m), the 13 dead ends joined, four numbered places (Churriana sports centre, Río Dílar at the fence, metro
+  Armilla stop, the extension's end at Las Gabias — its new stops are not published, so not drawn), a green corridor
+  Ogíjares–Alhendín passing 250 m south-east of the base's tip. Title and source line say "proposal, drawn schematically".
+- **The five towns' edges on the historical pictures** (owner, 17 Nov): `tools/build_ex21_town_edges.py` (`CATASTRO` =
+  folder of the five towns' INSPIRE building.gml) → `data/ex21/town_edges.json`: for each picture year, today's Catastro
+  buildings with a recorded year ≤ that year, joined (+80 / −65 m), pieces < 4 ha dropped. `drawTime(…{edges: <key>})`,
+  `townEdgeLegend`, colours `P.ex21t`, strings `x39.*`. Picture dates from IGN GetFeatureInfo at the base: AMS 1956, Nacional
+  03/1985, OLISTAT 04/1998, SIGPAC 2001; the Interministerial flight has no date here → 1973. **Ogíjares before 1987 is not
+  drawn**: its Catastro dates 1,189 of 4,313 buildings 1986 (a revision year). Demolished buildings are missing, so old edges
+  can be too small (the 1931 map shows bigger villages than the Catastro edge) — the page says so.
 - **Wording**: the base's name on English maps is "Armilla Air Base" (`x34.base`; it was the Spanish official name while the
   sheet title was English). The key map's title no longer counts the areas ("the eight 1:500 areas" was written before S and
   R were added; the map shows ten).

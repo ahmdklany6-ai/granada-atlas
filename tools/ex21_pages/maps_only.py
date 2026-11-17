@@ -50,12 +50,12 @@ for which in ['y1931', 'y2022', 'built', 'age']:
 add('sheet', '06_A1_sheet_maps', 'sheet2_city_1-10000', kind='sheetcity', ids=SHEET_IDS, credit=OSM)
 for a in SHEET_IDS: add('sheet', '06_A1_sheet_maps', f'sheet2_area_{a}_1-500', kind='sheetarea', id=a, credit=CREDIT['area'])
 for m in ['island', 'walk', 'growth', 'height']: add('legends', 'legends', f'legend_city_{m}', kind='legend', which='city', m=m)
-for w in ['key', 'areas', 'aerial']: add('legends', 'legends', f'legend_{w}', kind='legend', which=w)
+for w in ['key', 'areas', 'aerial', 'towns']: add('legends', 'legends', f'legend_{w}', kind='legend', which=w)
 for m in ['built', 'density', 'edge']: add('legends', 'legends', f'legend_time_{m}', kind='legend', which='time', m=m)
 for key in ['age', 'u18', 'o65', 'es', 'inc', 'one']: add('legends', 'legends', f'legend_people_{key}', kind='legend', which='people', key=key)
 
 srv = subprocess.Popen([sys.executable, '-m', 'http.server', str(PORT), '--bind', '127.0.0.1'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
-JS = r'''async ([sp, DPI, LAB]) => { await GA.ex21.ready(); await GA.ex21.readyAreas(); await GA.ex21.readyTime(); await GA.ex21.readyPeople();
+JS = r'''async ([sp, DPI, LAB]) => { await GA.ex21.ready(); await GA.ex21.readyAreas(); await GA.ex21.readyTime(); await GA.ex21.readyPeople(); await GA.ex21.readyTownEdges();
   const D = DPI / 25.4, mm = (v) => Math.round(v * D), q = DPI / 200; const t = (k, v) => GA.i18n.t(k, v); const F = GA.pages.font(); const E = GA.ex21.CITY, pal = GA.palette, rtl = GA.i18n.dir() === 'rtl';
   const TD = GA.ex21.time, PD = GA.ex21.people; const unit = (key) => key === 'inc' ? '€' : key === 'age' ? null : '%';
   const load = (u) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error(u)); im.src = u; });
@@ -78,7 +78,7 @@ JS = r'''async ([sp, DPI, LAB]) => { await GA.ex21.ready(); await GA.ex21.readyA
     GA.ex21.drawArea(x, pad, pad, M, sp.id, o); return c.toDataURL('image/png'); }
   if (sp.kind === 'time') return whole(10000, (x, X, Y, w, h) => GA.ex21.drawTime(x, X, Y, w, h, Object.assign({ t, only: sp.m, k: KF[10000] * q, title: t('x36.m.' + sp.m) + ' · ' + sc(10000), titlePx: mm(TMM[10000]) }, cr(10000, sp.credit))));
   if (sp.kind === 'hist') { const den = sp.hi ? 15000 : 40000, im = await hist(sp.src, sp.hi); const lab = sp.src === 'mtn50' ? t('x36.hist.1931', { ha: GA.ex21.km2(TD.aerodrome_1931_ha) }) : sp.flight;
-    return whole(den, (x, X, Y, w, h) => GA.ex21.drawTime(x, X, Y, w, h, Object.assign({ t, only: 'photo', photo: im, k: KF[den] * q, title: lab + ' · ' + sc(den), titlePx: mm(TMM[den]) }, cr(den, sp.credit)))); }
+    return whole(den, (x, X, Y, w, h) => GA.ex21.drawTime(x, X, Y, w, h, Object.assign({ t, only: 'photo', photo: im, k: KF[den] * q, title: lab + ' · ' + sc(den), titlePx: mm(TMM[den]), edges: sp.src }, cr(den, sp.credit)))); }
   if (sp.kind === 'people') { const den = sp.key === 'age' ? 10000 : 20000; const ttl = sp.key === 'age' ? t('x37.title', { y: PD.adrh_year }) : t('x37.m.' + sp.key) + ' (' + unit(sp.key) + ', INE ' + PD.adrh_year + ')';
     return whole(den, (x, X, Y, w, h) => GA.ex21.drawPeople(x, X, Y, w, h, Object.assign({ t, only: sp.key, k: KF[den] * q, title: ttl + ' · ' + sc(den), titlePx: mm(TMM[den]) }, cr(den, sp.credit.replace('{y}', PD.adrh_year))))); }
   // ---- the maps as they sit on the A1 sheets (sheets2.py: sheet 841 × 594, margin 14, gap 8, top 44) ----
@@ -93,8 +93,8 @@ JS = r'''async ([sp, DPI, LAB]) => { await GA.ex21.ready(); await GA.ex21.readyA
     const e = A.extent, hw = cellW / 4, hh = mapH / 4; const c0 = [Math.min(Math.max(P[0], e[0] + hw), e[2] - hw), Math.min(Math.max(P[1], e[1] + hh), e[3] - hh)]; const s2 = 2 * D, bw = mm(cellW), bh = mm(mapH); const [c, x] = mk(bw, bh);
     GA.ex21.drawArea(x, pad + bw / 2 - (c0[0] - e[0]) * s2, pad + bh / 2 - (e[3] - c0[1]) * s2, 130 * s2, sp.id, { t, k: 1.55 * DPI / 150, view: [pad, pad, pad + bw, pad + bh], title: t('x34.a.' + sp.id) + ' · 1:500', titlePx: mm(3.6), credit: sp.credit, creditPx: mm(2.2) }); return c.toDataURL('image/png'); }
   // ---- a legend by itself: the same class definitions as the map (GA.ex21.*Legend), a grey title, one column ----
-  if (sp.kind === 'legend') { const items = sp.which === 'city' ? GA.ex21.mapLegend(sp.m, t) : sp.which === 'key' ? GA.ex21.keyLegend(t) : sp.which === 'areas' ? GA.ex21.areaLegend(t) : sp.which === 'aerial' ? GA.ex21.aerialLegend(t) : sp.which === 'time' ? GA.ex21.timeLegend(sp.m, t) : GA.ex21.peopleLegend(sp.key, t);
-    const ttl = sp.which === 'city' ? t('x34.m.' + sp.m) : sp.which === 'key' ? t('x34.key.title') : sp.which === 'areas' ? LAB.lgArea : sp.which === 'aerial' ? LAB.lgArea + ' · ' + t('x34.aer.sub') : sp.which === 'time' ? t('x36.m.' + sp.m) : t('x37.m.' + sp.key) + (unit(sp.key) ? ' (' + unit(sp.key) + ')' : '') + ' · INE ' + PD.adrh_year;
+  if (sp.kind === 'legend') { const items = sp.which === 'city' ? GA.ex21.mapLegend(sp.m, t) : sp.which === 'key' ? GA.ex21.keyLegend(t) : sp.which === 'areas' ? GA.ex21.areaLegend(t) : sp.which === 'aerial' ? GA.ex21.aerialLegend(t) : sp.which === 'towns' ? GA.ex21.townEdgeLegend(t, 'mtn50') : sp.which === 'time' ? GA.ex21.timeLegend(sp.m, t) : GA.ex21.peopleLegend(sp.key, t);
+    const ttl = sp.which === 'city' ? t('x34.m.' + sp.m) : sp.which === 'key' ? t('x34.key.title') : sp.which === 'areas' ? LAB.lgArea : sp.which === 'aerial' ? LAB.lgArea + ' · ' + t('x34.aer.sub') : sp.which === 'towns' ? t('x39.lg') : sp.which === 'time' ? t('x36.m.' + sp.m) : t('x37.m.' + sp.key) + (unit(sp.key) ? ' (' + unit(sp.key) + ')' : '') + ' · INE ' + PD.adrh_year;
     const fs = mm(3.6), rowH = mm(8.5), sw = mm(12), sh = mm(5), mg = mm(4), tfs = mm(4.2); const m0 = document.createElement('canvas').getContext('2d'); m0.font = `500 ${fs}px ${F}`; let tw = 0; items.forEach(it => { tw = Math.max(tw, m0.measureText(it.label).width); }); m0.font = `600 ${tfs}px ${F}`;
     const W = Math.ceil(Math.max(sw + mm(3) + tw, m0.measureText(ttl).width) + 2 * mg), top = mm(13), H = top + items.length * rowH + mm(3); const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
     x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; x.textBaseline = 'alphabetic'; x.font = `600 ${tfs}px ${F}`; x.fillStyle = pal.ink3; x.fillText(ttl, rtl ? W - mg : mg, mm(7.5));

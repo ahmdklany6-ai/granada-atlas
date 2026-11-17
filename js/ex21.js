@@ -499,7 +499,12 @@
   function readyTime() { if (TDp) return TDp; const v = '?v=' + (root.GA_BUILD || ''); const img = (u) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error(u)); i.src = u + v; });
     TDp = Promise.all([fetch('data/ex21/time.json' + v).then(r => r.json()), img('data/ex21/built_period.png'), img('data/ex21/density.png'), img('data/ex21/edge_land.png')])
       .then(([j, bp, de, el]) => (TD = Object.assign(j, { img: { built: bp, density: de, edge: el } }))).catch(e => { TDp = null; throw e; }); return TDp; }
-  // o.only = 'built' | 'density' | 'edge' | 'photo' (o.photo = a historical image of the same frame); the base is drawn as today's outline
+  // the five towns' built-up edge at each picture's date (tools/build_ex21_town_edges.py, Catastro; owner request 17 Nov 2026)
+  let TE = null, TEp = null;
+  function readyTownEdges() { if (TEp) return TEp; TEp = fetch('data/ex21/town_edges.json?v=' + (root.GA_BUILD || '')).then(r => r.json()).then(j => (TE = j)).catch(e => { TEp = null; throw e; }); return TEp; }
+  function townEdgeLegend(t, key) { const col = P().ex21t; return TFIVE.map(tn => ({ line: col[tn], w: 2.4, label: tn + (TE && key && TE.edges[key] && TE.edges[key][tn] === null ? ' — ' + t('x39.unknown') : '') })); }
+  // o.only = 'built' | 'density' | 'edge' | 'photo' (o.photo = a historical image of the same frame); the base is drawn as today's outline;
+  // o.edges = a picture key of town_edges.json: each town's built-up edge at that date, in the town's colour (tcol)
   function drawTime(ctx, x, y, w, h, o) {
     o = o || {}; if (!D || !TD) return false; const pal = P(), C = pal.ex21; const t = o.t || ((s) => s); const F = root.GA.pages.font(); const E = CITY, mpp = (E.x1 - E.x0) / w, k = o.k || w / 1000;
     const X = (u) => x + (u - E.x0) / mpp, Y = (v) => y + (E.y1 - v) / mpp; const font = (sz, wt) => `${wt || 600} ${Math.round(sz * k)}px ${F}`;
@@ -517,6 +522,9 @@
     }
     if (base) { if (photo) { path(base.g); ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 4.4 * k; ctx.stroke(); path(base.g); ctx.strokeStyle = pal.red; ctx.lineWidth = 2 * k; ctx.setLineDash([8 * k, 5 * k]); ctx.stroke(); ctx.setLineDash([]); }
       else { path(base.g); ctx.fillStyle = C.base; ctx.fill(); } }
+    if (o.edges && TE && TE.edges[o.edges]) { const col = pal.ex21t, E2 = TE.edges[o.edges];
+      TFIVE.forEach(tn => { const rs = E2[tn]; if (!rs || !rs.length) return; const pth = () => { ctx.beginPath(); rs.forEach(pg => pg.forEach(r => { r.forEach((q, i) => i ? ctx.lineTo(X(q[0]), Y(q[1])) : ctx.moveTo(X(q[0]), Y(q[1]))); ctx.closePath(); })); };
+        pth(); ctx.fillStyle = col[tn]; ctx.globalAlpha = 0.16; ctx.fill('evenodd'); ctx.globalAlpha = 0.9; ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 6.4 * k; ctx.stroke(); ctx.globalAlpha = 1; pth(); ctx.strokeStyle = col[tn]; ctx.lineWidth = 3.4 * k; ctx.stroke(); }); }
     // town names (and the base) — on photos with a white halo
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.direction = 'ltr';
     D.edge.filter(f => f.p.k === 'town').forEach(f => { const [u, v] = f.g; ctx.font = font(photo ? 13 : 15, 700); const q = place(V, U.K, X(u), Y(v) - 13 * k, ctx.measureText(f.p.nm.toUpperCase()).width, 18 * k, 8 * k); if (!q) return; const px = q[0], py = q[1] + 13 * k;
@@ -594,6 +602,6 @@
     ctx.restore(); return PBRANCH.map(b => ({ sw: cols[b], label: t('x37.br.' + b) })); }
   root.GA.ex21 = { ready, readyAreas, readyAerial, loadAerial, aerialLegend, get aerial() { return AER; }, drawArea, drawSection, areaLegend, drawAreaKey, keyLegend, get areas() { return AR; }, drawCity, drawGaps, cityLegend, mapLegend, MAPS: ['island', 'walk', 'growth', 'height'], CITY, get data() { return D; },
     readyFactory, drawFactory, factoryLegend, drawFactoryKey, FMAPS: ['estate', 'access', 'land', 'time'], get factory() { return FD; }, km2, scaleBar, mapTitle, titleBand, drawStrategy, strategyLegend,
-    readyTime, drawTime, drawDwellChart, drawPopChart, timeLegend, get time() { return TD; }, TFIVE, tcol,
+    readyTime, drawTime, readyTownEdges, townEdgeLegend, get townEdges() { return TE; }, drawDwellChart, drawPopChart, timeLegend, get time() { return TD; }, TFIVE, tcol,
     readyPeople, drawPeople, peopleLegend, drawBranchBars, get people() { return PD; } };
 })(window);

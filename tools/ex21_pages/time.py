@@ -16,18 +16,24 @@ srv = subprocess.Popen([sys.executable, '-m', 'http.server', str(PORT), '--bind'
 COMMON = r'''const D = 200 / 25.4, mm = (v) => Math.round(v * D); const t = (k, v) => GA.i18n.t(k, v); const F = GA.pages.font(); const rtl = GA.i18n.dir() === 'rtl';
   const wrap = (x, s, maxW) => { const out = []; let line = ''; s.split(' ').forEach(w => { const test = line ? line + ' ' + w : w; if (x.measureText(test).width > maxW && line) { out.push(line); line = w; } else line = test; }); if (line) out.push(line); return out; };
   const load = (u) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error(u)); im.src = u; });'''
-JS_HIST = r'''async ([HIST, one]) => { await GA.ex21.ready(); await GA.ex21.readyTime(); ''' + COMMON + r'''
+JS_HIST = r'''async ([HIST, one]) => { await GA.ex21.ready(); await GA.ex21.readyTime(); await GA.ex21.readyTownEdges(); ''' + COMMON + r'''
   const TD = GA.ex21.time; const imgs = await Promise.all(HIST.map(h => load('/exports/ex21_time/hist/' + h[0] + '.jpg')));
   const lab = (h) => h[0] === 'mtn50' ? t('x36.hist.1931', { ha: GA.ex21.km2(TD.aerodrome_1931_ha) }) : h[1];
   if (one != null) { const h = HIST[one], w = 1600, hh = 1400, c = document.createElement('canvas'); c.width = w; c.height = hh; const x = c.getContext('2d');
-    GA.ex21.drawTime(x, 0, 0, w, hh, { t, only: 'photo', photo: imgs[one], k: 1.6, title: lab(h), titlePx: 56 });
+    GA.ex21.drawTime(x, 0, 0, w, hh, { t, only: 'photo', photo: imgs[one], k: 1.6, title: lab(h), titlePx: 56, edges: h[0] });
     return c.toDataURL('image/png'); }
-  const cols = 5, fw = mm(150), fh = Math.round(fw * 5600 / 6400), g = mm(8), L = mm(20), W = L * 2 + cols * fw + (cols - 1) * g, top = mm(44), H = top + 2 * fh + g + mm(42);
+  const cols = 5, fw = mm(150), fh = Math.round(fw * 5600 / 6400), g = mm(8), L = mm(20), W = L * 2 + cols * fw + (cols - 1) * g, top = mm(44), H = top + 2 * fh + g + mm(62);
   const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); const R = W - L;
   x.textBaseline = 'alphabetic'; x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; x.fillStyle = GA.palette.ink3; x.font = '600 ' + mm(12) + 'px ' + F; x.fillText(t('x36.hist.title'), rtl ? R : L, mm(24));   // every title in grey (owner, Map Studio 17 Nov 2026)
   x.font = '500 ' + mm(5.5) + 'px ' + F; x.fillStyle = GA.palette.ink3; x.fillText(t('x36.hist.sub'), rtl ? R : L, mm(35));
   HIST.forEach((h, i) => { const col = rtl ? cols - 1 - (i % cols) : i % cols, fx = L + col * (fw + g), fy = top + Math.floor(i / cols) * (fh + g);
-    GA.ex21.drawTime(x, fx, fy, fw, fh, { t, only: 'photo', photo: imgs[i], k: fw / 1000 * 1.5, noScale: i !== 0, noNorth: i !== 0, title: lab(h), titlePx: mm(5) }); });
+    GA.ex21.drawTime(x, fx, fy, fw, fh, { t, only: 'photo', photo: imgs[i], k: fw / 1000 * 1.5, noScale: i !== 0, noNorth: i !== 0, title: lab(h), titlePx: mm(5), edges: h[0] }); });
+  // the five towns' colours and the note on the dates (the Catastro edges)
+  { let ky = top + 2 * fh + g + mm(9); x.textBaseline = 'middle'; x.direction = rtl ? 'rtl' : 'ltr'; x.font = '600 ' + mm(4.4) + 'px ' + F; x.fillStyle = GA.palette.ink3; x.textAlign = rtl ? 'right' : 'left'; x.fillText(t('x39.lg'), rtl ? R : L, ky, R - L); ky += mm(8);
+    let kx = rtl ? R : L; x.font = '600 ' + mm(4.4) + 'px ' + F; GA.ex21.townEdgeLegend(t, 'mtn50').forEach(it => { const lw = mm(12), tw = x.measureText(it.label).width; const sx0 = rtl ? kx - lw : kx;
+      x.strokeStyle = '#fff'; x.lineWidth = mm(1.6); x.beginPath(); x.moveTo(sx0, ky); x.lineTo(sx0 + lw, ky); x.stroke(); x.strokeStyle = it.line; x.lineWidth = mm(0.9); x.beginPath(); x.moveTo(sx0, ky); x.lineTo(sx0 + lw, ky); x.stroke();
+      x.fillStyle = GA.palette.ink; x.textAlign = rtl ? 'right' : 'left'; x.fillText(it.label, rtl ? sx0 - mm(2.5) : sx0 + lw + mm(2.5), ky); kx = rtl ? sx0 - mm(2.5) - tw - mm(10) : sx0 + lw + mm(2.5) + tw + mm(10); });
+    ky += mm(7); x.font = '400 ' + mm(3.8) + 'px ' + F; x.fillStyle = GA.palette.ink3; x.textAlign = rtl ? 'right' : 'left'; x.fillText(t('x39.note'), rtl ? R : L, ky, R - L); }
   x.font = '600 ' + mm(5) + 'px ' + F; x.fillStyle = GA.palette.ink; x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; let yy = H - mm(30);
   x.fillText(t('x36.box.growth', { a: GA.ex21.km2(TD.aerodrome_1931_ha), b: GA.ex21.km2(TD.base_ha_today) }), rtl ? R : L, yy); yy += mm(8);
   x.font = '400 ' + mm(3.8) + 'px ' + F; x.fillStyle = GA.palette.ink3; wrap(x, t('x36.hist.src'), R - L).forEach(ln => { x.fillText(ln, rtl ? R : L, yy); yy += mm(5.2); });
