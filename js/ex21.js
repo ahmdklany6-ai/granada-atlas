@@ -45,8 +45,13 @@
   // the frame, the title (o.title, o.titlePx), the north arrow and the scale bar are drawn on that window
   function furniture(ctx, o, x, y, w, h, k, F) { const V = o.view || [x, y, x + w, y + h], rtl = isRtl(), tpx = o.titlePx || 15 * k; const K = []; if (!o.noNorth) K.push(northBox(V, k, rtl));
     if (o.title) K.push(titleBand(ctx, V[0], V[1], V[2] - V[0], o.title, tpx, rtl, F)); return { V, rtl, tpx, K, band: o.title ? K[K.length - 1] : null }; }
-  function frameTop(ctx, o, U, k, F) { const V = U.V; ctx.strokeStyle = P().ink; ctx.lineWidth = 1.2 * k; ctx.strokeRect(V[0] + 0.5, V[1] + 0.5, V[2] - V[0] - 1, V[3] - V[1] - 1);
-    if (!o.noNorth) northMark(ctx, V, k, U.rtl); if (o.title) mapTitle(ctx, V[0], V[1], V[2] - V[0], o.title, U.tpx, U.rtl, F); }
+  function frameTop(ctx, o, U, k, F, creditLater) { const V = U.V; ctx.strokeStyle = P().ink; ctx.lineWidth = 1.2 * k; ctx.strokeRect(V[0] + 0.5, V[1] + 0.5, V[2] - V[0] - 1, V[3] - V[1] - 1);
+    if (!o.noNorth) northMark(ctx, V, k, U.rtl); if (o.title) mapTitle(ctx, V[0], V[1], V[2] - V[0], o.title, U.tpx, U.rtl, F); if (o.credit && !creditLater) creditMark(ctx, o, V, k, F, false); }
+  // o.credit = the sources in a few words (proper names and licences only, so it needs no translation), for a map exported WITHOUT its
+  // page (tools/ex21_pages/maps_only.py): the page's source line does not travel with it. Bottom corner away from the scale bar.
+  function creditMark(ctx, o, V, k, F, left) { const px = o.creditPx || 8.5 * k; ctx.save(); ctx.font = `500 ${Math.round(px)}px ${F}`; ctx.direction = 'ltr'; ctx.textAlign = left ? 'left' : 'right'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
+    const tx = left ? V[0] + px * 1.2 : V[2] - px * 1.2, ty = V[3] - px * 1.1; ctx.shadowColor = '#FFFFFF'; ctx.shadowBlur = px * 0.5; ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = px * 0.16; for (let i = 0; i < 6; i++) ctx.strokeText(o.credit, tx, ty);
+    ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.fillStyle = P().ink3; ctx.fillText(o.credit, tx, ty); ctx.restore(); }
   function ready() {
     if (Dp) return Dp; const v = '?v=' + (root.GA_BUILD || ''); const prj = root.GA.proj.EPSG25830;
     const ll0 = prj.inverse([CITY.x0, CITY.y0]), ll1 = prj.inverse([CITY.x1, CITY.y1]); const bb = [ll0[0], ll0[1], ll1[0], ll1[1]];
@@ -243,17 +248,18 @@
     if (aer) { ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 4.4 * k; ctx.beginPath(); ctx.moveTo(X(sa[0]), Y(sa[1])); ctx.lineTo(X(sb[0]), Y(sb[1])); ctx.stroke(); }
     ctx.strokeStyle = pal.red; ctx.lineWidth = (aer ? 2.2 : 1.8) * k; ctx.setLineDash([10 * k, 5 * k]); ctx.beginPath(); ctx.moveTo(X(sa[0]), Y(sa[1])); ctx.lineTo(X(sb[0]), Y(sb[1])); ctx.stroke(); ctx.setLineDash([]);
     [[sa, A.id], [sb, A.id + '′']].forEach(([p, n]) => { ctx.beginPath(); ctx.arc(X(p[0]), Y(p[1]), 11 * k, 0, 7); ctx.fillStyle = pal.red; ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.font = font(12, 700); ctx.textAlign = 'center'; ctx.fillText(n, X(p[0]), Y(p[1]) + 0.5 * k); });
-    ctx.restore(); frameTop(ctx, o, U, k, F);
+    ctx.restore(); frameTop(ctx, o, U, k, F, true);
     // scale bar 0–10–20–50 m
     // (it goes to the first bottom corner of the window where it hides neither end of the section nor a dead end: left, then right)
     const m50 = 50 / mpp, pw = m50 + 46 * k, ph = 30 * k, spots = [[V[0] + 10 * k, V[3] - 10 * k - ph], [V[2] - 10 * k - pw, V[3] - 10 * k - ph]];
     const hides = ([px, py]) => [sa, sb].concat(A.dead).some(q => { const u = X(q[0]), v = Y(q[1]); return u > px - 14 * k && u < px + pw + 14 * k && v > py - 14 * k && v < py + ph + 14 * k; });
     const spot = spots.find(q => !hides(q)) || spots[0], bx = spot[0] + 6 * k, by = spot[1] + 20 * k; if (!o.noScale) scaleBar(ctx, bx, by, m50, k, font, [['0', 0], ['10', 0.2], ['20', 0.4], ['50 m', 1]]);
+    if (o.credit) creditMark(ctx, o, V, k, F, spot === spots[1]);
     return true;
   }
   // key map: the base and its fence (as map 01) with the eight 1:500 windows
   function drawAreaKey(ctx, x, y, w, h, o) { o = o || {}; if (!D || !AR) return false; const pal = P(); const t = o.t || ((s) => s); const k = o.k || w / 1000; const F = root.GA.pages.font();
-    drawCity(ctx, x, y, w, h, { t, only: 'island', k, title: o.title, titlePx: o.titlePx }); const E = CITY, mpp = (E.x1 - E.x0) / w; const X = (u) => x + (u - E.x0) / mpp, Y = (v) => y + (E.y1 - v) / mpp;
+    drawCity(ctx, x, y, w, h, { t, only: 'island', k, title: o.title, titlePx: o.titlePx, credit: o.credit, creditPx: o.creditPx }); const E = CITY, mpp = (E.x1 - E.x0) / w; const X = (u) => x + (u - E.x0) / mpp, Y = (v) => y + (E.y1 - v) / mpp;
     AR.areas.forEach(a => { const e = a.extent; ctx.fillStyle = 'rgba(153,43,42,.18)'; ctx.fillRect(X(e[0]), Y(e[3]), (e[2] - e[0]) / mpp, (e[3] - e[1]) / mpp); ctx.strokeStyle = pal.red; ctx.lineWidth = 2.4 * k; ctx.strokeRect(X(e[0]), Y(e[3]), (e[2] - e[0]) / mpp, (e[3] - e[1]) / mpp);
       const below = AR.areas.some(b => b !== a && Math.abs(b.centre[0] - a.centre[0]) < 250 && b.centre[1] > a.centre[1] && b.centre[1] - a.centre[1] < 320);   // another window just north: this letter goes under its square
       const cx = X((e[0] + e[2]) / 2), cy = below ? Y(e[1]) + 14 * k : Y(e[3]) - 14 * k; ctx.beginPath(); ctx.arc(cx, cy, 11 * k, 0, 7); ctx.fillStyle = pal.red; ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.font = `700 ${Math.round(12 * k)}px ${F}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.fillText(a.id, cx, cy + 0.5 * k); });

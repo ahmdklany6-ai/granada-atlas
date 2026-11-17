@@ -1101,6 +1101,21 @@ south (Armilla, Churriana de la Vega, Las Gabias, Alhendín, Ogíjares).
   and scale with it. `tools/ex21_pages/pack.py <in> <out> <lang> [dpi]` (needs `img2pdf`) turns the PNGs into RGB images with
   the resolution stored in the file (PNG for drawings, JPEG 95 for pages with photos) and PDFs at the true page size made
   from the same image without re-encoding. Run the scripts one after another, never in parallel.
+- **Every map by itself** (owner, 17 Nov: "maps only, in English"): `tools/ex21_pages/maps_only.py <out> <lang>` writes one
+  image per map, cut to the map's frame — the four city maps and the key map, the 1:500 areas (drawn and aerial), the three
+  time maps, the ten historical pictures, the six people maps, and the maps exactly as they sit on the two A1 sheets — with
+  the title on the map and a short credit in the bottom corner (`o.credit` in `js/ex21.js`: proper names and licences only, so
+  one wording serves the three languages; a map exported alone has no page source line). Legends go to `legends/` as
+  separate images (same `*Legend()` items as the maps), the full source sentences to `00_sources_<lang>.txt`. Then
+  `NOPDF=1 PHOTO='^(aerial_|history_|time_|people_|sheet1_)' python3 tools/ex21_pages/pack.py …`. The sheet labels live in
+  `tools/ex21_pages/_sheet_labels.py` (shared with `sheets2.py`).
+- **Sharper 1931 map and 2022 photo**: the ten history pictures are 1600 × 1400 px (4 m per pixel), fine for the history
+  sheet's 150 mm frames but soft on the A1 sheet (1:15,000 ≈ 95 dpi). `tools/fetch_ex21_hist_hi.py exports/ex21_time/hist
+  mtn50 pnoa2022` fetches those two at 1 m per pixel (`<name>_hi.jpg`, four WMS tiles each, as served — the publisher's blur
+  over the base stays; flight 2022-08 checked again with GetFeatureInfo); `sheets2.py` and `maps_only.py` use them when present.
+- **Wording**: the base's name on English maps is "Armilla Air Base" (`x34.base`; it was the Spanish official name while the
+  sheet title was English). The key map's title no longer counts the areas ("the eight 1:500 areas" was written before S and
+  R were added; the map shows ten).
 
 **Honesty notes (keep them on the drawings)**
 - Building heights = OSM `building:levels` × 3 m (estimate); no levels = dashed outline, height unknown.
