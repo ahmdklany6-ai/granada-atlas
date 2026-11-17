@@ -10,21 +10,21 @@ OUTD = sys.argv[1]; LANG = sys.argv[2] if len(sys.argv) > 2 else 'en'; SET = os.
 V3.PORT = PORT; V3.V2.PORT = PORT
 srv = subprocess.Popen([sys.executable, '-m', 'http.server', str(PORT), '--bind', '127.0.0.1'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
 # the key map page: 297 mm wide at 200 dpi; the city frame (6400 × 5600 m) at 1:25,000 = 256 × 224 mm, the eight windows, legend, area names
-JS = r'''async (SET) => { await GA.ex21.ready(); const fac = SET === 'factory'; if (fac) await GA.ex21.readyFactory(); await GA.ex21.readyAreas(SET); const D = 200 / 25.4, mm = (v) => Math.round(v * D);
+JS = r'''async (SET) => { await GA.ex21.ready(); const fac = SET === 'factory'; if (fac) await GA.ex21.readyFactory(); await GA.ex21.readyAreas(SET); const D = 200 / 25.4, mm = (v) => Math.round(v * D), u = D * 25.4 / 200;
   const t = (k, v) => GA.i18n.t(k, v); const F = GA.pages.font(); const rtl = GA.i18n.dir() === 'rtl'; const items = fac ? GA.ex21.factoryLegend('estate', t).concat([{ sw: GA.palette.red, alpha: 0.18, stroke: GA.palette.red, label: t('x34.lg.window') }]) : GA.ex21.keyLegend(t); const areas = GA.ex21.areas.areas;
-  const W = mm(297), mapY = mm(30), MW = fac ? mm(270) : mm(256), MH = fac ? mm(220) : mm(224), legY = mapY + MH + mm(8), rows = Math.ceil(items.length / 2), namY = legY + rows * mm(9) + mm(6), H = namY + Math.ceil(areas.length / 2) * mm(8) + mm(16);
+  const W = mm(297), mapY = mm(14), MW = fac ? mm(270) : mm(256), MH = fac ? mm(220) : mm(224), legY = mapY + MH + mm(8), rows = Math.ceil(items.length / 2), namY = legY + rows * mm(9) + mm(6), H = namY + Math.ceil(areas.length / 2) * mm(8) + mm(16);
   const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
   const L = (W - MW) / 2, R = W - L;
   x.textBaseline = 'alphabetic'; x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; x.fillStyle = GA.palette.ink;
-  x.font = '700 ' + mm(6.5) + 'px ' + F; x.fillText(t(fac ? 'x35.key.title' : 'x34.key.title'), rtl ? R : L, mm(17), R - L);
-  x.font = '500 ' + mm(3.6) + 'px ' + F; x.fillStyle = GA.palette.red; x.direction = 'ltr'; x.fillText(fac ? '1:20,000' : '1:25,000', rtl ? R : L, mm(24)); x.direction = rtl ? 'rtl' : 'ltr';
-  if (fac) GA.ex21.drawFactoryKey(x, L, mapY, MW, MH, { t, k: MW / 1000 * 1.25 }); else GA.ex21.drawAreaKey(x, L, mapY, MW, MH, { t, k: MW / 1000 });
+  // the title is written on the map itself, in grey (owner, Map Studio 17 Nov 2026)
+  const ttl = t(fac ? 'x35.key.title' : 'x34.key.title') + ' · ' + (fac ? '1:20,000' : '1:25,000');
+  if (fac) GA.ex21.drawFactoryKey(x, L, mapY, MW, MH, { t, k: MW / 1000 * 1.25, title: ttl, titlePx: mm(4.4) }); else GA.ex21.drawAreaKey(x, L, mapY, MW, MH, { t, k: MW / 1000, title: ttl, titlePx: mm(4.4) });
   const cw = (R - L) / 2;
   items.forEach((it, j) => { const col = j % 2, lx = rtl ? R - (col + 1) * cw : L + col * cw, yy = legY + Math.floor(j / 2) * mm(9) + mm(4); x.font = '500 ' + mm(3.1) + 'px ' + F; x.textBaseline = 'middle';
     const sx = rtl ? lx + cw - mm(10) : lx, sw = mm(9), sh = mm(4);
-    if (it.sw) { x.globalAlpha = it.alpha || 1; x.fillStyle = it.sw; x.fillRect(sx, yy - sh / 2, sw, sh); x.globalAlpha = 1; x.strokeStyle = it.stroke || '#8C817A'; x.lineWidth = it.stroke ? 4 : 1; x.strokeRect(sx, yy - sh / 2, sw, sh); }
-    if (it.hatch) { x.save(); x.beginPath(); x.rect(sx, yy - sh / 2, sw, sh); x.clip(); x.strokeStyle = it.hatch; x.lineWidth = 2; for (let q = -sh; q < sw; q += 10) { x.beginPath(); x.moveTo(sx + q, yy + sh / 2); x.lineTo(sx + q + sh, yy - sh / 2); x.stroke(); } x.restore(); x.strokeStyle = it.hatch; x.lineWidth = 1; x.strokeRect(sx, yy - sh / 2, sw, sh); }
-    if (it.line) { x.strokeStyle = it.line; x.lineWidth = (it.w || 1) * 4; x.setLineDash(it.dash ? [14, 8] : it.dots ? [3, 12] : []); x.lineCap = it.dots ? 'round' : 'butt'; x.beginPath(); x.moveTo(sx, yy); x.lineTo(sx + sw, yy); x.stroke(); x.setLineDash([]); }
+    if (it.sw) { x.globalAlpha = it.alpha || 1; x.fillStyle = it.sw; x.fillRect(sx, yy - sh / 2, sw, sh); x.globalAlpha = 1; x.strokeStyle = it.stroke || '#8C817A'; x.lineWidth = (it.stroke ? 4 : 1) * u; x.strokeRect(sx, yy - sh / 2, sw, sh); }
+    if (it.hatch) { x.save(); x.beginPath(); x.rect(sx, yy - sh / 2, sw, sh); x.clip(); x.strokeStyle = it.hatch; x.lineWidth = 2 * u; for (let q = -sh; q < sw; q += 10 * u) { x.beginPath(); x.moveTo(sx + q, yy + sh / 2); x.lineTo(sx + q + sh, yy - sh / 2); x.stroke(); } x.restore(); x.strokeStyle = it.hatch; x.lineWidth = 1; x.strokeRect(sx, yy - sh / 2, sw, sh); }
+    if (it.line) { x.strokeStyle = it.line; x.lineWidth = (it.w || 1) * 4 * u; x.setLineDash(it.dash ? [14 * u, 8 * u] : it.dots ? [3 * u, 12 * u] : []); x.lineCap = it.dots ? 'round' : 'butt'; x.beginPath(); x.moveTo(sx, yy); x.lineTo(sx + sw, yy); x.stroke(); x.setLineDash([]); }
     x.fillStyle = GA.palette.ink; x.textAlign = rtl ? 'right' : 'left'; x.fillText(it.label, rtl ? sx - mm(2) : sx + mm(11), yy, cw - mm(14)); });
   areas.forEach((a, j) => { const col = j % 2, lx = rtl ? R - col * cw : L + col * cw, yy = namY + Math.floor(j / 2) * mm(8) + mm(4);
     x.font = '600 ' + mm(3.3) + 'px ' + F; x.textBaseline = 'middle'; x.fillStyle = GA.palette.ink; x.textAlign = rtl ? 'right' : 'left'; x.fillText(t('x34.a.' + a.id), lx, yy, cw - mm(4)); });

@@ -7,24 +7,24 @@ import sys, time, base64, subprocess, os
 sys.path.insert(0, 'tests'); import ui_test_v3 as V3; import _nointro
 from playwright.sync_api import sync_playwright
 OUTD = sys.argv[1]; LANG = sys.argv[2] if len(sys.argv) > 2 else 'en'; ONLY = sys.argv[3].split(',') if len(sys.argv) > 3 else ['island', 'walk', 'growth', 'height', 'gaps']
-DPI = float(os.environ.get('DPI', 200)); KF = float(os.environ.get('KF', 3.8)); PORT = 8853; V3.PORT = PORT; V3.V2.PORT = PORT
+DPI = float(os.environ.get('DPI', 200)); KF = float(os.environ.get('KF', 3.8)) * DPI / 200;   # KF is given for 200 dpi
+PORT = 8853; V3.PORT = PORT; V3.V2.PORT = PORT
 srv = subprocess.Popen([sys.executable, '-m', 'http.server', str(PORT), '--bind', '127.0.0.1'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
 # one page per city map at TRUE 1:10,000: the frame 6400 × 5600 m = 640 × 560 mm; title, scale, legend and sources around it
 JS = r'''async ([m, DPI, KF]) => { await GA.ex21.ready(); const D = DPI / 25.4, mm = (v) => Math.round(v * D);
   const t = (k, v) => GA.i18n.t(k, v); const F = GA.pages.font(); const rtl = GA.i18n.dir() === 'rtl';
   const wrap = (x, s, maxW) => { const out = []; let line = ''; s.split(' ').forEach(w => { const test = line ? line + ' ' + w : w; if (x.measureText(test).width > maxW && line) { out.push(line); line = w; } else line = test; }); if (line) out.push(line); return out; };
   if (m === 'gaps') { const W = mm(420), H = mm(297), mg = mm(15); const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
-    x.textBaseline = 'alphabetic'; x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; x.fillStyle = GA.palette.ink; x.font = '700 ' + mm(7.5) + 'px ' + F; x.fillText(t('x34.gap.title'), rtl ? W - mg : mg, mm(22));
+    x.textBaseline = 'alphabetic'; x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; x.fillStyle = GA.palette.ink3; x.font = '600 ' + mm(7.5) + 'px ' + F; x.fillText(t('x34.gap.title'), rtl ? W - mg : mg, mm(22));
     GA.ex21.drawGaps(x, mg, mm(32), W - 2 * mg, H - mm(32) - mm(30), { t });
     x.font = '400 ' + mm(2.9) + 'px ' + F; x.fillStyle = GA.palette.ink3; x.textAlign = rtl ? 'right' : 'left'; x.direction = rtl ? 'rtl' : 'ltr'; wrap(x, t('x34.src.gaps'), W - 2 * mg).forEach((ln, i) => x.fillText(ln, rtl ? W - mg : mg, H - mm(16) + i * mm(4.4)));
     return c.toDataURL('image/png'); }
-  const MW = mm(640), MH = mm(560), mg = mm(20), W = MW + 2 * mg, mapY = mm(46); const items = GA.ex21.mapLegend(m, t); const cols = 3, rows = Math.ceil(items.length / cols);
+  const MW = mm(640), MH = mm(560), mg = mm(20), W = MW + 2 * mg, mapY = mm(20); const items = GA.ex21.mapLegend(m, t); const cols = 3, rows = Math.ceil(items.length / cols);
   const legY = mapY + MH + mm(12), srcY = legY + rows * mm(13) + mm(8), H = srcY + mm(22);
   const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); const L = mg, R = W - mg;
   x.textBaseline = 'alphabetic'; x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; x.fillStyle = GA.palette.ink;
-  x.font = '700 ' + mm(12) + 'px ' + F; x.fillText(t('x34.m.' + m), rtl ? R : L, mm(24));
-  x.font = '500 ' + mm(6.5) + 'px ' + F; x.fillStyle = GA.palette.red; x.direction = 'ltr'; x.fillText('1:10,000', rtl ? R : L, mm(37)); x.direction = rtl ? 'rtl' : 'ltr';
-  GA.ex21.drawCity(x, L, mapY, MW, MH, { t, only: m, k: KF });
+  // the title is written on the map itself, in grey (owner, Map Studio 17 Nov 2026)
+  GA.ex21.drawCity(x, L, mapY, MW, MH, { t, only: m, k: KF, title: t('x34.m.' + m) + ' · 1:10,000', titlePx: mm(7.5) });
   const cw = (R - L) / cols, sw = mm(16), sh = mm(7);
   items.forEach((it, j) => { const col = j % cols, lx = rtl ? R - (col + 1) * cw : L + col * cw, yy = legY + Math.floor(j / cols) * mm(13) + mm(5); x.font = '500 ' + mm(5) + 'px ' + F; x.textBaseline = 'middle';
     const sx = rtl ? lx + cw - sw : lx;

@@ -15,29 +15,29 @@ JS = r'''async ([m, KF]) => { await GA.ex21.ready(); await GA.ex21.readyPeople()
   const leg = (x, items, lx, ly, cw, cols, sz) => items.forEach((it, j) => { const col = j % cols, xx = rtl ? lx + (cols - 1 - col) * cw : lx + col * cw, yy = ly + Math.floor(j / cols) * mm(sz * 2.3); const sw = mm(sz * 2.6), sh = mm(sz * 1.2); const sx = rtl ? xx + cw - sw : xx;
     x.globalAlpha = it.alpha || 1; x.fillStyle = it.sw; x.fillRect(sx, yy - sh / 2, sw, sh); x.globalAlpha = 1; x.strokeStyle = '#8C817A'; x.lineWidth = 2; x.strokeRect(sx, yy - sh / 2, sw, sh);
     x.font = '500 ' + mm(sz) + 'px ' + F; x.fillStyle = GA.palette.ink; x.textBaseline = 'middle'; x.textAlign = rtl ? 'right' : 'left'; x.direction = rtl ? 'rtl' : 'ltr'; x.fillText(it.label, rtl ? sx - mm(sz * 0.6) : sx + sw + mm(sz * 0.6), yy, cw - sw - mm(sz)); });
-  if (m === 'ages') { const MW = mm(640), MH = mm(560), mg = mm(20), W = MW + 2 * mg, mapY = mm(40); const L = mg, R = W - mg; const sw = (R - L - 4 * mm(8)) / 5, sh = sw * 5600 / 6400;
-    const legY = mapY + MH + mm(10), smY = legY + mm(22), H = smY + mm(12) + sh + mm(36) + mm(30);
+  if (m === 'ages') { const MW = mm(640), MH = mm(560), mg = mm(20), W = MW + 2 * mg, mapY = mm(20); const L = mg, R = W - mg; const sw = (R - L - 4 * mm(8)) / 5, sh = sw * 5600 / 6400;
+    const legY = mapY + MH + mm(10), smY = legY + mm(22), H = smY + mm(4) + sh + mm(36) + mm(30);
     const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
-    x.textBaseline = 'alphabetic'; x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; x.fillStyle = GA.palette.ink; x.font = '700 ' + mm(11) + 'px ' + F; x.fillText(t('x37.title', { y: PD.adrh_year }), rtl ? R : L, mm(22), R - L);
-    x.font = '500 ' + mm(6.5) + 'px ' + F; x.fillStyle = GA.palette.red; x.direction = 'ltr'; x.fillText('1:10,000', rtl ? R : L, mm(33));
-    GA.ex21.drawPeople(x, L, mapY, MW, MH, { t, only: 'age', k: KF });
+    x.textBaseline = 'alphabetic'; x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; x.fillStyle = GA.palette.ink;
+    // the titles are written on the maps themselves, in grey (owner, Map Studio 17 Nov 2026)
+    GA.ex21.drawPeople(x, L, mapY, MW, MH, { t, only: 'age', k: KF, title: t('x37.title', { y: PD.adrh_year }) + ' · 1:10,000', titlePx: mm(7.5) });
     leg(x, GA.ex21.peopleLegend('age', t).map((q, i) => i === 0 ? Object.assign(q, { label: t('x37.m.age') + ': ' + q.label }) : q), L, legY, (R - L) / 5, 5, 5);
     ['u18', 'o65', 'es', 'inc', 'one'].forEach((key, i) => { const sx = rtl ? R - (i + 1) * sw - i * mm(8) : L + i * (sw + mm(8)); x.font = '700 ' + mm(5.5) + 'px ' + F; x.fillStyle = GA.palette.ink; x.textAlign = rtl ? 'right' : 'left'; x.textBaseline = 'alphabetic'; x.direction = rtl ? 'rtl' : 'ltr';
-      x.fillText(t('x37.m.' + key), rtl ? sx + sw : sx, smY + mm(6), sw); GA.ex21.drawPeople(x, sx, smY + mm(10), sw, sh, { t, only: key, k: sw / 1000 * 1.6, small: true });
-      leg(x, GA.ex21.peopleLegend(key, t), sx, smY + mm(16) + sh, sw / 2, 2, 3.4); });
+      GA.ex21.drawPeople(x, sx, smY + mm(2), sw, sh, { t, only: key, k: sw / 1000 * 1.6, small: true, title: t('x37.m.' + key), titlePx: mm(4) });
+      leg(x, GA.ex21.peopleLegend(key, t), sx, smY + mm(8) + sh, sw / 2, 2, 3.4); });
     x.font = '400 ' + mm(4) + 'px ' + F; x.fillStyle = GA.palette.ink3; x.textAlign = rtl ? 'right' : 'left'; x.textBaseline = 'alphabetic'; x.direction = rtl ? 'rtl' : 'ltr';
     wrap(x, t('x37.src', { y: PD.adrh_year }), R - L).forEach((ln, i) => x.fillText(ln, rtl ? R : L, H - mm(22) + i * mm(5.6)));
     return c.toDataURL('image/png'); }
   // work page (A2 landscape 594 × 420 mm)
   const W = mm(594), H = mm(420), L = mm(18), R = W - mm(18); const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
   const T = PD.towns, FIVE = GA.ex21.TFIVE; const yr = T.Armilla.census_year || T.Armilla.activity_year;
-  x.textBaseline = 'alphabetic'; x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; x.fillStyle = GA.palette.ink; x.font = '700 ' + mm(9) + 'px ' + F; x.fillText(t('x37.work.title', { y: yr }), rtl ? R : L, mm(20), R - L);
+  x.textBaseline = 'alphabetic'; x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; x.fillStyle = GA.palette.ink3; x.font = '600 ' + mm(9) + 'px ' + F; x.fillText(t('x37.work.title', { y: yr }), rtl ? R : L, mm(20), R - L);   // every title in grey (owner, Map Studio 17 Nov 2026)
   const items = GA.ex21.drawBranchBars(x, L, mm(30), R - L, mm(120), { t, k: KF * 1.1 });
   leg(x, items, L, mm(160), (R - L) / 3, 3, 4);
   const pubs = FIVE.map(tn => T[tn].branch.public / T[tn].employed * 100); x.font = '600 ' + mm(5) + 'px ' + F; x.fillStyle = GA.palette.red; x.textAlign = rtl ? 'right' : 'left'; x.textBaseline = 'alphabetic'; x.direction = rtl ? 'rtl' : 'ltr';
   let yy = mm(206); wrap(x, t('x37.soldiers', { a: Math.min(...pubs).toFixed(1), b: Math.max(...pubs).toFixed(1), g: (T.Granada.branch.public / T.Granada.employed * 100).toFixed(1) }), R - L).forEach(ln => { x.fillText(ln, rtl ? R : L, yy); yy += mm(7); });
   // the table
-  yy += mm(8); x.fillStyle = GA.palette.ink; x.font = '700 ' + mm(6) + 'px ' + F; x.fillText(t('x37.tb.title'), rtl ? R : L, yy); yy += mm(10);
+  yy += mm(8); x.fillStyle = GA.palette.ink3; x.font = '600 ' + mm(6) + 'px ' + F; x.fillText(t('x37.tb.title'), rtl ? R : L, yy); yy += mm(10);
   const cols = ['town', 'pop', 'age', 'u18', 'o65', 'foreign', 'hh', 'inc', 'unemp', 'higher']; const cw = (R - L) / (cols.length + 1.2); const cx = (i) => rtl ? R - (i === 0 ? 0 : (i + 1.2) * cw) : L + (i === 0 ? 0 : (i + 1.2) * cw);
   x.direction = 'ltr'; x.font = '600 ' + mm(4) + 'px ' + F; x.fillStyle = GA.palette.ink3; cols.forEach((k2, i) => { x.textAlign = rtl ? 'right' : 'left'; x.direction = rtl ? 'rtl' : 'ltr'; x.fillText(t('x37.tb.' + k2), cx(i), yy, i === 0 ? 2.1 * cw : cw - mm(2)); });
   x.strokeStyle = '#C5C0B3'; x.lineWidth = 2; x.beginPath(); x.moveTo(L, yy + mm(2.5)); x.lineTo(R, yy + mm(2.5)); x.stroke(); yy += mm(9);

@@ -20,34 +20,32 @@ JS_HIST = r'''async ([HIST, one]) => { await GA.ex21.ready(); await GA.ex21.read
   const TD = GA.ex21.time; const imgs = await Promise.all(HIST.map(h => load('/exports/ex21_time/hist/' + h[0] + '.jpg')));
   const lab = (h) => h[0] === 'mtn50' ? t('x36.hist.1931', { ha: GA.ex21.km2(TD.aerodrome_1931_ha) }) : h[1];
   if (one != null) { const h = HIST[one], w = 1600, hh = 1400, c = document.createElement('canvas'); c.width = w; c.height = hh; const x = c.getContext('2d');
-    GA.ex21.drawTime(x, 0, 0, w, hh, { t, only: 'photo', photo: imgs[one], k: 1.6 });
-    GA.ex21.mapTitle(x, 0, 0, w, lab(h), 56, rtl, F);
+    GA.ex21.drawTime(x, 0, 0, w, hh, { t, only: 'photo', photo: imgs[one], k: 1.6, title: lab(h), titlePx: 56 });
     return c.toDataURL('image/png'); }
-  const cols = 5, fw = mm(150), fh = Math.round(fw * 5600 / 6400), g = mm(8), L = mm(20), W = L * 2 + cols * fw + (cols - 1) * g, top = mm(44), H = top + 2 * (fh + mm(14)) + mm(40);
+  const cols = 5, fw = mm(150), fh = Math.round(fw * 5600 / 6400), g = mm(8), L = mm(20), W = L * 2 + cols * fw + (cols - 1) * g, top = mm(44), H = top + 2 * fh + g + mm(42);
   const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); const R = W - L;
-  x.textBaseline = 'alphabetic'; x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; x.fillStyle = GA.palette.ink; x.font = '700 ' + mm(12) + 'px ' + F; x.fillText(t('x36.hist.title'), rtl ? R : L, mm(24));
-  x.font = '500 ' + mm(5.5) + 'px ' + F; x.fillStyle = GA.palette.red; x.fillText(t('x36.hist.sub'), rtl ? R : L, mm(35));
-  HIST.forEach((h, i) => { const col = rtl ? cols - 1 - (i % cols) : i % cols, fx = L + col * (fw + g), fy = top + Math.floor(i / cols) * (fh + mm(14)) + mm(10);
-    x.font = '700 ' + mm(6) + 'px ' + F; x.fillStyle = GA.palette.ink; x.textAlign = rtl ? 'right' : 'left'; x.direction = rtl ? 'rtl' : 'ltr'; x.fillText(lab(h), rtl ? fx + fw : fx, fy - mm(2.5), fw);
-    GA.ex21.drawTime(x, fx, fy, fw, fh, { t, only: 'photo', photo: imgs[i], k: fw / 1000 * 1.5, noScale: i !== 0, noNorth: i !== 0 }); });
+  x.textBaseline = 'alphabetic'; x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; x.fillStyle = GA.palette.ink3; x.font = '600 ' + mm(12) + 'px ' + F; x.fillText(t('x36.hist.title'), rtl ? R : L, mm(24));   // every title in grey (owner, Map Studio 17 Nov 2026)
+  x.font = '500 ' + mm(5.5) + 'px ' + F; x.fillStyle = GA.palette.ink3; x.fillText(t('x36.hist.sub'), rtl ? R : L, mm(35));
+  HIST.forEach((h, i) => { const col = rtl ? cols - 1 - (i % cols) : i % cols, fx = L + col * (fw + g), fy = top + Math.floor(i / cols) * (fh + g);
+    GA.ex21.drawTime(x, fx, fy, fw, fh, { t, only: 'photo', photo: imgs[i], k: fw / 1000 * 1.5, noScale: i !== 0, noNorth: i !== 0, title: lab(h), titlePx: mm(5) }); });
   x.font = '600 ' + mm(5) + 'px ' + F; x.fillStyle = GA.palette.ink; x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; let yy = H - mm(30);
   x.fillText(t('x36.box.growth', { a: GA.ex21.km2(TD.aerodrome_1931_ha), b: GA.ex21.km2(TD.base_ha_today) }), rtl ? R : L, yy); yy += mm(8);
   x.font = '400 ' + mm(3.8) + 'px ' + F; x.fillStyle = GA.palette.ink3; wrap(x, t('x36.hist.src'), R - L).forEach(ln => { x.fillText(ln, rtl ? R : L, yy); yy += mm(5.2); });
   return c.toDataURL('image/png'); }'''
 JS_MAP = r'''async ([m, KF]) => { await GA.ex21.ready(); await GA.ex21.readyTime(); ''' + COMMON + r'''
-  const TD = GA.ex21.time; const MW = mm(640), MH = mm(560), mg = mm(20), W = MW + 2 * mg, mapY = mm(46); const items = GA.ex21.timeLegend(m, t); const cols = 3, rows = Math.ceil(items.length / cols);
+  const TD = GA.ex21.time; const MW = mm(640), MH = mm(560), mg = mm(20), W = MW + 2 * mg, mapY = mm(20); const items = GA.ex21.timeLegend(m, t); const cols = 3, rows = Math.ceil(items.length / cols);
   const legY = mapY + MH + mm(12), chY = legY + rows * mm(13) + mm(10), chH = mm(150), boxY = chY + chH + mm(8), srcY = boxY + mm(26), H = srcY + mm(26);
   const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); const L = mg, R = W - mg;
-  x.textBaseline = 'alphabetic'; x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; x.fillStyle = GA.palette.ink; x.font = '700 ' + mm(12) + 'px ' + F; x.fillText(t('x36.m.' + m), rtl ? R : L, mm(24), R - L);
-  x.font = '500 ' + mm(6.5) + 'px ' + F; x.fillStyle = GA.palette.red; x.direction = 'ltr'; x.fillText('1:10,000', rtl ? R : L, mm(37)); x.direction = rtl ? 'rtl' : 'ltr';
-  GA.ex21.drawTime(x, L, mapY, MW, MH, { t, only: m, k: KF });
+  x.textBaseline = 'alphabetic'; x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; x.fillStyle = GA.palette.ink;
+  // the title is written on the map itself, in grey (owner, Map Studio 17 Nov 2026)
+  GA.ex21.drawTime(x, L, mapY, MW, MH, { t, only: m, k: KF, title: t('x36.m.' + m) + ' · 1:10,000', titlePx: mm(7.5) });
   const cw = (R - L) / cols, sw = mm(16), sh = mm(7);
   items.forEach((it, j) => { const col = j % cols, lx = rtl ? R - (col + 1) * cw : L + col * cw, yy = legY + Math.floor(j / cols) * mm(13) + mm(5); x.font = '500 ' + mm(5) + 'px ' + F; x.textBaseline = 'middle'; const sx = rtl ? lx + cw - sw : lx;
     if (it.sw) { x.globalAlpha = it.alpha || 1; x.fillStyle = it.sw; x.fillRect(sx, yy - sh / 2, sw, sh); x.globalAlpha = 1; x.strokeStyle = '#8C817A'; x.lineWidth = 2; x.strokeRect(sx, yy - sh / 2, sw, sh); }
     if (it.line) { x.strokeStyle = it.line; x.lineWidth = (it.w || 1) * KF * 1.4; x.setLineDash(it.dash ? [9 * KF, 4 * KF] : []); x.beginPath(); x.moveTo(sx, yy); x.lineTo(sx + sw, yy); x.stroke(); x.setLineDash([]); }
     x.fillStyle = GA.palette.ink; x.textAlign = rtl ? 'right' : 'left'; x.fillText(it.label, rtl ? sx - mm(4) : sx + sw + mm(4), yy, cw - sw - mm(10)); });
   // chart + its key (the five towns' colours)
-  x.textBaseline = 'alphabetic'; x.font = '700 ' + mm(5.5) + 'px ' + F; x.fillStyle = GA.palette.ink; x.textAlign = rtl ? 'right' : 'left'; x.fillText(t(m === 'built' ? 'x36.ch.dw' : m === 'edge' ? 'x36.ch.pop' : 'x36.ch.pop0'), rtl ? R : L, chY, R - L);
+  x.textBaseline = 'alphabetic'; x.font = '600 ' + mm(5.5) + 'px ' + F; x.fillStyle = GA.palette.ink3; x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; x.fillText(t(m === 'built' ? 'x36.ch.dw' : m === 'edge' ? 'x36.ch.pop' : 'x36.ch.pop0'), rtl ? R : L, chY, R - L);
   const col = GA.ex21.tcol(); let kx = L; x.font = '500 ' + mm(4.4) + 'px ' + F; x.textBaseline = 'middle'; x.direction = 'ltr'; x.textAlign = 'left';
   if (m === 'built') GA.ex21.TFIVE.forEach(tn => { x.fillStyle = col[tn]; x.fillRect(kx, chY + mm(6), mm(8), mm(4)); x.fillStyle = GA.palette.ink; x.fillText(tn, kx + mm(10), chY + mm(8)); kx += x.measureText(tn).width + mm(22); });
   if (m === 'built') GA.ex21.drawDwellChart(x, L, chY + mm(14), R - L, chH - mm(14), { t, k: KF * 1.25 }); else GA.ex21.drawPopChart(x, L, chY + mm(6), R - L, chH - mm(6), { t, k: KF * 1.25, noProj: m !== 'edge' });
