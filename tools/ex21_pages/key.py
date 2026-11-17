@@ -31,6 +31,9 @@ JS = r'''async (SET) => { await GA.ex21.ready(); const fac = SET === 'factory'; 
   x.font = '400 ' + mm(2.3) + 'px ' + F; x.fillStyle = GA.palette.ink3; x.textAlign = rtl ? 'right' : 'left'; x.textBaseline = 'alphabetic'; x.direction = 'ltr';
   x.fillText(fac ? 'OpenStreetMap contributors (ODbL): estate, plots, roads · D. G. del Catastro: buildings · INE: residents' : 'OpenStreetMap contributors (ODbL) · base edge and 300 m band: derived from OSM', rtl ? R : L, H - mm(6));
   return c.toDataURL('image/png'); }'''
+# print resolution (env DPI, default 200); line weights given in mm scale with it
+DPI = float(os.environ.get('DPI', 200))
+JS = JS.replace('const D = 200 / 25.4', f'const D = {DPI} / 25.4')
 try:
   with sync_playwright() as p:
     b = p.chromium.launch(args=['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'])

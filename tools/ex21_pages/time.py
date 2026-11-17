@@ -21,7 +21,7 @@ JS_HIST = r'''async ([HIST, one]) => { await GA.ex21.ready(); await GA.ex21.read
   const lab = (h) => h[0] === 'mtn50' ? t('x36.hist.1931', { ha: GA.ex21.km2(TD.aerodrome_1931_ha) }) : h[1];
   if (one != null) { const h = HIST[one], w = 1600, hh = 1400, c = document.createElement('canvas'); c.width = w; c.height = hh; const x = c.getContext('2d');
     GA.ex21.drawTime(x, 0, 0, w, hh, { t, only: 'photo', photo: imgs[one], k: 1.6 });
-    x.fillStyle = 'rgba(255,255,255,.92)'; x.font = '700 64px ' + F; const s = lab(h); const tw = Math.min(x.measureText(s).width, w - 120); x.fillRect(40, 40, tw + 48, 92); x.fillStyle = GA.palette.red; x.textBaseline = 'middle'; x.textAlign = 'left'; x.direction = 'ltr'; x.fillText(s, 64, 88, w - 140);
+    GA.ex21.mapTitle(x, 0, 0, w, lab(h), 56, rtl, F);
     return c.toDataURL('image/png'); }
   const cols = 5, fw = mm(150), fh = Math.round(fw * 5600 / 6400), g = mm(8), L = mm(20), W = L * 2 + cols * fw + (cols - 1) * g, top = mm(44), H = top + 2 * (fh + mm(14)) + mm(40);
   const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); const R = W - L;
@@ -58,6 +58,12 @@ JS_MAP = r'''async ([m, KF]) => { await GA.ex21.ready(); await GA.ex21.readyTime
   lines.forEach(s => wrap(x, s, R - L).forEach(ln => { x.fillText(ln, rtl ? R : L, yy); yy += mm(7); }));
   x.font = '400 ' + mm(4) + 'px ' + F; x.fillStyle = GA.palette.ink3; wrap(x, t('x36.src.' + m), R - L).forEach((ln, i) => x.fillText(ln, rtl ? R : L, srcY + mm(4) + i * mm(5.6)));
   return c.toDataURL('image/png'); }'''
+# print resolution (env DPI, default 200); line weights given in mm scale with it
+DPI = float(os.environ.get('DPI', 200))
+COMMON = COMMON.replace('const D = 200 / 25.4', f'const D = {DPI} / 25.4')
+JS_HIST = JS_HIST.replace('const D = 200 / 25.4', f'const D = {DPI} / 25.4')
+JS_MAP = JS_MAP.replace('const D = 200 / 25.4', f'const D = {DPI} / 25.4')
+KF = KF * DPI / 200
 try:
   with sync_playwright() as p:
     b = p.chromium.launch(args=['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'])

@@ -18,6 +18,15 @@
   const km2 = (ha) => { const v = (ha || 0) / 100; return v >= 10 ? v.toFixed(1) : v >= 0.1 ? v.toFixed(2) : v.toFixed(3); };
   let D = null, Dp = null;
   const P = () => root.GA.palette;
+  // scale bar (owner, Map Studio 17 Nov 2026): no white box; grey bar and figures with a thin white halo so they read on photos too
+  function scaleBar(ctx, bx, by, km, k, font, labels) { const pal = root.GA.palette, g = pal.ink3; labels = labels || [['0', 0], ['500', 0.5], ['1 km', 1]];
+    ctx.save(); ctx.lineJoin = 'round'; ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 3 * k; ctx.strokeRect(bx, by, km, 5 * k);
+    ctx.fillStyle = g; if (labels.length > 3) { for (let i = 0; i + 1 < labels.length; i += 2) ctx.fillRect(bx + km * labels[i][1], by, km * (labels[i + 1][1] - labels[i][1]), 5 * k); } else ctx.fillRect(bx, by, km / 2, 5 * k); ctx.strokeStyle = g; ctx.lineWidth = 1 * k; ctx.strokeRect(bx, by, km, 5 * k);
+    ctx.font = font(10, 600); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.direction = 'ltr';
+    labels.forEach(([s0, f]) => { ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 3.6 * k; ctx.strokeText(s0, bx + km * f, by - 5 * k); ctx.fillStyle = g; ctx.fillText(s0, bx + km * f, by - 5 * k); }); ctx.restore(); }
+  // map title written on the map itself, grey, top start corner, white halo (owner, Map Studio 17 Nov 2026)
+  function mapTitle(ctx, x, y, w, text, px, rtl, F) { ctx.save(); ctx.font = `700 ${Math.round(px)}px ${F || root.GA.pages.font()}`; ctx.textAlign = rtl ? 'right' : 'left'; ctx.direction = rtl ? 'rtl' : 'ltr'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
+    const tx = rtl ? x + w - px * 0.9 : x + px * 0.9, ty = y + px * 1.6; ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = px * 0.5; ctx.strokeText(text, tx, ty, w - px * 6); ctx.fillStyle = root.GA.palette.ink3; ctx.fillText(text, tx, ty, w - px * 6); ctx.restore(); }
   function ready() {
     if (Dp) return Dp; const v = '?v=' + (root.GA_BUILD || ''); const prj = root.GA.proj.EPSG25830;
     const ll0 = prj.inverse([CITY.x0, CITY.y0]), ll1 = prj.inverse([CITY.x1, CITY.y1]); const bb = [ll0[0], ll0[1], ll1[0], ll1[1]];
@@ -76,11 +85,10 @@
       ctx.fillStyle = '#FFFFFF'; ctx.font = font(15, 700); ctx.fillText(t('x34.base').toUpperCase(), rx, ry); ctx.font = font(11, 500); ctx.direction = 'ltr'; ctx.fillText(`${km2(base.p.area_ha)} km² · ${base.p.perimeter_km} km`, rx, ry + 17 * k); ctx.textAlign = 'center'; }
     // frame, north, scale
     ctx.restore(); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.2 * k; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-    root.GA.pages.northArrow(ctx, x + w - 28 * k, y + 20 * k, 1.3 * k);
+    root.GA.pages.northArrow(ctx, (root.GA.i18n.dir() === 'rtl' ? x + 28 * k : x + w - 28 * k), y + 20 * k, 1.3 * k);
     if (on('growth') && o.only === 'growth') drawLineInset(ctx, x + 14 * k, y + h - 410 * k, 250 * k, 350 * k, k, t, font);
-    const km = 1000 / mpp, bx = x + 22 * k, by = y + h - 24 * k; ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(bx - 8 * k, by - 22 * k, km + 60 * k, 34 * k);
-    ctx.fillStyle = pal.ink; ctx.fillRect(bx, by, km / 2, 5 * k); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1 * k; ctx.strokeRect(bx, by, km, 5 * k); ctx.font = font(10, 500); ctx.textAlign = 'center'; ctx.direction = 'ltr';
-    ctx.fillText('0', bx, by - 5 * k); ctx.fillText('500', bx + km / 2, by - 5 * k); ctx.fillText('1 km', bx + km, by - 5 * k);
+    const km = 1000 / mpp, bx = x + 22 * k, by = y + h - 24 * k; 
+    scaleBar(ctx, bx, by, km, k, font);
     return true;
   }
   // the GAPS (owner request, 12 Nov 2026): three small maps of the agglomeration (34 municipalities, INE) — residents
@@ -204,15 +212,13 @@
     ctx.strokeStyle = pal.red; ctx.lineWidth = (aer ? 2.2 : 1.8) * k; ctx.setLineDash([10 * k, 5 * k]); ctx.beginPath(); ctx.moveTo(X(sa[0]), Y(sa[1])); ctx.lineTo(X(sb[0]), Y(sb[1])); ctx.stroke(); ctx.setLineDash([]);
     [[sa, A.id], [sb, A.id + '′']].forEach(([p, n]) => { ctx.beginPath(); ctx.arc(X(p[0]), Y(p[1]), 11 * k, 0, 7); ctx.fillStyle = pal.red; ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.font = font(12, 700); ctx.textAlign = 'center'; ctx.fillText(n, X(p[0]), Y(p[1]) + 0.5 * k); });
     ctx.restore(); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.2 * k; ctx.strokeRect(x + 0.5, y + 0.5, S - 1, S - 1);
-    if (aer) { ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(x + S - 41 * k, y + 10 * k, 30 * k, 62 * k); }
-    root.GA.pages.northArrow(ctx, x + S - 26 * k, y + 18 * k, 1.2 * k);
+    if (aer) { ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(root.GA.i18n.dir() === 'rtl' ? x + 11 * k : x + S - 41 * k, y + 10 * k, 30 * k, 62 * k); }
+    root.GA.pages.northArrow(ctx, (root.GA.i18n.dir() === 'rtl' ? x + 26 * k : x + S - 26 * k), y + 18 * k, 1.2 * k);
     // scale bar 0–10–20–50 m
     // (the plate goes to the first corner where it hides neither end of the section nor a dead end: bottom-left, bottom-right, top-left)
     const m50 = 50 / mpp, pw = m50 + 46 * k, ph = 30 * k, spots = [[x + 10 * k, y + S - 10 * k - ph], [x + S - 10 * k - pw, y + S - 10 * k - ph], [x + 10 * k, y + 10 * k]];
     const hides = ([px, py]) => [sa, sb].concat(A.dead).some(q => { const u = X(q[0]), v = Y(q[1]); return u > px - 14 * k && u < px + pw + 14 * k && v > py - 14 * k && v < py + ph + 14 * k; });
-    const spot = spots.find(q => !hides(q)) || spots[0], bx = spot[0] + 6 * k, by = spot[1] + 20 * k; ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(bx - 6 * k, by - 20 * k, pw, ph); ctx.fillStyle = pal.ink;
-    [[0, 10], [20, 30], [40, 50]].forEach(([a, b]) => ctx.fillRect(bx + a / mpp, by, (b - a) / mpp, 5 * k)); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1 * k; ctx.strokeRect(bx, by, m50, 5 * k);
-    ctx.font = font(9.5, 500); ctx.textAlign = 'center'; ctx.direction = 'ltr'; ctx.textBaseline = 'alphabetic'; ['0', '10', '20', '50 m'].forEach((s0, i) => ctx.fillText(s0, bx + [0, 10, 20, 50][i] / mpp, by - 4 * k));
+    const spot = spots.find(q => !hides(q)) || spots[0], bx = spot[0] + 6 * k, by = spot[1] + 20 * k; if (!o.noScale) scaleBar(ctx, bx, by, m50, k, font, [['0', 0], ['10', 0.2], ['20', 0.4], ['50 m', 1]]);
     return true;
   }
   // key map: the base and its fence (as map 01) with the eight 1:500 windows
@@ -351,10 +357,9 @@
     // corner box (top-left): map 02 the southern axis, map 04 built area per decade
     if (on('access')) drawAxisInset(ctx, x + 14 * k, y + 14 * k, 300 * k, 215 * k, k, t, font);
     if (on('time')) drawDecades(ctx, x + 14 * k, y + 14 * k, 300 * k, 190 * k, k, t, font);
-    root.GA.pages.northArrow(ctx, x + w - 28 * k, y + 20 * k, 1.3 * k);
-    const km = 1000 / mpp, bx = x + 22 * k, by = y + h - 24 * k; ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(bx - 8 * k, by - 22 * k, km + 60 * k, 34 * k);
-    ctx.fillStyle = pal.ink; ctx.fillRect(bx, by, km / 2, 5 * k); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1 * k; ctx.strokeRect(bx, by, km, 5 * k); ctx.font = font(10, 500); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.direction = 'ltr';
-    ctx.fillText('0', bx, by - 5 * k); ctx.fillText('500', bx + km / 2, by - 5 * k); ctx.fillText('1 km', bx + km, by - 5 * k);
+    root.GA.pages.northArrow(ctx, (root.GA.i18n.dir() === 'rtl' ? x + 28 * k : x + w - 28 * k), y + 20 * k, 1.3 * k);
+    const km = 1000 / mpp, bx = x + 22 * k, by = y + h - 24 * k; 
+    scaleBar(ctx, bx, by, km, k, font);
     return true;
   }
   // map 02's corner box: the whole southern axis — Granada's metro line 1, its extension to Las Gabias, the straight gap to the estate
@@ -432,10 +437,9 @@
     D.edge.filter(f => f.p.k === 'town').forEach(f => { const [u, v] = f.g; ctx.font = font(photo ? 13 : 15, 700); ctx.lineWidth = 4 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(f.p.nm.toUpperCase(), X(u), Y(v) - 8 * k); ctx.fillStyle = C.town; ctx.fillText(f.p.nm.toUpperCase(), X(u), Y(v) - 8 * k); });
     if (base && !photo) { const rx = X((D.runway[0][0] + D.runway[1][0]) / 2), ry = Y((D.runway[0][1] + D.runway[1][1]) / 2); ctx.fillStyle = '#FFFFFF'; ctx.font = font(14, 700); ctx.fillText(t('x34.base').toUpperCase(), rx - 60 * k, ry); }
     ctx.restore(); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.2 * k; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-    if (!o.noNorth) { if (photo) { ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(x + w - 44 * k, y + 8 * k, 32 * k, 56 * k); } root.GA.pages.northArrow(ctx, x + w - 28 * k, y + 20 * k, 1.3 * k); }
-    if (!o.noScale) { const km = 1000 / mpp, bx = x + 22 * k, by = y + h - 24 * k; ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(bx - 8 * k, by - 22 * k, km + 60 * k, 34 * k);
-      ctx.fillStyle = pal.ink; ctx.fillRect(bx, by, km / 2, 5 * k); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1 * k; ctx.strokeRect(bx, by, km, 5 * k); ctx.font = font(10, 500); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.direction = 'ltr';
-      ctx.fillText('0', bx, by - 5 * k); ctx.fillText('500', bx + km / 2, by - 5 * k); ctx.fillText('1 km', bx + km, by - 5 * k); }
+    if (!o.noNorth) { if (photo) { ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(root.GA.i18n.dir() === 'rtl' ? x + 12 * k : x + w - 44 * k, y + 8 * k, 32 * k, 56 * k); } root.GA.pages.northArrow(ctx, (root.GA.i18n.dir() === 'rtl' ? x + 28 * k : x + w - 28 * k), y + 20 * k, 1.3 * k); }
+    if (!o.noScale) { const km = 1000 / mpp, bx = x + 22 * k, by = y + h - 24 * k; 
+      scaleBar(ctx, bx, by, km, k, font); }
     return true;
   }
   const TFIVE = ['Armilla', 'Churriana de la Vega', 'Las Gabias', 'Alhendín', 'Ogíjares'];
@@ -487,10 +491,9 @@
     D.edge.filter(f => f.p.k === 'town').forEach(f => { const [u, v] = f.g; ctx.font = font(o.small ? 11 : 15, 700); ctx.lineWidth = 4 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(f.p.nm.toUpperCase(), X(u), Y(v) - 8 * k); ctx.fillStyle = C.town; ctx.fillText(f.p.nm.toUpperCase(), X(u), Y(v) - 8 * k); });
     if (base && !o.small) { const rx = X((D.runway[0][0] + D.runway[1][0]) / 2), ry = Y((D.runway[0][1] + D.runway[1][1]) / 2); ctx.fillStyle = '#FFFFFF'; ctx.font = font(14, 700); ctx.fillText(t('x34.base').toUpperCase(), rx - 60 * k, ry); }
     ctx.restore(); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1.2 * k; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-    if (!o.small) { root.GA.pages.northArrow(ctx, x + w - 28 * k, y + 20 * k, 1.3 * k);
-      const km = 1000 / mpp, bx = x + 22 * k, by = y + h - 24 * k; ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(bx - 8 * k, by - 22 * k, km + 60 * k, 34 * k);
-      ctx.fillStyle = pal.ink; ctx.fillRect(bx, by, km / 2, 5 * k); ctx.strokeStyle = pal.ink; ctx.lineWidth = 1 * k; ctx.strokeRect(bx, by, km, 5 * k); ctx.font = font(10, 500); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.direction = 'ltr';
-      ctx.fillText('0', bx, by - 5 * k); ctx.fillText('500', bx + km / 2, by - 5 * k); ctx.fillText('1 km', bx + km, by - 5 * k); }
+    if (!o.small) { root.GA.pages.northArrow(ctx, (root.GA.i18n.dir() === 'rtl' ? x + 28 * k : x + w - 28 * k), y + 20 * k, 1.3 * k);
+      const km = 1000 / mpp, bx = x + 22 * k, by = y + h - 24 * k; 
+      scaleBar(ctx, bx, by, km, k, font); }
     return true;
   }
   function peopleLegend(key, t) { const pal = P(), b = PBR[key], f = (v) => key === 'inc' ? '€' + v.toLocaleString('en-US') : String(v); const u = key === 'age' || key === 'hh' || key === 'inc' ? '' : ' %';
@@ -506,7 +509,7 @@
       PBRANCH.forEach(b => { const ww = (T.branch[b] || 0) / tot * (w - lw); ctx.fillStyle = cols[b]; ctx.fillRect(bx, by + rh * 0.12, ww, rh * 0.6); if (ww > 34 * k) { ctx.fillStyle = ['public', 'trade', 'industry', 'transport', 'health'].includes(b) ? '#FFFFFF' : pal.ink; ctx.font = font(9.5, 700); ctx.textAlign = 'center'; ctx.fillText(Math.round((T.branch[b] || 0) / tot * 100) + '%', bx + ww / 2, by + rh * 0.42); } bx += ww; }); });
     ctx.restore(); return PBRANCH.map(b => ({ sw: cols[b], label: t('x37.br.' + b) })); }
   root.GA.ex21 = { ready, readyAreas, readyAerial, loadAerial, aerialLegend, get aerial() { return AER; }, drawArea, drawSection, areaLegend, drawAreaKey, keyLegend, get areas() { return AR; }, drawCity, drawGaps, cityLegend, mapLegend, MAPS: ['island', 'walk', 'growth', 'height'], CITY, get data() { return D; },
-    readyFactory, drawFactory, factoryLegend, drawFactoryKey, FMAPS: ['estate', 'access', 'land', 'time'], get factory() { return FD; }, km2,
+    readyFactory, drawFactory, factoryLegend, drawFactoryKey, FMAPS: ['estate', 'access', 'land', 'time'], get factory() { return FD; }, km2, scaleBar, mapTitle,
     readyTime, drawTime, drawDwellChart, drawPopChart, timeLegend, get time() { return TD; }, TFIVE, tcol,
     readyPeople, drawPeople, peopleLegend, drawBranchBars, get people() { return PD; } };
 })(window);

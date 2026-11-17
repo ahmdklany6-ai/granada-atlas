@@ -18,9 +18,10 @@ TX = md(f'exports/ex21_text/text_{LANG}.md')
 LAB = {'he': {'sub': 'תרגיל 2.1 · קנה המידה · סטודיו לעיצוב עירוני, גרנדה', 'city': 'העיר · 1:10,000 · הבסיס, הגדר ומה שלאורכה', 'areas': 'האזור · 1:500 · ארבע גדרות שונות', 'y1931': '1931: שדה תעופה קטן (מפת IGN)', 'y2022': '2022: הבסיס היום (PNOA)', 'built': 'הבינוי לפי שנת הבנייה (Catastro)', 'age': 'גיל ממוצע לפי אזור סטטיסטי (INE 2024)', 'new': 'חדש', 'old': 'ישן', 'sheetMaps': 'לוח 1 · הבסיס לאורך הזמן ומי גר סביבו', 'sheetAreas': 'לוח 2 · העיר 1:10,000 והאזורים 1:500', 'ageU': 'שנים', 'stats': [['3.71 km²', 'שטח הבסיס היום (ב־1931: 0.44 קמ״ר)'], ['‎+15.3%‎', 'תושבי חמש העיירות 2015–2025'], ['42%', 'מהגדר צמודה למגורים'], ['13', 'דרכים ללא מוצא ליד הגדר'], ['2–75 m', 'גובה מותר ליד הגדר, לפי המקום'], ['‎8–10%‎', 'מועסקים במנהל ציבורי וביטחון']], 'lgCity': 'מקרא · העיר', 'lgArea': 'מקרא · האזורים'},
        'ar': {'sub': 'التمرين 2.1 · المقياس · استوديو التصميم الحضري، غرناطة', 'city': 'المدينة · 1:10,000 · القاعدة والسياج وما على طوله', 'areas': 'المنطقة · 1:500 · أربعة أسيجة مختلفة', 'y1931': '1931: مطار صغير (خريطة IGN)', 'y2022': '2022: القاعدة اليوم (PNOA)', 'built': 'المبني حسب سنة البناء (Catastro)', 'age': 'متوسط العمر حسب القسم الإحصائي (INE 2024)', 'new': 'جديد', 'old': 'قديم', 'sheetMaps': 'اللوحة 1 · القاعدة عبر الزمن ومن يسكن حولها', 'sheetAreas': 'اللوحة 2 · المدينة 1:10,000 والمناطق 1:500', 'ageU': 'سنوات', 'stats': [['3.71 km²', 'مساحة القاعدة اليوم (سنة 1931: 0.44 كم²)'], ['‎+15.3%‎', 'سكان البلدات الخمس 2015–2025'], ['42%', 'من السياج ملاصق للسكن'], ['13', 'طريقًا مسدودًا عند السياج'], ['2–75 m', 'الارتفاع المسموح عند السياج حسب المكان'], ['‎8–10%‎', 'من العاملين في الإدارة العامة والدفاع']], 'lgCity': 'المفتاح · المدينة', 'lgArea': 'المفتاح · المناطق'},
        'en': {'sub': 'Exercise 2.1 · Scale · Urban design studio, Granada', 'city': 'City · 1:10,000 · the base, the fence and what lies along it', 'areas': 'Area · 1:500 · four different fences', 'y1931': '1931: a small aerodrome (IGN map)', 'y2022': '2022: the base today (PNOA)', 'built': 'Built-up by year of construction (Catastro)', 'age': 'Mean age by census section (INE 2024)', 'new': 'new', 'old': 'old', 'sheetMaps': 'Sheet 1 · the base over time and who lives around it', 'sheetAreas': 'Sheet 2 · city 1:10,000 and areas 1:500', 'ageU': 'years', 'stats': [['3.71 km²', 'the base today (1931: 0.44 km²)'], ['+15.3%', 'residents of the five towns, 2015–2025'], ['42%', 'of the fence touches housing'], ['13', 'dead ends at the fence'], ['2–75 m', 'allowed height at the fence, by place'], ['8–10%', 'employed in public administration and defence']], 'lgCity': 'Legend · city', 'lgArea': 'Legend · areas'}}[LANG]
+DPI = int(os.environ.get('DPI', 150)); JS = JS.replace('__DPI__', str(DPI))
 srv = subprocess.Popen([sys.executable, '-m', 'http.server', str(PORT), '--bind', '127.0.0.1'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
 JS = r'''async ([IDS, TX, LAB, MODE]) => { await GA.ex21.ready(); await GA.ex21.readyAreas(); await GA.ex21.readyTime(); await GA.ex21.readyPeople();
-  const DPI = 150, D = DPI / 25.4, mm = (v) => v * D; const t = (k, v) => GA.i18n.t(k, v); const F = GA.pages.font(); const rtl = GA.i18n.dir() === 'rtl'; const pal = GA.palette;
+  const DPI = __DPI__, KS = DPI / 150, D = DPI / 25.4, mm = (v) => v * D; const t = (k, v) => GA.i18n.t(k, v); const F = GA.pages.font(); const rtl = GA.i18n.dir() === 'rtl'; const pal = GA.palette;
   const load = (u) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error(u)); im.src = u; });
   const W = Math.round(mm(841)), H = Math.round(mm(594)); const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
   const M = 14, G = 8; const X0 = (s0, w) => rtl ? W - mm(s0 + w) : mm(s0); const sx = (px, w) => rtl ? px + w : px;
@@ -34,9 +35,12 @@ JS = r'''async ([IDS, TX, LAB, MODE]) => { await GA.ex21.ready(); await GA.ex21.
   const top = 44, G2 = G;
   // the city frame at TRUE 1:10,000 (640 × 560 mm), cropped to a box centred on the base
   const E = GA.ex21.CITY, full = mm(640), fullH = full * 5600 / 6400, CX = 442830, CY = 4109470;
-  const cityBox = (bx, by, bw, bh, draw) => { const ox = bx + bw / 2 - (CX - E.x0) / 6400 * full, oy = by + bh / 2 - (E.y1 - CY) / 6400 * full; x.save(); x.beginPath(); x.rect(bx, by, bw, bh); x.clip(); draw(ox, oy); x.restore(); frame(bx, by, bw, bh); return [ox, oy]; };
-  const northScale = (bx, by, bw, bh) => { GA.pages.northArrow(x, bx + (rtl ? mm(10) : bw - mm(10)), by + mm(6), mm(0.33)); x.fillStyle = 'rgba(255,255,255,.92)'; const sbx = rtl ? bx + bw - mm(118) : bx + mm(4); x.fillRect(sbx, by + bh - mm(13), mm(114), mm(10)); x.fillStyle = pal.ink; x.fillRect(sbx + mm(5), by + bh - mm(7), mm(50), mm(1.6)); x.strokeStyle = pal.ink; x.lineWidth = mm(0.25); x.strokeRect(sbx + mm(5), by + bh - mm(7), mm(100), mm(1.6));
-    x.font = font(3, 500); x.textAlign = 'center'; x.direction = 'ltr'; x.textBaseline = 'alphabetic'; [['0', 0], ['500', 50], ['1 km', 100]].forEach(([s0, v]) => x.fillText(s0, sbx + mm(5 + v), by + bh - mm(8.5))); };
+  const KK = mm(0.32), kf = (sz, wt) => `${wt || 600} ${Math.round(sz * KK)}px ${F}`, bar = (bx, by, len, labels) => GA.ex21.scaleBar(x, bx, by, len, KK, kf, labels);
+  const gTitle = (px, py, w, s0, sz) => GA.ex21.mapTitle(x, px, py, w, s0, mm(sz || 4.2), rtl, F);
+  // keep the crop inside the data frame (6400 × 5600 m), so no blank strip at a map's side (owner, Map Studio 17 Nov 2026)
+  const clampC = (bw, bh, fullPx) => { const hwM = bw / fullPx * 6400 / 2, hhM = bh / fullPx * 6400 / 2; return [Math.min(Math.max(CX, E.x0 + hwM), E.x0 + 6400 - hwM), Math.min(Math.max(CY, E.y1 - 5600 + hhM), E.y1 - hhM)]; };
+  const cityBox = (bx, by, bw, bh, draw) => { const [cx0, cy0] = clampC(bw, bh, full); const ox = bx + bw / 2 - (cx0 - E.x0) / 6400 * full, oy = by + bh / 2 - (E.y1 - cy0) / 6400 * full; x.save(); x.beginPath(); x.rect(bx, by, bw, bh); x.clip(); draw(ox, oy); x.restore(); frame(bx, by, bw, bh); return [ox, oy]; };
+  const northScale = (bx, by, bw, bh) => { GA.pages.northArrow(x, bx + (rtl ? mm(10) : bw - mm(10)), by + mm(6), mm(0.33)); const sbx = rtl ? bx + bw - mm(100 + 12) : bx + mm(8); bar(sbx, by + bh - mm(7), mm(100)); };
   const drawLeg = (legItems, lX, lw, ytop, lh, lcols, fs) => { const lcw = lw / lcols, lrows = Math.ceil(legItems.length / lcols);
     legItems.forEach((it, j) => { const col = Math.floor(j / lrows), row = j % lrows; const bx = rtl ? lX + mm(lw) - (col + 1) * mm(lcw) : lX + col * mm(lcw); const yy = mm(ytop + row * lh); const sw0 = rtl ? bx + mm(lcw - 9) : bx;
     if (it.sw) { x.globalAlpha = it.alpha || 1; x.fillStyle = it.sw; x.fillRect(sw0, yy - mm(1.8), mm(9), mm(3.6)); x.globalAlpha = 1; x.strokeStyle = it.stroke || '#8C817A'; x.lineWidth = mm(0.22); x.setLineDash(it.dashed ? [mm(1), mm(0.7)] : []); x.strokeRect(sw0, yy - mm(1.8), mm(9), mm(3.6)); x.setLineDash([]); }
@@ -45,49 +49,44 @@ JS = r'''async ([IDS, TX, LAB, MODE]) => { await GA.ex21.ready(); await GA.ex21.
     else if (it.line) { x.strokeStyle = it.line; x.lineWidth = mm(0.35 * (it.w || 1)); x.setLineDash(it.dash ? [mm(1.6), mm(0.9)] : []); x.beginPath(); x.moveTo(sw0, yy); x.lineTo(sw0 + mm(9), yy); x.stroke(); x.setLineDash([]); }
     txt(it.label, rtl ? sw0 - mm(2.5) : sw0 + mm(11.5), yy + mm(1.3), fs, 500, pal.ink, null, mm(lcw - 14)); });
  };
-  txt(TX.title, rtl ? W - mm(M) : mm(M), mm(28), 14, 700, pal.ink); txt(MODE === 'maps' ? LAB.sheetMaps : LAB.sheetAreas, rtl ? mm(M) : W - mm(M), mm(28), 5, 600, pal.red, rtl ? 'left' : 'right'); rule(mm(34));
+  txt(TX.title, rtl ? W - mm(M) : mm(M), mm(28), 14, 700, pal.ink); rule(mm(34));
   if (MODE === 'maps') {
     const full15 = mm(6400 / 15), fullH15 = full15 * 5600 / 6400;
-    const cityBox15 = (bx, by, bw, bh, draw) => { const ox = bx + bw / 2 - (CX - E.x0) / 6400 * full15, oy = by + bh / 2 - (E.y1 - CY) / 6400 * full15; x.save(); x.beginPath(); x.rect(bx, by, bw, bh); x.clip(); draw(ox, oy); x.restore(); frame(bx, by, bw, bh); };
-    const northScale15 = (bx, by, bw, bh) => { const km = 1000 / 15; GA.pages.northArrow(x, bx + (rtl ? mm(10) : bw - mm(10)), by + mm(6), mm(0.33)); x.fillStyle = 'rgba(255,255,255,.92)'; const sbx = rtl ? bx + bw - mm(km + 18) : bx + mm(4); x.fillRect(sbx, by + bh - mm(13), mm(km + 14), mm(10)); x.fillStyle = pal.ink; x.fillRect(sbx + mm(5), by + bh - mm(7), mm(km / 2), mm(1.6)); x.strokeStyle = pal.ink; x.lineWidth = mm(0.25); x.strokeRect(sbx + mm(5), by + bh - mm(7), mm(km), mm(1.6));
-      x.font = font(3, 500); x.textAlign = 'center'; x.direction = 'ltr'; x.textBaseline = 'alphabetic'; [['0', 0], ['500', km / 2], ['1 km', km]].forEach(([s0, v]) => x.fillText(s0, sbx + mm(5 + v), by + bh - mm(8.5))); };
+    const cityBox15 = (bx, by, bw, bh, draw) => { const [cx0, cy0] = clampC(bw, bh, full15); const ox = bx + bw / 2 - (cx0 - E.x0) / 6400 * full15, oy = by + bh / 2 - (E.y1 - cy0) / 6400 * full15; x.save(); x.beginPath(); x.rect(bx, by, bw, bh); x.clip(); draw(ox, oy); x.restore(); frame(bx, by, bw, bh); };
+    const northScale15 = (bx, by, bw, bh) => { const km = 1000 / 15; GA.pages.northArrow(x, bx + (rtl ? mm(10) : bw - mm(10)), by + mm(6), mm(0.33)); const sbx = rtl ? bx + bw - mm(km + 12) : bx + mm(8); bar(sbx, by + bh - mm(7), mm(km)); };
     // four maps at 1:10,000, 2 × 2, each 398.5 × 236 mm (3.99 × 2.36 km), a key line under each
-    const cw2 = (841 - 2 * M - G) / 2, ch2 = (594 - top - M - 8 - G - 2 * 16) / 2;
+    const cw2 = (841 - 2 * M - G) / 2, ch2 = (594 - top - M - 8 - G - 2 * 12) / 2;
     const [m31, p22] = await Promise.all([load('/exports/ex21_time/hist/mtn50.jpg'), load('/exports/ex21_time/hist/pnoa2022.jpg')]);
     [[m31, LAB.y1931, 'photo'], [p22, LAB.y2022, 'photo'], [null, LAB.built, 'built'], [null, LAB.age, 'age']].forEach(([im, lb, kind], j) => { const cc = j % 2, r = Math.floor(j / 2);
-      const px = X0(M + cc * (cw2 + G), cw2), py = mm(top + 6 + r * (ch2 + 16 + G));
-      txt(lb + ' · 1:15,000', sx(px, mm(cw2)), py - mm(2), 4.2, 700, pal.ink, null, mm(cw2));
-      cityBox15(px, py, mm(cw2), mm(ch2), (ox, oy) => { if (kind === 'age') GA.ex21.drawPeople(x, ox, oy, full15, fullH15, { t, only: 'age', k: 1.8, small: true }); else GA.ex21.drawTime(x, ox, oy, full15, fullH15, { t, only: kind, photo: im, k: 1.8, noScale: true, noNorth: true }); });
-      northScale15(px, py, mm(cw2), mm(ch2));
+      const px = X0(M + cc * (cw2 + G), cw2), py = mm(top + r * (ch2 + 12 + G));
+      cityBox15(px, py, mm(cw2), mm(ch2), (ox, oy) => { if (kind === 'age') GA.ex21.drawPeople(x, ox, oy, full15, fullH15, { t, only: 'age', k: 1.8 * KS, small: true }); else GA.ex21.drawTime(x, ox, oy, full15, fullH15, { t, only: kind, photo: im, k: 1.8 * KS, noScale: true, noNorth: true }); });
+      northScale15(px, py, mm(cw2), mm(ch2)); gTitle(px, py, mm(cw2), lb + ' · 1:15,000', 4.6);
       const keys = kind === 'built' ? GA.ex21.time.periods.map(q => ({ sw: `rgb(${q[3].join(',')})`, label: t('x36.per.' + q[0]) })) : kind === 'age' ? GA.ex21.peopleLegend('age', t).map((q, i) => i === 0 ? Object.assign({}, q, { label: q.label }) : q) : null;
       if (keys) { const kw = mm(cw2) / keys.length; keys.forEach((k2, i) => { const qx = px + (rtl ? keys.length - 1 - i : i) * kw; x.globalAlpha = k2.alpha || 1; x.fillStyle = k2.sw; x.fillRect(qx, py + mm(ch2 + 2), kw - mm(1), mm(3.2)); x.globalAlpha = 1;
         x.font = font(3, 500); x.fillStyle = pal.ink2; x.textAlign = 'center'; x.direction = rtl ? 'rtl' : 'ltr'; x.textBaseline = 'alphabetic'; x.fillText(k2.label, qx + kw / 2, py + mm(ch2 + 10), kw - mm(2)); }); }
       else { x.font = font(3, 500); x.fillStyle = pal.ink3; x.textAlign = rtl ? 'right' : 'left'; x.direction = rtl ? 'rtl' : 'ltr'; x.textBaseline = 'alphabetic'; x.fillText(kind === 'photo' && j === 0 ? 'IGN · MTN50, 1931 (CC BY 4.0)' : 'PNOA © IGN, 2022 (CC BY 4.0)', sx(px, mm(cw2)), py + mm(ch2 + 8)); } });
   } else {
     // city map 1:10,000 (start side) with its legend under it; the four areas 2 × 2 beside it
-    const cw = 300, chh = 380, cX = X0(M, cw), cY = mm(top + 6);
-    txt(LAB.city, sx(cX, mm(cw)), cY - mm(2), 4, 700, pal.ink, null, mm(cw));
-    const [ox, oy] = cityBox(cX, cY, mm(cw), mm(chh), (ox, oy) => { GA.ex21.drawCity(x, ox, oy, full, fullH, { t, only: 'island', k: 2.6 });
+    const cw = 300, chh = 380, cX = X0(M, cw), cY = mm(top + 2);
+    const [ox, oy] = cityBox(cX, cY, mm(cw), mm(chh), (ox, oy) => { GA.ex21.drawCity(x, ox, oy, full, fullH, { t, only: 'island', k: 2.6 * KS });
       const XX = (u) => ox + (u - E.x0) / 6400 * full, YY = (v) => oy + (E.y1 - v) / 6400 * full;
       GA.ex21.areas.areas.filter(a => IDS.includes(a.id)).forEach(a => { const e = a.extent; x.fillStyle = 'rgba(153,43,42,.18)'; x.fillRect(XX(e[0]), YY(e[3]), XX(e[2]) - XX(e[0]), YY(e[1]) - YY(e[3])); x.strokeStyle = pal.red; x.lineWidth = mm(0.7); x.strokeRect(XX(e[0]), YY(e[3]), XX(e[2]) - XX(e[0]), YY(e[1]) - YY(e[3]));
         const inner = (e[1] + e[3]) / 2 > CY ? 1 : -1; const bx = XX((e[0] + e[2]) / 2), by = inner > 0 ? YY(e[1]) + mm(6) : YY(e[3]) - mm(6);
         x.beginPath(); x.arc(bx, by, mm(4), 0, 7); x.fillStyle = pal.red; x.fill(); x.fillStyle = '#fff'; x.font = font(4.4, 700); x.textAlign = 'center'; x.textBaseline = 'middle'; x.direction = 'ltr'; x.fillText(a.id, bx, by + mm(0.2)); }); });
-    northScale(cX, cY, mm(cw), mm(chh));
+    northScale(cX, cY, mm(cw), mm(chh)); gTitle(cX, cY, mm(cw), LAB.city, 4.4);
     const legItems = GA.ex21.mapLegend('island', t).concat([{ sw: 'rgba(153,43,42,.18)', stroke: pal.red, label: t('x34.lg.window') }]).concat(GA.ex21.areaLegend(t).filter(it => !/3\.71|3,71/.test(it.label)).slice(0, 14));
-    const ly = top + 6 + chh + 9; drawLeg(legItems, cX, cw, ly, Math.min(7.4, (594 - M - 8 - ly) / Math.ceil(legItems.length / 2)), 2, 3.3);
+    const ly = top + 2 + chh + 9; drawLeg(legItems, cX, cw, ly, Math.min(7.4, (594 - M - 8 - ly) / Math.ceil(legItems.length / 2)), 2, 3.3);
     // the four areas
-    const aw0 = 841 - M - cw - G - M, aX0 = M + cw + G; const cellW = (aw0 - G) / 2, cellH = (594 - top - M - 8 - G) / 2, secH = 74, mapH = cellH - 6 - secH - 3;
+    const aw0 = 841 - M - cw - G - M, aX0 = M + cw + G; const cellW = (aw0 - G) / 2, cellH = (594 - top - M - 8 - G) / 2, secH = 74, mapH = cellH - secH - 3;
   const secImgs = await Promise.all(IDS.map(id => load('/exports/ex21_sec/section_' + id + '.svg?r=' + Date.now())));
   const gy = await Promise.all(IDS.map(async id => { const sv = await (await fetch('/exports/ex21_sec/section_' + id + '.svg?r=' + Date.now())).text(); const m = sv.match(/id="ground-cut-[^"]*"><polygon points="([^"]+)"/);
     const pts = m[1].trim().split(' ').map(q => q.split(',').map(Number)); const fx = 10 + 2 * 95; let best = pts[0]; pts.forEach(q => { if (Math.abs(q[0] - fx) < Math.abs(best[0] - fx)) best = q; }); return best[1]; }));
   IDS.forEach((id, i) => { const A = GA.ex21.areas.areas.find(a => a.id === id); const cc = i % 2, rr = Math.floor(i / 2); const px = X0(aX0 + cc * (cellW + G), cellW), py = mm(top + 2 + rr * (cellH + G));
-    txt(t('x34.a.' + id), sx(px, mm(cellW)), py + mm(3.5), 3.3, 700, pal.ink, null, mm(cellW));
     const s0 = A.section, L = s0.samples.length - 1, d = 80; const P = [s0.a[0] + (s0.b[0] - s0.a[0]) * d / L, s0.a[1] + (s0.b[1] - s0.a[1]) * d / L];
     const e = A.extent, hw = cellW / 4, hh = mapH / 4; const c0 = [Math.min(Math.max(P[0], e[0] + hw), e[2] - hw), Math.min(Math.max(P[1], e[1] + hh), e[3] - hh)]; const s2 = mm(2);
-    const my = py + mm(6); x.save(); x.beginPath(); x.rect(px, my, mm(cellW), mm(mapH)); x.clip(); GA.ex21.drawArea(x, px + mm(cellW) / 2 - (c0[0] - e[0]) * s2, my + mm(mapH) / 2 - (e[3] - c0[1]) * s2, 130 * s2, id, { t, k: 1.55 }); x.restore();
-    frame(px, my, mm(cellW), mm(mapH)); GA.pages.northArrow(x, px + mm(cellW - 6), my + mm(4), mm(0.25));
-    x.fillStyle = 'rgba(255,255,255,.9)'; x.fillRect(px + mm(3), my + mm(mapH - 10), mm(48), mm(8)); x.fillStyle = pal.ink; x.fillRect(px + mm(6), my + mm(mapH - 5), mm(20), mm(1.2)); x.strokeStyle = pal.ink; x.lineWidth = mm(0.2); x.strokeRect(px + mm(6), my + mm(mapH - 5), mm(40), mm(1.2));
-    x.font = font(2.6, 500); x.textAlign = 'center'; x.direction = 'ltr'; x.textBaseline = 'alphabetic'; [['0', 0], ['10', 20], ['20 m', 40]].forEach(([s1, v]) => x.fillText(s1, px + mm(6 + v), my + mm(mapH - 6)));
+    const my = py; x.save(); x.beginPath(); x.rect(px, my, mm(cellW), mm(mapH)); x.clip(); GA.ex21.drawArea(x, px + mm(cellW) / 2 - (c0[0] - e[0]) * s2, my + mm(mapH) / 2 - (e[3] - c0[1]) * s2, 130 * s2, id, { t, k: 1.55 * KS, noScale: true }); x.restore(); bar(rtl ? px + mm(cellW - 49) : px + mm(7), my + mm(mapH - 6), mm(40), [['0', 0], ['10', 0.5], ['20 m', 1]]);
+    frame(px, my, mm(cellW), mm(mapH)); GA.pages.northArrow(x, px + (rtl ? mm(6) : mm(cellW - 6)), my + mm(4), mm(0.25));
+    gTitle(px, my, mm(cellW), t('x34.a.' + id) + ' · 1:500', 3.6);
     const im = secImgs[i], swmm = im.naturalWidth / (96 / 25.4), shmm = im.naturalHeight / (96 / 25.4); const sy0 = my + mm(mapH + 3);
     const dEnd = Math.min(L, 95 + 22), dStart = dEnd - cellW / 2; const base = sy0 + mm(secH - 10);
     x.save(); x.beginPath(); x.rect(px, sy0, mm(cellW), mm(secH)); x.clip(); x.drawImage(im, px - mm(10 + 2 * dStart), base - mm(gy[i]), mm(swmm), mm(shmm)); x.restore(); });

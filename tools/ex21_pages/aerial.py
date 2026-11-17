@@ -38,6 +38,9 @@ JS = r'''async ([id, SET, AER]) => { await GA.ex21.readyAreas(SET); const D = 20
   const p = idx.base_blurred_share; if (p != null) { x.font = '600 ' + mm(3) + 'px ' + F; x.fillStyle = GA.palette.ink; wrap(x, p >= 0.15 ? t('x34.aer.blur', { p: Math.round(p * 100) }) : t('x34.aer.noblur'), R - L).forEach(ln => { x.fillText(ln, rtl ? R : L, yy); yy += mm(4.6); }); yy += mm(1.5); }
   x.font = '400 ' + mm(2.4) + 'px ' + F; x.fillStyle = GA.palette.ink3; wrap(x, t('x34.aer.src', { d: idx.flight || '—', r: idx.resolution_m != null ? idx.resolution_m : '—' }), R - L).forEach(ln => { x.fillText(ln, rtl ? R : L, yy); yy += mm(3.8); });
   return c.toDataURL('image/png'); }'''
+# print resolution (env DPI, default 200); line weights given in mm scale with it
+DPI = float(os.environ.get('DPI', 200))
+JS = JS.replace('const D = 200 / 25.4', f'const D = {DPI} / 25.4')
 try:
   with sync_playwright() as p:
     b = p.chromium.launch(args=['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'])

@@ -47,6 +47,10 @@ JS = r'''async ([m, KF]) => { await GA.ex21.ready(); await GA.ex21.readyPeople()
   x.font = '400 ' + mm(3.6) + 'px ' + F; x.fillStyle = GA.palette.ink3; x.textAlign = rtl ? 'right' : 'left'; x.direction = rtl ? 'rtl' : 'ltr'; yy = H - mm(16);
   wrap(x, t('x37.src2', { y: yr, a: PD.adrh_year }), R - L).forEach(ln => { x.fillText(ln, rtl ? R : L, yy); yy += mm(5); });
   return c.toDataURL('image/png'); }'''
+# print resolution (env DPI, default 200); line weights given in mm scale with it
+DPI = float(os.environ.get('DPI', 200))
+JS = JS.replace('const D = 200 / 25.4', f'const D = {DPI} / 25.4')
+KF = KF * DPI / 200
 try:
   with sync_playwright() as p:
     b = p.chromium.launch(args=['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'])
