@@ -195,5 +195,12 @@
     'x39.unknown': ['غير معروف قبل 1987', 'לא ידוע לפני 1987', 'not known before 1987'],
     'x39.note': ['أوخيخارس: سجلّ الكاتاسترو يعطي 1,189 من مبانيها سنة 1986 (سنة مراجعة)، لذلك حدودها قبل 1987 غير مرسومة. صورة 1973–1986 بلا تاريخ دقيق هنا: حدودها حسب 1973.', 'אוחיחארס: הקטסטרו רושם 1,189 מבניה בשנת 1986 (שנת עדכון), ולכן גבולה לפני 1987 לא מצויר. לתמונת 1973–1986 אין תאריך מדויק כאן: הגבול לפי 1973.', "Ogíjares: the Catastro dates 1,189 of its buildings 1986 (a revision year), so its edge before 1987 is not drawn. The 1973–1986 flight has no exact date here: its edges use 1973."],
     'x38.sc.title': ['سيناريو 2045 (ليس توقّعاً)', 'תרחיש 2045 (לא תחזית)', 'Scenario 2045 (not a forecast)'],
+    // the A1 map of Granada at 1:25,000 (owner request, 17 Nov 2026)
+    'x40.title': ['غرناطة', 'גרנדה', 'GRANADA'],
+    'x40.sub': ['قاعدة أرميا الجوية والبلدات الخمس حولها · 1:25,000', 'בסיס חיל האוויר ארמייה וחמש העיירות סביבו · 1:25,000', 'Armilla Air Base and the five towns around it · 1:25,000'],
+    'x40.lg.towns': ['البلدات الخمس: المركز المبني (OSM)', 'חמש העיירות: הליבה הבנויה (OSM)', 'The five towns: built-up core (OSM)'],
+    'x40.lg.roads': ['الطرق الرئيسية (OSM)', 'דרכים ראשיות (OSM)', 'Main roads (OSM)'],
+    'x40.lg.bld': ['المباني، الأغمق = طوابق أكثر (OSM)', 'מבנים, כהה יותר = יותר קומות (OSM)', 'Buildings, darker = more floors (OSM)'],
+    'x40.lg.water': ['الأنهار والسواقي (OSM)', 'נהרות ותעלות (OSM)', 'Rivers and channels (OSM)'],
   });
 })(window);
