@@ -301,8 +301,7 @@ def facade(x0, x1, yg, lv, btype, seed=0, rid=None):
                 o.append(f'<rect x="{cx - 0.55 * MM:.2f}" y="{yb - 2.2 * MM:.2f}" width="{1.1 * MM:.2f}" height="{2.2 * MM:.2f}" fill="#8C817A" fill-opacity="0.8"/>'); continue
             o.append(f'<rect x="{cx - ww / 2:.2f}" y="{yb - 2.3 * MM:.2f}" width="{ww:.2f}" height="{1.4 * MM:.2f}" fill="{GLASS}" fill-opacity="0.55" stroke="#8C817A" stroke-width="0.05"/>')
             if rid:   # frame, mullion, a light reflection, a sill; some blinds half down (persianas: schematic)
-                o.append(f'<line x1="{cx:.2f}" y1="{yb - 2.3 * MM:.2f}" x2="{cx:.2f}" y2="{yb - 0.9 * MM:.2f}" stroke="#FFFFFF" stroke-width="0.07"/>'
-                         f'<path d="M{cx - ww / 2 + 0.15:.2f},{yb - 1.0 * MM:.2f} l{ww * 0.35:.2f},{-1.2 * MM:.2f}" stroke="#FFFFFF" stroke-opacity="0.45" stroke-width="0.12"/>'
+                o.append(''
                          f'<rect x="{cx - ww / 2 - 0.12 * MM:.2f}" y="{yb - 0.9 * MM:.2f}" width="{ww + 0.24 * MM:.2f}" height="{0.12 * MM:.2f}" fill="#FFFFFF" stroke="{INK}" stroke-width="0.04"/>')
                 if (k * 7 + f * 3 + seed) % 5 == 0: o.append(f'<rect x="{cx - ww / 2:.2f}" y="{yb - 2.3 * MM:.2f}" width="{ww:.2f}" height="{0.7 * MM:.2f}" fill="{OLIVE}" fill-opacity="0.55"/>'
                                                           + ''.join(f'<line x1="{cx - ww / 2:.2f}" y1="{yb - 2.3 * MM + j * 0.14 * MM:.2f}" x2="{cx + ww / 2:.2f}" y2="{yb - 2.3 * MM + j * 0.14 * MM:.2f}" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="0.04"/>' for j in range(1, 5)))
@@ -437,7 +436,7 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
         if t < 100 and not misted:   # a band of mist between the far city and the near street (owner's references: soft, blended)
             misted = True; gy0 = max(Z(p[1]) for p in sm[:1]) if sm else 0
             eo.append(f'<rect x="{X(0):.2f}" y="{Z(min(p[1] for p in sm) + 14):.2f}" width="{X(L) - X(0):.2f}" height="{14 * MM:.2f}" fill="url(#fog-{a["id"]})"/>')
-        op = max(0.6, 1.0 - t / 220)   # (up to 100 m: clearly drawn, a little paler with distance)
+        op = max(0.3, 0.8 - t / 130)   # (behind the plane: pale and light, paler with distance — owner, 19 Nov)
         if kind == 'b' and t >= 100:   # far behind: a silhouette only, paler with distance (real footprints and floors; no façade)
             s0, s1, lv, bt = v; g = g_at((s0 + s1) / 2); hgt = 6 if bt.startswith('?') else int(lv) * 3
             fo = max(0.35, 0.85 - (t - 100) / 120); xa, xb, ya = X(s0), X(s1), Z(g + hgt)
