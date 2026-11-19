@@ -1136,8 +1136,18 @@ south (Armilla, Churriana de la Vega, Las Gabias, Alhendín, Ogíjares).
   (2000–09: miradores, brick-colour panels), `new` (2010+: timber slats, glass balustrades), `shed`, `public`, `shop`, and
   `plain` when no year is on record. Materials, colours, window rhythm and roof forms are SCHEMATIC (typical of the period),
   and the source line under each section says so. Google Maps / Earth were NOT used (not reachable here, and their imagery
-  may not be copied into published drawings); real façades would need the owner's own photos or the Catastro's façade
-  photos (host `ovc.catastro.meh.es`, not allowed in this environment yet).
+  may not be copied into published drawings).
+- **Real façades from the Catastro's photos** (owner approved the host `ovc.catastro.meh.es`, 19 Nov): `tools/build_ex21_facades.py`
+  (`CATASTRO`, `OUT`, `FETCH=1`, `AREAS=B,C`) writes `ref` (14-character parcel reference) on every building part of
+  `data/ex21/areas.json` and downloads the façade photo of each parcel that shows in a section
+  (`…/OVCFotoFachada.svc/RecuperarFotoFachadaGet?ReferenciaCatastral=<ref>`, JPEG 640 × 480, mostly dated June 2014) into the
+  scratch folder — **the photos are never committed** (they are the Catastro's and show streets, cars and people).
+  `data/ex21/facades.json` holds what was READ BY EYE from them, per parcel: wall material and colour, ground floor / dado,
+  roof type, balcony type, awnings, shutters, doors, garage, extras (tower, chimney, garden wall), plus a one-line `seen`
+  description and the photo date. `facade(…, obs=…)` then draws that building from the note (style `photo`); parcels
+  without a photo keep the period family. Done for areas **B (21 of 22 parcels)** and **C (8 of 8)**; A, F, G, H still use
+  the period families — run the tool with `AREAS=A,F,G,H`, look at the photos, add their notes. Caveat written under each
+  section: the photo shows the street front, the section may show another side; openings stay schematic.
 - **Wording**: the base's name on English maps is "Armilla Air Base" (`x34.base`; it was the Spanish official name while the
   sheet title was English). The key map's title no longer counts the areas ("the eight 1:500 areas" was written before S and
   R were added; the map shows ten).

@@ -249,6 +249,9 @@ def rich_defs(i):
             f'<pattern id="soil-{i}" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="3" height="3" fill="{BLUSH}"/><circle cx="0.6" cy="0.7" r="0.22" fill="{PINK}"/><circle cx="2.1" cy="1.9" r="0.16" fill="{PINK}"/><circle cx="1.5" cy="0.3" r="0.1" fill="{RED}" fill-opacity="0.5"/><circle cx="2.7" cy="2.8" r="0.12" fill="{PINK}"/></pattern>'
             f'<pattern id="mesh-{i}" width="0.9" height="0.9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="0.9" height="0.9" fill="none" stroke="{INK}" stroke-width="0.06" stroke-opacity="0.7"/></pattern>'
             f'<pattern id="brick-{i}" width="1.6" height="0.5" patternUnits="userSpaceOnUse"><line x1="0" y1="0.25" x2="1.6" y2="0.25" stroke="#74362D" stroke-width="0.04" stroke-opacity="0.35"/><line x1="0.4" y1="0" x2="0.4" y2="0.25" stroke="#74362D" stroke-width="0.03" stroke-opacity="0.25"/><line x1="1.2" y1="0.25" x2="1.2" y2="0.5" stroke="#74362D" stroke-width="0.03" stroke-opacity="0.25"/></pattern>'
+            f'<pattern id="diamond-{i}" width="0.7" height="0.7" patternUnits="userSpaceOnUse"><path d="M0.35,0 L0.7,0.35 L0.35,0.7 L0,0.35 Z" fill="none" stroke="#74362D" stroke-width="0.04" stroke-opacity="0.45"/></pattern>'
+            f'<pattern id="rubble-{i}" width="1.3" height="0.9" patternUnits="userSpaceOnUse"><path d="M0,0.45 H1.3 M0.4,0 V0.45 M1.0,0.45 V0.9 M0.15,0.45 V0.9" fill="none" stroke="#FFFFFF" stroke-width="0.05" stroke-opacity="0.55"/></pattern>'
+            f'<pattern id="stripe-{i}" width="0.5" height="2" patternUnits="userSpaceOnUse"><rect x="0" y="0" width="0.22" height="2" fill="#FFFFFF" fill-opacity="0.55"/></pattern>'
             f'<pattern id="slat-{i}" width="0.26" height="2" patternUnits="userSpaceOnUse"><line x1="0.13" y1="0" x2="0.13" y2="2" stroke="#A49250" stroke-width="0.09"/></pattern>'
             f'<pattern id="tile-{i}" width="0.4" height="2" patternUnits="userSpaceOnUse"><line x1="0.2" y1="0" x2="0.2" y2="2" stroke="#74362D" stroke-width="0.05" stroke-opacity="0.45"/></pattern>'
             f'<pattern id="rib-{i}" width="0.8" height="2" patternUnits="userSpaceOnUse"><line x1="0.4" y1="0" x2="0.4" y2="2" stroke="#8C817A" stroke-width="0.05" stroke-opacity="0.6"/></pattern>'
@@ -262,7 +265,7 @@ def lamp(x, y, side=1):
     return (f'<g class="street-light-schematic"><line x1="{x:.2f}" y1="{y:.2f}" x2="{x:.2f}" y2="{top:.2f}" stroke="{INK2}" stroke-width="0.22"/>'
             f'<path d="M{x:.2f},{top:.2f} q{side * 0.6 * MM:.2f},-0.35 {side * 1.4 * MM:.2f},0" fill="none" stroke="{INK2}" stroke-width="0.18"/>'
             f'<rect x="{ax - 0.4 * MM:.2f}" y="{top - 0.05:.2f}" width="{0.8 * MM:.2f}" height="{0.22 * MM:.2f}" fill="{INK2}"/>'
-            f'<path d="M{ax - 0.6 * MM:.2f},{top + 0.4:.2f} L{ax - 1.8 * MM:.2f},{y:.2f} L{ax + 1.8 * MM:.2f},{y:.2f} L{ax + 0.6 * MM:.2f},{top + 0.4:.2f} Z" fill="#FFFFFF" fill-opacity="0.18"/></g>')
+            '</g>')
 
 
 def bench(x, y):
@@ -294,14 +297,17 @@ def facade_style(btype, year, lv):
     return 'brick' if year < 1982 else 'render' if year < 2000 else 'boom' if year < 2010 else 'new'
 
 
-def facade(x0, x1, yg, lv, btype, seed=0, rid=None, year=None):
+def facade(x0, x1, yg, lv, btype, seed=0, rid=None, year=None, obs=None):
     """Elevation of a building behind the cut (owner, 19 Nov 2026: 'I want to see the differences between the buildings').
     RECORDED: position and width (footprint), floors (× 3 m, estimate), type, year of construction → the style family
     (facade_style). SCHEMATIC, not surveyed: materials, colours, window rhythm, balconies, roof form — typical of that kind
-    of building in that period, varied a little per building so the street does not repeat. Returns (svg, silhouette)."""
+    of building in that period, varied a little per building so the street does not repeat. Returns (svg, silhouette).
+    obs = what was read from the Catastro's façade photo of the parcel (data/ex21/facades.json): then the wall material and
+    colour, the base, roof type, balconies, awnings, shutters and doors follow the photo; only the number and place of the
+    openings stay schematic (and the face drawn may be another side of the building than the one photographed)."""
     import random
     lv = max(1, int(lv)); w = x1 - x0; fh = 3.0 * MM; top = yg - lv * fh; st = facade_style(btype, year, lv); rnd = random.Random(seed * 131 + 7)
-    m = lambda v: v * MM; o = []; sil = [(x0, yg), (x0, top), (x1, top), (x1, yg)]
+    m = lambda v: v * MM; o = []; sil = [(x0, yg), (x0, top), (x1, top), (x1, yg)]; more = []   # the silhouette (for the distance veil) and parts standing above it
     pat = lambda name: f'url(#{name}-{rid})' if rid else None
     # ---- small parts ----
     def win(cx, yb, ww, wh, sill=0.9, gop=0.5, box=None, shutter=None, grille=False, frame=LINEC):
@@ -318,8 +324,12 @@ def facade(x0, x1, yg, lv, btype, seed=0, rid=None, year=None):
         elif kind == 'glass': q.append(_r(xb, yb - m(1.0), m(bw), m(1.0), '#A9C0CB', 0.3, LINEC, 0.04))
         else: q.append(_r(xb, yb - m(1.0), m(bw), m(1.0), 'none', 1, LINEC, 0.05) + ''.join(_l(xb + m(j * 0.15), yb - m(1.0), xb + m(j * 0.15), yb, LINEC, 0.025) for j in range(1, int(bw / 0.15))))
         return ''.join(q)
+    def awning(cx, yt, aw, col, striped=True):   # a canvas awning over an opening: a sloped sheet seen from the front, with its valance
+        xa = cx - m(aw) / 2; q = _r(xa, yt, m(aw), m(0.55), col, 0.85, LINEC, 0.03)
+        if striped and rid: q += _r(xa, yt, m(aw), m(0.55), pat('stripe'))
+        return q + f'<path d="M{xa:.2f},{yt + m(0.55):.2f} ' + ' '.join(f'q{m(aw) / 12:.2f},{m(0.12):.2f} {m(aw) / 6:.2f},0' for _ in range(6)) + f'" fill="none" stroke="{col}" stroke-width="0.08"/>'
     def door(cx, yb, dw=1.0, dh=2.2, col='#74362D', op=0.5): return _r(cx - m(dw) / 2, yb - m(dh), m(dw), m(dh), col, op, LINEC, 0.04)
-    def garage(cx, yb, dw=2.5, dh=2.2): xg = cx - m(dw) / 2; return _r(xg, yb - m(dh), m(dw), m(dh), '#D3CFC2', 1, LINEC, 0.04) + ''.join(_l(xg, yb - m(j * 0.3), xg + m(dw), yb - m(j * 0.3), LINEC, 0.025) for j in range(1, int(dh / 0.3) + 1))
+    def garage(cx, yb, dw=2.5, dh=2.2, col='#D3CFC2', op=1.0): xg = cx - m(dw) / 2; return _r(xg, yb - m(dh), m(dw), m(dh), '#FFFFFF') + _r(xg, yb - m(dh), m(dw), m(dh), col, op, LINEC, 0.04) + ''.join(_l(xg, yb - m(j * 0.3), xg + m(dw), yb - m(j * 0.3), LINEC, 0.025) for j in range(1, int(dh / 0.3) + 1))
     def wall(col, op=1.0, fill2=None):
         q = [_r(x0, top, w, lv * fh, '#FFFFFF'), _r(x0, top, w, lv * fh, col, op, None, 0.05, f' filter="url(#grain-{rid})"' if rid else '')]
         if fill2: q.append(_r(x0, top, w, lv * fh, fill2))
@@ -340,6 +350,57 @@ def facade(x0, x1, yg, lv, btype, seed=0, rid=None, year=None):
     # ---- the families ----
     if w < m(2.2):   # a sliver of a building: a wall and one opening
         o.append(wall('#E5E3DA')); o += [win((x0 + x1) / 2, yg - f * fh, min(0.9, w / MM * 0.5), 1.2) for f in range(lv)]
+    elif obs:   # ---- from the Catastro's façade photo of this parcel ----
+        WALL = {'white': ('#F6F5F0', 1, None), 'cream': ('#EFEEE7', 1, None), 'yellow': ('#D6CDA6', 0.55, None), 'sand': ('#D6CDA6', 0.9, None), 'grey': ('#D3CFC2', 1, None), 'ochre': ('#BFB065', 0.8, None),
+                'brick_tan': ('#A49250', 0.5, 'brick'), 'brick_yellow': ('#BFB065', 0.55, 'brick'), 'brick_red': ('#74362D', 0.55, 'brick'), 'brick_ochre': ('#BFB065', 0.9, 'brick'), 'stone_white': ('#EFEEE7', 1, 'brick'),
+                'stone_grey': ('#BDB5AA', 1, 'rubble'), 'stone_dark': ('#4D3D37', 0.8, 'rubble'), 'tile_dark': ('#29100C', 0.78, None)}
+        DADO = {'tile_rose': ('#EBD9D3', 1, 'diamond'), 'tile_terracotta': ('#C98B80', 0.9, 'diamond'), 'tile_grey': ('#D3CFC2', 1, 'diamond'), 'stone_dark': ('#4D3D37', 0.8, 'rubble'), 'stone_pale': ('#E5E3DA', 1, 'rubble'),
+                'stone_grey': ('#BDB5AA', 1, 'rubble'), 'paint_grey': ('#9DBCD1', 0.55, None)}
+        AWN = {'green': '#7E7B43', 'striped_green': '#7E7B43', 'yellow': '#BFB065', 'teal': '#4F6E80'}; DOOR = {'green': ('#53461C', 0.65), 'wood': ('#74362D', 0.55)}
+        GAR = {'white': ('#F6F5F0', 1), 'grey': ('#BDB5AA', 1), 'yellow': ('#BFB065', 0.9), 'brown': ('#74362D', 0.7), 'blue': ('#9DBCD1', 0.9)}; TRIM = {'ochre': '#BFB065', 'brown': '#74362D', 'terracotta': '#C98B80'}
+        def mat(xa, ya, wa, ha, spec):
+            c, op, pt = spec; q = _r(xa, ya, wa, ha, '#FFFFFF') + _r(xa, ya, wa, ha, c, op, None, 0.05, f' filter="url(#grain-{rid})"' if rid and not pt else '')
+            return q + (_r(xa, ya, wa, ha, pat(pt)) if pt and rid else '')
+        o.append(mat(x0, top, w, lv * fh, WALL[obs.get('wall', 'white')]))
+        if obs.get('ground_wall'): o.append(mat(x0, yg - fh, w, fh, WALL[obs['ground_wall']]))
+        elif obs.get('dado'): o.append(mat(x0, yg - m(1.0), w, m(1.0), DADO[obs['dado']]) + _l(x0, yg - m(1.0), x1, yg - m(1.0), '#74362D' if obs['dado'].startswith('tile') else LINEC, 0.06))
+        tr = TRIM.get(obs.get('trim'))
+        if tr: o.append(_r(x0, top, w, m(0.3), tr, 0.75))                                                     # the band under the eave
+        if not obs.get('blank'):
+            n = bays(3.3); dk = seed % n; gk = (dk + 1) % n if (obs.get('garage') or obs.get('shop')) and n > 1 else -1; bal = obs.get('balcony'); shut = ('#53461C', 0.9) if obs.get('shutters') == 'green' else None
+            for f in range(lv):
+                yb = yg - f * fh
+                for k in range(n):
+                    cx = x0 + w / n * (k + 0.5); bw = w / n / MM
+                    if f == 0 and obs.get('shop'):       # shops: roller shutters between piers, a dark fascia
+                        o.append(garage(cx, yb, bw - 0.6, 2.5, *GAR[obs['shop']])); continue
+                    if f == 0 and obs.get('passage') and k == dk and bw > 2.8: o.append(_r(cx - m(1.4), yb - m(2.8), m(2.8), m(2.8), '#29100C', 0.55)); continue
+                    if f == 0 and k == dk: o.append(door(cx, yb, 1.0, 2.2, *DOOR.get(obs.get('door'), ('#4D3D37', 0.5))) + (_r(cx - m(0.62), yb - m(2.32), m(1.24), m(2.32), 'none', 1, tr, 0.12) if tr else '')); continue
+                    if f == 0 and k == gk: o.append(garage(cx, yb, min(2.6, bw - 0.5), 2.3, *GAR[obs['garage']])); continue
+                    if tr: o.append(_r(cx - m(0.72), yb - m(2.42), m(1.44), m(1.64) if not (bal and f) else m(2.42), tr, 0.6))
+                    if f > 0 and bal:
+                        o.append(win(cx, yb, 1.1, 2.1, 0.0, 0.5, box='#D3CFC2', shutter=shut and (shut[0], 0.9)))
+                        o.append(rail(cx, yb, min(2.2, bw - 0.4), 'solid' if bal == 'balustrade' else 'bars', '#F6F5F0'))
+                        if bal == 'balustrade': o.append(''.join(_l(cx - m(min(2.2, bw - 0.4)) / 2 + m(j * 0.22), yb - m(0.85), cx - m(min(2.2, bw - 0.4)) / 2 + m(j * 0.22), yb - m(0.1), LINEC, 0.05) for j in range(1, int(min(2.2, bw - 0.4) / 0.22))))
+                        if bal == 'iron': o.append(_r(cx - m(min(2.2, bw - 0.4)) / 2, yb - m(1.0), m(min(2.2, bw - 0.4)), m(1.0), 'none', 1, '#4D3D37', 0.06))
+                    else:
+                        o.append(win(cx, yb, 1.1, 1.3, 0.95, 0.5, box=None if shut else '#D3CFC2', shutter=shut and (shut[0], 1.0) if shut and (k + f + seed) % 2 else None, grille=(f == 0) or bool(obs.get('bars'))))
+                    if obs.get('awning') and (f > 0 or lv == 1) and (obs['awning'] == 'striped_green' or (k + f + seed) % 3 != 2): o.append(awning(cx, yb - m(2.55), min(2.4, bw - 0.3) if bal and f else 1.6, AWN[obs['awning']]))
+            if obs.get('shop'): o.append(_r(x0, yg - m(3.0), w, m(0.45), '#4D3D37', 0.75))
+        elif obs.get('garage'): o.append(garage(x0 + w * 0.6, yg, min(3.0, w / MM * 0.5), 2.4, *GAR[obs['garage']]))
+        if obs.get('roof') == 'tile': o.append(tile_roof(1.0, 0.35))
+        else: o.append(flat_roof(0.4))
+        if obs.get('tower') and lv >= 4 and w > m(5):   # the corner tower: its own small tiled roof
+            xt = x0 if seed % 2 else x1 - m(5); o.append(f'<polygon points="{xt - m(0.4):.2f},{top:.2f} {xt + m(2.5):.2f},{top - m(1.6):.2f} {xt + m(5.4):.2f},{top:.2f}" fill="#C98B80" fill-opacity="0.85" stroke="{LINEC}" stroke-width="0.05"/>'); more.append([(xt - m(0.4), top), (xt + m(2.5), top - m(1.6)), (xt + m(5.4), top)])
+        if obs.get('chimney') and w > m(4): o.append(_r(x0 + w * 0.7, top - m(2.0), m(0.5), m(1.1), '#F6F5F0', 1, LINEC, 0.04))
+        if obs.get('garden') and w > m(4):   # what stands in front of the house: the garden wall or fence, its gate, a hedge
+            stone = obs['garden'] == 'stone_fence'; hw = 1.0 if stone else 1.5
+            o.append(mat(x0, yg - m(hw), w, m(hw), WALL['stone_grey'] if stone else WALL['white']) + _l(x0, yg - m(hw), x1, yg - m(hw), LINEC, 0.06))
+            if stone: o.append(_r(x0, yg - m(1.9), w, m(0.9), 'none', 1, LINEC, 0.04) + ''.join(_l(x0 + m(j * 0.25), yg - m(1.9), x0 + m(j * 0.25), yg - m(1.0), '#FFFFFF', 0.06) for j in range(1, int(w / m(0.25)))))
+            gx = x0 + w * (0.25 + 0.4 * (seed % 2)); o.append(_r(gx - m(1.4), yg - m(1.8), m(2.8), m(1.8), '#29100C', 0.7) + ''.join(_l(gx - m(1.4) + m(j * 0.2), yg - m(1.8), gx - m(1.4) + m(j * 0.2), yg, '#FFFFFF', 0.03, 0.4) for j in range(1, 14)))
+            for j in range(int(w / m(1.1))):    # the hedge and the garden's green behind the wall
+                hx = x0 + m(0.6 + j * 1.1)
+                if abs(hx - gx) > m(2.0): o.append(f'<ellipse cx="{hx:.2f}" cy="{yg - m(hw + 0.5 + 0.3 * ((j + seed) % 3)):.2f}" rx="{m(0.85):.2f}" ry="{m(0.9):.2f}" fill="{OLIVE if (j + seed) % 2 else "#53461C"}" fill-opacity="0.6"/>')
     elif st == 'greenhouse':
         o.append(wall('#EFEEE7', 0.6)); o += [_l(x0 + k * m(1.5), top, x0 + k * m(1.5), yg, GLASS, 0.08) for k in range(1, int(w / m(1.5)) + 1)]
     elif st == 'shed':   # metal cladding, a low gable to the street, a big door, a strip of glazing (the HEIGHT of sheds is not derived from floors: see 'hu')
@@ -431,7 +492,18 @@ def facade(x0, x1, yg, lv, btype, seed=0, rid=None, year=None):
         o += [door(x0 + w / n * (k + 0.5), yg) if f == 0 and k == dk else win(x0 + w / n * (k + 0.5), yg - f * fh, 1.2, 1.3) for f in range(lv) for k in range(n)]; o.append(flat_roof(0.3)); o.append(floors())
     if rid and st not in ('greenhouse',): o.append(_r(x1 - min(w * 0.18, m(1.6)), top, min(w * 0.18, m(1.6)), lv * fh, f'url(#shade-{rid})'))   # light from the left
     if st != 'shed': o.append(_r(x0, top, w, lv * fh, 'none', 1, LINEC, 0.07))
-    return ''.join(str(q) for q in o), sil
+    return ''.join(str(q) for q in o), [sil] + more
+
+
+_FAC = None
+
+
+def facades():
+    """what was read from the Catastro's façade photos, by parcel (data/ex21/facades.json; tools/build_ex21_facades.py)"""
+    global _FAC
+    if _FAC is None:
+        f = os.path.join(ROOT, 'data/ex21/facades.json'); _FAC = json.load(open(f))['parcels'] if os.path.exists(f) else {}
+    return _FAC
 
 
 _TREES = None
@@ -533,7 +605,7 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
             st = [proj(p) for rr in b['r'] for r in rr for p in r]; ts = [sign * t for _, t in st]
             if 0.5 < min(ts) < 180:
                 s0, s1 = max(0, min(q for q, _ in st)), min(L, max(q for q, _ in st))
-                if s1 - s0 > 0.5: out.append((min(ts), s0, s1, b['lv'], ('?' if b.get('hu') else '') + (b.get('b') or 'yes'), b.get('y')))
+                if s1 - s0 > 0.5: out.append((min(ts), s0, s1, b['lv'], ('?' if b.get('hu') else '') + (b.get('b') or 'yes'), b.get('y'), b.get('ref')))
         return out
     sign = max((1, -1), key=lambda sg: sum(q[2] - q[1] for q in behind(sg))); back = behind(sign)
     # tree crowns read from the PNOA orthophoto (tools/build_ex21_canopy.py): those on the section plane stand in front,
@@ -548,7 +620,7 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
         if not (1 < q < L - 1): continue
         if abs(t) <= dm / 2 + 1.5: near.append((q, dm, k))
         elif 0 < sign * t < 100: far.append((sign * t, q, dm, k))
-    items = [(t, 'b', (s0, s1, lv, bt, yr)) for t, s0, s1, lv, bt, yr in back] + [(t, 't', (q, dm, k)) for t, q, dm, k in far]
+    items = [(t, 'b', (s0, s1, lv, bt, yr, rf)) for t, s0, s1, lv, bt, yr, rf in back] + [(t, 't', (q, dm, k)) for t, q, dm, k in far]
     eo = [f'<g id="elevation-behind-{a["id"]}">']
     misted = False
     for i, (t, kind, v) in enumerate(sorted(items, key=lambda q: -q[0])):
@@ -557,17 +629,17 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
             eo.append(f'<rect x="{X(0):.2f}" y="{Z(min(p[1] for p in sm) + 14):.2f}" width="{X(L) - X(0):.2f}" height="{14 * MM:.2f}" fill="url(#fog-{a["id"]})"/>')
         op = max(0.4, 0.9 - t / 160)   # (behind the plane: pale and light, paler with distance — owner, 19 Nov)
         if kind == 'b' and t >= 100:   # far behind: a silhouette only, paler with distance (real footprints and floors; no façade)
-            s0, s1, lv, bt, yr = v; g = g_at((s0 + s1) / 2); hgt = 6 if bt.startswith('?') else int(lv) * 3
+            s0, s1, lv, bt, yr, rf = v; g = g_at((s0 + s1) / 2); hgt = 6 if bt.startswith('?') else int(lv) * 3
             fo = max(0.35, 0.85 - (t - 100) / 120); xa, xb, ya = X(s0), X(s1), Z(g + hgt)
             grid = ''.join(f'<rect x="{xa + (k2 + 0.3) * 2.6 * MM:.2f}" y="{Z(g + f2 * 3 + 2.2):.2f}" width="{1.0 * MM:.2f}" height="{1.2 * MM:.2f}" fill="#BDB5AA" fill-opacity="0.35"/>' for f2 in range(hgt // 3) for k2 in range(int((xb - xa) / (2.6 * MM))))
             eo.append(f'<g class="far-silhouette" opacity="{fo:.2f}"><rect x="{xa:.2f}" y="{ya:.2f}" width="{xb - xa:.2f}" height="{hgt * MM:.2f}" fill="#FFFFFF" stroke="#D3CFC2" stroke-width="0.06"/>{grid}</g>'); continue
         if kind == 'b':
-            s0, s1, lv, bt, yr = v; g = g_at((s0 + s1) / 2)
+            s0, s1, lv, bt, yr, rf = v; g = g_at((s0 + s1) / 2); ob = facades().get(rf)
             if bt.startswith('?'):  # a shed or a church behind the plane: its height is not measured — a dashed outline, no façade
                 eo.append(f'<rect class="height-unknown" x="{X(s0):.2f}" y="{Z(g + 6):.2f}" width="{X(s1) - X(s0):.2f}" height="{6 * MM:.2f}" fill="#FFFFFF" fill-opacity="0.5" stroke="{PINK}" stroke-width="0.25" stroke-dasharray="1,1" opacity="{op:.2f}"/>'); continue
             # drawn solid (so a nearer building hides the ones behind it), then veiled in white by distance: pale and light, yet each one distinct
-            fsvg, sil = facade(X(s0), X(s1), Z(g), int(lv), bt, int(s0 * 13 + s1 * 7 + (yr or 0)) % 997, a['id'], yr)
-            eo.append(f'<g class="elevation" data-style="{facade_style(bt, yr, int(lv))}" data-year="{yr or ""}">' + fsvg + f'<polygon points="{" ".join(f"{px:.2f},{py:.2f}" for px, py in sil)}" fill="#FFFFFF" fill-opacity="{1 - op:.2f}"/></g>')
+            fsvg, sils = facade(X(s0), X(s1), Z(g), int(lv), bt, int(s0 * 13 + s1 * 7 + (yr or 0)) % 997, a['id'], yr, ob)
+            eo.append(f'<g class="elevation" data-style="{"photo" if ob else facade_style(bt, yr, int(lv))}" data-year="{yr or ""}" data-parcel="{rf or ""}">' + fsvg + ''.join(f'<polygon points="{" ".join(f"{px:.2f},{py:.2f}" for px, py in sil)}" fill="#FFFFFF" fill-opacity="{1 - op:.2f}"/>' for sil in sils) + '</g>')
         else:
             q, dm, k = v; eo.append(f'<g class="tree-behind" opacity="{op * 0.85:.2f}">' + tree(X(q), Z(g_at(q)), th(q, dm, k), seed=k) + '</g>')
     eo.append('</g>'); o += eo
@@ -664,7 +736,7 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
     for v in (0, 10, 20, 50): sb.append(f'<text x="{sx + v * MM:.2f}" y="{sy + 3.6:.2f}" {FONT} font-size="2" text-anchor="middle" fill="{INK}">{v}{" m" if v == 50 else ""}</text>')
     sb.append('</g>'); o += sb
     src = a['stats'].get('limit_file', '').replace('.kmz', '')
-    note = (f'1:500 · ground IGN MDT25 · {escape(src)}, Ministerio de Defensa · buildings: D. G. del Catastro (floors × 3 m, estimate; dashed = shed or hall, height not measured) · water: OSM · trees: PNOA aerial (IGN), approx. · elevations behind the cut: type, floors and year of construction are recorded (Catastro); their materials, colours, windows and roof forms are schematic · people, cars, tree heights, channel shapes, street lights, fence form: schematic' if has_lim else
+    note = (f'1:500 · ground IGN MDT25 · {escape(src)}, Ministerio de Defensa · buildings: D. G. del Catastro (floors × 3 m, estimate; dashed = shed or hall, height not measured) · water: OSM · trees: PNOA aerial (IGN), approx. · elevations behind the cut: floors, type and year from the Catastro; materials, colours, roofs and balconies from the façade photo the Catastro publishes for each parcel, where one exists (it shows the street front; the face drawn may be another side), otherwise typical of the period; openings schematic · people, cars, tree heights, channel shapes, street lights, fence form: schematic' if has_lim else
             '1:500 · ground: IGN MDT05 · buildings: D. G. del Catastro (floors × 3 m, estimate; dashed = shed or church, height not measured) · trees: PNOA aerial (IGN), approx. · people, cars, tree heights and façades (by use): schematic')
     o.append(f'<rect class="paper-grain" x="{X(0):.2f}" y="{oy:.2f}" width="{X(L) - X(0):.2f}" height="{Z(zmin) - oy:.2f}" fill="#E5E3DA" fill-opacity="0.08" filter="url(#grain-{a["id"]})" style="mix-blend-mode:multiply"/>')
     o.append(f'<g id="sources-{a["id"]}" opacity="0.9"><text x="{X(0):.2f}" y="{Z(zmin) + 12:.2f}" {FONT} font-size="1.8" fill="{INK3}">{note}</text></g>')
