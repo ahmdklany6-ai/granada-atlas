@@ -241,7 +241,7 @@ def rich_defs(i):
     a fine paper/stucco grain for walls and soil, a sky that fades upwards, a stippled soil under the cut, a wire mesh."""
     return (f'<defs>'
             f'<filter id="grain-{i}" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.22" numOctaves="3" seed="11" result="n"/>'
-            f'<feColorMatrix in="n" type="matrix" values="0 0 0 0 0.35  0 0 0 0 0.25  0 0 0 0 0.2  0 0 0 -0.5 0.32" result="a"/><feComposite in="a" in2="SourceGraphic" operator="in" result="b"/>'
+            f'<feColorMatrix in="n" type="matrix" values="0 0 0 0 0.35  0 0 0 0 0.25  0 0 0 0 0.2  0 0 0 -0.3 0.14" result="a"/><feComposite in="a" in2="SourceGraphic" operator="in" result="b"/>'
             f'<feTurbulence type="fractalNoise" baseFrequency="3.5" numOctaves="1" seed="3" result="f"/><feColorMatrix in="f" type="matrix" values="0 0 0 0 0.3  0 0 0 0 0.25  0 0 0 0 0.2  0 0 0 -0.25 0.14" result="fa"/><feComposite in="fa" in2="SourceGraphic" operator="in" result="fb"/>'
             f'<feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="b"/><feMergeNode in="fb"/></feMerge></filter>'
             f'<linearGradient id="skyg-{i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="0.7" stop-color="{SKY}" stop-opacity="0.25"/><stop offset="1" stop-color="{SKY}" stop-opacity="0.45"/></linearGradient><linearGradient id="fog-{i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.8"/></linearGradient>'
@@ -278,7 +278,7 @@ def facade(x0, x1, yg, lv, btype, seed=0, rid=None):
         o.append(f'<rect x="{x1 - min(w * 0.18, 1.6 * MM):.2f}" y="{top:.2f}" width="{min(w * 0.18, 1.6 * MM):.2f}" height="{lv * fh:.2f}" fill="url(#shade-{rid})"/>')  # light from the left
         for f in range(1, lv): o.append(f'<line x1="{x0:.2f}" y1="{yg - f * fh:.2f}" x2="{x1:.2f}" y2="{yg - f * fh:.2f}" stroke="{INK}" stroke-opacity="0.12" stroke-width="0.08"/>')  # floor bands
     o.append(f'<rect x="{x0:.2f}" y="{top:.2f}" width="{w:.2f}" height="{lv * fh:.2f}" fill="none" stroke="#8C817A" stroke-width="0.08"/>')
-    o.append(f'<rect x="{x0 - 0.1 * MM:.2f}" y="{top - 0.7 * MM:.2f}" width="{w + 0.2 * MM:.2f}" height="{0.7 * MM:.2f}" fill="{"#BDB5AA" if t not in ("industrial", "warehouse", "greenhouse") else "#8C817A"}"/>')
+    o.append(f'<rect x="{x0 - 0.1 * MM:.2f}" y="{top - 0.25 * MM:.2f}" width="{w + 0.2 * MM:.2f}" height="{0.25 * MM:.2f}" fill="none" stroke="#8C817A" stroke-width="0.08"/>')   # coping, thin (owner, 19 Nov: no thick lines)
     if t == 'greenhouse':
         for k in range(1, int(w / (1.5 * MM)) + 1): o.append(f'<line x1="{x0 + k * 1.5 * MM:.2f}" y1="{top:.2f}" x2="{x0 + k * 1.5 * MM:.2f}" y2="{yg:.2f}" stroke="{GLASS}" stroke-width="0.12"/>')
         return ''.join(o)
@@ -413,7 +413,7 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
         for b in a['buildings']:
             if not b['lv']: continue
             st = [proj(p) for rr in b['r'] for r in rr for p in r]; ts = [sign * t for _, t in st]
-            if 0.5 < min(ts) < 150:
+            if 0.5 < min(ts) < 180:
                 s0, s1 = max(0, min(q for q, _ in st)), min(L, max(q for q, _ in st))
                 if s1 - s0 > 0.5: out.append((min(ts), s0, s1, b['lv'], ('?' if b.get('hu') else '') + (b.get('b') or 'yes')))
         return out
@@ -429,18 +429,18 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
         q, t = proj((cx, cy))
         if not (1 < q < L - 1): continue
         if abs(t) <= dm / 2 + 1.5: near.append((q, dm, k))
-        elif 0 < sign * t < 40: far.append((sign * t, q, dm, k))
+        elif 0 < sign * t < 100: far.append((sign * t, q, dm, k))
     items = [(t, 'b', (s0, s1, lv, bt)) for t, s0, s1, lv, bt in back] + [(t, 't', (q, dm, k)) for t, q, dm, k in far]
     eo = [f'<g id="elevation-behind-{a["id"]}">']
     misted = False
     for i, (t, kind, v) in enumerate(sorted(items, key=lambda q: -q[0])):
-        if t < 40 and not misted:   # a band of mist between the far city and the near street (owner's references: soft, blended)
+        if t < 100 and not misted:   # a band of mist between the far city and the near street (owner's references: soft, blended)
             misted = True; gy0 = max(Z(p[1]) for p in sm[:1]) if sm else 0
             eo.append(f'<rect x="{X(0):.2f}" y="{Z(min(p[1] for p in sm) + 14):.2f}" width="{X(L) - X(0):.2f}" height="{14 * MM:.2f}" fill="url(#fog-{a["id"]})"/>')
-        op = max(0.5, 1.0 - t / 70)
-        if kind == 'b' and t >= 40:   # far behind: a silhouette only, paler with distance (real footprints and floors; no façade)
+        op = max(0.6, 1.0 - t / 220)   # (up to 100 m: clearly drawn, a little paler with distance)
+        if kind == 'b' and t >= 100:   # far behind: a silhouette only, paler with distance (real footprints and floors; no façade)
             s0, s1, lv, bt = v; g = g_at((s0 + s1) / 2); hgt = 6 if bt.startswith('?') else int(lv) * 3
-            fo = max(0.35, 0.9 - (t - 40) / 150); xa, xb, ya = X(s0), X(s1), Z(g + hgt)
+            fo = max(0.35, 0.85 - (t - 100) / 120); xa, xb, ya = X(s0), X(s1), Z(g + hgt)
             grid = ''.join(f'<rect x="{xa + (k2 + 0.3) * 2.6 * MM:.2f}" y="{Z(g + f2 * 3 + 2.2):.2f}" width="{1.0 * MM:.2f}" height="{1.2 * MM:.2f}" fill="#BDB5AA" fill-opacity="0.35"/>' for f2 in range(hgt // 3) for k2 in range(int((xb - xa) / (2.6 * MM))))
             eo.append(f'<g class="far-silhouette" opacity="{fo:.2f}"><rect x="{xa:.2f}" y="{ya:.2f}" width="{xb - xa:.2f}" height="{hgt * MM:.2f}" fill="#FFFFFF" stroke="#D3CFC2" stroke-width="0.06"/>{grid}</g>'); continue
         if kind == 'b':
@@ -466,19 +466,14 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
         g = min(g_at(c['s0']), g_at(c['s1'])); x0, x1 = X(c['s0']), X(c['s1'])
         if c.get('h_est') is None:
             bo.append(f'<rect x="{x0:.2f}" y="{Z(g + 6):.2f}" width="{x1 - x0:.2f}" height="{6 * MM:.2f}" fill="none" stroke="{PINK}" stroke-width="0.35" stroke-dasharray="1,1"/>'); continue
-        lv = int(c['lv']); slab = 0.35 * MM; wall = 0.3 * MM
-        bo.append(f'<rect x="{x0:.2f}" y="{Z(g + lv * 3):.2f}" width="{x1 - x0:.2f}" height="{lv * 3 * MM:.2f}" fill="{INTERIOR}" filter="url(#grain-{a["id"]})"/>')
-        for f in range(lv):   # floor finish and a pendant light in each storey (schematic)
-            yf = Z(g + f * 3) - (0.35 * MM if f else 0); bo.append(f'<line x1="{x0 + 0.3 * MM:.2f}" y1="{yf - 0.12 * MM:.2f}" x2="{x1 - 0.3 * MM:.2f}" y2="{yf - 0.12 * MM:.2f}" stroke="{PINK}" stroke-width="0.12"/>')
-            for lx in [x0 + (x1 - x0) * q for q in ((0.5,) if x1 - x0 < 10 * MM else (0.3, 0.7))]:
-                yc = Z(g + f * 3 + 3) + 0.35 * MM; bo.append(f'<line x1="{lx:.2f}" y1="{yc:.2f}" x2="{lx:.2f}" y2="{yc + 0.6 * MM:.2f}" stroke="{INK2}" stroke-width="0.05"/><path d="M{lx - 0.3 * MM:.2f},{yc + 0.85 * MM:.2f} q{0.3 * MM:.2f},-0.6 {0.6 * MM:.2f},0 z" fill="{INK2}"/>'
-                                                       f'<path d="M{lx - 0.3 * MM:.2f},{yc + 0.85 * MM:.2f} L{lx - 1.3 * MM:.2f},{yc + 2.4 * MM:.2f} L{lx + 1.3 * MM:.2f},{yc + 2.4 * MM:.2f} L{lx + 0.3 * MM:.2f},{yc + 0.85 * MM:.2f} Z" fill="#BFB065" fill-opacity="0.12"/>')
+        lv = int(c['lv']); slab = 0.3 * MM; wall = 0.3 * MM   # one cut thickness everywhere (owner, 19 Nov)
+        bo.append(f'<rect x="{x0:.2f}" y="{Z(g + lv * 3):.2f}" width="{x1 - x0:.2f}" height="{lv * 3 * MM:.2f}" fill="{INTERIOR}"/>')
         for f in range(lv + 1): bo.append(f'<rect x="{x0:.2f}" y="{Z(g + f * 3) - (slab if f else 0):.2f}" width="{x1 - x0:.2f}" height="{slab:.2f}" fill="{CUT}"/>')
         bo.append(f'<rect x="{x0:.2f}" y="{Z(g + lv * 3):.2f}" width="{wall:.2f}" height="{lv * 3 * MM:.2f}" fill="{CUT}"/><rect x="{x1 - wall:.2f}" y="{Z(g + lv * 3):.2f}" width="{wall:.2f}" height="{lv * 3 * MM:.2f}" fill="{CUT}"/>')
         for f in range(lv):  # window openings in the cut walls (schematic), blue glass
             for xw in (x0, x1 - wall):
                 bo.append(f'<rect x="{xw:.2f}" y="{Z(g + f * 3 + 2.3):.2f}" width="{wall:.2f}" height="{1.4 * MM:.2f}" fill="{GLASS}"/>')
-        bo.append(f'<rect x="{x0 - 0.15 * MM:.2f}" y="{Z(g + lv * 3 + 0.9):.2f}" width="{x1 - x0 + 0.3 * MM:.2f}" height="{0.9 * MM:.2f}" fill="{CUT}"/>')  # parapet
+        bo.append(f'<rect x="{x0:.2f}" y="{Z(g + lv * 3 + 0.9):.2f}" width="{wall:.2f}" height="{0.9 * MM:.2f}" fill="{CUT}"/><rect x="{x1 - wall:.2f}" y="{Z(g + lv * 3 + 0.9):.2f}" width="{wall:.2f}" height="{0.9 * MM:.2f}" fill="{CUT}"/>')  # parapet, cut at the same thickness
         if x1 - x0 > 6 * MM:
             for f in range(min(lv, 3)): bo.append(fig(x0 + (x1 - x0) * (0.3 + 0.2 * ((f + i) % 3)), Z(g + f * 3) - 0.35 * MM, (f + i) % 4, PEOPLE[(f + i) % 4]))
     bo.append('</g>'); o += bo
