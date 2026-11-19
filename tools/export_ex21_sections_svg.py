@@ -220,7 +220,10 @@ def car(x, y, col=None):
 
 OLIVE, OLIVE2 = '#7E7B43', '#A49250'  # palette: oliveMid, khaki
 # owner request (14 Nov 2026): more colours, not everything red — all from js/palette.js
-SKY = '#E6CBC3'        # redTint: the sky, a pale tint of the studio red (owner, 19 Nov 2026: red instead of blue, still pale)
+# the sky's tone (owner, 19 Nov 2026: tried red instead of blue, then 'our green'): a palette colour and how strongly it is laid on, so
+# each stays pale — env SKY_TONE = green (default) | red | blue
+SKIES = {'blue': ('#C9D8DF', 1.0), 'red': ('#E6CBC3', 1.0), 'green': ('#7E7B43', 0.36)}   # bluePale, redTint, oliveMid (the green of parks and trees)
+SKY, SKY_K = SKIES[os.environ.get('SKY_TONE', 'green')]
 SLAB = '#452928'       # wine: cut slabs and walls
 INTERIOR = '#F6F5F0'   # paper: inside the cut buildings
 GLASS = '#8C817A'      # warmGrey: windows, soft (owner, 19 Nov: muted like the reference sheets)
@@ -244,7 +247,7 @@ def rich_defs(i):
             f'<feColorMatrix in="n" type="matrix" values="0 0 0 0 0.35  0 0 0 0 0.25  0 0 0 0 0.2  0 0 0 -0.18 0.07" result="a"/><feComposite in="a" in2="SourceGraphic" operator="in" result="b"/>'
             f'<feTurbulence type="fractalNoise" baseFrequency="3.5" numOctaves="1" seed="3" result="f"/><feColorMatrix in="f" type="matrix" values="0 0 0 0 0.3  0 0 0 0 0.25  0 0 0 0 0.2  0 0 0 -0.2 0.1" result="fa"/><feComposite in="fa" in2="SourceGraphic" operator="in" result="fb"/>'
             f'<feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="b"/><feMergeNode in="fb"/></feMerge></filter>'
-            f'<linearGradient id="skyg-{i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="0.7" stop-color="{SKY}" stop-opacity="0.25"/><stop offset="1" stop-color="{SKY}" stop-opacity="0.45"/></linearGradient><linearGradient id="fog-{i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.8"/></linearGradient>'
+            f'<linearGradient id="skyg-{i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="0.7" stop-color="{SKY}" stop-opacity="{0.25 * SKY_K:.3f}"/><stop offset="1" stop-color="{SKY}" stop-opacity="{0.45 * SKY_K:.3f}"/></linearGradient><linearGradient id="fog-{i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.8"/></linearGradient>'
             f'<linearGradient id="soilfade-{i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="1"/></linearGradient>'
             f'<pattern id="soil-{i}" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="3" height="3" fill="{BLUSH}"/><circle cx="0.6" cy="0.7" r="0.22" fill="{PINK}"/><circle cx="2.1" cy="1.9" r="0.16" fill="{PINK}"/><circle cx="1.5" cy="0.3" r="0.1" fill="{RED}" fill-opacity="0.5"/><circle cx="2.7" cy="2.8" r="0.12" fill="{PINK}"/></pattern>'
             f'<pattern id="mesh-{i}" width="0.9" height="0.9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="0.9" height="0.9" fill="none" stroke="{INK}" stroke-width="0.06" stroke-opacity="0.7"/></pattern>'
@@ -593,7 +596,7 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
     gpts = [(X(p[0]), Z(p[1])) for p in sm]; lpts = [(X(p[0]), Z(p[2])) for p in sm if p[2] < 1e9]; P = lambda pts: ' '.join(f'{x:.2f},{y:.2f}' for x, y in pts)
     o = [f'<g id="section-{a["id"]}">',
          f'<defs><pattern id="hatch-{a["id"]}" width="2.2" height="2.2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="2.2" stroke="{RED}" stroke-width="0.3" stroke-opacity="0.45"/></pattern></defs>',
-         f'<g id="forbidden-sky-{a["id"]}"><polygon points="{X(0):.2f},{oy + top:.2f} {P(lpts)} {X(L):.2f},{oy + top:.2f}" fill="{SKY}" fill-opacity="0.45"/><polygon points="{X(0):.2f},{oy + top:.2f} {P(lpts)} {X(L):.2f},{oy + top:.2f}" fill="url(#hatch-{a["id"]})"/></g>' if has_lim else '',  # the sky goes on above the limit too (owner, 17 Nov), hatched where building is forbidden
+         f'<g id="forbidden-sky-{a["id"]}"><polygon points="{X(0):.2f},{oy + top:.2f} {P(lpts)} {X(L):.2f},{oy + top:.2f}" fill="{SKY}" fill-opacity="{0.45 * SKY_K:.3f}"/><polygon points="{X(0):.2f},{oy + top:.2f} {P(lpts)} {X(L):.2f},{oy + top:.2f}" fill="url(#hatch-{a["id"]})"/></g>' if has_lim else '',  # the sky goes on above the limit too (owner, 17 Nov), hatched where building is forbidden
          f'<g id="allowed-envelope-{a["id"]}"><polygon points="{P(lpts)} {P(reversed(gpts))}" fill="url(#skyg-{a["id"]})"/></g>' if has_lim else
          f'<g id="sky-{a["id"]}"><polygon points="{X(0):.2f},{oy + top:.2f} {X(L):.2f},{oy + top:.2f} {P(reversed(gpts))}" fill="url(#skyg-{a["id"]})"/></g>']
     o.insert(1, rich_defs(a['id']))
