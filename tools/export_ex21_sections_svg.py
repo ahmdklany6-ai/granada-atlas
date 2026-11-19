@@ -220,7 +220,7 @@ def car(x, y, col=None):
 
 OLIVE, OLIVE2 = '#7E7B43', '#A49250'  # palette: oliveMid, khaki
 # owner request (14 Nov 2026): more colours, not everything red — all from js/palette.js
-SKY = '#C9D8DF'        # bluePale: the allowed envelope
+SKY = '#E6CBC3'        # redTint: the sky, a pale tint of the studio red (owner, 19 Nov 2026: red instead of blue, still pale)
 SLAB = '#452928'       # wine: cut slabs and walls
 INTERIOR = '#F6F5F0'   # paper: inside the cut buildings
 GLASS = '#8C817A'      # warmGrey: windows, soft (owner, 19 Nov: muted like the reference sheets)
