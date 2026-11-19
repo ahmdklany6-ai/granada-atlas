@@ -233,12 +233,49 @@ FACADE = {'house': '#E5E3DA', 'residential': '#EBD9D3', 'apartments': '#D6CDA6',
           'school': '#C9D8DF', 'greenhouse': '#E4E5D3'}
 
 
-def facade(x0, x1, yg, lv, btype, seed=0):
+STONE, BLUSH, PAPER2 = '#D3CFC2', '#EBD9D3', '#EFEEE7'   # palette: stone, blush, paper2
+
+
+def rich_defs(i):
+    """textures for the detailed section (owner, 19 Nov 2026: 'a high level of detail, beauty, colours and textures'):
+    a fine paper/stucco grain for walls and soil, a sky that fades upwards, a stippled soil under the cut, a wire mesh."""
+    return (f'<defs>'
+            f'<filter id="grain-{i}" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="2.6" numOctaves="1" seed="7" result="n"/>'
+            f'<feColorMatrix in="n" type="matrix" values="0 0 0 0 0.16  0 0 0 0 0.06  0 0 0 0 0.05  0 0 0 -0.35 0.2" result="a"/><feComposite in="a" in2="SourceGraphic" operator="in" result="b"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="b"/></feMerge></filter>'
+            f'<linearGradient id="skyg-{i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="0.55" stop-color="{SKY}" stop-opacity="0.55"/><stop offset="1" stop-color="{SKY}" stop-opacity="0.9"/></linearGradient>'
+            f'<linearGradient id="soilfade-{i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="1"/></linearGradient>'
+            f'<pattern id="soil-{i}" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="3" height="3" fill="{BLUSH}"/><circle cx="0.6" cy="0.7" r="0.22" fill="{PINK}"/><circle cx="2.1" cy="1.9" r="0.16" fill="{PINK}"/><circle cx="1.5" cy="0.3" r="0.1" fill="{RED}" fill-opacity="0.5"/><circle cx="2.7" cy="2.8" r="0.12" fill="{PINK}"/></pattern>'
+            f'<pattern id="mesh-{i}" width="0.9" height="0.9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="0.9" height="0.9" fill="none" stroke="{INK}" stroke-width="0.06" stroke-opacity="0.7"/></pattern>'
+            f'<linearGradient id="shade-{i}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="{INK}" stop-opacity="0"/><stop offset="1" stop-color="{INK}" stop-opacity="0.16"/></linearGradient>'
+            f'</defs>')
+
+
+def lamp(x, y, side=1):
+    """a street light (schematic, for scale): 7 m post, a short arm and the lamp"""
+    top = y - 7 * MM; ax = x + side * 1.4 * MM
+    return (f'<g class="street-light-schematic"><line x1="{x:.2f}" y1="{y:.2f}" x2="{x:.2f}" y2="{top:.2f}" stroke="{INK2}" stroke-width="0.22"/>'
+            f'<path d="M{x:.2f},{top:.2f} q{side * 0.6 * MM:.2f},-0.35 {side * 1.4 * MM:.2f},0" fill="none" stroke="{INK2}" stroke-width="0.18"/>'
+            f'<rect x="{ax - 0.4 * MM:.2f}" y="{top - 0.05:.2f}" width="{0.8 * MM:.2f}" height="{0.22 * MM:.2f}" fill="{INK2}"/>'
+            f'<path d="M{ax - 0.6 * MM:.2f},{top + 0.4:.2f} L{ax - 1.8 * MM:.2f},{y:.2f} L{ax + 1.8 * MM:.2f},{y:.2f} L{ax + 0.6 * MM:.2f},{top + 0.4:.2f} Z" fill="#FFFFFF" fill-opacity="0.18"/></g>')
+
+
+def bench(x, y):
+    return (f'<g class="bench-schematic"><rect x="{x - 0.9 * MM:.2f}" y="{y - 0.45 * MM:.2f}" width="{1.8 * MM:.2f}" height="{0.08 * MM:.2f}" fill="{INK2}"/>'
+            f'<rect x="{x - 0.9 * MM:.2f}" y="{y - 0.85 * MM:.2f}" width="{0.08 * MM:.2f}" height="{0.85 * MM:.2f}" fill="{INK2}"/><line x1="{x + 0.75 * MM:.2f}" y1="{y - 0.45 * MM:.2f}" x2="{x + 0.75 * MM:.2f}" y2="{y:.2f}" stroke="{INK2}" stroke-width="0.12"/></g>')
+
+
+def facade(x0, x1, yg, lv, btype, seed=0, rid=None):
     """Schematic elevation of a building behind the cut, by its OSM type: wall colour, windows per floor, balconies on
     housing, big doors and cladding on industry, a glazed ground floor on shops, a flat roof with a parapet (no roof
     shapes are mapped here). x mm, yg = ground y mm, 3 m per floor (estimate)."""
     lv = max(1, lv); w = x1 - x0; fh = 3.0 * MM; top = yg - lv * fh; t = btype if btype in FACADE else 'yes'
-    wall = FACADE.get(t, '#EFEEE7'); o = [f'<rect x="{x0:.2f}" y="{top:.2f}" width="{w:.2f}" height="{lv * fh:.2f}" fill="{wall}" stroke="{INK}" stroke-width="0.15"/>']
+    wall = FACADE.get(t, '#EFEEE7'); flt = f' filter="url(#grain-{rid})"' if rid else ''
+    o = [f'<rect x="{x0:.2f}" y="{top:.2f}" width="{w:.2f}" height="{lv * fh:.2f}" fill="{wall}"{flt}/>']
+    if rid and t not in ('greenhouse',):
+        o.append(f'<rect x="{x0:.2f}" y="{yg - 1.0 * MM:.2f}" width="{w:.2f}" height="{1.0 * MM:.2f}" fill="{INK}" fill-opacity="0.08"/>')                       # plinth
+        o.append(f'<rect x="{x1 - min(w * 0.18, 1.6 * MM):.2f}" y="{top:.2f}" width="{min(w * 0.18, 1.6 * MM):.2f}" height="{lv * fh:.2f}" fill="url(#shade-{rid})"/>')  # light from the left
+        for f in range(1, lv): o.append(f'<line x1="{x0:.2f}" y1="{yg - f * fh:.2f}" x2="{x1:.2f}" y2="{yg - f * fh:.2f}" stroke="{INK}" stroke-opacity="0.12" stroke-width="0.08"/>')  # floor bands
+    o.append(f'<rect x="{x0:.2f}" y="{top:.2f}" width="{w:.2f}" height="{lv * fh:.2f}" fill="none" stroke="{INK}" stroke-width="0.15"/>')
     o.append(f'<rect x="{x0 - 0.1 * MM:.2f}" y="{top - 0.7 * MM:.2f}" width="{w + 0.2 * MM:.2f}" height="{0.7 * MM:.2f}" fill="{SLAB if t not in ("industrial", "warehouse", "greenhouse") else "#8C817A"}"/>')
     if t == 'greenhouse':
         for k in range(1, int(w / (1.5 * MM)) + 1): o.append(f'<line x1="{x0 + k * 1.5 * MM:.2f}" y1="{top:.2f}" x2="{x0 + k * 1.5 * MM:.2f}" y2="{yg:.2f}" stroke="{GLASS}" stroke-width="0.12"/>')
@@ -261,9 +298,17 @@ def facade(x0, x1, yg, lv, btype, seed=0):
             if f == 0 and k == (seed % n):  # a door on the ground floor
                 o.append(f'<rect x="{cx - 0.55 * MM:.2f}" y="{yb - 2.2 * MM:.2f}" width="{1.1 * MM:.2f}" height="{2.2 * MM:.2f}" fill="#74362D"/>'); continue
             o.append(f'<rect x="{cx - ww / 2:.2f}" y="{yb - 2.3 * MM:.2f}" width="{ww:.2f}" height="{1.4 * MM:.2f}" fill="{GLASS}" stroke="{INK}" stroke-width="0.08"/>')
+            if rid:   # frame, mullion, a light reflection, a sill; some blinds half down (persianas: schematic)
+                o.append(f'<line x1="{cx:.2f}" y1="{yb - 2.3 * MM:.2f}" x2="{cx:.2f}" y2="{yb - 0.9 * MM:.2f}" stroke="#FFFFFF" stroke-width="0.07"/>'
+                         f'<path d="M{cx - ww / 2 + 0.15:.2f},{yb - 1.0 * MM:.2f} l{ww * 0.35:.2f},{-1.2 * MM:.2f}" stroke="#FFFFFF" stroke-opacity="0.45" stroke-width="0.12"/>'
+                         f'<rect x="{cx - ww / 2 - 0.12 * MM:.2f}" y="{yb - 0.9 * MM:.2f}" width="{ww + 0.24 * MM:.2f}" height="{0.12 * MM:.2f}" fill="#FFFFFF" stroke="{INK}" stroke-width="0.04"/>')
+                if (k * 7 + f * 3 + seed) % 5 == 0: o.append(f'<rect x="{cx - ww / 2:.2f}" y="{yb - 2.3 * MM:.2f}" width="{ww:.2f}" height="{0.7 * MM:.2f}" fill="{OLIVE}" fill-opacity="0.55"/>'
+                                                          + ''.join(f'<line x1="{cx - ww / 2:.2f}" y1="{yb - 2.3 * MM + j * 0.14 * MM:.2f}" x2="{cx + ww / 2:.2f}" y2="{yb - 2.3 * MM + j * 0.14 * MM:.2f}" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="0.04"/>' for j in range(1, 5)))
             if t in ('house', 'detached', 'terrace', 'residential') and f == 0:  # shutters (persianas), schematic
                 o.append(f'<rect x="{cx - ww / 2:.2f}" y="{yb - 2.3 * MM:.2f}" width="{ww:.2f}" height="{0.45 * MM:.2f}" fill="#7E7B43" fill-opacity="0.7"/>')
             if f > 0 and t in ('apartments', 'residential') and (k + f + seed) % 2 == 0:  # balcony with a railing
+                if rid: o.append(''.join(f'<line x1="{cx - ww * 0.8 + j * ww * 0.2:.2f}" y1="{yb - 0.9 * MM:.2f}" x2="{cx - ww * 0.8 + j * ww * 0.2:.2f}" y2="{yb:.2f}" stroke="#74362D" stroke-width="0.05"/>' for j in range(1, 8))
+                                 + (f'<circle cx="{cx + ww * 0.55:.2f}" cy="{yb - 1.05 * MM:.2f}" r="{0.32 * MM:.2f}" fill="{OLIVE}" fill-opacity="0.85"/><circle cx="{cx + ww * 0.3:.2f}" cy="{yb - 1.15 * MM:.2f}" r="{0.22 * MM:.2f}" fill="{OLIVE2}" fill-opacity="0.85"/>' if (k + seed) % 3 == 0 else ''))   # railing bars, a few plant pots
                 o.append(f'<rect x="{cx - ww * 0.8:.2f}" y="{yb - 0.9 * MM:.2f}" width="{ww * 1.6:.2f}" height="{0.9 * MM:.2f}" fill="none" stroke="#74362D" stroke-width="0.12"/>'
                          f'<line x1="{cx - ww * 0.8:.2f}" y1="{yb:.2f}" x2="{cx + ww * 0.8:.2f}" y2="{yb:.2f}" stroke="{SLAB}" stroke-width="0.25"/>')
     return ''.join(o)
@@ -357,15 +402,16 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
     o = [f'<g id="section-{a["id"]}">',
          f'<defs><pattern id="hatch-{a["id"]}" width="2.2" height="2.2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="2.2" stroke="{RED}" stroke-width="0.3" stroke-opacity="0.45"/></pattern></defs>',
          f'<g id="forbidden-sky-{a["id"]}"><polygon points="{X(0):.2f},{oy + top:.2f} {P(lpts)} {X(L):.2f},{oy + top:.2f}" fill="{SKY}" fill-opacity="0.45"/><polygon points="{X(0):.2f},{oy + top:.2f} {P(lpts)} {X(L):.2f},{oy + top:.2f}" fill="url(#hatch-{a["id"]})"/></g>' if has_lim else '',  # the sky goes on above the limit too (owner, 17 Nov), hatched where building is forbidden
-         f'<g id="allowed-envelope-{a["id"]}"><polygon points="{P(lpts)} {P(reversed(gpts))}" fill="{SKY}" fill-opacity="0.45"/></g>' if has_lim else
-         f'<g id="sky-{a["id"]}"><polygon points="{X(0):.2f},{oy + top:.2f} {X(L):.2f},{oy + top:.2f} {P(reversed(gpts))}" fill="{SKY}" fill-opacity="0.45"/></g>']
+         f'<g id="allowed-envelope-{a["id"]}"><polygon points="{P(lpts)} {P(reversed(gpts))}" fill="url(#skyg-{a["id"]})"/></g>' if has_lim else
+         f'<g id="sky-{a["id"]}"><polygon points="{X(0):.2f},{oy + top:.2f} {X(L):.2f},{oy + top:.2f} {P(reversed(gpts))}" fill="url(#skyg-{a["id"]})"/></g>']
+    o.insert(1, rich_defs(a['id']))
     # buildings behind the plane (≤ 40 m), light outlines with floor lines
     def behind(sign):
         out = []
         for b in a['buildings']:
             if not b['lv']: continue
             st = [proj(p) for rr in b['r'] for r in rr for p in r]; ts = [sign * t for _, t in st]
-            if 0.5 < min(ts) < 40:
+            if 0.5 < min(ts) < 150:
                 s0, s1 = max(0, min(q for q, _ in st)), min(L, max(q for q, _ in st))
                 if s1 - s0 > 0.5: out.append((min(ts), s0, s1, b['lv'], ('?' if b.get('hu') else '') + (b.get('b') or 'yes')))
         return out
@@ -386,16 +432,20 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
     eo = [f'<g id="elevation-behind-{a["id"]}">']
     for i, (t, kind, v) in enumerate(sorted(items, key=lambda q: -q[0])):
         op = max(0.5, 1.0 - t / 70)
+        if kind == 'b' and t >= 40:   # far behind: a silhouette only, paler with distance (real footprints and floors; no façade)
+            s0, s1, lv, bt = v; g = g_at((s0 + s1) / 2); hgt = 6 if bt.startswith('?') else int(lv) * 3
+            eo.append(f'<rect class="far-silhouette" x="{X(s0):.2f}" y="{Z(g + hgt):.2f}" width="{X(s1) - X(s0):.2f}" height="{hgt * MM:.2f}" fill="{STONE}" fill-opacity="{max(0.25, 0.75 - (t - 40) / 160):.2f}"/>'); continue
         if kind == 'b':
             s0, s1, lv, bt = v; g = g_at((s0 + s1) / 2)
             if bt.startswith('?'):  # a shed or a church behind the plane: its height is not measured — a dashed outline, no façade
                 eo.append(f'<rect class="height-unknown" x="{X(s0):.2f}" y="{Z(g + 6):.2f}" width="{X(s1) - X(s0):.2f}" height="{6 * MM:.2f}" fill="#FFFFFF" fill-opacity="0.5" stroke="{PINK}" stroke-width="0.25" stroke-dasharray="1,1" opacity="{op:.2f}"/>'); continue
-            eo.append(f'<g opacity="{op:.2f}">' + facade(X(s0), X(s1), Z(g), int(lv), bt, i) + '</g>')
+            eo.append(f'<g opacity="{op:.2f}">' + facade(X(s0), X(s1), Z(g), int(lv), bt, i, a['id']) + '</g>')
         else:
             q, dm, k = v; eo.append(f'<g class="tree-behind" opacity="{op * 0.85:.2f}">' + tree(X(q), Z(g_at(q)), th(q, dm, k), seed=k) + '</g>')
     eo.append('</g>'); o += eo
     to = [f'<g id="trees-on-section-{a["id"]}">']
     for q, dm, k in sorted(near):
+        to.append(f'<ellipse cx="{X(q) + 0.6 * MM:.2f}" cy="{Z(g_at(q)):.2f}" rx="{max(1.5, dm * 0.45) * MM:.2f}" ry="{0.35 * MM:.2f}" fill="{INK}" fill-opacity="0.12"/>')
         to.append(tree(X(q), Z(g_at(q)), th(q, dm, k), seed=k))
     to.append('</g>'); o += to
     # cut buildings: floors (3 m each), slabs in red, interiors light, people inside (schematic)
@@ -405,7 +455,12 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
         if c.get('h_est') is None:
             bo.append(f'<rect x="{x0:.2f}" y="{Z(g + 6):.2f}" width="{x1 - x0:.2f}" height="{6 * MM:.2f}" fill="none" stroke="{PINK}" stroke-width="0.35" stroke-dasharray="1,1"/>'); continue
         lv = int(c['lv']); slab = 0.35 * MM; wall = 0.3 * MM
-        bo.append(f'<rect x="{x0:.2f}" y="{Z(g + lv * 3):.2f}" width="{x1 - x0:.2f}" height="{lv * 3 * MM:.2f}" fill="{INTERIOR}"/>')
+        bo.append(f'<rect x="{x0:.2f}" y="{Z(g + lv * 3):.2f}" width="{x1 - x0:.2f}" height="{lv * 3 * MM:.2f}" fill="{INTERIOR}" filter="url(#grain-{a["id"]})"/>')
+        for f in range(lv):   # floor finish and a pendant light in each storey (schematic)
+            yf = Z(g + f * 3) - (0.35 * MM if f else 0); bo.append(f'<line x1="{x0 + 0.3 * MM:.2f}" y1="{yf - 0.12 * MM:.2f}" x2="{x1 - 0.3 * MM:.2f}" y2="{yf - 0.12 * MM:.2f}" stroke="{PINK}" stroke-width="0.12"/>')
+            for lx in [x0 + (x1 - x0) * q for q in ((0.5,) if x1 - x0 < 10 * MM else (0.3, 0.7))]:
+                yc = Z(g + f * 3 + 3) + 0.35 * MM; bo.append(f'<line x1="{lx:.2f}" y1="{yc:.2f}" x2="{lx:.2f}" y2="{yc + 0.6 * MM:.2f}" stroke="{INK2}" stroke-width="0.05"/><path d="M{lx - 0.3 * MM:.2f},{yc + 0.85 * MM:.2f} q{0.3 * MM:.2f},-0.6 {0.6 * MM:.2f},0 z" fill="{INK2}"/>'
+                                                       f'<path d="M{lx - 0.3 * MM:.2f},{yc + 0.85 * MM:.2f} L{lx - 1.3 * MM:.2f},{yc + 2.4 * MM:.2f} L{lx + 1.3 * MM:.2f},{yc + 2.4 * MM:.2f} L{lx + 0.3 * MM:.2f},{yc + 0.85 * MM:.2f} Z" fill="#BFB065" fill-opacity="0.12"/>')
         for f in range(lv + 1): bo.append(f'<rect x="{x0:.2f}" y="{Z(g + f * 3) - (slab if f else 0):.2f}" width="{x1 - x0:.2f}" height="{slab:.2f}" fill="{CUT}"/>')
         bo.append(f'<rect x="{x0:.2f}" y="{Z(g + lv * 3):.2f}" width="{wall:.2f}" height="{lv * 3 * MM:.2f}" fill="{CUT}"/><rect x="{x1 - wall:.2f}" y="{Z(g + lv * 3):.2f}" width="{wall:.2f}" height="{lv * 3 * MM:.2f}" fill="{CUT}"/>')
         for f in range(lv):  # window openings in the cut walls (schematic), blue glass
@@ -420,7 +475,9 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
     o.append(f'<defs><pattern id="basehatch-{a["id"]}" width="1.6" height="1.6" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><line x1="0" y1="0" x2="0" y2="1.6" stroke="#FFFFFF" stroke-width="0.25" stroke-opacity="0.6"/></pattern></defs>'
              f'<g id="ground-cut-{a["id"]}"><polygon points="{P(gpts)} {P((x, y + 2.6 * MM) for x, y in reversed(gpts))}" fill="{CUT}"/>'
              + (f'<polygon points="{P(bside)} {P((x, y + 2.6 * MM) for x, y in reversed(bside))}" fill="url(#basehatch-{a["id"]})"/>' if bside else '') +
-             f'<polyline points="{P(gpts)}" fill="none" stroke="{CUT}" stroke-width="0.35"/></g>')
+             f'<polyline points="{P(gpts)}" fill="none" stroke="{CUT}" stroke-width="0.35"/></g>'
+             f'<g id="soil-{a["id"]}"><polygon points="{P((x, y + 2.6 * MM) for x, y in gpts)} {P((x, y + 7.5 * MM) for x, y in reversed(gpts))}" fill="url(#soil-{a["id"]})" filter="url(#grain-{a["id"]})"/>'
+             f'<polygon points="{P((x, y + 2.6 * MM) for x, y in gpts)} {P((x, y + 7.6 * MM) for x, y in reversed(gpts))}" fill="url(#soilfade-{a["id"]})"/></g>')
     # water courses crossed by the section (OSM): a blue channel cut into the ground (position from OSM; width and depth are not measured: schematic)
     wo = [f'<g id="water-{a["id"]}">']
     for q in s.get('water', []):
@@ -440,15 +497,28 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
                     if (fa is not None and d > fa - 1.5) or any(abs(d - u) < 5 for u in used): continue
                     used.append(d); gy = Z(g_at(d))
                     n = len(used)
-                    if st['hw'] in ('footway', 'path', 'pedestrian', 'steps', 'cycleway', 'living_street'): eo.append(fig(X(d), gy, n % 4, PEOPLE[n % len(PEOPLE)]))
+                    if st['hw'] not in ('footway', 'path', 'pedestrian', 'steps', 'cycleway', 'track'):   # carriageway (width schematic, 7 m): asphalt and kerbs on the cut ground, a street light
+                        hw2 = 3.5 * MM; eo.append(f'<rect class="asphalt-schematic" x="{X(d) - hw2:.2f}" y="{gy - 0.05:.2f}" width="{2 * hw2:.2f}" height="{0.35 * MM:.2f}" fill="{INK}" fill-opacity="0.85"/>'
+                                                  f'<rect x="{X(d) - hw2 - 0.3 * MM:.2f}" y="{gy - 0.18 * MM:.2f}" width="{0.3 * MM:.2f}" height="{0.3 * MM:.2f}" fill="{STONE}" stroke="{INK}" stroke-width="0.04"/><rect x="{X(d) + hw2:.2f}" y="{gy - 0.18 * MM:.2f}" width="{0.3 * MM:.2f}" height="{0.3 * MM:.2f}" fill="{STONE}" stroke="{INK}" stroke-width="0.04"/>'
+                                                  + ''.join(f'<line x1="{X(d) - hw2 * 0.15 + j * 0.9 * MM:.2f}" y1="{gy + 0.02:.2f}" x2="{X(d) - hw2 * 0.15 + j * 0.9 * MM + 0.5 * MM:.2f}" y2="{gy + 0.02:.2f}" stroke="#FFFFFF" stroke-width="0.08"/>' for j in range(1)))
+                        if n % 2 == 0: eo.append(lamp(X(d) - hw2 - 0.8 * MM, gy, 1))
+                    if st['hw'] in ('footway', 'path', 'pedestrian', 'steps', 'cycleway', 'living_street'):
+                        eo.append(fig(X(d), gy, n % 4, PEOPLE[n % len(PEOPLE)]))
+                        if n % 3 == 1: eo.append(bench(X(d) + 2.4 * MM, gy))
                     elif st['hw'] in ('service', 'track'): eo.append(fig(X(d) + 1.2 * MM, gy, 1, PEOPLE[(n + 2) % len(PEOPLE)]))
                     else: eo.append(car(X(d), gy, CARS[n % len(CARS)])); eo.append(fig(X(d) + 4.2 * MM, gy, (n + 1) % 4, PEOPLE[(n + 1) % len(PEOPLE)]))
     if fa is not None: eo.append(fig(X(fa) - 3.2 * MM, Z(g_at(fa - 3.2)), 0, INK))  # someone at the fence
     eo.append('</g>'); o += eo
     # the fence
     gf = g_at(fa) if fa is not None else 0.0
-    if fa is not None: o.append(f'<g id="fence-{a["id"]}"><line x1="{X(fa):.2f}" y1="{Z(gf):.2f}" x2="{X(fa):.2f}" y2="{Z(gf + 2.5):.2f}" stroke="{INK}" stroke-width="0.9"/>'
-             + ''.join(f'<line x1="{X(fa) - 1.2:.2f}" y1="{Z(gf + h):.2f}" x2="{X(fa) + 1.2:.2f}" y2="{Z(gf + h):.2f}" stroke="{INK}" stroke-width="0.2"/>' for h in (0.6, 1.2, 1.8, 2.4)) + '</g>')
+    if fa is not None:   # the fence, cut: a concrete footing (red, cut), the post, wire mesh seen running away from the plane, a barbed-wire arm (form schematic)
+        xf, yf0 = X(fa), Z(gf); arm = 1 if (s['b'][0] - s['a'][0]) >= 0 else -1
+        o.append(f'<g id="fence-{a["id"]}"><rect x="{xf - 0.35 * MM:.2f}" y="{yf0 - 0.3 * MM:.2f}" width="{0.7 * MM:.2f}" height="{0.9 * MM:.2f}" fill="{CUT}"/>'
+                 f'<rect x="{xf - 3.0 * MM:.2f}" y="{Z(gf + 2.4):.2f}" width="{6.0 * MM:.2f}" height="{2.4 * MM:.2f}" fill="url(#mesh-{a["id"]})"/>'
+                 + ''.join(f'<line x1="{xf + dx * MM:.2f}" y1="{yf0:.2f}" x2="{xf + dx * MM:.2f}" y2="{Z(gf + 2.4):.2f}" stroke="{INK}" stroke-width="0.12" stroke-opacity="0.6"/>' for dx in (-3.0, 3.0))
+                 + f'<line x1="{xf:.2f}" y1="{yf0:.2f}" x2="{xf:.2f}" y2="{Z(gf + 2.5):.2f}" stroke="{INK}" stroke-width="0.45"/>'
+                 f'<line x1="{xf:.2f}" y1="{Z(gf + 2.5):.2f}" x2="{xf + arm * 0.45 * MM:.2f}" y2="{Z(gf + 2.95):.2f}" stroke="{INK}" stroke-width="0.3"/>'
+                 + ''.join(f'<circle cx="{xf + arm * q * 0.45 * MM:.2f}" cy="{Z(gf + 2.5 + q * 0.45):.2f}" r="0.16" fill="none" stroke="{INK}" stroke-width="0.08"/>' for q in (0.35, 0.7, 1.0)) + '</g>')
     # the limit, the allowed height — numbers only
     lf = sm[int(round(fa))][2] if fa is not None else 0.0
     if has_lim: o.append(f'<g id="limit-surface-{a["id"]}"><polyline points="{P(lpts)}" fill="none" stroke="{RED}" stroke-width="0.8"/>'
@@ -467,7 +537,7 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
     for v in (0, 10, 20, 50): sb.append(f'<text x="{sx + v * MM:.2f}" y="{sy + 3.6:.2f}" {FONT} font-size="2" text-anchor="middle" fill="{INK}">{v}{" m" if v == 50 else ""}</text>')
     sb.append('</g>'); o += sb
     src = a['stats'].get('limit_file', '').replace('.kmz', '')
-    note = (f'1:500 · ground IGN MDT25 · {escape(src)}, Ministerio de Defensa · buildings: D. G. del Catastro (floors × 3 m, estimate; dashed = shed or hall, height not measured) · water: OSM · trees: PNOA aerial (IGN), approx. · people, cars, tree heights, channel shapes and façades: schematic' if has_lim else
+    note = (f'1:500 · ground IGN MDT25 · {escape(src)}, Ministerio de Defensa · buildings: D. G. del Catastro (floors × 3 m, estimate; dashed = shed or hall, height not measured) · water: OSM · trees: PNOA aerial (IGN), approx. · people, cars, tree heights, channel shapes, façades, street lights, fence form and textures: schematic' if has_lim else
             '1:500 · ground: IGN MDT05 · buildings: D. G. del Catastro (floors × 3 m, estimate; dashed = shed or church, height not measured) · trees: PNOA aerial (IGN), approx. · people, cars, tree heights and façades (by use): schematic')
     o.append(f'<g id="sources-{a["id"]}" opacity="0.9"><text x="{X(0):.2f}" y="{Z(zmin) + 12:.2f}" {FONT} font-size="1.8" fill="{INK3}">{note}</text></g>')
     o.append('</g>')
