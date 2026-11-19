@@ -1125,6 +1125,19 @@ south (Armilla, Churriana de la Vega, Las Gabias, Alhendín, Ogíjares).
   03/1985, OLISTAT 04/1998, SIGPAC 2001; the Interministerial flight has no date here → 1973. **Ogíjares before 1987 is not
   drawn**: its Catastro dates 1,189 of 4,313 buildings 1986 (a revision year). Demolished buildings are missing, so old edges
   can be too small (the 1931 map shows bigger villages than the Catastro edge) — the page says so.
+- **Sections, soft style with different buildings** (owner, 19 Nov, after reference sheets he showed — style only, nothing
+  copied): `tools/export_ex21_sections_svg.py` `STYLE=detail`. Cut ground, slabs and walls stay studio red at ONE thickness;
+  interiors plain (no texture, no lamps); thin warm-grey lines everywhere (no thick roof bands); near-white sky; a stippled
+  soil fading under the cut; undergrowth under the trees; fence with footing, mesh and barbed-wire arm; asphalt, kerbs, street
+  lights, benches. **Elevations behind the cut** (`facade`, `facade_style`): up to 100 m behind the plane every building is
+  drawn solid and then veiled in white by distance (nearer hides farther; pale, yet distinct); beyond 100 m white volumes in
+  mist. The style family comes from what is RECORDED — type, floors, Catastro year: `trad` (< 1965, ≤ 2 floors: whitewash,
+  plinth, grilles, clay tiles), `house` (1965–89), `villa` (1990+), `brick` (blocks < 1982), `render` (1982–99), `boom`
+  (2000–09: miradores, brick-colour panels), `new` (2010+: timber slats, glass balustrades), `shed`, `public`, `shop`, and
+  `plain` when no year is on record. Materials, colours, window rhythm and roof forms are SCHEMATIC (typical of the period),
+  and the source line under each section says so. Google Maps / Earth were NOT used (not reachable here, and their imagery
+  may not be copied into published drawings); real façades would need the owner's own photos or the Catastro's façade
+  photos (host `ovc.catastro.meh.es`, not allowed in this environment yet).
 - **Wording**: the base's name on English maps is "Armilla Air Base" (`x34.base`; it was the Spanish official name while the
   sheet title was English). The key map's title no longer counts the areas ("the eight 1:500 areas" was written before S and
   R were added; the map shows ten).

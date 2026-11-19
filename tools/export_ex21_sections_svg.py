@@ -241,13 +241,17 @@ def rich_defs(i):
     a fine paper/stucco grain for walls and soil, a sky that fades upwards, a stippled soil under the cut, a wire mesh."""
     return (f'<defs>'
             f'<filter id="grain-{i}" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.22" numOctaves="3" seed="11" result="n"/>'
-            f'<feColorMatrix in="n" type="matrix" values="0 0 0 0 0.35  0 0 0 0 0.25  0 0 0 0 0.2  0 0 0 -0.3 0.14" result="a"/><feComposite in="a" in2="SourceGraphic" operator="in" result="b"/>'
-            f'<feTurbulence type="fractalNoise" baseFrequency="3.5" numOctaves="1" seed="3" result="f"/><feColorMatrix in="f" type="matrix" values="0 0 0 0 0.3  0 0 0 0 0.25  0 0 0 0 0.2  0 0 0 -0.25 0.14" result="fa"/><feComposite in="fa" in2="SourceGraphic" operator="in" result="fb"/>'
+            f'<feColorMatrix in="n" type="matrix" values="0 0 0 0 0.35  0 0 0 0 0.25  0 0 0 0 0.2  0 0 0 -0.18 0.07" result="a"/><feComposite in="a" in2="SourceGraphic" operator="in" result="b"/>'
+            f'<feTurbulence type="fractalNoise" baseFrequency="3.5" numOctaves="1" seed="3" result="f"/><feColorMatrix in="f" type="matrix" values="0 0 0 0 0.3  0 0 0 0 0.25  0 0 0 0 0.2  0 0 0 -0.2 0.1" result="fa"/><feComposite in="fa" in2="SourceGraphic" operator="in" result="fb"/>'
             f'<feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="b"/><feMergeNode in="fb"/></feMerge></filter>'
             f'<linearGradient id="skyg-{i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="0.7" stop-color="{SKY}" stop-opacity="0.25"/><stop offset="1" stop-color="{SKY}" stop-opacity="0.45"/></linearGradient><linearGradient id="fog-{i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.8"/></linearGradient>'
             f'<linearGradient id="soilfade-{i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="1"/></linearGradient>'
             f'<pattern id="soil-{i}" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="3" height="3" fill="{BLUSH}"/><circle cx="0.6" cy="0.7" r="0.22" fill="{PINK}"/><circle cx="2.1" cy="1.9" r="0.16" fill="{PINK}"/><circle cx="1.5" cy="0.3" r="0.1" fill="{RED}" fill-opacity="0.5"/><circle cx="2.7" cy="2.8" r="0.12" fill="{PINK}"/></pattern>'
             f'<pattern id="mesh-{i}" width="0.9" height="0.9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="0.9" height="0.9" fill="none" stroke="{INK}" stroke-width="0.06" stroke-opacity="0.7"/></pattern>'
+            f'<pattern id="brick-{i}" width="1.6" height="0.5" patternUnits="userSpaceOnUse"><line x1="0" y1="0.25" x2="1.6" y2="0.25" stroke="#74362D" stroke-width="0.04" stroke-opacity="0.35"/><line x1="0.4" y1="0" x2="0.4" y2="0.25" stroke="#74362D" stroke-width="0.03" stroke-opacity="0.25"/><line x1="1.2" y1="0.25" x2="1.2" y2="0.5" stroke="#74362D" stroke-width="0.03" stroke-opacity="0.25"/></pattern>'
+            f'<pattern id="slat-{i}" width="0.26" height="2" patternUnits="userSpaceOnUse"><line x1="0.13" y1="0" x2="0.13" y2="2" stroke="#A49250" stroke-width="0.09"/></pattern>'
+            f'<pattern id="tile-{i}" width="0.4" height="2" patternUnits="userSpaceOnUse"><line x1="0.2" y1="0" x2="0.2" y2="2" stroke="#74362D" stroke-width="0.05" stroke-opacity="0.45"/></pattern>'
+            f'<pattern id="rib-{i}" width="0.8" height="2" patternUnits="userSpaceOnUse"><line x1="0.4" y1="0" x2="0.4" y2="2" stroke="#8C817A" stroke-width="0.05" stroke-opacity="0.6"/></pattern>'
             f'<linearGradient id="shade-{i}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="{INK}" stop-opacity="0"/><stop offset="1" stop-color="{INK}" stop-opacity="0.16"/></linearGradient>'
             f'</defs>')
 
@@ -266,53 +270,168 @@ def bench(x, y):
             f'<rect x="{x - 0.9 * MM:.2f}" y="{y - 0.85 * MM:.2f}" width="{0.08 * MM:.2f}" height="{0.85 * MM:.2f}" fill="{INK2}"/><line x1="{x + 0.75 * MM:.2f}" y1="{y - 0.45 * MM:.2f}" x2="{x + 0.75 * MM:.2f}" y2="{y:.2f}" stroke="{INK2}" stroke-width="0.12"/></g>')
 
 
-def facade(x0, x1, yg, lv, btype, seed=0, rid=None):
-    """Schematic elevation of a building behind the cut, by its OSM type: wall colour, windows per floor, balconies on
-    housing, big doors and cladding on industry, a glazed ground floor on shops, a flat roof with a parapet (no roof
-    shapes are mapped here). x mm, yg = ground y mm, 3 m per floor (estimate)."""
-    lv = max(1, lv); w = x1 - x0; fh = 3.0 * MM; top = yg - lv * fh; t = btype if btype in FACADE else 'yes'
-    wall = FACADE.get(t, '#EFEEE7'); flt = f' filter="url(#grain-{rid})"' if rid else ''
-    o = [f'<rect x="{x0:.2f}" y="{top:.2f}" width="{w:.2f}" height="{lv * fh:.2f}" fill="{wall}"{flt}/>']
-    if rid and t not in ('greenhouse',):
-        o.append(f'<rect x="{x0:.2f}" y="{yg - 1.0 * MM:.2f}" width="{w:.2f}" height="{1.0 * MM:.2f}" fill="{INK}" fill-opacity="0.08"/>')                       # plinth
-        o.append(f'<rect x="{x1 - min(w * 0.18, 1.6 * MM):.2f}" y="{top:.2f}" width="{min(w * 0.18, 1.6 * MM):.2f}" height="{lv * fh:.2f}" fill="url(#shade-{rid})"/>')  # light from the left
-        for f in range(1, lv): o.append(f'<line x1="{x0:.2f}" y1="{yg - f * fh:.2f}" x2="{x1:.2f}" y2="{yg - f * fh:.2f}" stroke="{INK}" stroke-opacity="0.12" stroke-width="0.08"/>')  # floor bands
-    o.append(f'<rect x="{x0:.2f}" y="{top:.2f}" width="{w:.2f}" height="{lv * fh:.2f}" fill="none" stroke="#8C817A" stroke-width="0.08"/>')
-    o.append(f'<rect x="{x0 - 0.1 * MM:.2f}" y="{top - 0.25 * MM:.2f}" width="{w + 0.2 * MM:.2f}" height="{0.25 * MM:.2f}" fill="none" stroke="#8C817A" stroke-width="0.08"/>')   # coping, thin (owner, 19 Nov: no thick lines)
-    if t == 'greenhouse':
-        for k in range(1, int(w / (1.5 * MM)) + 1): o.append(f'<line x1="{x0 + k * 1.5 * MM:.2f}" y1="{top:.2f}" x2="{x0 + k * 1.5 * MM:.2f}" y2="{yg:.2f}" stroke="{GLASS}" stroke-width="0.12"/>')
-        return ''.join(o)
-    if t in ('industrial', 'warehouse'):
-        for k in range(1, int(w / (0.8 * MM))): o.append(f'<line x1="{x0 + k * 0.8 * MM:.2f}" y1="{top:.2f}" x2="{x0 + k * 0.8 * MM:.2f}" y2="{yg:.2f}" stroke="#8C817A" stroke-width="0.1"/>')
-        dw = min(4.0 * MM, w * 0.4); dh = min(lv * fh * 0.75, 4.2 * MM)
-        o.append(f'<rect x="{x0 + (w - dw) * (0.3 + 0.4 * (seed % 2)):.2f}" y="{yg - dh:.2f}" width="{dw:.2f}" height="{dh:.2f}" fill="#8C817A" fill-opacity="0.7"/>')
-        o.append(f'<rect x="{x0 + 0.5 * MM:.2f}" y="{top + 0.6 * MM:.2f}" width="{max(0, w - MM):.2f}" height="{0.7 * MM:.2f}" fill="{GLASS}" fill-opacity="0.45"/>')
-        return ''.join(o)
-    n = max(1, int(w / (3.2 * MM))); step = w / n; ww = min(1.3 * MM, step * 0.5)
-    for f in range(lv):
-        yb = yg - f * fh
-        if f == 0 and t in ('retail', 'commercial'):
-            o.append(f'<rect x="{x0 + 0.4 * MM:.2f}" y="{yb - 2.6 * MM:.2f}" width="{max(0, w - 0.8 * MM):.2f}" height="{2.3 * MM:.2f}" fill="{GLASS}"/>')
-            o.append(f'<rect x="{x0:.2f}" y="{yb - 3.0 * MM:.2f}" width="{w:.2f}" height="{0.35 * MM:.2f}" fill="#C98B80"/>')  # shop awning
-            continue
+LINEC = '#8C817A'   # warmGrey: every thin line of the elevations
+
+
+def _r(x, y, w, h, fill, op=1.0, stroke=None, sw=0.05, extra=''):
+    return (f'<rect x="{x:.2f}" y="{y:.2f}" width="{max(0, w):.2f}" height="{max(0, h):.2f}" fill="{fill}"' + (f' fill-opacity="{op:.2f}"' if op < 1 else '')
+            + (f' stroke="{stroke}" stroke-width="{sw}"' if stroke else '') + extra + '/>')
+
+
+def _l(x1, y1, x2, y2, col=LINEC, sw=0.05, op=1.0):
+    return f'<line x1="{x1:.2f}" y1="{y1:.2f}" x2="{x2:.2f}" y2="{y2:.2f}" stroke="{col}" stroke-width="{sw}"' + (f' stroke-opacity="{op:.2f}"' if op < 1 else '') + '/>'
+
+
+def facade_style(btype, year, lv):
+    """which elevation a building gets — from what IS recorded: its type (OSM / Catastro use), its floors and its year of
+    construction (Catastro). No year on record → 'plain' (no period features)."""
+    if btype in ('industrial', 'warehouse'): return 'shed'
+    if btype == 'greenhouse': return 'greenhouse'
+    if btype in ('public', 'school'): return 'public'
+    if btype in ('retail', 'commercial'): return 'shop'
+    if not year: return 'plain'
+    if lv <= 2: return 'trad' if year < 1965 else 'house' if year < 1990 else 'villa'
+    return 'brick' if year < 1982 else 'render' if year < 2000 else 'boom' if year < 2010 else 'new'
+
+
+def facade(x0, x1, yg, lv, btype, seed=0, rid=None, year=None):
+    """Elevation of a building behind the cut (owner, 19 Nov 2026: 'I want to see the differences between the buildings').
+    RECORDED: position and width (footprint), floors (× 3 m, estimate), type, year of construction → the style family
+    (facade_style). SCHEMATIC, not surveyed: materials, colours, window rhythm, balconies, roof form — typical of that kind
+    of building in that period, varied a little per building so the street does not repeat. Returns (svg, silhouette)."""
+    import random
+    lv = max(1, int(lv)); w = x1 - x0; fh = 3.0 * MM; top = yg - lv * fh; st = facade_style(btype, year, lv); rnd = random.Random(seed * 131 + 7)
+    m = lambda v: v * MM; o = []; sil = [(x0, yg), (x0, top), (x1, top), (x1, yg)]
+    pat = lambda name: f'url(#{name}-{rid})' if rid else None
+    # ---- small parts ----
+    def win(cx, yb, ww, wh, sill=0.9, gop=0.5, box=None, shutter=None, grille=False, frame=LINEC):
+        xw, yt = cx - m(ww) / 2, yb - m(sill + wh); q = [_r(xw, yt, m(ww), m(wh), GLASS, gop, frame, 0.05)]
+        if ww > 1.0: q.append(_l(cx, yt, cx, yt + m(wh), frame, 0.04))                                   # two leaves
+        if box: q.append(_r(xw - m(0.05), yt - m(0.25), m(ww + 0.1), m(0.25), box, 1, LINEC, 0.03))      # roller-shutter box
+        if shutter: q.append(_r(xw, yt, m(ww), m(wh * shutter[1]), shutter[0], 0.6) + ''.join(_l(xw, yt + m(j * 0.14), xw + m(ww), yt + m(j * 0.14), '#FFFFFF', 0.03, 0.5) for j in range(1, int(wh * shutter[1] / 0.14))))
+        if grille: q.append(''.join(_l(xw + m(ww) * j / 4, yt, xw + m(ww) * j / 4, yt + m(wh), INK2, 0.03, 0.6) for j in range(1, 4)) + _l(xw, yt + m(wh) / 2, xw + m(ww), yt + m(wh) / 2, INK2, 0.03, 0.6))
+        if sill > 0: q.append(_r(xw - m(0.08), yb - m(sill), m(ww + 0.16), m(0.08), '#FFFFFF', 1, LINEC, 0.03))
+        return ''.join(q)
+    def rail(cx, yb, bw, kind='bars', col='#F6F5F0'):
+        xb = cx - m(bw) / 2; q = [_l(xb - m(0.1), yb, xb + m(bw + 0.1), yb, LINEC, 0.12)]                # the slab's edge
+        if kind == 'solid': q.append(_r(xb, yb - m(1.0), m(bw), m(1.0), col, 1, LINEC, 0.05))
+        elif kind == 'glass': q.append(_r(xb, yb - m(1.0), m(bw), m(1.0), '#A9C0CB', 0.3, LINEC, 0.04))
+        else: q.append(_r(xb, yb - m(1.0), m(bw), m(1.0), 'none', 1, LINEC, 0.05) + ''.join(_l(xb + m(j * 0.15), yb - m(1.0), xb + m(j * 0.15), yb, LINEC, 0.025) for j in range(1, int(bw / 0.15))))
+        return ''.join(q)
+    def door(cx, yb, dw=1.0, dh=2.2, col='#74362D', op=0.5): return _r(cx - m(dw) / 2, yb - m(dh), m(dw), m(dh), col, op, LINEC, 0.04)
+    def garage(cx, yb, dw=2.5, dh=2.2): xg = cx - m(dw) / 2; return _r(xg, yb - m(dh), m(dw), m(dh), '#D3CFC2', 1, LINEC, 0.04) + ''.join(_l(xg, yb - m(j * 0.3), xg + m(dw), yb - m(j * 0.3), LINEC, 0.025) for j in range(1, int(dh / 0.3) + 1))
+    def wall(col, op=1.0, fill2=None):
+        q = [_r(x0, top, w, lv * fh, '#FFFFFF'), _r(x0, top, w, lv * fh, col, op, None, 0.05, f' filter="url(#grain-{rid})"' if rid else '')]
+        if fill2: q.append(_r(x0, top, w, lv * fh, fill2))
+        return ''.join(q)
+    def tile_roof(h=1.1, over=0.3):   # a clay-tile roof seen from the street: the tiled slope as a band, the ridge on top
+        nonlocal sil; ya = top - m(h); xa, xb = x0 - m(over), x1 + m(over)
+        sil = [(x0, yg), (x0, top), (xa, top), (xa + m(0.5), ya), (xb - m(0.5), ya), (xb, top), (x1, top), (x1, yg)]
+        return (f'<polygon points="{xa:.2f},{top:.2f} {xa + m(0.5):.2f},{ya:.2f} {xb - m(0.5):.2f},{ya:.2f} {xb:.2f},{top:.2f}" fill="#C98B80" fill-opacity="0.8" stroke="{LINEC}" stroke-width="0.05"/>'
+                + (f'<polygon points="{xa:.2f},{top:.2f} {xa + m(0.5):.2f},{ya:.2f} {xb - m(0.5):.2f},{ya:.2f} {xb:.2f},{top:.2f}" fill="{pat("tile")}"/>' if rid else '') + _l(xa, top, xb, top, LINEC, 0.1))
+    def flat_roof(parapet=0.0, railing=False, cap=None):
+        nonlocal sil; q = []
+        if parapet: q.append(_r(x0, top - m(parapet), w, m(parapet), cap or '#F6F5F0', 1, LINEC, 0.05)); sil = [(x0, yg), (x0, top - m(parapet)), (x1, top - m(parapet)), (x1, yg)]
+        if railing: q.append(_l(x0, top - m(parapet + 0.9), x1, top - m(parapet + 0.9), LINEC, 0.04) + ''.join(_l(x0 + m(j * 1.2), top - m(parapet + 0.9), x0 + m(j * 1.2), top - m(parapet), LINEC, 0.03) for j in range(int(w / m(1.2)) + 1)))
+        q.append(_l(x0 - m(0.1), top - m(parapet), x1 + m(0.1), top - m(parapet), LINEC, 0.1)); return ''.join(q)
+    def stairhead(xc, hw=1.6, hh=2.4): return _r(xc - m(hw), top - m(hh), m(2 * hw), m(hh), '#F6F5F0', 1, LINEC, 0.04) + _r(xc - m(0.35), top - m(hh) + m(0.5), m(0.7), m(0.9), GLASS, 0.4, LINEC, 0.03)
+    floors = lambda col=LINEC, op=0.35: ''.join(_l(x0, yg - f * fh, x1, yg - f * fh, col, 0.05, op) for f in range(1, lv))
+    bays = lambda bay: max(1, int(round(w / m(bay))))
+    # ---- the families ----
+    if w < m(2.2):   # a sliver of a building: a wall and one opening
+        o.append(wall('#E5E3DA')); o += [win((x0 + x1) / 2, yg - f * fh, min(0.9, w / MM * 0.5), 1.2) for f in range(lv)]
+    elif st == 'greenhouse':
+        o.append(wall('#EFEEE7', 0.6)); o += [_l(x0 + k * m(1.5), top, x0 + k * m(1.5), yg, GLASS, 0.08) for k in range(1, int(w / m(1.5)) + 1)]
+    elif st == 'shed':   # metal cladding, a low gable to the street, a big door, a strip of glazing (the HEIGHT of sheds is not derived from floors: see 'hu')
+        pk = min(1.6, w / MM * 0.08); xc = (x0 + x1) / 2; sil = [(x0, yg), (x0, top), (xc, top - m(pk)), (x1, top), (x1, yg)]
+        o.append(f'<polygon points="{x0:.2f},{yg:.2f} {x0:.2f},{top:.2f} {xc:.2f},{top - m(pk):.2f} {x1:.2f},{top:.2f} {x1:.2f},{yg:.2f}" fill="{["#D3CFC2", "#BDB5AA", "#E5E3DA"][seed % 3]}" stroke="{LINEC}" stroke-width="0.06"/>')
+        if rid: o.append(f'<polygon points="{x0:.2f},{yg:.2f} {x0:.2f},{top:.2f} {xc:.2f},{top - m(pk):.2f} {x1:.2f},{top:.2f} {x1:.2f},{yg:.2f}" fill="{pat("rib")}"/>')
+        dw = min(4.0, w / MM * 0.35); dh = min(lv * 3 * 0.75, 4.2); o.append(garage(x0 + w * (0.3 + 0.4 * (seed % 2)), yg, dw, dh))
+        o.append(_r(x0 + m(0.6), top + m(0.5), w - m(1.2), m(0.7), GLASS, 0.4, LINEC, 0.04)); o.append(_r(x0, yg - m(0.9), w, m(0.9), '#8C817A', 0.25))
+    elif st == 'public':   # bands of glazing, an accent band, a canopy at the door
+        o.append(wall('#F6F5F0')); acc = ['#4F6E80', '#7E7B43', '#C98B80'][seed % 3]
+        for f in range(lv):
+            yb = yg - f * fh; o.append(_r(x0 + m(0.8), yb - m(2.4), w - m(1.6), m(1.4), '#A9C0CB', 0.4, LINEC, 0.04)); o += [_l(x0 + m(0.8) + k * m(1.5), yb - m(2.4), x0 + m(0.8) + k * m(1.5), yb - m(1.0), LINEC, 0.03) for k in range(1, int((w - m(1.6)) / m(1.5)) + 1)]
+        o.append(_r(x0, top, w, m(0.5), acc, 0.5)); xd = x0 + w * (0.25 + 0.5 * (seed % 2)); o.append(door(xd, yg, 1.8, 2.3, '#4D3D37', 0.35) + _r(xd - m(2.0), yg - m(2.7), m(4.0), m(0.15), '#F6F5F0', 1, LINEC, 0.04)); o.append(flat_roof(0.3)); o.append(floors())
+    elif st == 'shop':
+        o.append(wall('#E4E5D3')); o.append(_r(x0 + m(0.4), yg - m(2.6), w - m(0.8), m(2.3), GLASS, 0.45, LINEC, 0.04) + _r(x0, yg - m(3.0), w, m(0.4), '#C98B80', 0.7))
+        n = bays(3.2); o += [win(x0 + w / n * (k + 0.5), yg - f * fh, 1.3, 1.3) for f in range(1, lv) for k in range(n)]; o.append(flat_roof(0.4)); o.append(floors())
+    elif st == 'trad':   # before 1965, one or two floors: whitewash, a painted plinth, tall windows with iron grilles, a wooden door, clay tiles
+        o.append(wall('#F6F5F0')); o.append(_r(x0, yg - m(0.9), w, m(0.9), ['#D6CDA6', '#BDB5AA', '#C9D8DF'][seed % 3], 0.75)); n = bays(rnd.choice([3.2, 3.6, 4.0])); dk = seed % n
+        for f in range(lv):
+            for k in range(n):
+                cx = x0 + w / n * (k + 0.5); yb = yg - f * fh
+                if f == 0 and k == dk: o.append(door(cx, yb, 1.2, 2.4, '#74362D', 0.55) + _l(cx, yb - m(2.4), cx, yb, LINEC, 0.03))
+                elif f == 0: o.append(win(cx, yb, 0.9, 1.5, 0.8, 0.45, grille=True))
+                else: o.append(win(cx, yb, 0.9, 1.9, 0.1, 0.45) + rail(cx, yb, 1.3))   # a balcón: a French window with an iron railing
+        o.append(tile_roof(1.0 + 0.2 * (seed % 2)));
+        if seed % 3 == 0: o.append(_r(x0 + w * 0.7, top - m(1.9), m(0.5), m(1.0), '#F6F5F0', 1, LINEC, 0.04))   # a chimney
+    elif st == 'house':   # 1965–1989, one or two floors: coloured render, a flat roof terrace, a garage door
+        o.append(wall(['#EBD9D3', '#E4E5D3', '#E5E3DA', '#D6CDA6'][seed % 4], 0.9)); n = bays(3.4); dk = seed % n; gk = (dk + 1) % n if w > m(7) else -1
+        for f in range(lv):
+            for k in range(n):
+                cx = x0 + w / n * (k + 0.5); yb = yg - f * fh
+                if f == 0 and k == dk: o.append(door(cx, yb, 1.0, 2.2, '#4D3D37', 0.45))
+                elif f == 0 and k == gk: o.append(garage(cx, yb))
+                else: o.append(win(cx, yb, 1.2, 1.2, 0.9, 0.5, box='#D3CFC2', shutter=('#7E7B43', 0.45) if (k + f + seed) % 3 == 0 else None))
+        o.append(_r(x0, yg - m(0.6), w, m(0.6), '#8C817A', 0.2)); o.append(flat_roof(0.9 if seed % 2 else 0.3, railing=seed % 2 == 0)); o.append(floors())
+    elif st == 'villa':  # since 1990, one or two floors: light render, a porch, wide windows, a tiled roof
+        o.append(wall(['#EFEEE7', '#E5E3DA', '#F5EAE6'][seed % 3])); n = bays(4.0); pk = seed % n
         for k in range(n):
-            cx = x0 + step * (k + 0.5)
-            if f == 0 and k == (seed % n):  # a door on the ground floor
-                o.append(f'<rect x="{cx - 0.55 * MM:.2f}" y="{yb - 2.2 * MM:.2f}" width="{1.1 * MM:.2f}" height="{2.2 * MM:.2f}" fill="#8C817A" fill-opacity="0.8"/>'); continue
-            o.append(f'<rect x="{cx - ww / 2:.2f}" y="{yb - 2.3 * MM:.2f}" width="{ww:.2f}" height="{1.4 * MM:.2f}" fill="{GLASS}" fill-opacity="0.55" stroke="#8C817A" stroke-width="0.05"/>')
-            if rid:   # frame, mullion, a light reflection, a sill; some blinds half down (persianas: schematic)
-                o.append(''
-                         f'<rect x="{cx - ww / 2 - 0.12 * MM:.2f}" y="{yb - 0.9 * MM:.2f}" width="{ww + 0.24 * MM:.2f}" height="{0.12 * MM:.2f}" fill="#FFFFFF" stroke="{INK}" stroke-width="0.04"/>')
-                if (k * 7 + f * 3 + seed) % 5 == 0: o.append(f'<rect x="{cx - ww / 2:.2f}" y="{yb - 2.3 * MM:.2f}" width="{ww:.2f}" height="{0.7 * MM:.2f}" fill="{OLIVE}" fill-opacity="0.55"/>'
-                                                          + ''.join(f'<line x1="{cx - ww / 2:.2f}" y1="{yb - 2.3 * MM + j * 0.14 * MM:.2f}" x2="{cx + ww / 2:.2f}" y2="{yb - 2.3 * MM + j * 0.14 * MM:.2f}" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="0.04"/>' for j in range(1, 5)))
-            if t in ('house', 'detached', 'terrace', 'residential') and f == 0:  # shutters (persianas), schematic
-                o.append(f'<rect x="{cx - ww / 2:.2f}" y="{yb - 2.3 * MM:.2f}" width="{ww:.2f}" height="{0.45 * MM:.2f}" fill="#7E7B43" fill-opacity="0.7"/>')
-            if f > 0 and t in ('apartments', 'residential') and (k + f + seed) % 2 == 0:  # balcony with a railing
-                if rid: o.append(''.join(f'<line x1="{cx - ww * 0.8 + j * ww * 0.2:.2f}" y1="{yb - 0.9 * MM:.2f}" x2="{cx - ww * 0.8 + j * ww * 0.2:.2f}" y2="{yb:.2f}" stroke="#8C817A" stroke-width="0.04"/>' for j in range(1, 8))
-                                 + (f'<circle cx="{cx + ww * 0.55:.2f}" cy="{yb - 1.05 * MM:.2f}" r="{0.32 * MM:.2f}" fill="{OLIVE}" fill-opacity="0.85"/><circle cx="{cx + ww * 0.3:.2f}" cy="{yb - 1.15 * MM:.2f}" r="{0.22 * MM:.2f}" fill="{OLIVE2}" fill-opacity="0.85"/>' if (k + seed) % 3 == 0 else ''))   # railing bars, a few plant pots
-                o.append(f'<rect x="{cx - ww * 0.8:.2f}" y="{yb - 0.9 * MM:.2f}" width="{ww * 1.6:.2f}" height="{0.9 * MM:.2f}" fill="none" stroke="#8C817A" stroke-width="0.07"/>'
-                         f'<line x1="{cx - ww * 0.8:.2f}" y1="{yb:.2f}" x2="{cx + ww * 0.8:.2f}" y2="{yb:.2f}" stroke="#8C817A" stroke-width="0.15"/>')
-    return ''.join(o)
+            cx = x0 + w / n * (k + 0.5)
+            if k == pk: o.append(_r(cx - m(1.6), yg - m(2.6), m(3.2), m(2.6), '#29100C', 0.1) + door(cx, yg, 1.0, 2.2, '#4D3D37', 0.45) + _l(cx - m(1.6), yg - m(2.6), cx - m(1.6), yg, LINEC, 0.1) + _l(cx + m(1.6), yg - m(2.6), cx + m(1.6), yg, LINEC, 0.1))
+            else: o.append(win(cx, yg, 1.6, 1.3, 0.9, 0.5))
+            if lv > 1: o.append(win(cx, yg - fh, 1.5, 2.0, 0.1, 0.5) + rail(cx, yg - fh, 2.2, 'glass' if seed % 2 else 'bars'))
+        o.append(tile_roof(0.9, 0.5)); o.append(floors(op=0.25))
+    elif st == 'brick':  # blocks before 1982: exposed brick, concrete floor edges, solid balcony fronts, roller-shutter boxes
+        o.append(wall(['#E6CBC3', '#EBD9D3', '#C98B80'][seed % 3], [1, 1, 0.55][seed % 3], pat('brick'))); n = bays(rnd.choice([2.9, 3.1, 3.3])); dk = seed % n
+        o.append(''.join(_r(x0, yg - f * fh - m(0.12), w, m(0.24), '#EFEEE7', 1, LINEC, 0.02) for f in range(1, lv)))
+        for f in range(lv):
+            for k in range(n):
+                cx = x0 + w / n * (k + 0.5); yb = yg - f * fh
+                if f == 0: o.append(door(cx, yb, 1.3, 2.3, '#4D3D37', 0.4) if k == dk else garage(cx, yb, min(2.4, w / n / MM - 0.5), 2.4) if (k + seed) % 2 == 0 else win(cx, yb, 1.2, 1.2, 1.0, 0.45, grille=True))
+                elif (k + seed) % 2 == 0: o.append(win(cx, yb, 1.4, 2.1, 0.0, 0.45, box='#D3CFC2') + rail(cx, yb, min(2.6, w / n / MM - 0.2), 'solid', '#F6F5F0'))
+                else: o.append(win(cx, yb, 1.2, 1.2, 1.0, 0.45, box='#D3CFC2', shutter=('#BDB5AA', 0.5) if (k * 3 + f + seed) % 4 == 0 else None))
+        o.append(_r(x0, yg - m(2.7), w, m(2.7), '#8C817A', 0.12)); o.append(flat_roof(0.5)); o.append(stairhead(x0 + w * (0.3 + 0.4 * (seed % 2))) if w > m(8) else '')
+    elif st == 'render':  # blocks of 1982–1999: ochre or rose render, a stair bay in glass, railings, a tiled eave
+        o.append(wall(['#D6CDA6', '#EBD9D3', '#E4E5D3'][seed % 3], 0.85)); n = bays(3.2); sk = seed % n
+        for k in range(n):
+            cx = x0 + w / n * (k + 0.5)
+            if k == sk:   # the staircase: a tall strip of glazing, the door under it
+                o.append(_r(cx - m(0.6), top + m(0.8), m(1.2), lv * fh - m(3.6), GLASS, 0.4, LINEC, 0.04) + ''.join(_l(cx - m(0.6), yg - f * fh - m(1.5), cx + m(0.6), yg - f * fh - m(1.5), LINEC, 0.03) for f in range(1, lv)) + door(cx, yg, 1.3, 2.3, '#4D3D37', 0.4)); continue
+            for f in range(lv):
+                yb = yg - f * fh
+                if f == 0: o.append(win(cx, yb, 1.2, 1.2, 1.0, 0.45, grille=True)); continue
+                o.append(win(cx, yb, 1.3, 2.1, 0.0, 0.45, shutter=('#7E7B43', 0.35) if (k + f + seed) % 3 == 0 else None) + rail(cx, yb, 2.0) if (k + f) % 2 == seed % 2 else win(cx, yb, 1.2, 1.3, 0.9, 0.45, shutter=('#7E7B43', 0.4) if (k * 2 + f + seed) % 5 == 0 else None))
+        o.append(_r(x0, yg - m(1.0), w, m(1.0), '#8C817A', 0.18)); o.append(_r(x0 - m(0.3), top - m(0.35), w + m(0.6), m(0.35), '#C98B80', 0.8, LINEC, 0.04)); o.append(floors())
+        sil = [(x0, yg), (x0, top), (x0 - m(0.3), top), (x0 - m(0.3), top - m(0.35)), (x1 + m(0.3), top - m(0.35)), (x1 + m(0.3), top), (x1, top), (x1, yg)]
+    elif st == 'boom':   # blocks of 2000–2009: cream render with brick-coloured panels, glazed bays (miradores), a stone-clad base
+        o.append(wall('#E5E3DA')); n = bays(3.4); dk = seed % n
+        for k in range(n):
+            cx = x0 + w / n * (k + 0.5); bw = w / n
+            if (k + seed) % 3 == 0 and lv > 2:   # a mirador over the upper floors
+                o.append(_r(cx - m(1.1), top + m(0.4), m(2.2), (lv - 1) * fh - m(0.4), '#A9C0CB', 0.4, LINEC, 0.05) + ''.join(_l(cx - m(1.1), yg - f * fh, cx + m(1.1), yg - f * fh, LINEC, 0.06) for f in range(1, lv)) + _l(cx, top + m(0.4), cx, yg - fh, LINEC, 0.03))
+            else:
+                if (k + seed) % 2: o.append(_r(cx - bw * 0.42, top + m(0.3), bw * 0.84, (lv - 1) * fh - m(0.3), '#C98B80', 0.55))
+                o += [win(cx, yg - f * fh, 1.3, 2.0, 0.1, 0.5) + rail(cx, yg - f * fh, 1.6) for f in range(1, lv)]
+            o.append(door(cx, yg, 1.4, 2.4, '#4D3D37', 0.4) if k == dk else win(cx, yg, 1.6, 1.6, 0.8, 0.45))
+        o.append(_r(x0, yg - fh, w, fh, '#D3CFC2', 0.45) + ''.join(_l(x0, yg - m(j * 0.6), x1, yg - m(j * 0.6), LINEC, 0.025) for j in range(1, 5))); o.append(flat_roof(0.6)); o.append(floors(op=0.25)); o.append(stairhead(x0 + w * 0.5) if w > m(9) else '')
+    elif st == 'new':    # blocks since 2010: white render, wide windows, timber-slat panels that shift from floor to floor, glass balustrades
+        o.append(wall('#F6F5F0')); n = bays(4.2)
+        for f in range(lv):
+            yb = yg - f * fh
+            for k in range(n):
+                cx = x0 + w / n * (k + 0.5); sd = 1 if (k + f + seed) % 2 else -1
+                if f == 0: o.append(_r(cx - m(1.7), yb - m(2.6), m(3.4), m(2.6), '#29100C', 0.12)); continue
+                o.append(win(cx - sd * m(0.5), yb, 2.0, 1.9, 0.2, 0.5, frame='#6F625B') + _r(cx + sd * m(1.1) - m(0.45), yb - m(2.6), m(0.9), m(2.4), '#D6CDA6', 1, LINEC, 0.03) + (_r(cx + sd * m(1.1) - m(0.45), yb - m(2.6), m(0.9), m(2.4), pat('slat')) if rid else ''))
+                if (k + f) % 2 == seed % 2: o.append(rail(cx - sd * m(0.5), yb, 2.6, 'glass'))
+        o.append(door(x0 + w / n * (seed % n + 0.5), yg, 1.4, 2.4, '#4D3D37', 0.4)); o.append(flat_roof(0.4)); o.append(floors(op=0.3))
+    else:                # no year on record: a plain cream wall and plain windows, no period features
+        o.append(wall('#E5E3DA')); n = bays(3.2); dk = seed % n
+        o += [door(x0 + w / n * (k + 0.5), yg) if f == 0 and k == dk else win(x0 + w / n * (k + 0.5), yg - f * fh, 1.2, 1.3) for f in range(lv) for k in range(n)]; o.append(flat_roof(0.3)); o.append(floors())
+    if rid and st not in ('greenhouse',): o.append(_r(x1 - min(w * 0.18, m(1.6)), top, min(w * 0.18, m(1.6)), lv * fh, f'url(#shade-{rid})'))   # light from the left
+    if st != 'shed': o.append(_r(x0, top, w, lv * fh, 'none', 1, LINEC, 0.07))
+    return ''.join(str(q) for q in o), sil
 
 
 _TREES = None
@@ -414,7 +533,7 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
             st = [proj(p) for rr in b['r'] for r in rr for p in r]; ts = [sign * t for _, t in st]
             if 0.5 < min(ts) < 180:
                 s0, s1 = max(0, min(q for q, _ in st)), min(L, max(q for q, _ in st))
-                if s1 - s0 > 0.5: out.append((min(ts), s0, s1, b['lv'], ('?' if b.get('hu') else '') + (b.get('b') or 'yes')))
+                if s1 - s0 > 0.5: out.append((min(ts), s0, s1, b['lv'], ('?' if b.get('hu') else '') + (b.get('b') or 'yes'), b.get('y')))
         return out
     sign = max((1, -1), key=lambda sg: sum(q[2] - q[1] for q in behind(sg))); back = behind(sign)
     # tree crowns read from the PNOA orthophoto (tools/build_ex21_canopy.py): those on the section plane stand in front,
@@ -429,24 +548,26 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
         if not (1 < q < L - 1): continue
         if abs(t) <= dm / 2 + 1.5: near.append((q, dm, k))
         elif 0 < sign * t < 100: far.append((sign * t, q, dm, k))
-    items = [(t, 'b', (s0, s1, lv, bt)) for t, s0, s1, lv, bt in back] + [(t, 't', (q, dm, k)) for t, q, dm, k in far]
+    items = [(t, 'b', (s0, s1, lv, bt, yr)) for t, s0, s1, lv, bt, yr in back] + [(t, 't', (q, dm, k)) for t, q, dm, k in far]
     eo = [f'<g id="elevation-behind-{a["id"]}">']
     misted = False
     for i, (t, kind, v) in enumerate(sorted(items, key=lambda q: -q[0])):
         if t < 100 and not misted:   # a band of mist between the far city and the near street (owner's references: soft, blended)
             misted = True; gy0 = max(Z(p[1]) for p in sm[:1]) if sm else 0
             eo.append(f'<rect x="{X(0):.2f}" y="{Z(min(p[1] for p in sm) + 14):.2f}" width="{X(L) - X(0):.2f}" height="{14 * MM:.2f}" fill="url(#fog-{a["id"]})"/>')
-        op = max(0.3, 0.8 - t / 130)   # (behind the plane: pale and light, paler with distance — owner, 19 Nov)
+        op = max(0.4, 0.9 - t / 160)   # (behind the plane: pale and light, paler with distance — owner, 19 Nov)
         if kind == 'b' and t >= 100:   # far behind: a silhouette only, paler with distance (real footprints and floors; no façade)
-            s0, s1, lv, bt = v; g = g_at((s0 + s1) / 2); hgt = 6 if bt.startswith('?') else int(lv) * 3
+            s0, s1, lv, bt, yr = v; g = g_at((s0 + s1) / 2); hgt = 6 if bt.startswith('?') else int(lv) * 3
             fo = max(0.35, 0.85 - (t - 100) / 120); xa, xb, ya = X(s0), X(s1), Z(g + hgt)
             grid = ''.join(f'<rect x="{xa + (k2 + 0.3) * 2.6 * MM:.2f}" y="{Z(g + f2 * 3 + 2.2):.2f}" width="{1.0 * MM:.2f}" height="{1.2 * MM:.2f}" fill="#BDB5AA" fill-opacity="0.35"/>' for f2 in range(hgt // 3) for k2 in range(int((xb - xa) / (2.6 * MM))))
             eo.append(f'<g class="far-silhouette" opacity="{fo:.2f}"><rect x="{xa:.2f}" y="{ya:.2f}" width="{xb - xa:.2f}" height="{hgt * MM:.2f}" fill="#FFFFFF" stroke="#D3CFC2" stroke-width="0.06"/>{grid}</g>'); continue
         if kind == 'b':
-            s0, s1, lv, bt = v; g = g_at((s0 + s1) / 2)
+            s0, s1, lv, bt, yr = v; g = g_at((s0 + s1) / 2)
             if bt.startswith('?'):  # a shed or a church behind the plane: its height is not measured — a dashed outline, no façade
                 eo.append(f'<rect class="height-unknown" x="{X(s0):.2f}" y="{Z(g + 6):.2f}" width="{X(s1) - X(s0):.2f}" height="{6 * MM:.2f}" fill="#FFFFFF" fill-opacity="0.5" stroke="{PINK}" stroke-width="0.25" stroke-dasharray="1,1" opacity="{op:.2f}"/>'); continue
-            eo.append(f'<g opacity="{op:.2f}">' + facade(X(s0), X(s1), Z(g), int(lv), bt, i, a['id']) + '</g>')
+            # drawn solid (so a nearer building hides the ones behind it), then veiled in white by distance: pale and light, yet each one distinct
+            fsvg, sil = facade(X(s0), X(s1), Z(g), int(lv), bt, int(s0 * 13 + s1 * 7 + (yr or 0)) % 997, a['id'], yr)
+            eo.append(f'<g class="elevation" data-style="{facade_style(bt, yr, int(lv))}" data-year="{yr or ""}">' + fsvg + f'<polygon points="{" ".join(f"{px:.2f},{py:.2f}" for px, py in sil)}" fill="#FFFFFF" fill-opacity="{1 - op:.2f}"/></g>')
         else:
             q, dm, k = v; eo.append(f'<g class="tree-behind" opacity="{op * 0.85:.2f}">' + tree(X(q), Z(g_at(q)), th(q, dm, k), seed=k) + '</g>')
     eo.append('</g>'); o += eo
@@ -543,7 +664,7 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
     for v in (0, 10, 20, 50): sb.append(f'<text x="{sx + v * MM:.2f}" y="{sy + 3.6:.2f}" {FONT} font-size="2" text-anchor="middle" fill="{INK}">{v}{" m" if v == 50 else ""}</text>')
     sb.append('</g>'); o += sb
     src = a['stats'].get('limit_file', '').replace('.kmz', '')
-    note = (f'1:500 · ground IGN MDT25 · {escape(src)}, Ministerio de Defensa · buildings: D. G. del Catastro (floors × 3 m, estimate; dashed = shed or hall, height not measured) · water: OSM · trees: PNOA aerial (IGN), approx. · people, cars, tree heights, channel shapes, façades, street lights, fence form and textures: schematic' if has_lim else
+    note = (f'1:500 · ground IGN MDT25 · {escape(src)}, Ministerio de Defensa · buildings: D. G. del Catastro (floors × 3 m, estimate; dashed = shed or hall, height not measured) · water: OSM · trees: PNOA aerial (IGN), approx. · elevations behind the cut: type, floors and year of construction are recorded (Catastro); their materials, colours, windows and roof forms are schematic · people, cars, tree heights, channel shapes, street lights, fence form: schematic' if has_lim else
             '1:500 · ground: IGN MDT05 · buildings: D. G. del Catastro (floors × 3 m, estimate; dashed = shed or church, height not measured) · trees: PNOA aerial (IGN), approx. · people, cars, tree heights and façades (by use): schematic')
     o.append(f'<rect class="paper-grain" x="{X(0):.2f}" y="{oy:.2f}" width="{X(L) - X(0):.2f}" height="{Z(zmin) - oy:.2f}" fill="#E5E3DA" fill-opacity="0.08" filter="url(#grain-{a["id"]})" style="mix-blend-mode:multiply"/>')
     o.append(f'<g id="sources-{a["id"]}" opacity="0.9"><text x="{X(0):.2f}" y="{Z(zmin) + 12:.2f}" {FONT} font-size="1.8" fill="{INK3}">{note}</text></g>')
