@@ -1030,6 +1030,9 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
 
 ## 41. Exercise 2.1 "Scale" — IN PROGRESS on branch `claude/busy-thompson-newzwc` (not on `main`, not on the site)
 
+**Language rule (owner, 20 Nov 2026): studio deliverables (sheets, maps, sections, texts for the exercises) are in ENGLISH ONLY.
+Only the website is trilingual (ar / he / en). Do not produce Hebrew or Arabic copies of exercise material unless asked.**
+
 **State on 15 Nov 2026.** Nothing of this is loaded by `index.html` yet: no page, no script tags, no build bump, no
 tests. The work is delivered to the owner as print files (PNG / PDF / SVG) made by the scripts below. Publishing it on
 the site is a later step, only when the owner asks (then: script tags + a page + `i18n_v33` in `index.html`, a new
