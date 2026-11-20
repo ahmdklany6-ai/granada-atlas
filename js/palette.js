@@ -175,6 +175,47 @@
     land: { solar: D.blueDeep, farmland: D.khakiPale, orchard: D.oliveMid, quarry: D.warmGrey2, wood: BASE.olive, water: BASE.lightBlue, residential: D.blush, cemetery: D.stone },
     period: { pre_1940: D.blueDark, '1940_1979': D.blueMid, '1980_1999': D.bluePale, '2000_2009': D.rose, '2010_2019': RED, '2020_plus': BASE.oxblood },
   };
+  // The ANALYSIS print style of exercises 2.1 / 2.2 (owner, 20 Nov 2026, after reference sheets he liked — the manner only, nothing
+  // copied): black, greys and white, with ONE red per map for the thing the map is about. Print pages only: GA.ex21.setStyle('analysis')
+  // (js/ex21.js) lays this group over the palette; the website keeps the identity colours. signal = the studio red made more vivid
+  // for a grey ground (the owner allowed it: "make the red more vivid if you need to"), same hue; r1–r3 are its mixes with white
+  // (86 %, 66 %, 36 %), r5–r6 its mixes with the darkest brown (42 %, 72 %). g1–g6 are neutral greys, light → dark.
+  const SIG = '#D0241C';
+  const A = { g1: '#F1F1F1', g2: '#E2E2E2', g3: '#CDCDCD', g4: '#B4B4B4', g5: '#8C8C8C', g6: '#5F5F5F', r1: '#F8E0DF', r2: '#EFB5B2', r3: '#E1736E', r4: SIG, r5: '#8A1C15', r6: '#581610' };
+  P.analysis = {
+    // top-level entries (the names the drawings already read)
+    red: SIG, redDark: A.r5, rose: A.r3, blush: A.r1, redTint: A.r2, redSoft: A.r1, blue: D.ink, olive: A.g5, grey: A.g5, grey2: A.g4, grey3: A.g3, gray1: A.g1, gray2: A.g2, line: A.g2, line2: A.g4,
+    choro: [A.r1, A.r2, A.r3, A.r4, A.r5],                       // a sequential variable = one ramp of the red
+    // the base as a small solid (insets, the agglomeration maps); on the large maps it is a white void behind its fence (an.hatch)
+    ex21: { base: D.ink, baseLine: D.ink, runway: A.g5, band: A.g1, bandLine: A.g5, built: A.g3, street: A.g4, muni: A.g5, metro: D.ink, route: SIG, straight: D.ink, dead: SIG, town: D.ink,
+      height: { above: A.r6, '0-15': A.r5, '15-30': A.r4, '30-60': A.r3 } },   // drawn semi-transparent (alpha per class in easements.json)
+    ex21t: { 'Armilla': SIG, 'Churriana de la Vega': SIG, 'Las Gabias': SIG, 'Alhendín': SIG, 'Ogíjares': SIG },   // the towns' edge at a date = the red thing of the history pictures
+    ex21s: { strip: SIG, corridor: SIG, corridorLine: SIG },      // the proposal is the red thing of the strategy map
+    ex21f: { estate: A.g1, estateLine: D.ink, village: D.ink, bus: A.g6, stop: D.ink, route: SIG, straight: D.ink,
+      kind: { science: SIG, logistics: SIG, industry: SIG, energy: SIG, quarry: SIG },   // the plots are the red thing of map 01; the kind is a pattern (an.kind)
+      land: { solar: SIG, farmland: A.g1, orchard: A.g2, quarry: A.g4, wood: A.g5, water: A.g3, residential: A.g2, cemetery: A.g3 },
+      period: { pre_1940: A.g6, '1940_1979': A.g5, '1980_1999': A.g3, '2000_2009': A.r5, '2010_2019': A.r4, '2020_plus': A.r2 } },
+    // the agglomeration maps: fewer residents than in 2015 = grey, growth = the ramp; income and rent on the same ramp; no value = grey hatch
+    tour: { chg: [A.g3, A.r1, A.r2, A.r3, A.r4, A.r5], inc: [A.r1, A.r2, A.r3, A.r4, A.r5], rent: [A.r1, A.r3, A.r4, A.r5], missing: A.g4 },
+    an: {
+      red: SIG, ink: D.ink, grey: [A.g1, A.g2, A.g3, A.g4, A.g5, A.g6], ramp: [A.r1, A.r2, A.r3, A.r4, A.r5, A.r6],
+      // widths and gaps in the drawings' unit k (the line and label weight of a map at its scale)
+      hatch: { gap: 5.6, w: 1.05, ctxGap: 10, ctxW: 0.7, ctxCol: A.g4 },          // the base: red hatch when it is the subject, sparse grey otherwise
+      fence: { w: 2.7, dash: 4.6 },                                               // a black line with white dashes
+      // the fence by what lies outside it (map 01): black and grey line patterns instead of colours
+      fenceClass: { housing: { col: D.ink, w: 5.4 }, industry: { col: D.ink, w: 5.4, dash: [7, 3.5] }, road: { col: A.g5, w: 5.4 }, green: { col: A.g5, w: 5.4, dash: [7, 3.5] }, open: { col: D.ink, w: 2.6, dash: [0.1, 5.2], round: true } },
+      // construction periods: older = darker; grey = before 2000, red = since 2000 (none = no year on record)
+      period: { pre_1940: A.g6, '1940_1969': A.g5, '1970_1989': A.g4, '1990_1999': A.g2, '2000_2007': A.r5, '2008_2015': A.r4, '2016_plus': A.r2, none: '#FFFFFF' },
+      density: [A.r1, A.r2, A.r3, A.r4, A.r5],
+      // open land by aeronautical ceiling: as the subject (no ceiling = grey, lower ceiling = darker red) and as context under a proposal (greys)
+      edge: { free: A.g3, '30-60': A.r2, '15-30': A.r4, '0-15': A.r5, above: A.r6 }, edgeCtx: { free: A.g2, '30-60': A.g3, '15-30': A.g4, '0-15': A.g5, above: A.g6 },
+      towns5: [A.g6, A.g5, A.g4, A.g3, A.g2],                                     // the five towns in a chart (direct labels carry the names)
+      // plot kinds of the estate (map 01): one red, five patterns
+      kind: { science: 'solid', logistics: 'hatch', industry: 'cross', energy: 'dots', quarry: 'lines' },
+      branch: { public: SIG, greys: [A.g6, A.g4, A.g2, A.g5, A.g3] },             // work by branch: public administration and defence = red
+      grain: 13, veil: 0.3,                                                       // paper grain (alpha / 255) and the white veil over a photo printed in grey
+    },
+  };
   // 5.28 — "City growth (built-up extent 1932–2020)" layer (js/layers_growth.js): one fill per period, oldest → newest
   // (traced periods in the dark red family, GHSL epochs in the khaki family); the selected period is outlined in red.
   // Map paint and legend read the same array.

@@ -202,5 +202,9 @@
     'x40.lg.roads': ['الطرق الرئيسية (OSM)', 'דרכים ראשיות (OSM)', 'Main roads (OSM)'],
     'x40.lg.bld': ['المباني، الأغمق = طوابق أكثر (OSM)', 'מבנים, כהה יותר = יותר קומות (OSM)', 'Buildings, darker = more floors (OSM)'],
     'x40.lg.water': ['الأنهار والسواقي (OSM)', 'נהרות ותעלות (OSM)', 'Rivers and channels (OSM)'],
+    // the analysis print style (GA.ex21.setStyle('analysis'), 20 Nov 2026): the sentences that name a colour, said again for black, grey and one red
+    'x41.edge': ['حدّ المبني لكل بلدة في تاريخ الصورة (Catastro)', 'גבול הבינוי של כל עיירה בתאריך התמונה (Catastro)', "Each town's built-up edge at the picture's date (Catastro)"],
+    'x41.dec.sub': ['الرمادي = القرية · الأسود = المنطقة الصناعية', 'אפור = הכפר · שחור = אזור התעשייה', 'grey = the village · black = the estate'],
+    'x41.hist.sub': ['الخط الأسود والأبيض = سياج القاعدة اليوم (OSM)، مرسوم فوق كل صورة للمقارنة · الأحمر = حدّ المبني لكل بلدة في تاريخ الصورة', 'הקו השחור-לבן = גדר הבסיס היום (OSM), מצויר מעל כל תמונה להשוואה · אדום = גבול הבינוי של כל עיירה בתאריך התמונה', "Black-and-white line = the base fence today (OSM), drawn over every picture for comparison · red = each town's built-up edge at the picture's date"],
   });
 })(window);
