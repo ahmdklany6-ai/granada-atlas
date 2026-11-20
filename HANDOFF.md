@@ -1176,6 +1176,30 @@ south (Armilla, Churriana de la Vega, Las Gabias, Alhendín, Ogíjares).
 - **Wording**: the base's name on English maps is "Armilla Air Base" (`x34.base`; it was the Spanish official name while the
   sheet title was English). The key map's title no longer counts the areas ("the eight 1:500 areas" was written before S and
   R were added; the map shows ten).
+- **The ANALYSIS print style** (owner, 20 Nov 2026, after an outside graduation project's analysis maps he liked — the manner
+  only, nothing copied; he approved a test of "Who decides" on the grey site map with the five municipalities drawn and named,
+  then: "apply it to the other sheets and to the analysis maps of the earlier exercises; make the red more vivid if needed";
+  then: "not the factory ones, only the base"). **Black, greys and white, and ONE red per map for the thing the map is about.**
+  - Colours: `P.analysis` in `js/palette.js` — the studio red made more vivid for a grey ground, `#D0241C` (same hue), its ramp
+    r1–r6 (tints with white, shades with the darkest brown) and six neutral greys; the group also holds the analysis values of
+    `ex21`, `ex21t`, `ex21s`, `ex21f`, `tour`, `choro` and the settings `an` (hatch, fence, fence classes as line patterns,
+    period / density / edge class colours, paper grain, photo veil). Nothing else in the palette changed.
+  - Switch: `GA.ex21.setStyle('analysis')` lays that group over `GA.palette` for everything drawn afterwards; `setStyle(null)`
+    restores the identity palette. Print pages only — the site never calls it, and the 1:500 plans, the sections, the Granada A1
+    map keep the identity style. With the switch on, every `GA.ex21.draw*` and `*Legend()` speaks the new language: grey ground
+    with a fine paper grain; photos and the 1931 map "printed in grey" (greyscale + white veil, nothing edited — `anPhoto`);
+    the base as a white void behind a black line with white dashes (`anBase` / `anFence`), hatched in the red when the base is
+    the map's subject, in sparse grey otherwise; class rasters (height limits, built period, density, open land) recoloured
+    from their own class tables (`anRaster`), so map and key share one definition; names in smaller spaced capitals.
+    **The identity style is unchanged**: 18 maps drawn before and after compared pixel by pixel (scratch script `regress.sh`).
+  - Page furniture: `tools/ex21_pages/_analysis.py` (`AN_JS`: `AN.head` small spaced title with a "+", series code and sheet
+    number; `AN.frame` thin frame with corner crosses; `AN.scale` bar + written scale + "N ↑" under the window; `AN.key` from the
+    `*Legend()` items; `AN.note` "+ HEADING" notes; `AN.src` sources small and grey; `AN.leader` curved leaders; `AN.mapSheet` one
+    map on a sheet). Page scripts in the new style: `an_city.py` (01–05, the key map, the gaps), `an_time.py` (history, built,
+    density, growth), `an_people.py` (ages, work), `policy.py` (`STYLE=analysis`, the default; `STYLE=soft` = the identity
+    sheets), `maps_only.py` and `sheets2.py` (`STYLE=analysis`). The factory set stays in the identity style (owner).
+  - Which red on which map: see the table in the scripts' docstrings; the rule is one kind of red element per map (a line, a
+    hatch, or one ramp of red tints for a sequential variable), everything else black or grey.
 
 **Honesty notes (keep them on the drawings)**
 - Building heights = OSM `building:levels` × 3 m (estimate); no levels = dashed outline, height unknown.

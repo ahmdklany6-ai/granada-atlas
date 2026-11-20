@@ -204,6 +204,10 @@
     'x40.lg.water': ['الأنهار والسواقي (OSM)', 'נהרות ותעלות (OSM)', 'Rivers and channels (OSM)'],
     // the analysis print style (GA.ex21.setStyle('analysis'), 20 Nov 2026): the sentences that name a colour, said again for black, grey and one red
     'x41.edge': ['حدّ المبني لكل بلدة في تاريخ الصورة (Catastro)', 'גבול הבינוי של כל עיירה בתאריך התמונה (Catastro)', "Each town's built-up edge at the picture's date (Catastro)"],
+    // the base over time (timeLegend, drawPopChart): the open land where the ground already passes the limit surface; the boundaries' real source; the shaded years of the chart
+    'x41.time.above': ['أرض مفتوحة، الأرض أعلى من سطح القيد الجوي: ‎{ha} km²‎', 'קרקע פתוחה, הקרקע מעל משטח ההגבלה: ‎{ha} km²‎', 'Open land, ground already above the height-limit surface: {ha} km²'],
+    'x41.time.muni': ['حدود البلديات (IGN عبر es-atlas، مبسّطة)', 'גבולות רשויות (IGN דרך es-atlas, מפושטים)', 'Municipal boundary (IGN via es-atlas, simplified)'],
+    'x41.time.scen': ['سيناريو، ليس توقّعًا', 'תרחיש, לא תחזית', 'scenario, not a forecast'],
     'x41.dec.sub': ['الرمادي = القرية · الأسود = المنطقة الصناعية', 'אפור = הכפר · שחור = אזור התעשייה', 'grey = the village · black = the estate'],
     'x41.hist.sub': ['الخط الأسود والأبيض = سياج القاعدة اليوم (OSM)، مرسوم فوق كل صورة للمقارنة · الأحمر = حدّ المبني لكل بلدة في تاريخ الصورة', 'הקו השחור-לבן = גדר הבסיס היום (OSM), מצויר מעל כל תמונה להשוואה · אדום = גבול הבינוי של כל עיירה בתאריך התמונה', "Black-and-white line = the base fence today (OSM), drawn over every picture for comparison · red = each town's built-up edge at the picture's date"],
   });

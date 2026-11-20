@@ -208,7 +208,7 @@
       period: { pre_1940: A.g6, '1940_1969': A.g5, '1970_1989': A.g4, '1990_1999': A.g2, '2000_2007': A.r5, '2008_2015': A.r4, '2016_plus': A.r2, none: '#FFFFFF' },
       density: [A.r1, A.r2, A.r3, A.r4, A.r5],
       // open land by aeronautical ceiling: as the subject (no ceiling = grey, lower ceiling = darker red) and as context under a proposal (greys)
-      edge: { free: A.g3, '30-60': A.r2, '15-30': A.r4, '0-15': A.r5, above: A.r6 }, edgeCtx: { free: A.g2, '30-60': A.g3, '15-30': A.g4, '0-15': A.g5, above: A.g6 },
+      edge: { free: A.g2, '30-60': A.r2, '15-30': A.r4, '0-15': A.r5, above: A.r6 }, edgeCtx: { free: A.g2, '30-60': A.g3, '15-30': A.g4, '0-15': A.g5, above: A.g6 },
       towns5: [A.g6, A.g5, A.g4, A.g3, A.g2],                                     // the five towns in a chart (direct labels carry the names)
       // plot kinds of the estate (map 01): one red, five patterns
       kind: { science: 'solid', logistics: 'hatch', industry: 'cross', energy: 'dots', quarry: 'lines' },
