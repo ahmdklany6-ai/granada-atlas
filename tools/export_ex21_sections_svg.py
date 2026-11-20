@@ -224,6 +224,7 @@ OLIVE, OLIVE2 = '#7E7B43', '#A49250'  # palette: oliveMid, khaki
 # each stays pale — env SKY_TONE = green (default) | red | blue
 SKIES = {'blue': ('#C9D8DF', 1.0), 'red': ('#E6CBC3', 1.0), 'green': ('#7E7B43', 0.36)}   # bluePale, redTint, oliveMid (the green of parks and trees)
 SKY, SKY_K = SKIES[os.environ.get('SKY_TONE', 'green')]
+GCUT = 1.2 * MM   # thickness of the cut ground band (owner, 20 Nov 2026: thinner; was 2.6 m)
 SLAB = '#452928'       # wine: cut slabs and walls
 INTERIOR = '#F6F5F0'   # paper: inside the cut buildings
 GLASS = '#8C817A'      # warmGrey: windows, soft (owner, 19 Nov: muted like the reference sheets)
@@ -675,11 +676,11 @@ def section_svg_detail(a, ox=0.0, oy=0.0):
     # cut ground: one earth colour all along; the base side marked by a light hatch (not by another colour)
     bside = [q for q in gpts if fa is not None and q[0] >= X(fa)]
     o.append(f'<defs><pattern id="basehatch-{a["id"]}" width="1.6" height="1.6" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><line x1="0" y1="0" x2="0" y2="1.6" stroke="#FFFFFF" stroke-width="0.25" stroke-opacity="0.6"/></pattern></defs>'
-             f'<g id="ground-cut-{a["id"]}"><polygon points="{P(gpts)} {P((x, y + 2.6 * MM) for x, y in reversed(gpts))}" fill="{CUT}"/>'
-             + (f'<polygon points="{P(bside)} {P((x, y + 2.6 * MM) for x, y in reversed(bside))}" fill="url(#basehatch-{a["id"]})"/>' if bside else '') +
+             f'<g id="ground-cut-{a["id"]}"><polygon points="{P(gpts)} {P((x, y + GCUT) for x, y in reversed(gpts))}" fill="{CUT}"/>'
+             + (f'<polygon points="{P(bside)} {P((x, y + GCUT) for x, y in reversed(bside))}" fill="url(#basehatch-{a["id"]})"/>' if bside else '') +
              f'<polyline points="{P(gpts)}" fill="none" stroke="{CUT}" stroke-width="0.35"/></g>'
-             f'<g id="soil-{a["id"]}"><polygon points="{P((x, y + 2.6 * MM) for x, y in gpts)} {P((x, y + 7.5 * MM) for x, y in reversed(gpts))}" fill="url(#soil-{a["id"]})" filter="url(#grain-{a["id"]})"/>'
-             f'<polygon points="{P((x, y + 2.6 * MM) for x, y in gpts)} {P((x, y + 7.6 * MM) for x, y in reversed(gpts))}" fill="url(#soilfade-{a["id"]})"/></g>')
+             f'<g id="soil-{a["id"]}"><polygon points="{P((x, y + GCUT) for x, y in gpts)} {P((x, y + GCUT + 4.9 * MM) for x, y in reversed(gpts))}" fill="url(#soil-{a["id"]})" filter="url(#grain-{a["id"]})"/>'
+             f'<polygon points="{P((x, y + GCUT) for x, y in gpts)} {P((x, y + GCUT + 5.0 * MM) for x, y in reversed(gpts))}" fill="url(#soilfade-{a["id"]})"/></g>')
     # water courses crossed by the section (OSM): a blue channel cut into the ground (position from OSM; width and depth are not measured: schematic)
     wo = [f'<g id="water-{a["id"]}">']
     for q in s.get('water', []):
