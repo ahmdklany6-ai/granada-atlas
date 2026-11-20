@@ -10,14 +10,22 @@ Groups (env ONLY=city,areas,aerial,time,people,sheet,legends; default all):
   people  mean age (1:10,000) and the five other indicators (1:20,000)
   sheet   the maps exactly as they sit on the two A1 sheets (tools/ex21_pages/sheets2.py): four at 1:15,000, the city map
           at 1:10,000 with the four windows, the four 1:500 crops
+Env STYLE=analysis (owner, 20 Nov 2026: black, greys and white with ONE red per map; default 'soft' = the identity style, unchanged):
+the groups city, time, people and the analysis maps of the A1 sheets (sheet1_*, sheet2_city) are drawn after
+GA.ex21.setStyle('analysis'); the 1:500 groups (areas, aerial, sheet2_area_*) keep the identity style. The legends of the
+analysis maps are drawn with AN.swatch (tools/ex21_pages/_analysis.py) from the same *Legend() items, with the grey ground
+the maps are printed on; the towns' legend is the one red entry.
 Writes PNG from the page canvas (env DPI, default 300). Afterwards, for RGB files with the resolution stored in them:
   NOPDF=1 PHOTO='^(aerial_|history_|time_|people_|sheet1_)' python3 tools/ex21_pages/pack.py <out> <packed> <lang>
 Usage (repo root; Playwright + Chromium): python3 tools/ex21_pages/maps_only.py <out folder> [en|he|ar]"""
 import sys, time, base64, subprocess, os, json
 sys.path.insert(0, 'tests'); import ui_test_v3 as V3; import _nointro
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); from _sheet_labels import LABS
+from _analysis import AN_JS
 from playwright.sync_api import sync_playwright
 OUTD = sys.argv[1]; LANG = sys.argv[2] if len(sys.argv) > 2 else 'en'; DPI = float(os.environ.get('DPI', 300)); PORT = 8859; V3.PORT = PORT; V3.V2.PORT = PORT
+STYLE = os.environ.get('STYLE', 'soft')   # 'soft' = the identity style (as always) · 'analysis' = black, greys and one red per map
+AN_KINDS = {'city', 'key', 'time', 'hist', 'people', 'sheetmap', 'sheetcity'}; AN_LEGENDS = {'city', 'key', 'towns', 'time', 'people'}   # what the analysis style restyles; the 1:500 plans keep the identity style
 ONLY = os.environ['ONLY'].split(',') if os.environ.get('ONLY') else ['city', 'areas', 'aerial', 'time', 'people', 'sheet', 'legends']
 AREAS = [a['id'] for a in json.load(open('data/ex21/areas.json'))['areas']]; SHEET_IDS = ['B', 'S', 'R', 'C']   # as in sheets2.py
 # the ten pictures of the history sheet (tools/ex21_pages/time.py): file, years, the flight's name as IGN serves it
@@ -54,8 +62,33 @@ for w in ['key', 'areas', 'aerial', 'towns']: add('legends', 'legends', f'legend
 for m in ['built', 'density', 'edge']: add('legends', 'legends', f'legend_time_{m}', kind='legend', which='time', m=m)
 for key in ['age', 'u18', 'o65', 'es', 'inc', 'one']: add('legends', 'legends', f'legend_people_{key}', kind='legend', which='people', key=key)
 
+WIN_AN = r'''// analysis style: the base is the map's one red, so each 1:500 window is a black outline (white under it) with its letter on a black disc
+  // beside it, on the side away from the base; the town names keep clear of both (drawCity o.tidy, o.obst)
+  if (sp.kind === 'sheetcity' && sp.an) return crop(300, 380, 10000, (x, ox, oy, full, fullH, view) => { const XX = (u) => ox + (u - E.x0) / 6400 * full, YY = (v) => oy + (E.y1 - v) / 6400 * full;
+    const A = GA.ex21.areas.areas.filter(a => sp.ids.includes(a.id)).map(a => { const e = a.extent, wx = XX(e[0]), wy = YY(e[3]), ww = XX(e[2]) - wx, wh = YY(e[1]) - wy, up = (e[1] + e[3]) / 2 > CY; return { id: a.id, wx, wy, ww, wh, bx: wx + ww / 2, by: up ? wy - mm(6) : wy + wh + mm(6) }; });
+    const boxes = []; A.forEach(a => { boxes.push([a.wx - mm(1.5), a.wy - mm(1.5), a.wx + a.ww + mm(1.5), a.wy + a.wh + mm(1.5)], [a.bx - mm(5), a.by - mm(5), a.bx + mm(5), a.by + mm(5)]); });
+    GA.ex21.drawCity(x, ox, oy, full, fullH, Object.assign({ t, only: 'island', k: 2.6 * DPI / 150, view, title: LAB.city, titlePx: mm(4.4), tidy: true, obst: { boxes } }, cr(10000, sp.credit)));
+    x.save(); x.beginPath(); x.rect(view[0], view[1], view[2] - view[0], view[3] - view[1]); x.clip(); x.setLineDash([]); x.lineJoin = 'miter';
+    A.forEach(a => { x.strokeStyle = '#FFFFFF'; x.lineWidth = mm(1.4); x.strokeRect(a.wx, a.wy, a.ww, a.wh); x.strokeStyle = pal.ink; x.lineWidth = mm(0.6); x.strokeRect(a.wx, a.wy, a.ww, a.wh);
+      x.beginPath(); x.arc(a.bx, a.by, mm(4.1), 0, 7); x.fillStyle = '#FFFFFF'; x.fill(); x.beginPath(); x.arc(a.bx, a.by, mm(3.6), 0, 7); x.fillStyle = pal.ink; x.fill();
+      x.fillStyle = '#FFFFFF'; x.font = `700 ${mm(4.2)}px ${F}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.direction = 'ltr'; x.fillText(a.id, a.bx, a.by + mm(0.2)); }); x.restore(); });'''
+LEG_AN = r'''// analysis style: the same items, drawn by AN.swatch (base, fence, patterns, the lines as the maps draw them), after them the grey ground the map is printed on
+      __AN_JS__
+      AN.u = 1.4; const C = pal.ex21, KK = KF[10000] * q * 0.8, tf = (k, fb) => { const s = t(k); return s === k ? fb : s; };
+      const muni = { line: C.muni, wk: 1.1, dk: [6, 4], label: tf('x41.time.muni', 'Municipal boundary (IGN via es-atlas, simplified)') }, built = { sw: C.built, label: t('x34.lg.built') };
+      const ground = (m) => [built, { line: C.street, wk: 0.9, label: t('x40.lg.roads') }].concat(m === false ? [] : [muni]).concat([{ line: C.runway, wk: 1.2, dk: [10, 6], label: 'Runway axis, between its two thresholds (RD 118/2019, art. 3)' }]);
+      let its = items.slice();
+      if (sp.which === 'city' && sp.m === 'growth') its.splice(3, 0, { sym: 'stop', line: pal.red, label: 'Stops of line 1 (OSM); the two larger rings are the ends of the extension' });
+      if (sp.which === 'city') its = its.concat(ground(sp.m !== 'growth'));
+      if (sp.which === 'key') its = its.filter(it => it.stroke === pal.red).concat(its.filter(it => it.stroke !== pal.red), ground());
+      if (sp.which === 'towns') its = [{ fence: true, label: 'The base fence today (OSM), drawn over every picture' }].concat(its);
+      if (sp.which === 'people') its = its.concat(PD.sections.some(s0 => s0[sp.key] == null) ? [{ hatch: pal.tour.missing, dir: 1, label: 'No value published' }] : [], [{ sw: pal.ink, alpha: 0.22, label: t('x34.lg.built') + ', printed over the class colour' }, { line: pal.ink3, wk: 1.1, dk: [6, 4], label: muni.label }, GA.ex21.baseItem(t, false)]);
+      const sz = 3.6, row = 8.5, swm = 14, shm = 5, mg = 5, head = '+ ' + (sp.which === 'city' || sp.which === 'time' ? ttl.replace(/^\d+\s*·\s*/, '').split(': ')[0] : ttl).toUpperCase(); const m0x = document.createElement('canvas').getContext('2d'); let tw = 0; its.forEach(it => { tw = Math.max(tw, AN.width(m0x, it.label, sz, 500)); });
+      const W = Math.ceil(Math.max(mm(swm + 4.2) + tw, AN.width(m0x, head, 3.4, 700)) + 2 * mm(mg)), top = mm(15), H = Math.ceil(top + its.length * mm(row) + mm(2)); const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H);
+      AN.txt(x, head, mm(mg), mm(7.5), 3.4, 700, AN.INK); AN.key(x, its, mm(mg), top + mm(row) / 2, { cols: 1, colW: (W - mm(mg)) / AN.D, row, sz, sw: swm, sh: shm, kk: KK, maxW: (W - mm(mg)) / AN.D });
+      return c.toDataURL('image/png');'''
 srv = subprocess.Popen([sys.executable, '-m', 'http.server', str(PORT), '--bind', '127.0.0.1'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
-JS = r'''async ([sp, DPI, LAB]) => { await GA.ex21.ready(); await GA.ex21.readyAreas(); await GA.ex21.readyTime(); await GA.ex21.readyPeople(); await GA.ex21.readyTownEdges();
+JS0 = r'''async ([sp, DPI, LAB]) => { await GA.ex21.ready(); await GA.ex21.readyAreas(); await GA.ex21.readyTime(); await GA.ex21.readyPeople(); await GA.ex21.readyTownEdges();
   const D = DPI / 25.4, mm = (v) => Math.round(v * D), q = DPI / 200; const t = (k, v) => GA.i18n.t(k, v); const F = GA.pages.font(); const E = GA.ex21.CITY, pal = GA.palette, rtl = GA.i18n.dir() === 'rtl';
   const TD = GA.ex21.time, PD = GA.ex21.people; const unit = (key) => key === 'inc' ? '€' : key === 'age' ? null : '%';
   const load = (u) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error(u)); im.src = u; });
@@ -84,6 +117,7 @@ JS = r'''async ([sp, DPI, LAB]) => { await GA.ex21.ready(); await GA.ex21.readyA
   // ---- the maps as they sit on the A1 sheets (sheets2.py: sheet 841 × 594, margin 14, gap 8, top 44) ----
   if (sp.kind === 'sheetmap') { const im = sp.which === 'y1931' ? await hist('mtn50', sp.hi31) : sp.which === 'y2022' ? await hist('pnoa2022', sp.hi22) : null; const o = Object.assign({ t, k: KF[15000] * q, title: LAB[sp.which] + ' · ' + sc(15000), titlePx: mm(4.6) }, cr(15000, sp.credit.replace('{y}', PD.adrh_year)));
     return crop((841 - 2 * 14 - 8) / 2, (594 - 44 - 14 - 8 - 8 - 2 * 12) / 2, 15000, (x, ox, oy, full, fullH, view) => { o.view = view; if (sp.which === 'age') GA.ex21.drawPeople(x, ox, oy, full, fullH, Object.assign(o, { only: 'age' })); else GA.ex21.drawTime(x, ox, oy, full, fullH, Object.assign(o, { only: im ? 'photo' : 'built', photo: im })); }); }
+  __WIN_AN__
   if (sp.kind === 'sheetcity') return crop(300, 380, 10000, (x, ox, oy, full, fullH, view) => { GA.ex21.drawCity(x, ox, oy, full, fullH, Object.assign({ t, only: 'island', k: 2.6 * DPI / 150, view, title: LAB.city, titlePx: mm(4.4) }, cr(10000, sp.credit)));
     const XX = (u) => ox + (u - E.x0) / 6400 * full, YY = (v) => oy + (E.y1 - v) / 6400 * full; x.save(); x.beginPath(); x.rect(view[0], view[1], view[2] - view[0], view[3] - view[1]); x.clip();
     GA.ex21.areas.areas.filter(a => sp.ids.includes(a.id)).forEach(a => { const e = a.extent; x.fillStyle = 'rgba(153,43,42,.18)'; x.fillRect(XX(e[0]), YY(e[3]), XX(e[2]) - XX(e[0]), YY(e[1]) - YY(e[3])); x.strokeStyle = pal.red; x.lineWidth = mm(0.7); x.strokeRect(XX(e[0]), YY(e[3]), XX(e[2]) - XX(e[0]), YY(e[1]) - YY(e[3]));
@@ -95,6 +129,7 @@ JS = r'''async ([sp, DPI, LAB]) => { await GA.ex21.ready(); await GA.ex21.readyA
   // ---- a legend by itself: the same class definitions as the map (GA.ex21.*Legend), a grey title, one column ----
   if (sp.kind === 'legend') { const items = sp.which === 'city' ? GA.ex21.mapLegend(sp.m, t) : sp.which === 'key' ? GA.ex21.keyLegend(t) : sp.which === 'areas' ? GA.ex21.areaLegend(t) : sp.which === 'aerial' ? GA.ex21.aerialLegend(t) : sp.which === 'towns' ? GA.ex21.townEdgeLegend(t, 'mtn50') : sp.which === 'time' ? GA.ex21.timeLegend(sp.m, t) : GA.ex21.peopleLegend(sp.key, t);
     const ttl = sp.which === 'city' ? t('x34.m.' + sp.m) : sp.which === 'key' ? t('x34.key.title') : sp.which === 'areas' ? LAB.lgArea : sp.which === 'aerial' ? LAB.lgArea + ' · ' + t('x34.aer.sub') : sp.which === 'towns' ? t('x39.lg') : sp.which === 'time' ? t('x36.m.' + sp.m) : t('x37.m.' + sp.key) + (unit(sp.key) ? ' (' + unit(sp.key) + ')' : '') + ' · INE ' + PD.adrh_year;
+    if (sp.an) { __LEG_AN__ }
     const fs = mm(3.6), rowH = mm(8.5), sw = mm(12), sh = mm(5), mg = mm(4), tfs = mm(4.2); const m0 = document.createElement('canvas').getContext('2d'); m0.font = `500 ${fs}px ${F}`; let tw = 0; items.forEach(it => { tw = Math.max(tw, m0.measureText(it.label).width); }); m0.font = `600 ${tfs}px ${F}`;
     const W = Math.ceil(Math.max(sw + mm(3) + tw, m0.measureText(ttl).width) + 2 * mg), top = mm(13), H = top + items.length * rowH + mm(3); const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
     x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; x.textBaseline = 'alphabetic'; x.font = `600 ${tfs}px ${F}`; x.fillStyle = pal.ink3; x.fillText(ttl, rtl ? W - mg : mg, mm(7.5));
@@ -107,12 +142,15 @@ JS = r'''async ([sp, DPI, LAB]) => { await GA.ex21.ready(); await GA.ex21.readyA
       x.font = `500 ${fs}px ${F}`; x.fillStyle = pal.ink; x.textBaseline = 'middle'; x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left'; x.fillText(it.label, rtl ? sx - mm(3) : sx + sw + mm(3), yy); });
     return c.toDataURL('image/png'); }
   throw new Error('unknown kind ' + sp.kind); }'''
+# soft: the two analysis blocks are left out (nothing sets sp.an), so the page function is today's
+JS = JS0.replace('__WIN_AN__', WIN_AN if STYLE == 'analysis' else '').replace('__LEG_AN__', LEG_AN.replace('__AN_JS__', AN_JS) if STYLE == 'analysis' else '')
 # the full source sentences of the pages, for whoever lays the maps out again
 SRC_JS = r'''async () => { await GA.ex21.ready(); await GA.ex21.readyAreas(); await GA.ex21.readyTime(); await GA.ex21.readyPeople(); const t = (k, v) => GA.i18n.t(k, v); const PD = GA.ex21.people;
   const idx = await (await fetch('/exports/ex21_aerial/index.json?r=' + Date.now())).json(); const a0 = Object.values(idx.areas)[0] || {};
   return [['01 city — 01 island', t('x34.src.island')], ['01 city — 02 walk', t('x34.src.walk')], ['01 city — 03 growth', t('x34.src.growth')], ['01 city — 04 height', t('x34.src.height')],
     ['03 aerial', t('x34.aer.src', { d: a0.flight || idx.flight || '—', r: a0.resolution_m != null ? a0.resolution_m : (idx.resolution_m != null ? idx.resolution_m : '—') })],
     ['04 time — built', t('x36.src.built')], ['04 time — density', t('x36.src.density')], ['04 time — open land', t('x36.src.edge')], ['04 time — history', t('x36.hist.src')], ['05 people', t('x37.src', { y: PD.adrh_year })]]; }'''
+AN_NOTE = '\nPrint style\nThe analysis maps (city, time, people, the A1 sheet maps) are printed in black, greys and one red per map; the aerial photos and the 1931 map on them are printed in grey (greyscale with a white veil; nothing in a picture is edited). The 1:500 plans keep the studio colours.\n'
 AREA_SRC = 'D. G. del Catastro (buildings, floors) · OpenStreetMap (ODbL) · IGN MDT25 & PNOA (CC BY 4.0) · Origen de los datos: Ministerio de Defensa (RD 118/2019) · heights = floors × 3 m (estimate)'
 try:
   with sync_playwright() as p:
@@ -124,9 +162,11 @@ try:
     pg.wait_for_function('!!(GA.ex21 && GA.ex21.drawArea && GA.ex21.drawPeople)', timeout=20000); pg.evaluate(f'GA.i18n.setLang("{LANG}")')
     for sp in specs:
       if sp['kind'] == 'sheetmap': sp['hi31'] = HI['mtn50']; sp['hi22'] = HI['pnoa2022']
+      if STYLE == 'analysis':   # the style of this map: analysis for the analysis maps and their legends, the identity style for the 1:500 plans
+        sp['an'] = sp['kind'] in AN_KINDS or (sp['kind'] == 'legend' and sp['which'] in AN_LEGENDS); pg.evaluate("GA.ex21.setStyle(%s)" % ("'analysis'" if sp['an'] else 'null'))
       d = pg.evaluate(JS, [sp, DPI, LABS[LANG]]); od = os.path.join(OUTD, sp['folder']); os.makedirs(od, exist_ok=True)
       open(os.path.join(od, f'{sp["name"]}_{LANG}.png'), 'wb').write(base64.b64decode(d.split(',')[1])); print(sp['folder'], sp['name'], 'ok', flush=True)
     rows = pg.evaluate(SRC_JS); os.makedirs(OUTD, exist_ok=True)
-    open(os.path.join(OUTD, f'00_sources_{LANG}.txt'), 'w', encoding='utf-8').write('\n\n'.join(f'{k}\n{v}' for k, v in rows) + '\n\n02 areas 1:500\n' + AREA_SRC + '\n')
+    open(os.path.join(OUTD, f'00_sources_{LANG}.txt'), 'w', encoding='utf-8').write('\n\n'.join(f'{k}\n{v}' for k, v in rows) + '\n\n02 areas 1:500\n' + AREA_SRC + '\n' + (AN_NOTE if STYLE == 'analysis' else ''))
     print('errors:', errs[:5])
 finally: srv.terminate()

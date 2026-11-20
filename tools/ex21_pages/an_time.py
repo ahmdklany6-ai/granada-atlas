@@ -7,9 +7,12 @@ English only. Four sheets, series "EX 2.1 · TIME" (the content of tools/ex21_pa
   edge     04  how it could grow: open land next to the towns + residents to 2045       red = open land under the aeronautical ceiling (one ramp)
   frames       each of the ten pictures alone (1600 × 1400 px, its date written on it) into <out>/frames/, for a film or a GIF
 The furniture (title block, corner marks, key, notes, sources) comes from tools/ex21_pages/_analysis.py; the maps and charts from
-GA.ex21.drawTime / drawDwellChart / drawPopChart after GA.ex21.setStyle('analysis'). Every number on a sheet is read from
-data/ex21/time.json or data/ex21/town_edges.json at run time (or sits in an i18n string of js/i18n_v33.js), never typed in.
+GA.ex21.drawTime / drawDwellChart / drawPopChart after GA.ex21.setStyle('analysis'). Every number on a sheet is read at run time
+from data/ex21/time.json or data/ex21/town_edges.json, counted on the class pictures (density.png: the cells per class;
+edge_land.png against built_period.png: the open cells that hold buildings), or sits in an i18n string of js/i18n_v33.js — never typed in.
 The pictures are exports/ex21_time/hist/*.jpg (IGN WMS, as served); they are printed in grey, nothing in them is edited.
+Honesty: sheet 04 says how the open land was counted (tools/build_ex21_time.py puts a building in the cell of its centre, so cells
+under a large building count as open) and draws the buildings over the cells; the fix belongs in that tool, not here.
 Usage (repo root; Playwright + Chromium): python3 tools/ex21_pages/an_time.py <out folder> [history,built,density,edge,frames]   (env DPI, default 200)"""
 import sys, time, subprocess, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); from _analysis import AN_JS, launch, save
