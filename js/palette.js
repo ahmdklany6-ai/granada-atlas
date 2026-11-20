@@ -177,11 +177,11 @@
   };
   // The ANALYSIS print style of exercises 2.1 / 2.2 (owner, 20 Nov 2026, after reference sheets he liked — the manner only, nothing
   // copied): black, greys and white, with ONE red per map for the thing the map is about. Print pages only: GA.ex21.setStyle('analysis')
-  // (js/ex21.js) lays this group over the palette; the website keeps the identity colours. signal = the studio red made more vivid
-  // for a grey ground (the owner allowed it: "make the red more vivid if you need to"), same hue; r1–r3 are its mixes with white
+  // (js/ex21.js) lays this group over the palette; the website keeps the identity colours. signal = the studio red #992B2A itself; r1–r3 are its mixes with white
   // (86 %, 66 %, 36 %), r5–r6 its mixes with the darkest brown (42 %, 72 %). g1–g6 are neutral greys, light → dark.
-  const SIG = '#D0241C';
-  const A = { g1: '#F1F1F1', g2: '#E2E2E2', g3: '#CDCDCD', g4: '#B4B4B4', g5: '#8C8C8C', g6: '#5F5F5F', r1: '#F8E0DF', r2: '#EFB5B2', r3: '#E1736E', r4: SIG, r5: '#8A1C15', r6: '#581610' };
+  // (owner, 20 Nov 2026: "#992B2A is our red" — the vivid #D0241C is withdrawn; the analysis style uses the studio red itself)
+  const SIG = RED;
+  const A = { g1: '#F1F1F1', g2: '#E2E2E2', g3: '#CDCDCD', g4: '#B4B4B4', g5: '#8C8C8C', g6: '#5F5F5F', r1: '#F1E1E1', r2: '#DCB7B7', r3: '#BE7777', r4: SIG, r5: '#6A201D', r6: '#481814' };
   P.analysis = {
     // top-level entries (the names the drawings already read)
     red: SIG, redDark: A.r5, rose: A.r3, blush: A.r1, redTint: A.r2, redSoft: A.r1, blue: D.ink, olive: A.g5, grey: A.g5, grey2: A.g4, grey3: A.g3, gray1: A.g1, gray2: A.g2, line: A.g2, line2: A.g4,

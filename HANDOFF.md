@@ -1180,7 +1180,7 @@ south (Armilla, Churriana de la Vega, Las Gabias, Alhendín, Ogíjares).
   only, nothing copied; he approved a test of "Who decides" on the grey site map with the five municipalities drawn and named,
   then: "apply it to the other sheets and to the analysis maps of the earlier exercises; make the red more vivid if needed";
   then: "not the factory ones, only the base"). **Black, greys and white, and ONE red per map for the thing the map is about.**
-  - Colours: `P.analysis` in `js/palette.js` — the studio red made more vivid for a grey ground, `#D0241C` (same hue), its ramp
+  - Colours: `P.analysis` in `js/palette.js` — the studio red `#992B2A` itself (the owner withdrew the more vivid #D0241C: "#992B2A is our red"), its ramp
     r1–r6 (tints with white, shades with the darkest brown) and six neutral greys; the group also holds the analysis values of
     `ex21`, `ex21t`, `ex21s`, `ex21f`, `tour`, `choro` and the settings `an` (hatch, fence, fence classes as line patterns,
     period / density / edge class colours, paper grain, photo veil). Nothing else in the palette changed.
