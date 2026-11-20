@@ -799,14 +799,14 @@
     if (o.small && o.noNorth == null) o = Object.assign({}, o, { noNorth: true, noScale: true }); const U = furniture(ctx, o, x, y, w, h, k, F), V = U.V;
     ctx.save(); ctx.beginPath(); ctx.rect(V[0], V[1], V[2] - V[0], V[3] - V[1]); ctx.clip(); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(x, y, w, h); ctx.lineJoin = 'round';
     // the class colour fills each section; the buildings (OSM) are drawn darker over it, to show where in the section people live
-    PD.sections.forEach(sc => { const v = sc[key]; sc.r.forEach(pg => { path(pg); if (v == null) { ctx.fillStyle = '#FFFFFF'; ctx.fill(); } else { ctx.globalAlpha = 0.85; ctx.fillStyle = ramp[pcls(key, v)]; ctx.fill(); ctx.globalAlpha = 1; } ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 0.9 * k; ctx.stroke(); }); });
+    PD.sections.forEach(sc => { const v = sc[key]; sc.r.forEach(pg => { path(pg); if (v == null) { ctx.fillStyle = '#FFFFFF'; ctx.fill(); if (AN) { path(pg); anHatch(ctx, V, pal.tour.missing, (o.small ? 9 : 5) * k, (o.small ? 1.6 : 1) * k, 1); path(pg); } } else { ctx.globalAlpha = 0.85; ctx.fillStyle = ramp[pcls(key, v)]; ctx.fill(); ctx.globalAlpha = 1; } ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 0.9 * k; ctx.stroke(); }); });
     ctx.globalAlpha = 0.22; ctx.fillStyle = pal.ink; D.builds.forEach(rs => { path(rs); ctx.fill(); }); ctx.globalAlpha = 1;
     ctx.setLineDash([6 * k, 4 * k]); ctx.strokeStyle = pal.ink3; ctx.lineWidth = 1.1 * k; D.area.forEach(a => { path(a.g); ctx.stroke(); }); ctx.setLineDash([]);
     if (AN) anGrain(ctx, V, k, AN);
     const base = D.edge.find(f => f.p.k === 'base'); if (base && AN) anBase(ctx, () => path(base.g), V, k, AN, false, o.small ? 0.7 : 1); else if (base) { path(base.g); ctx.fillStyle = C.base; ctx.fill(); }
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.direction = 'ltr';
-    D.edge.filter(f => f.p.k === 'town').forEach(f => { const [u, v] = f.g; nameFont(ctx, font, k, o.small ? 11 : 15); const q = place(V, U.K, X(u), Y(v) - 13 * k, ctx.measureText(f.p.nm.toUpperCase()).width, 18 * k, 8 * k); if (!q) return; const px = q[0], py = q[1] + 13 * k;
-      ctx.lineWidth = 4 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(f.p.nm.toUpperCase(), px, py - 8 * k); ctx.fillStyle = C.town; ctx.fillText(f.p.nm.toUpperCase(), px, py - 8 * k); }); nameEnd(ctx);
+    D.edge.filter(f => f.p.k === 'town').forEach(f => { const [u, v] = f.g; nameFont(ctx, font, k, o.nameSz ? o.nameSz / (0.76 * k) : o.small ? 11 : 15); const q = place(V, U.K, X(u), Y(v) - 13 * k, ctx.measureText(f.p.nm.toUpperCase()).width, 18 * k, 8 * k); if (!q) return; const px = q[0], py = q[1] + 13 * k;   // o.nameSz = the names' size in px (a small map on a big sheet)
+      ctx.lineWidth = (o.nameSz ? o.nameSz * 0.42 / k : 4) * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(f.p.nm.toUpperCase(), px, py - 8 * k); ctx.fillStyle = C.town; ctx.fillText(f.p.nm.toUpperCase(), px, py - 8 * k); }); nameEnd(ctx);
     if (base && !o.small) { const rx = X((D.runway[0][0] + D.runway[1][0]) / 2), ry = Y((D.runway[0][1] + D.runway[1][1]) / 2); nameFont(ctx, font, k, 14); if (AN) { ctx.lineJoin = 'round'; ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 6 * k; ctx.strokeText(t('x34.base').toUpperCase(), rx - 60 * k, ry); } ctx.fillStyle = AN ? AN.ink : '#FFFFFF'; ctx.fillText(t('x34.base').toUpperCase(), rx - 60 * k, ry); nameEnd(ctx); }
     ctx.restore(); frameTop(ctx, o, U, k, F);
     if (!o.noScale) scaleBar(ctx, V[0] + 22 * k, V[3] - 24 * k, 1000 / mpp, k, font);

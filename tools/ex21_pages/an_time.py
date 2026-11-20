@@ -88,12 +88,22 @@ JS = r'''async ([m, DPI, HIST, one]) => { await GA.ex21.ready(); await GA.ex21.r
     return c.toDataURL('image/png'); }
   if (m === 'edge') { const [ttl, sub] = split(t('x36.m.edge')), eh = TD.edge_ha, P5 = TD.projection.five, S = TD.base_scenario; const under = Object.keys(eh).filter(c => c !== 'free').reduce((a, c) => a + eh[c], 0), all = Object.values(eh).reduce((a, v) => a + v, 0);
     const lim = Math.max(...GA.ex21.data.ease.classes.map(q => q[1]));   // the highest class limit of the ceiling picture (60 m): above it the land counts as free
+    // how the open cells were counted: tools/build_ex21_time.py puts a building's whole footprint in the cell of its centre, so a cell under a large building whose
+    // centre lies elsewhere counts as open. Measured here cell by cell on the Catastro footprints (data/ex21/built_period.png, any pixel with a building) against
+    // the open cells (data/ex21/edge_land.png); thr = the "less than … % built" of the source sentence.
+    const thr = +((/less than (\d+)\s*% built/.exec(t('x36.src.edge')) || [])[1] || 0);
+    const held = (() => { const eI = TD.img.edge, bI = TD.img.built, nx = eI.naturalWidth, ny = eI.naturalHeight, q = Math.round(bI.naturalWidth / nx), BW = bI.naturalWidth;
+      const px = (im) => { const cv = document.createElement('canvas'); cv.width = im.naturalWidth; cv.height = im.naturalHeight; const g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0); return g.getImageData(0, 0, cv.width, cv.height).data; };
+      const e = px(eI), b = px(bI); let n = 0, n3 = 0, n25 = 0;
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { if (!e[(j * nx + i) * 4 + 3]) continue; n++; let s2 = 0; for (let v = 0; v < q; v++) for (let w2 = 0; w2 < q; w2++) if (b[((j * q + v) * BW + i * q + w2) * 4 + 3]) s2++; const sh = s2 / (q * q); if (sh >= thr / 100) n3++; if (sh >= 0.25) n25++; }
+      return { n, n3, n25 }; })();
+    const counted = thr ? `A building is counted in the cell of its centre, so a cell under a large building can be counted as open. Measured cell by cell on the Catastro footprints, ${n0(held.n3)} of the ${n0(held.n)} open cells are ${thr} % built or more, ${n0(held.n25)} of them a quarter or more: the open land is over-counted. The buildings are drawn over the cells.` : '';
     const c = await page(Object.assign({ title: ttl, sub: cap(sub), num: '04 / 04', key: GA.ex21.timeLegend('edge', t),
       notes: [['UNDER THE CEILING', `${km2(under)} km² of the ${km2(all)} km² of open land next to the towns lie under an aeronautical ceiling lower than ${lim} m (${Math.round(under / all * 100)} %). The ceiling is an approximation, not the legal value.`, true]],
       src: t('x36.src.edge') + ' Residents: INE. Buildings, streets and the base: OpenStreetMap contributors (ODbL).' + PRINT },
       block(t('x36.ch.pop'), false, (x, px, py, w, h, k) => GA.ex21.drawPopChart(x, px, py, w, h, { t, k }),
         [['BY 2045 (A SCENARIO, NOT A FORECAST)', t('x36.box.need', { a: n0(P5['2025']), b: n0(P5['2045']), n: n0(P5.dwellings_needed_2045), p: S.persons_per_dwelling }) + '.'],
-          ['THE BASE AS LAND', t('x36.box.scen', { ha: km2(S.base_ha), d: n0(S.median_dw_per_ha * 100), n: n0(S.dwellings), r: n0(S.residents) }) + '.']])));
+          ['THE BASE AS LAND', t('x36.box.scen', { ha: km2(S.base_ha), d: n0(S.median_dw_per_ha * 100), n: n0(S.dwellings), r: n0(S.residents) }) + '.']].concat(counted ? [['HOW THE OPEN LAND IS COUNTED', counted]] : []))));
     return c.toDataURL('image/png'); }
   throw new Error('unknown sheet: ' + m); }'''
 NAME = {'history': '01_history', 'built': '02_built', 'density': '03_density', 'edge': '04_growth'}
