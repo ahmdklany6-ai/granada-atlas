@@ -81,9 +81,11 @@ LEG_AN = r'''// analysis style: the same items, drawn by AN.swatch (base, fence,
       if (sp.which === 'city' && sp.m === 'growth') its.splice(3, 0, { sym: 'stop', line: pal.red, label: 'Stops of line 1 (OSM); the two larger rings are the ends of the extension' });
       if (sp.which === 'city') its = its.concat(ground(sp.m !== 'growth'));
       if (sp.which === 'key') its = its.filter(it => it.stroke === pal.red).concat(its.filter(it => it.stroke !== pal.red), ground());
-      if (sp.which === 'towns') its = [{ fence: true, label: 'The base fence today (OSM), drawn over every picture' }].concat(its);
+      // (the towns' title carries its honesty note in brackets: the heading keeps the title, the note becomes the last row)
+      const tn = sp.which === 'towns' ? /^(.*?)\s*\((.*)\)\s*$/.exec(ttl) : null;
+      if (sp.which === 'towns') its = [{ fence: true, label: 'The base fence today (OSM), drawn over every picture' }].concat(its, tn ? [{ label: tn[2].charAt(0).toUpperCase() + tn[2].slice(1) }] : []);
       if (sp.which === 'people') its = its.concat(PD.sections.some(s0 => s0[sp.key] == null) ? [{ hatch: pal.tour.missing, dir: 1, label: 'No value published' }] : [], [{ sw: pal.ink, alpha: 0.22, label: t('x34.lg.built') + ', printed over the class colour' }, { line: pal.ink3, wk: 1.1, dk: [6, 4], label: muni.label }, GA.ex21.baseItem(t, false)]);
-      const sz = 3.6, row = 8.5, swm = 14, shm = 5, mg = 5, head = '+ ' + (sp.which === 'city' || sp.which === 'time' ? ttl.replace(/^\d+\s*·\s*/, '').split(': ')[0] : ttl).toUpperCase(); const m0x = document.createElement('canvas').getContext('2d'); let tw = 0; its.forEach(it => { tw = Math.max(tw, AN.width(m0x, it.label, sz, 500)); });
+      const sz = 3.6, row = 8.5, swm = 14, shm = 5, mg = 5, head = '+ ' + (sp.which === 'city' || sp.which === 'time' ? ttl.replace(/^\d+\s*·\s*/, '').split(': ')[0] : tn ? tn[1] : ttl).toUpperCase(); const m0x = document.createElement('canvas').getContext('2d'); let tw = 0; its.forEach(it => { tw = Math.max(tw, AN.width(m0x, it.label, sz, 500)); });
       const W = Math.ceil(Math.max(mm(swm + 4.2) + tw, AN.width(m0x, head, 3.4, 700)) + 2 * mm(mg)), top = mm(15), H = Math.ceil(top + its.length * mm(row) + mm(2)); const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H);
       AN.txt(x, head, mm(mg), mm(7.5), 3.4, 700, AN.INK); AN.key(x, its, mm(mg), top + mm(row) / 2, { cols: 1, colW: (W - mm(mg)) / AN.D, row, sz, sw: swm, sh: shm, kk: KK, maxW: (W - mm(mg)) / AN.D });
       return c.toDataURL('image/png');'''
