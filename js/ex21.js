@@ -148,6 +148,7 @@
       for (let dy = -96; dy <= 96; dy += 6) for (let dx = -240; dx <= 240; dx += 8) { const d = Math.hypot(dx, dy); if (d >= bd) continue; const b = bx(cx + dx * k, cy + dy * k); if (inV(b) && free(b)) { best = [cx + dx * k, cy + dy * k]; bd = d; } }
       best = best || [cx, cy]; OB.boxes.push(bx(best[0], best[1])); return best; };
     if (tidy) { U.K.forEach(b => OB.boxes.push(b)); if (o.obst) { (o.obst.segs || []).forEach(s => OB.segs.push(s)); (o.obst.boxes || []).forEach(b => OB.boxes.push(b)); }
+      if (!o.noScale) OB.boxes.push([V[0] + 12 * k, V[3] - 48 * k, V[0] + 56 * k + 1000 / mpp, V[3] - 8 * k]);   // the scale bar drawn on the map
       const bs = D.edge.find(f => f.p.k === 'base'); if (bs) { obLine(bs.g, 5 * k); OB.land = bs.g; }
       if (o.only === 'walk') D.edge.forEach(f => { if (f.p.k === 'route') obLine(f.g, 6 * k); else if (f.p.k === 'straight') obLine(f.g, 3 * k); else if (f.p.k === 'deadend') obDot(Array.isArray(f.g[0]) ? f.g[0][0] : f.g, 8 * k); });
       if (o.only === 'growth') { obLine(D.l1.lines, 7 * k); D.l1.stops.forEach(st => obDot(st.p, 8 * k)); D.metro.forEach(f => { if (f.p.k === 'track') obLine(f.g, 7 * k); else obDot(f.g, 10 * k); }); OB.boxes.push([V[0] + 14 * k, insetY, V[0] + 264 * k, insetY + 350 * k]); } }
@@ -166,7 +167,7 @@
     if (AN) anGrain(ctx, V, k, AN);   // the grey ground takes a fine paper grain; what the map is about is drawn clean over it
     // 4 the 300 m band (hatched) and the base as a closed solid with its runway
     const band = D.edge.find(f => f.p.k === 'band'), base = D.edge.find(f => f.p.k === 'base');
-    if (band && on('island') && AN) { path(band.g, true); anHatch(ctx, [x, y, x + w, y + h], C.bandLine, 7 * k, 0.7 * k, -1); }   // falling, so it reads apart from the base's rising red hatch
+    if (band && on('island') && AN) { path(band.g, true); anHatch(ctx, [x, y, x + w, y + h], C.bandLine, 7 * k, 0.7 * k, baseSubj ? -1 : 1); }   // falling, so it reads apart from the base's rising red hatch (rising where the base is context and its grey hatch falls: the key map)
     else if (band && on('island')) { ctx.save(); path(band.g, true); ctx.clip('evenodd'); ctx.strokeStyle = C.bandLine; ctx.lineWidth = 0.8 * k; ctx.globalAlpha = 0.7; ctx.beginPath(); for (let q = -h; q < w + h; q += 7 * k) { ctx.moveTo(x + q, y + h); ctx.lineTo(x + q + h, y); } ctx.stroke(); ctx.restore(); }
     if (base && AN) { anBase(ctx, () => path(base.g, true), V, k, AN, baseSubj, on('island') && o.only ? 0 : 1);   // map 01 draws the fence by class instead
       ctx.strokeStyle = C.runway; ctx.lineWidth = 1.2 * k; ctx.setLineDash([10 * k, 6 * k]); ctx.beginPath(); ctx.moveTo(X(D.runway[0][0]), Y(D.runway[0][1])); ctx.lineTo(X(D.runway[1][0]), Y(D.runway[1][1])); ctx.stroke(); ctx.setLineDash([]); }
@@ -184,7 +185,8 @@
     if (on('walk')) D.edge.filter(f => f.p.k === 'deadend').forEach(f => { const [u, v] = Array.isArray(f.g[0]) ? f.g[0][0] : f.g; ctx.beginPath(); ctx.arc(X(u), Y(v), 4.2 * k, 0, 7); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.strokeStyle = C.dead; ctx.lineWidth = 2 * k; ctx.stroke(); ctx.beginPath(); ctx.moveTo(X(u) - 2.4 * k, Y(v)); ctx.lineTo(X(u) + 2.4 * k, Y(v)); ctx.stroke(); });
     // 7 the metro extension under construction, with its two ends
     if (on('growth')) { ctx.strokeStyle = MC; ctx.lineWidth = 6 * k; ctx.beginPath(); D.l1.lines.forEach(l => l.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); ctx.stroke();
-      D.l1.stops.forEach(st => { ctx.beginPath(); ctx.arc(X(st.p[0]), Y(st.p[1]), 4.6 * k, 0, 7); ctx.fillStyle = MC; ctx.fill(); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.6 * k; ctx.stroke(); }); }
+      // (analysis style: a stop is a white ring on the line, as in the inset and in the key — the same mark, smaller, as the extension's two ends)
+      D.l1.stops.forEach(st => { ctx.beginPath(); ctx.arc(X(st.p[0]), Y(st.p[1]), (AN ? 4.2 : 4.6) * k, 0, 7); ctx.fillStyle = AN ? '#FFFFFF' : MC; ctx.fill(); ctx.strokeStyle = AN ? MC : '#FFFFFF'; ctx.lineWidth = (AN ? 1.9 : 1.6) * k; ctx.stroke(); }); }
     if (on('growth')) D.metro.forEach(f => { if (f.p.k === 'track') { ctx.strokeStyle = MC; ctx.lineWidth = 6 * k; path(f.g); ctx.stroke(); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2.2 * k; ctx.setLineDash([7 * k, 7 * k]); path(f.g); ctx.stroke(); ctx.setLineDash([]); }
       else { ctx.beginPath(); ctx.arc(X(f.g[0]), Y(f.g[1]), 6 * k, 0, 7); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.strokeStyle = MC; ctx.lineWidth = 2.6 * k; ctx.stroke(); } });
     // o.over(ctx, X, Y, k): a sheet's own layers (tools/ex21_pages/policy.py), drawn here so the names stay on top and inside the window
@@ -238,7 +240,11 @@
         const bw = 330 * k, pad = 11 * k; ctx.save(); ctx.font = font(8, 400); const wl = []; let ln = ''; body.split(' ').forEach(wd => { const tt = ln ? ln + ' ' + wd : wd; if (ctx.measureText(tt).width > bw - 2 * pad && ln) { wl.push(ln); ln = wd; } else ln = tt; }); wl.push(ln); ctx.restore();
         const bh = pad * 2 + 13 * k + wl.length * 11.4 * k - 3 * k; SB = { bx: V0[2] - 12 * k - bw, by: V0[3] - 12 * k - bh, bw, bh, pad, wl }; boxes.push([SB.bx - 6 * k, SB.by - 6 * k, SB.bx + bw, SB.by + bh]); }
       obst = { segs, boxes }; }
-    drawCity(ctx, x, y, w, h, Object.assign({}, o, { only: 'strategy', avoid: (o.avoid || []).concat(mk), obst }));   // context: boundaries, buildings, streets, the base, town names (kept off the metro markers)
+    // (tidy) the open-land cells go under the names and leave the base as drawCity drew it (its hatch and runway axis): drawn in drawCity's own
+    // "over" step, outside the base only; step 0 below is then skipped
+    const cellsOn = !!(TD && TD.img && TD.img.edge && !o.noOpenLand), over = tidy && cellsOn ? (c2, X2, Y2, k2) => { const b0 = D.edge.find(f => f.p.k === 'base'); c2.save(); c2.beginPath(); c2.rect(x, y, w, h);
+      if (b0) b0.g.forEach(r => { r.forEach((p, i) => i ? c2.lineTo(X(p[0]), Y(p[1])) : c2.moveTo(X(p[0]), Y(p[1]))); c2.closePath(); }); c2.clip('evenodd'); c2.imageSmoothingEnabled = false; c2.globalAlpha = 0.45; c2.drawImage(edgeImg(true), x, y, w, h); c2.restore(); if (o.over) o.over(c2, X2, Y2, k2); } : o.over;
+    drawCity(ctx, x, y, w, h, Object.assign({}, o, { only: 'strategy', avoid: (o.avoid || []).concat(mk), obst, over }));   // context: boundaries, buildings, streets, the base, town names (kept off the metro markers)
     const base = D.edge.find(f => f.p.k === 'base'); if (!base) return false; const V = o.view || [x, y, x + w, y + h];
     const path = (rs, close) => { ctx.beginPath(); rs.forEach(r => r.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); if (close) ctx.closePath(); };
     const halo = (s0, px, py, col, sz, wt, al) => { ctx.font = font(sz, wt); ctx.textAlign = al || 'center'; ctx.textBaseline = 'middle'; ctx.direction = /[֐-ࣿ]/.test(s0) ? 'rtl' : 'ltr'; ctx.lineJoin = 'round'; ctx.lineWidth = 3.6 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(s0, px, py); ctx.fillStyle = col; ctx.fillText(s0, px, py); };
@@ -246,7 +252,7 @@
     // 0 (owner, 17 Nov: "add them") the open land next to the towns, by aeronautical ceiling — the same 100 m cells as the time map
     // "how it could grow" (Catastro, OSM, RD 118/2019): where the towns will press on the fence next, and how high they may build there
     const AN = pal.an || null;
-    if (TD && TD.img && TD.img.edge && !o.noOpenLand) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.globalAlpha = 0.45; ctx.drawImage(edgeImg(true), x, y, w, h); ctx.restore();
+    if (cellsOn && !tidy) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.globalAlpha = 0.45; ctx.drawImage(edgeImg(true), x, y, w, h); ctx.restore();
       ctx.save(); const bp = D.edge.find(f => f.p.k === 'base'); if (AN) anBase(ctx, () => path(bp.g, true), V, k, AN, false, 0); else { path(bp.g, true); ctx.fillStyle = C.base; ctx.fill(); } ctx.restore(); }   // the base stays on top
     // 4 the green corridor (schematic): Alhendín → past the south tip → Ogíjares
     let cor = null; if (CG) { const P0 = CG.P0, P2 = CG.P2, M = CG.M, C1 = CG.C1; cor = { P0, P2, M };   // the curve passes through M (CG, above)
@@ -259,10 +265,12 @@
     path(base.g, true); ctx.strokeStyle = S.strip; ctx.globalAlpha = 0.85; ctx.lineWidth = 2 * 35 / mpp; ctx.stroke(); ctx.globalAlpha = 1; ctx.restore();
     path(base.g, true); if (AN) anFence(ctx, k, AN); else { ctx.strokeStyle = C.baseLine; ctx.lineWidth = 1.4 * k; ctx.stroke(); }
     // 2 the dead ends, joined
-    D.edge.filter(f => f.p.k === 'deadend').forEach(f => { const [u, v] = Array.isArray(f.g[0]) ? f.g[0][0] : f.g; ctx.beginPath(); ctx.arc(X(u), Y(v), 5 * k, 0, 7); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.strokeStyle = S.strip; ctx.lineWidth = 2.6 * k; ctx.stroke(); ctx.beginPath(); ctx.moveTo(X(u) - 2.6 * k, Y(v)); ctx.lineTo(X(u) + 2.6 * k, Y(v)); ctx.moveTo(X(u), Y(v) - 2.6 * k); ctx.lineTo(X(u), Y(v) + 2.6 * k); ctx.stroke(); });
+    const joined = () => D.edge.filter(f => f.p.k === 'deadend').forEach(f => { const [u, v] = Array.isArray(f.g[0]) ? f.g[0][0] : f.g; ctx.beginPath(); ctx.arc(X(u), Y(v), 5 * k, 0, 7); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.strokeStyle = S.strip; ctx.lineWidth = 2.6 * k; ctx.stroke(); ctx.beginPath(); ctx.moveTo(X(u) - 2.6 * k, Y(v)); ctx.lineTo(X(u) + 2.6 * k, Y(v)); ctx.moveTo(X(u), Y(v) - 2.6 * k); ctx.lineTo(X(u), Y(v) + 2.6 * k); ctx.stroke(); });
+    joined();
     // metro: line 1 today and the extension (as on map 03)
     ctx.strokeStyle = C.metro; ctx.lineWidth = 4 * k; ctx.beginPath(); D.l1.lines.forEach(l => l.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); ctx.stroke();
     D.metro.forEach(f => { if (f.p.k === 'track') { ctx.strokeStyle = C.metro; ctx.lineWidth = 4 * k; path(f.g); ctx.stroke(); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.5 * k; ctx.setLineDash([6 * k, 6 * k]); path(f.g); ctx.stroke(); ctx.setLineDash([]); } });
+    if (tidy) joined();   // (tidy) the proposal stays on top: the dead end at the base's north tip sits where the extension meets the fence
     // 3 the places the strip links (numbered; names in the legend)
     const cen = (rs) => { let n = 0, a = 0, b = 0; rs.forEach(pg => (pg[0] || []).forEach(c => { a += c[0]; b += c[1]; n++; })); return n ? [a / n, b / n] : null; };
     const AS = AR.areas.find(a => a.id === 'S'), ARv = AR.areas.find(a => a.id === 'R');
@@ -313,20 +321,23 @@
       const base = D.edge.find(f => f.p.k === 'base'); if (base) { path(base.g); ctx.fillStyle = C.base; ctx.fill(); } };
     // the bars of one value: Granada city and the five towns, mw wide from ox, each row rh high from by
     const rows = D.area.filter(m => m.p.name === 'Granada' || m.p.five).sort((p, q) => (p.p.name === 'Granada' ? -1 : q.p.name === 'Granada' ? 1 : q.p.chg - p.p.chg));
-    const barsOf = (key, br, cols, fmt, ox, mw, by, rh) => { const base0 = key === 'rent' ? 100 : 0; /* the rent index starts at 100 (2015) */ const vals = rows.map(m => m.p[key]).filter(v => v != null); const vmax = Math.max(...vals.map(v => Math.abs(v - base0))) * 1.15; const lab = 92 * k, bw = mw - lab - 54 * k;
-      rows.forEach((m, j) => { const cy = by + rh * (j + 0.5), v = m.p[key]; const bx = rtl ? ox + mw - lab : ox + lab;
-        ctx.font = font(9.5, m.p.name === 'Granada' ? 700 : 500); ctx.fillStyle = pal.ink; ctx.textAlign = rtl ? 'left' : 'right'; ctx.direction = 'ltr'; ctx.textBaseline = 'middle'; ctx.fillText(m.p.name.replace(' de la Vega', ''), rtl ? bx + 6 * k : bx - 6 * k, cy);
+    const barsOf = (key, br, cols, fmt, ox, mw, by, rh, signed) => { const base0 = key === 'rent' ? 100 : 0; /* the rent index starts at 100 (2015) */ const vals = rows.map(m => m.p[key]).filter(v => v != null); const vmax = Math.max(...vals.map(v => Math.abs(v - base0))) * 1.15; const lab = 92 * k, bw = mw - lab - 54 * k;
+      // signed (the analysis sheets' pieces): a value under the start of the bars (fewer residents than in 2015) is drawn to the other side of the
+      // axis, and the axis moves in by the longest such bar; unit = px per unit of the value
+      const neg = signed ? Math.max(0, ...vals.map(v => base0 - v)) : 0, unit = signed ? bw / ((Math.max(0, ...vals.map(v => v - base0)) + neg) * 1.15 || 1) : 0, off = neg * unit;
+      rows.forEach((m, j) => { const cy = by + rh * (j + 0.5), v = m.p[key]; const bx0 = rtl ? ox + mw - lab : ox + lab, bx = bx0 + (rtl ? -off : off);
+        ctx.font = font(9.5, m.p.name === 'Granada' ? 700 : 500); ctx.fillStyle = pal.ink; ctx.textAlign = rtl ? 'left' : 'right'; ctx.direction = 'ltr'; ctx.textBaseline = 'middle'; ctx.fillText(m.p.name.replace(' de la Vega', ''), rtl ? bx0 + 6 * k : bx0 - 6 * k, cy);
         if (v == null) { ctx.fillStyle = pal.ink3; ctx.textAlign = rtl ? 'right' : 'left'; ctx.fillText('—', rtl ? bx - 4 * k : bx + 4 * k, cy); return; }
-        const L = Math.abs(v - base0) / vmax * bw; ctx.fillStyle = cls(v, br, cols); ctx.fillRect(rtl ? bx - L : bx, cy - rh * 0.3, L, rh * 0.6); ctx.strokeStyle = 'rgba(41,16,12,.25)'; ctx.lineWidth = 1; ctx.strokeRect(rtl ? bx - L : bx, cy - rh * 0.3, L, rh * 0.6);
-        ctx.fillStyle = pal.ink; ctx.font = font(9.5, 700); ctx.textAlign = rtl ? 'right' : 'left'; ctx.fillText(fmt(v), rtl ? bx - L - 5 * k : bx + L + 5 * k, cy); });
-      return { x0: rtl ? ox + mw - lab : ox + lab, bw, base0, vmax, rows: rows.length }; };
+        const L = signed ? Math.abs(v - base0) * unit : Math.abs(v - base0) / vmax * bw, back = signed && v < base0, rx = (rtl ? !back : back) ? bx - L : bx; ctx.fillStyle = cls(v, br, cols); ctx.fillRect(rx, cy - rh * 0.3, L, rh * 0.6); ctx.strokeStyle = 'rgba(41,16,12,.25)'; ctx.lineWidth = 1; ctx.strokeRect(rx, cy - rh * 0.3, L, rh * 0.6);
+        ctx.fillStyle = pal.ink; ctx.font = font(9.5, 700); ctx.textAlign = rtl ? 'right' : 'left'; ctx.fillText(pal.an ? fmt(v).replace('-', '−') : fmt(v), rtl ? bx - (back ? 0 : L) - 5 * k : bx + (back ? 0 : L) + 5 * k, cy); });   // (analysis sheets: a true minus sign, as in their notes)
+      return { x0: (rtl ? ox + mw - lab : ox + lab) + (rtl ? -off : off), bw, base0, vmax, rows: rows.length }; };
     // o.part (the analysis sheets lay the panel out themselves): one piece at a time, for the value o.key ('chg' | 'inc' | 'rent') —
     // 'map' = that map alone in the window x, y, w, h at o.sc px per metre, centred; 'bars' = its bars in the box x, y, w, h
     if (o.part) { const v = vars.find(q => q[0] === o.key); if (!v) return false;
       if (o.part === 'map') { const sc = o.sc || Math.min(w / (a1 - a0), h / (b1 - b0)), X = (u) => x + w / 2 + (u - (a0 + a1) / 2) * sc, Y = (q) => y + h / 2 - (q - (b0 + b1) / 2) * sc;
         ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip(); ctx.lineJoin = 'round'; ctx.lineCap = 'butt'; ctx.setLineDash([]); mapOf(v[0], v[1], v[2], X, Y, [x, y, w, h], true); ctx.restore();
         return { sc, n: D.area.length, missing: D.area.filter(m => m.p[v[0]] == null).length, fits: (a1 - a0) * sc <= w && (b1 - b0) * sc <= h }; }
-      ctx.save(); const r = barsOf(v[0], v[1], v[2], v[3], x, w, y, h / rows.length); ctx.restore(); return r; }
+      ctx.save(); const r = barsOf(v[0], v[1], v[2], v[3], x, w, y, h / rows.length, true); ctx.restore(); return r; }
     const gap = 26 * k, mw = (w - 2 * gap) / 3, mh = Math.min(h * 0.62, mw * (b1 - b0) / (a1 - a0)); const sc = Math.min(mw / (a1 - a0), mh / (b1 - b0));
     vars.forEach(([key, br, cols, fmt, title], i) => { const ox = x + (rtl ? 2 - i : i) * (mw + gap), oy = y + 34 * k; const X = (u) => ox + (u - a0) * sc + (mw - (a1 - a0) * sc) / 2, Y = (v) => oy + (b1 - v) * sc;
       ctx.font = font(13, 600); ctx.fillStyle = pal.ink3; ctx.textAlign = rtl ? 'right' : 'left'; ctx.direction = rtl ? 'rtl' : 'ltr'; ctx.textBaseline = 'alphabetic'; ctx.fillText(t(title), rtl ? ox + mw : ox, y + 16 * k);
@@ -451,10 +462,26 @@
   }
   // key map: the base and its fence (as map 01) with the eight 1:500 windows
   function drawAreaKey(ctx, x, y, w, h, o) { o = o || {}; if (!D || !AR) return false; const pal = P(); const t = o.t || ((s) => s); const k = o.k || w / 1000; const F = root.GA.pages.font();
-    drawCity(ctx, x, y, w, h, { t, only: 'island', k, title: o.title, titlePx: o.titlePx, credit: o.credit, creditPx: o.creditPx, baseSubject: false, noNorth: o.noNorth, noScale: o.noScale }); /* the windows are the red thing here */ const E = CITY, mpp = (E.x1 - E.x0) / w; const X = (u) => x + (u - E.x0) / mpp, Y = (v) => y + (E.y1 - v) / mpp;
+    const E = CITY, mpp = (E.x1 - E.x0) / w; const X = (u) => x + (u - E.x0) / mpp, Y = (v) => y + (E.y1 - v) / mpp;
+    // (analysis style) each letter sits beside its window on the side away from the base: clear of the fence, of the other windows and of the
+    // letters placed before it (first free place, turning away from the outward direction step by step); the town names then keep clear of
+    // the windows and the letters (drawCity o.tidy, o.obst)
+    const LP = pal.an ? (() => { const b0 = D.edge.find(f => f.p.k === 'base'); if (!b0) return null; const segs = [], out = {}, done = [], r = 11 * k, V = o.view || [x, y, x + w, y + h]; let sx = 0, sy = 0, n = 0;
+      b0.g.forEach(rg => { for (let i = 1; i < rg.length; i++) segs.push([X(rg[i - 1][0]), Y(rg[i - 1][1]), X(rg[i][0]), Y(rg[i][1])]); rg.forEach(p => { sx += X(p[0]); sy += Y(p[1]); n++; }); }); const bc = [sx / n, sy / n];
+      const dSeg = (px, py, s) => { const dx = s[2] - s[0], dy = s[3] - s[1], q = Math.max(0, Math.min(1, ((px - s[0]) * dx + (py - s[1]) * dy) / (dx * dx + dy * dy || 1))); return Math.hypot(px - s[0] - q * dx, py - s[1] - q * dy); };
+      const inside = (px, py) => { let c = false; b0.g.forEach(rg => { for (let i = 0, j = rg.length - 1; i < rg.length; j = i++) { const xi = X(rg[i][0]), yi = Y(rg[i][1]), xj = X(rg[j][0]), yj = Y(rg[j][1]); if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) c = !c; } }); return c; };
+      const wins = AR.areas.map(a => [X(a.extent[0]), Y(a.extent[3]), X(a.extent[2]), Y(a.extent[1])]);
+      AR.areas.forEach((a, ai) => { const wb = wins[ai], wc = [(wb[0] + wb[2]) / 2, (wb[1] + wb[3]) / 2], hs = (wb[2] - wb[0]) / 2, a0 = Math.atan2(wc[1] - bc[1], wc[0] - bc[0]); let best = null;
+        [0, 25, -25, 50, -50, 75, -75, 100, -100, 130, -130, 160, -160, 180].some(dg => { const an = a0 + dg * Math.PI / 180, dx = Math.cos(an), dy = Math.sin(an), dd = hs / Math.max(Math.abs(dx), Math.abs(dy)) + r + 3 * k, c = [wc[0] + dx * dd, wc[1] + dy * dd];
+          const ok = c[0] - r > V[0] + 4 * k && c[0] + r < V[2] - 4 * k && c[1] - r > V[1] + 4 * k && c[1] + r < V[3] - 4 * k && !inside(c[0], c[1]) && !segs.some(s => dSeg(c[0], c[1], s) < r + 3 * k)
+            && !wins.some((q, qi) => qi !== ai && c[0] + r > q[0] - 2 * k && c[0] - r < q[2] + 2 * k && c[1] + r > q[1] - 2 * k && c[1] - r < q[3] + 2 * k) && !done.some(q => Math.hypot(q[0] - c[0], q[1] - c[1]) < 2 * r + 2 * k);
+          if (ok) best = c; return ok; });
+        out[a.id] = best || [wc[0], wb[1] - 14 * k]; done.push(out[a.id]); });
+      return { at: out, boxes: wins.map(q => [q[0] - 3 * k, q[1] - 3 * k, q[2] + 3 * k, q[3] + 3 * k]).concat(done.map(q => [q[0] - r - 3 * k, q[1] - r - 3 * k, q[0] + r + 3 * k, q[1] + r + 3 * k])) }; })() : null;
+    drawCity(ctx, x, y, w, h, Object.assign({ t, only: 'island', k, title: o.title, titlePx: o.titlePx, credit: o.credit, creditPx: o.creditPx, baseSubject: false, noNorth: o.noNorth, noScale: o.noScale }, LP ? { tidy: true, obst: { boxes: LP.boxes } } : {})); /* the windows are the red thing here */
     AR.areas.forEach(a => { const e = a.extent; ctx.fillStyle = pal.red; ctx.globalAlpha = 0.18; ctx.fillRect(X(e[0]), Y(e[3]), (e[2] - e[0]) / mpp, (e[3] - e[1]) / mpp); ctx.globalAlpha = 1; ctx.strokeStyle = pal.red; ctx.lineWidth = 2.4 * k; ctx.strokeRect(X(e[0]), Y(e[3]), (e[2] - e[0]) / mpp, (e[3] - e[1]) / mpp);
       const below = AR.areas.some(b => b !== a && Math.abs(b.centre[0] - a.centre[0]) < 250 && b.centre[1] > a.centre[1] && b.centre[1] - a.centre[1] < 320);   // another window just north: this letter goes under its square
-      const cx = X((e[0] + e[2]) / 2), cy = below ? Y(e[1]) + 14 * k : Y(e[3]) - 14 * k; ctx.beginPath(); ctx.arc(cx, cy, 11 * k, 0, 7); ctx.fillStyle = pal.red; ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.font = `700 ${Math.round(12 * k)}px ${F}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.fillText(a.id, cx, cy + 0.5 * k); });
+      const cx = LP ? LP.at[a.id][0] : X((e[0] + e[2]) / 2), cy = LP ? LP.at[a.id][1] : below ? Y(e[1]) + 14 * k : Y(e[3]) - 14 * k; ctx.beginPath(); ctx.arc(cx, cy, 11 * k, 0, 7); ctx.fillStyle = pal.red; ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.font = `700 ${Math.round(12 * k)}px ${F}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.fillText(a.id, cx, cy + 0.5 * k); });
     return true; }
   // legend of the key map: map 01's legend plus the 1:500 window
   function keyLegend(t) { const pal = P(); return mapLegend('island', t, false).concat([{ sw: pal.red, alpha: 0.18, stroke: pal.red, label: t('x34.lg.window') }]); }
@@ -508,7 +535,7 @@
   const hAlpha = (c) => { const q = D && D.ease && (D.ease.classes || []).find(k => k[2] === c); return q ? q[3][3] / 255 : 1; };
   function mapLegend(only, t, baseSubject) { const C = P().ex21, AN = P().an || null, MC = metroCol(only), want = ONLY[only] || []; const out = [];
     if (want.includes('base')) out.push(baseItem(t, baseSubject != null ? baseSubject : only === 'island'));
-    if (want.includes('band')) out.push({ hatch: C.bandLine, label: t('x34.lg.band') });
+    if (want.includes('band')) out.push(AN && baseSubject === false ? { hatch: C.bandLine, dir: 1, label: t('x34.lg.band') } : { hatch: C.bandLine, label: t('x34.lg.band') });   // (dir: as drawCity hatches the band beside a base that is context)
     if (want.includes('fence')) Object.keys(C.fence).forEach(c => { const fc = AN && AN.fenceClass[c]; out.push(fc ? { line: fc.col, wk: fc.w, dk: fc.dash, round: fc.round, label: t('x34.lg.fence.' + c) } : { line: C.fence[c], w: 3, label: t('x34.lg.fence.' + c) }); });
     // (analysis style: wk, dk = the width and the dash the map draws, in the map's unit k, so the key shows the same line)
     if (want.includes('route')) out.push(AN ? { line: C.route, wk: 3.2, dk: [9, 4], label: t('x34.lg.route') } : { line: C.route, w: 2, dash: true, label: t('x34.lg.route') }, AN ? { line: C.straight, wk: 1.2, dk: [3, 4], label: t('x34.lg.straight') } : { line: C.straight, w: 1, dash: true, label: t('x34.lg.straight') });
@@ -688,7 +715,7 @@
         const ec = o.edgeCol || col[tn]; pth(); ctx.fillStyle = ec; ctx.globalAlpha = EDGE_FILL; ctx.fill('evenodd'); ctx.globalAlpha = 0.9; ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 6.4 * k; ctx.stroke(); ctx.globalAlpha = 1; pth(); ctx.strokeStyle = ec; ctx.lineWidth = (AN ? 2.6 : 3.4) * k; ctx.stroke(); });
       if (AN && photo && base) { path(base.g); anFence(ctx, k, AN); } }   // the fence once more, over the edges: it stays whole where a town's edge runs along it
     // analysis style, with the towns' edges: a name never sits on a red edge, on the fence or on another name, and never inside ANOTHER town's edge or
-    // inside the base — it takes the free place nearest to its town (two coarse masks of what is drawn; a name that finds no free place keeps its own)
+    // inside the base — it takes a free place inside its own town's edge, or the nearest one beside it (two coarse masks of what is drawn; a name that finds no free place keeps its own)
     let clear = null;
     if (AN && o.edges && TE && TE.edges[o.edges]) { const E2 = TE.edges[o.edges], s = 2 * k, mw = Math.ceil(w / s), mh = Math.ceil(h / s); const mk = () => { const c = document.createElement('canvas'); c.width = mw; c.height = mh; return c.getContext('2d', { willReadFrequently: true }); };
       const gl = mk(), gt = mk(), ring = (g, r) => { r.forEach((q, i) => { const a = (X(q[0]) - x) / s, b = (Y(q[1]) - y) / s; if (i) g.lineTo(a, b); else g.moveTo(a, b); }); g.closePath(); }; gl.lineJoin = 'round'; gl.lineWidth = 6.4 * k / s + 1.5;
@@ -697,11 +724,14 @@
       const ml = gl.getImageData(0, 0, mw, mh).data, mt = gt.getImageData(0, 0, mw, mh).data, ia = (px) => Math.min(mw - 1, Math.max(0, Math.round((px - x) / s))), ib = (py) => Math.min(mh - 1, Math.max(0, Math.round((py - y) / s)));
       const hit = (b) => { for (let j = ib(b[1]); j <= ib(b[3]); j++) for (let i = ia(b[0]); i <= ia(b[2]); i++) if (ml[(j * mw + i) * 4 + 3]) return true; return false; };
       const owner = (px, py) => { const i = (ib(py) * mw + ia(px)) * 4; return mt[i + 3] > 127 ? Math.round(mt[i] / 40) : 0; };
-      clear = (cx, cy, tw, own) => { const box = (px, py) => [px - tw / 2 - 3 * k, py - 7 * k, px + tw / 2 + 3 * k, py + 9 * k];
-        const ok = (px, py) => { const b = box(px, py); return b[0] >= V[0] + 4 * k && b[2] <= V[2] - 4 * k && b[1] >= V[1] + 4 * k && b[3] <= V[3] - 4 * k && !U.K.some(r => b[2] > r[0] && b[0] < r[2] && b[3] > r[1] && b[1] < r[3]) && !hit(b) && [-0.5, -0.25, 0, 0.25, 0.5].every(f => { const z = owner(px + f * tw, py + k); return !z || z === own; }); };
-        let best = ok(cx, cy) ? [cx, cy] : null; const st = 4 * k;
-        for (let r = 1; r <= 70 && !best; r++) { let bd = Infinity; for (let i = -r; i <= r; i++) for (let j = -r; j <= r; j++) { if (Math.max(Math.abs(i), Math.abs(j)) !== r) continue; const d = i * i + j * j; if (d < bd && ok(cx + i * st, cy + j * st)) { bd = d; best = [cx + i * st, cy + j * st]; } } }
-        best = best || [cx, cy]; const b = box(best[0], best[1]); for (let j = ib(b[1]); j <= ib(b[3]); j++) for (let i = ia(b[0]); i <= ia(b[2]); i++) ml[(j * mw + i) * 4 + 3] = 255; return best; }; }
+      const AIR = [[4, 9, 11], [3, 7, 9], [1.5, 6, 8]];   // the box a name needs, in k (beside it, above, below its centre): with air around it · tight · snug
+      clear = (cx, cy, tw, own) => { const box = (px, py, m) => [px - tw / 2 - AIR[m][0] * k, py - AIR[m][1] * k, px + tw / 2 + AIR[m][0] * k, py + AIR[m][2] * k];
+        const ok = (px, py, inside, m) => { const b = box(px, py, m); return b[0] >= V[0] + 4 * k && b[2] <= V[2] - 4 * k && b[1] >= V[1] + 4 * k && b[3] <= V[3] - 4 * k && !U.K.some(r => b[2] > r[0] && b[0] < r[2] && b[3] > r[1] && b[1] < r[3]) && !hit(b) && [-0.5, -0.25, 0, 0.25, 0.5].every(f => { const z = owner(px + f * tw, py + k); return inside ? z === own : !z || z === own; }); };
+        // in this order, the nearest of each (never farther than ~180 k from the town): INSIDE the town's own edge, tight and then snug; on open ground beside it,
+        // with air, then tight, then snug. st = the search step, R = how many steps out.
+        const find = (inside, m, R, st) => { if (ok(cx, cy, inside, m)) return [cx, cy]; for (let r = 1; r <= R; r++) { let got = null, bd = Infinity; for (let i = -r; i <= r; i++) for (let j = -r; j <= r; j++) { if (Math.max(Math.abs(i), Math.abs(j)) !== r) continue; const d = i * i + j * j; if (d < bd && ok(cx + i * st, cy + j * st, inside, m)) { bd = d; got = [cx + i * st, cy + j * st]; } } if (got) return got; } return null; };
+        const has = own && (E2[TFIVE[own - 1]] || []).length;
+        const best = (has && (find(true, 1, 30, 4 * k) || find(true, 2, 60, 2 * k))) || find(false, 0, 40, 4 * k) || find(false, 1, 45, 4 * k) || find(false, 2, 90, 2 * k) || [cx, cy]; const b = box(best[0], best[1], 1); for (let j = ib(b[1]); j <= ib(b[3]); j++) for (let i = ia(b[0]); i <= ia(b[2]); i++) ml[(j * mw + i) * 4 + 3] = 255; return best; }; }
     // town names (and the base) — on photos with a white halo
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.direction = 'ltr';
     D.edge.filter(f => f.p.k === 'town').forEach(f => { const [u, v] = f.g; nameFont(ctx, font, k, photo ? 13 : 15); const tw = ctx.measureText(f.p.nm.toUpperCase()).width; let q = place(V, U.K, X(u), Y(v) - 13 * k, tw, 18 * k, 8 * k); if (!q) return; if (clear) q = clear(q[0], q[1], tw, TFIVE.indexOf(f.p.nm) + 1); const px = q[0], py = q[1] + 13 * k;

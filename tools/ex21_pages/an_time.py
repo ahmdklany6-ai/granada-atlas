@@ -30,7 +30,7 @@ JS = r'''async ([m, DPI, HIST, one]) => { await GA.ex21.ready(); await GA.ex21.r
   const pic = (h) => load('/exports/ex21_time/hist/' + h[0] + '.jpg');
   const lab = (h) => h[0] === 'mtn50' ? t('x36.hist.1931', { ha: km2(TD.aerodrome_1931_ha) }) : h[1];
   const growth = t('x36.box.growth', { a: km2(TD.aerodrome_1931_ha), b: km2(TD.base_ha_today) });
-  const PRINT = ' Printed in black, greys and one red; the base is drawn as a white void behind its fence.';
+  const PRINT = ' Municipal boundaries: IGN (CC BY 4.0) via es-atlas, simplified. Printed in black, greys and one red; the base is drawn as a white void behind its fence.';
   // ---- one picture alone, its date written on it (for a film or a GIF) ----
   if (m === 'frame') { const h = HIST[one], c = document.createElement('canvas'); c.width = 1600; c.height = 1400; const x = c.getContext('2d');
     GA.ex21.drawTime(x, 0, 0, 1600, 1400, { t, only: 'photo', photo: await pic(h), k: 1.6, title: lab(h), titlePx: 56, edges: h[0] }); return c.toDataURL('image/png'); }
@@ -41,11 +41,12 @@ JS = r'''async ([m, DPI, HIST, one]) => { await GA.ex21.ready(); await GA.ex21.r
     AN.head(x, W, { title: t('x36.hist.title').toUpperCase(), sub: t('x41.hist.sub'), code: SERIES + ' · ' + den, num: '01 / 04', left: L, right: R });
     HIST.forEach((h, i) => { const fx = mm(L + (i % cols) * (fw + gx)), fy = mm(top + Math.floor(i / cols) * (fh + capH + gy)), bw = Math.round(mm(fw)), bh = Math.round(mm(fh));
       GA.ex21.drawTime(x, fx, fy, bw, bh, { t, only: 'photo', photo: imgs[i], k: KH, noScale: true, noNorth: true, edges: h[0] }); AN.frame(x, [fx, fy, fx + bw, fy + bh]);
-      // the caption: the date IGN publishes for the picture, what it is, and the year its red edges are drawn for (town_edges.json)
+      // the caption: the date IGN publishes for the picture, what it is, and the year its red edges stand for (town_edges.json: buildings dated up to it)
       const s = lab(h), j = s.indexOf(' · '), date = j > 0 ? s.slice(0, j) : s, rest = j > 0 ? s.slice(j + 3) : ''; const cy = fy + bh + mm(6.2 * u);
       AN.txt(x, date, fx, cy, 3.1 * u, 700, AN.INK); const dw = AN.width(x, date, 3.1 * u, 700);
       AN.txt(x, (rest ? cap(rest) : (h[2] === 'map' ? 'Map' : 'Aerial photo') + ' · ' + h[3]), fx + dw + mm(3 * u), cy, 2.5 * u, 500, AN.GR, 'left', bw - dw - mm(3 * u));
-      AN.txt(x, (rest ? h[3] + ' · ' : '') + 'red edge drawn for ' + TE.years[h[0]], fx, cy + mm(4.4 * u), 2.5 * u, 500, AN.GR, 'left', bw); });
+      const miss = FIVE.filter(tn => TE.edges[h[0]][tn] === null);
+      AN.txt(x, (rest ? h[3] + ' · ' : '') + 'red edge = built by ' + TE.years[h[0]] + (miss.length ? ' · ' + miss.join(', ') + ': ' + t('x39.unknown') : ''), fx, cy + mm(4.4 * u), 2.5 * u, 500, AN.GR, 'left', bw); });
     // under the pictures: scale and north (the same for all ten), then the key at the left and the notes in three columns
     const bx = mm(L); const y = AN.scale(x, [bx, 0, bx, mm(footY)], mm(fw) / (E.x1 - E.x0), 1000, { dy: 12, scale: den + ' · the same frame in every picture, ' + (E.x1 - E.x0) / 1000 + ' × ' + (E.y1 - E.y0) / 1000 + ' km' }) + mm(9 * u);
     AN.key(x, [{ fence: true, label: 'The base fence today (OSM), drawn over every picture' }, GA.ex21.townEdgeLegend(t, HIST[0][0])[0]], bx, y, { cols: 1, colW: 300, kk: KH });
@@ -64,28 +65,35 @@ JS = r'''async ([m, DPI, HIST, one]) => { await GA.ex21.ready(); await GA.ex21.r
       if (towns) { const col = GA.ex21.tcol(); AN.key(x, FIVE.map(tn => ({ sw: col[tn], label: tn })), px, y + mm(1.5 * u), { cols: 5, colW: cw / 5 }); y += mm(8 * u); }
       draw(x, px, y, mm(cw), mm(CH), mm(2.5 * u) / 9); let yn = py + mm(2 * u); (notes || []).forEach(([h0, b0, red]) => { yn = AN.note(x, px + mm(wmm - NW), yn, NW, h0, b0, red ? AN.RED : AN.INK); });
       return Math.max(y + mm(CH), yn); } }; };
-  if (m === 'built') { const [ttl, sub] = split(t('x36.m.built')), fp = TD.footprint_ha_by_period; const since = TD.periods.filter(q => q[1] >= 2000).reduce((a, q) => a + (fp[q[0]] || 0), 0), all = Object.values(fp).reduce((a, v) => a + v, 0);
-    const d2000 = FIVE.reduce((a, tn) => a + (TD.towns[tn].dwellings_by_decade['2000'] || 0), 0), dall = FIVE.reduce((a, tn) => a + TD.towns[tn].dwellings, 0);
+  if (m === 'built') { const [ttl, sub] = split(t('x36.m.built')), fp = TD.footprint_ha_by_period, A = AN.A;
+    // the periods the map draws in the red (js/palette.js an.period): their first year, their footprints, and the decade that starts with them in the chart
+    const redP = TD.periods.filter(q => A.ramp.includes(A.period[q[0]])), y0 = redP[0][1], since = redP.reduce((a, q) => a + (fp[q[0]] || 0), 0), all = Object.values(fp).reduce((a, v) => a + v, 0);
+    const dec = FIVE.reduce((a, tn) => a + (TD.towns[tn].dwellings_by_decade[String(y0)] || 0), 0), dall = FIVE.reduce((a, tn) => a + TD.towns[tn].dwellings, 0);
     const c = await page(Object.assign({ title: ttl, sub: cap(sub), num: '02 / 04', key: GA.ex21.timeLegend('built', t),
-      notes: [['BUILT SINCE 2000', `${km2(since)} km² of the ${km2(all)} km² of building footprints standing in this frame carry a year of construction from 2000 on (${Math.round(since / all * 100)} %; Catastro).`, true]],
+      notes: [['BUILT SINCE ' + y0, `${km2(since)} km² of the ${km2(all)} km² of building footprints standing in this frame carry a year of construction from ${y0} on (${Math.round(since / all * 100)} %; Catastro).`, true]],
       src: t('x36.src.built') + ` Buildings with no year on record (${km2(fp.none || 0)} km² of footprints) are left white. Streets: OpenStreetMap contributors (ODbL).` + PRINT },
-      block(t('x36.ch.dw'), true, (x, px, py, w, h, k) => GA.ex21.drawDwellChart(x, px, py, w, h, { t, k, markFrom: TD.periods.filter(q => q[1] >= 2000)[0][1] }),
-        [['THE 2000s', `Of the ${n0(dall)} dwellings recorded today in the five towns, ${n0(d2000)} are in buildings dated 2000–2009 (${Math.round(d2000 / dall * 100)} %).`], ['THE BASE', growth + '.']])));
+      block(t('x36.ch.dw'), true, (x, px, py, w, h, k) => GA.ex21.drawDwellChart(x, px, py, w, h, { t, k, markFrom: y0 }),
+        [['THE ' + y0 + 's', `Of the ${n0(dall)} dwellings recorded today in the five towns, ${n0(dec)} are in buildings dated ${y0}–${y0 + 9} (${Math.round(dec / dall * 100)} %). The decades written in red are the red of the map.`], ['THE BASE', growth + '.']])));
     return c.toDataURL('image/png'); }
-  if (m === 'density') { const [ttl, sub] = split(t('x36.m.density'));
+  if (m === 'density') { const [ttl, sub] = split(t('x36.m.density')), E = GA.ex21.CITY, im = TD.img.density, DB = TD.density_breaks;
+    // the cells of each class, counted on the class picture itself (data/ex21/density.png: one pixel = one cell)
+    const cells = (() => { const cv = document.createElement('canvas'); cv.width = im.naturalWidth; cv.height = im.naturalHeight; const g = cv.getContext('2d'); g.drawImage(im, 0, 0); const d = g.getImageData(0, 0, cv.width, cv.height).data, n = DB.map(() => 0);
+      for (let i = 0; i < d.length; i += 4) { if (!d[i + 3]) continue; let b = 0, bd = Infinity; TD.density_colours.forEach((q, j) => { const e = (q[0] - d[i]) ** 2 + (q[1] - d[i + 1]) ** 2 + (q[2] - d[i + 2]) ** 2; if (e < bd) { bd = e; b = j; } }); n[b]++; } return n; })();
+    const cell = (E.x1 - E.x0) / im.naturalWidth, homes = cells.reduce((a, v) => a + v, 0), top = DB.length - 1;
     const c = await page(Object.assign({ title: ttl, sub: cap(sub), num: '03 / 04', key: GA.ex21.timeLegend('density', t),
-      notes: [['CROWDING', `One cell is 100 × 100 m. Half of the cells that hold homes have fewer than ${n0(TD.base_scenario.median_dw_per_ha * 100)} dwellings per km² (the median of the frame).`, true]],
+      notes: [['CROWDING', `One cell is ${cell} × ${cell} m. Of the ${n0(homes)} cells that hold homes in this frame, ${n0(cells[top])} reach ${n0(DB[top][0] * 100)} dwellings per km² or more; the median cell has ${n0(TD.base_scenario.median_dw_per_ha * 100)}.`, true]],
       src: t('x36.src.density') + ' Buildings, streets and the base: OpenStreetMap contributors (ODbL).' + PRINT },
       block(t('x36.ch.pop0'), false, (x, px, py, w, h, k) => GA.ex21.drawPopChart(x, px, py, w, h, { t, k, noProj: true }),
         [['RESIDENTS PER DWELLING', FIVE.map(tn => tn.replace(' de la Vega', '') + ' ' + TD.towns[tn].persons_per_dwelling).join(' · ') + ' — ' + t('x36.ppd') + '.']])));
     return c.toDataURL('image/png'); }
   if (m === 'edge') { const [ttl, sub] = split(t('x36.m.edge')), eh = TD.edge_ha, P5 = TD.projection.five, S = TD.base_scenario; const under = Object.keys(eh).filter(c => c !== 'free').reduce((a, c) => a + eh[c], 0), all = Object.values(eh).reduce((a, v) => a + v, 0);
+    const lim = Math.max(...GA.ex21.data.ease.classes.map(q => q[1]));   // the highest class limit of the ceiling picture (60 m): above it the land counts as free
     const c = await page(Object.assign({ title: ttl, sub: cap(sub), num: '04 / 04', key: GA.ex21.timeLegend('edge', t),
-      notes: [['UNDER THE CEILING', `${km2(under)} km² of the ${km2(all)} km² of open land next to the towns lie under an aeronautical ceiling lower than 60 m (${Math.round(under / all * 100)} %).`, true]],
+      notes: [['UNDER THE CEILING', `${km2(under)} km² of the ${km2(all)} km² of open land next to the towns lie under an aeronautical ceiling lower than ${lim} m (${Math.round(under / all * 100)} %). The ceiling is an approximation, not the legal value.`, true]],
       src: t('x36.src.edge') + ' Residents: INE. Buildings, streets and the base: OpenStreetMap contributors (ODbL).' + PRINT },
       block(t('x36.ch.pop'), false, (x, px, py, w, h, k) => GA.ex21.drawPopChart(x, px, py, w, h, { t, k }),
-        [['IF THE PACE CONTINUED (A SCENARIO)', t('x36.box.need', { a: n0(P5['2025']), b: n0(P5['2045']), n: n0(P5.dwellings_needed_2045), p: S.persons_per_dwelling }) + '.'],
-          ['THE BASE AS LAND (HYPOTHETICAL)', t('x36.box.scen', { ha: km2(S.base_ha), d: n0(S.median_dw_per_ha * 100), n: n0(S.dwellings), r: n0(S.residents) }) + '.']])));
+        [['BY 2045 (A SCENARIO, NOT A FORECAST)', t('x36.box.need', { a: n0(P5['2025']), b: n0(P5['2045']), n: n0(P5.dwellings_needed_2045), p: S.persons_per_dwelling }) + '.'],
+          ['THE BASE AS LAND', t('x36.box.scen', { ha: km2(S.base_ha), d: n0(S.median_dw_per_ha * 100), n: n0(S.dwellings), r: n0(S.residents) }) + '.']])));
     return c.toDataURL('image/png'); }
   throw new Error('unknown sheet: ' + m); }'''
 NAME = {'history': '01_history', 'built': '02_built', 'density': '03_density', 'edge': '04_growth'}

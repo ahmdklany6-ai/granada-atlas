@@ -21,14 +21,14 @@ JS = r'''async ([m, DPI]) => { await GA.ex21.ready(); await GA.ex21.readyAreas()
   const t = (k, v) => GA.i18n.t(k, v), D0 = GA.ex21.data, E = GA.ex21.CITY, mm = AN.mm; const KF = 3.8 * DPI / 200;   // the line and label weight of a 1:10,000 map
   const base = D0.edge.find(f => f.p.k === 'base').p, C = AN.pal.ex21, SERIES = 'EX 2.1 · CITY · 1:10,000';
   // what a map's title says after its number ("01 · The closed island: …" → "THE CLOSED ISLAND", "the base, its 300 m band …")
-  const split = (s) => { const q = s.replace(/^\d+\s*·\s*/, ''); const i = q.indexOf(':'); return i > 0 ? [q.slice(0, i).toUpperCase(), q.slice(i + 1).trim()] : [q.toUpperCase(), '']; };
+  const split = (s) => { const q = s.replace(/^\d+\s*·\s*/, ''); const i = q.indexOf(': '); return i > 0 ? [q.slice(0, i).toUpperCase(), q.slice(i + 2).trim()] : [q.toUpperCase(), '']; };
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   // a figure stays on one line with its unit (a no-break space: the paragraphs wrap at ordinary spaces only)
   const NB = String.fromCharCode(160), nb = (s) => s.replace(/(\d) (%|km²|km|min|m)(?=[\s,.;:)]|$)/g, '$1' + NB + '$2');
   const fmt = (v) => Math.round(v).toLocaleString('en-US'), sg = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + ' %';
   const towns5 = D0.edge.filter(f => f.p.k === 'town').map(f => f.p.nm), deadEnds = D0.edge.filter(f => f.p.k === 'deadend').length;
   // the grey ground every map is printed on, as key rows (the same colours, widths and dashes drawCity draws)
-  const ground = (muni) => [{ sw: C.built, label: t('x34.lg.built') }, { line: C.street, wk: 0.9, label: t('x40.lg.roads') }].concat(muni === false ? [] : [{ line: C.muni, wk: 1.1, dk: [6, 4], label: 'Municipal boundaries (IGN via es-atlas)' }])
+  const ground = (muni) => [{ sw: C.built, label: t('x34.lg.built') }, { line: C.street, wk: 0.9, label: t('x40.lg.roads') }].concat(muni === false ? [] : [{ line: C.muni, wk: 1.1, dk: [6, 4], label: t('x41.time.muni') }])
     .concat([{ line: C.runway, wk: 1.2, dk: [10, 6], label: 'Runway axis, between its two thresholds (RD 118/2019, art. 3)' }]);
   const GROUND = ' Ground: buildings and main roads from OpenStreetMap, municipal boundaries from IGN via es-atlas, printed in grey; the base is drawn as a white void behind its fence (a black line with white dashes).';
   const city = (x, bx, by, bw, bh, opt) => GA.ex21.drawCity(x, bx, by, bw, bh, Object.assign({ t, k: KF, noNorth: true, noScale: true, tidy: true }, opt));
@@ -57,7 +57,7 @@ JS = r'''async ([m, DPI]) => { await GA.ex21.ready(); await GA.ex21.readyAreas()
 
   if (m === 'growth') { const [ttl] = split(t('x34.m.growth')); const L1 = D0.l1.meta, trk = D0.metro.find(f => f.p.k === 'track');
     const five = D0.area.filter(a => a.p.five).sort((a, b) => b.p.chg - a.p.chg), p15 = five.reduce((s, a) => s + a.p.pop2015, 0), p25 = five.reduce((s, a) => s + a.p.pop2025, 0), gr = D0.area.find(a => a.p.name === 'Granada');
-    const key = GA.ex21.mapLegend('growth', t); key.splice(3, 0, { sym: 'stop', line: AN.RED, label: 'The two ends of the extension: Armilla stop today, Las Gabias (OSM)' });
+    const key = GA.ex21.mapLegend('growth', t); key.splice(3, 0, { sym: 'stop', line: AN.RED, label: 'Stops of line 1 (OSM); the two larger rings are the ends of the extension' });
     const c = await page({ title: ttl, sub: 'Residents 2015→2025 in each of the five towns (INE), and line 1 of the Metro de Granada with its extension (OSM)', num: '03 / 05', key: key.concat(ground(false)), noteH: 46 * 1.4,
       draw: (x, bx, by, bw, bh) => city(x, bx, by, bw, bh, { only: 'growth' }),
       notes: [['THE METRO', `Line 1 today: ${L1.stops.length} stops, ${L1.duration_min} min from ${L1.from} to ${L1.to}, every ${L1.interval_min} min (as tagged in OSM, not a timetable). Its extension to Las Gabias, ${(trk.p.len_m / 1000).toFixed(1)} km, is under construction in OSM. The new stops are not drawn: no source publishes their positions.`, true],
@@ -85,8 +85,10 @@ JS = r'''async ([m, DPI]) => { await GA.ex21.ready(); await GA.ex21.readyAreas()
     // the key in reading order: the proposal (red) first, then what it stands on. The same items as GA.ex21.strategyLegend, regrouped.
     const all = GA.ex21.strategyLegend(t), used = new Set(), take = (f) => all.filter(it => !used.has(it) && f(it) && used.add(it));
     const prop = take(it => it.line === S.strip || it.stroke === S.corridorLine), nums = take(it => it.num != null), bs = take(it => it.base), met = take(it => it.line === C.metro), open = take(() => true);
-    const above = TDd && TDd.edge_ha ? TDd.edge_ha.above : 0; if (above) open.push({ sw: GA.ex21.an.edgeCtx.above, alpha: 0.45, label: `Open land, ground already above the limit surface: ${GA.ex21.km2(above)} km²` });
-    const c = await page({ title: ttl, sub: cap(sub), num: '05 / 05', key: prop.concat(nums, bs, met, open, ground()), noteH: 56 * 1.4,
+    const above = TDd && TDd.edge_ha ? TDd.edge_ha.above : 0; if (above) open.push({ sw: GA.ex21.an.edgeCtx.above, alpha: 0.45, label: t('x41.time.above', { ha: GA.ex21.km2(above) }) });
+    met.forEach(it => { it.label = it.label.replace(/,? with its stops/, ''); });   // (this map draws the line without its stops)
+    const g = ground();   // first column: the proposal, its four places, the ground; second column: the base, the metro, the open-land cells
+    const c = await page({ title: ttl, sub: cap(sub), num: '05 / 05', key: prop.concat(nums, g.slice(0, 3), bs, g.slice(3), met, open), noteH: 56 * 1.4,
       draw: (x, bx, by, bw, bh) => GA.ex21.drawStrategy(x, bx, by, bw, bh, { t, k: KF, noNorth: true, noScale: true, tidy: true }),
       notes: [['THE PROPOSAL — DRAWN SCHEMATICALLY', `The base stays; its edges open. A public walking strip outside the whole fence (${base.perimeter_km} km round), the ${deadEnds} dead ends of today joined to it, the four places it links (1–4) and a green corridor between Ogíjares and Alhendín past the base's south tip. A proposal drawn on today's map: not an approved plan, not a survey.`, true],
         ['THE GREY CELLS', `Open land next to the towns today, in 100 m cells, darker where the aeronautical ceiling is lower: open cells beside built cells, a reading of today's map and not a plan.`]],
@@ -95,7 +97,7 @@ JS = r'''async ([m, DPI]) => { await GA.ex21.ready(); await GA.ex21.readyAreas()
 
   if (m === 'key') { const AR = GA.ex21.areas.areas, [ttl] = split(t('x34.key.title')), side = AR[0].side_m, k25 = mm(256) / 1000;
     const items = GA.ex21.keyLegend(t), win = items.filter(it => it.stroke === AN.RED), names = AR.map(a => ({ num: a.id, label: t('x34.a.' + a.id).replace(/^\S+\s*·\s*/, '') }));
-    const c = await AN.mapSheet({ mapW: 256, mapH: 224, u: 1, title: ttl, sub: `${AR.length} windows of ${side} × ${side} m on the fence; each is drawn at 1:500 on its own sheet, with a section across the fence`, code: 'EX 2.1 · KEY MAP', num: '1:25,000 · 01 / 01',
+    const c = await AN.mapSheet({ mapW: 256, mapH: 224, u: 1, title: ttl, sub: `${AR.length} windows of ${side} × ${side} m on the fence; each is drawn at 1:500 with a section across the fence`, code: 'EX 2.1 · KEY MAP', num: '1:25,000 · 01 / 01',
       metres: 1000, pxPerM: mm(256) / 6400, scale: '1:25,000', keyCols: 2, kk: k25 * 0.8, key: win.concat(items.filter(it => !win.includes(it)), ground()),
       draw: (x, bx, by, bw, bh) => GA.ex21.drawAreaKey(x, bx, by, bw, bh, { t, k: bw / 1000, noNorth: true, noScale: true }),
       extraH: 40, extra: (x, px, py, wmm) => { AN.txt(x, `+ THE ${AR.length} AREAS`, px, py, 2.6, 700, AN.RED); return AN.key(x, names, px, py + mm(7), { cols: 2, colW: wmm / 2, sw: 6 }); },
