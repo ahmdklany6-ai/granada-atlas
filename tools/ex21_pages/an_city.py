@@ -34,7 +34,10 @@ JS = r'''async ([m, DPI]) => { await GA.ex21.ready(); await GA.ex21.readyAreas()
     .concat([{ line: C.runway, wk: 1.2, dk: [10, 6], label: 'Runway axis, between its two thresholds (RD 118/2019, art. 3)' }]);
   const GROUND = ' Ground: buildings and main roads from OpenStreetMap, municipal boundaries from IGN via es-atlas, printed in grey; the base is drawn as a white void behind its fence (a black line with white dashes).';
   const city = (x, bx, by, bw, bh, opt) => GA.ex21.drawCity(x, bx, by, bw, bh, Object.assign({ t, k: KF, noNorth: true, noScale: true, tidy: true }, opt));
-  const page = (o) => AN.mapSheet(Object.assign({ mapW: 640, mapH: 560, u: 1.4, code: SERIES, metres: 1000, pxPerM: mm(640) / 6400, scale: '1:10,000', keyCols: 2, kk: KF * 0.8 }, o, { notes: (o.notes || []).map(q => [q[0], nb(q[1]), q[2]]) }));
+  // the five city sheets share ONE trim size (712.8 x 772.8 mm): the block under the map is as tall as the longest key needs (the strategy's
+  // ten rows = 60 mm x u); a shorter sheet gets the difference as white above its sources
+  const UNDER = 60, page = (o) => { const own = Math.max(Math.ceil((o.key || []).length / 2) * 5.4 + 6, (o.noteH || 40 * 1.4) / 1.4);
+    return AN.mapSheet(Object.assign({ mapW: 640, mapH: 560, u: 1.4, code: SERIES, metres: 1000, pxPerM: mm(640) / 6400, scale: '1:10,000', keyCols: 2, kk: KF * 0.8, addH: Math.max(0, UNDER - own) * 1.4 }, o, { notes: (o.notes || []).map(q => [q[0], nb(q[1]), q[2]]) })); };
 
   if (m === 'island') { const [ttl, sub] = split(t('x34.m.island'));
     const fence = D0.edge.filter(f => f.p.k === 'fence'); const len = {}; let tot = 0; fence.forEach(f => f.g.forEach(r => { for (let i = 1; i < r.length; i++) { const d = Math.hypot(r[i][0] - r[i - 1][0], r[i][1] - r[i - 1][1]); len[f.p.c] = (len[f.p.c] || 0) + d; tot += d; } }));

@@ -704,7 +704,9 @@
     if (!photo) {
       ctx.strokeStyle = C.street; ctx.lineWidth = 0.7 * k; ctx.beginPath(); D.streets.forEach(s0 => s0.g.forEach(r => r.forEach((q, i) => i ? ctx.lineTo(X(q[0]), Y(q[1])) : ctx.moveTo(X(q[0]), Y(q[1]))))); ctx.stroke();
       if (o.only === 'built') { ctx.imageSmoothingEnabled = true; ctx.drawImage(builtImg(), x, y, w, h); }
-      else { ctx.fillStyle = C.built; D.builds.forEach(rs => { path(rs); ctx.fill(); }); ctx.imageSmoothingEnabled = false; ctx.globalAlpha = cellDraw(o.only, AN); ctx.drawImage(o.only === 'edge' ? edgeImg(false) : densImg(), x, y, w, h); ctx.globalAlpha = 1; }
+      else { const blds = () => { ctx.fillStyle = C.built; D.builds.forEach(rs => { path(rs); ctx.fill(); }); }, cells = () => { ctx.imageSmoothingEnabled = false; ctx.globalAlpha = cellDraw(o.only, AN); ctx.drawImage(o.only === 'edge' ? edgeImg(false) : densImg(), x, y, w, h); ctx.globalAlpha = 1; };
+        // (analysis style, open land: the buildings are drawn OVER the cells — a cell counted as open can still hold a building, and the map shows it)
+        if (AN && o.only === 'edge') { cells(); blds(); } else { blds(); cells(); } }
       if (AN) anGrain(ctx, V, k, AN);
       ctx.setLineDash([6 * k, 4 * k]); ctx.strokeStyle = C.muni; ctx.lineWidth = 1.1 * k;
       if (AN) { // a boundary two municipalities share is drawn once: two dashed strokes on one line read as a solid line, and the key shows dashes
@@ -754,7 +756,7 @@
   function drawDwellChart(ctx, x, y, w, h, o) { o = o || {}; const pal = P(), t = o.t || ((s) => s), k = o.k || 1, F = root.GA.pages.font(), font = (sz, wt) => `${wt || 500} ${Math.round(sz * k)}px ${F}`, col = tcol(), mark = pal.an && o.markFrom ? o.markFrom : null;
     const decs = []; for (let d = 1900; d <= 2020; d += 10) decs.push(d); const val = (tn, d) => d === 1900 ? Object.entries(TD.towns[tn].dwellings_by_decade).filter(([q]) => +q < 1910).reduce((a, [, v]) => a + v, 0) : (TD.towns[tn].dwellings_by_decade[String(d)] || 0);
     const tot = decs.map(d => TFIVE.reduce((a, tn) => a + val(tn, d), 0)); const vmax = Math.max(...tot) * 1.08; const pl = 46 * k, pb = 22 * k, pt = 10 * k; const bw = (w - pl) / decs.length, H = h - pb - pt;
-    ctx.save(); ctx.font = font(9); ctx.fillStyle = pal.ink2; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.strokeStyle = pal.line; ctx.lineWidth = 1;
+    ctx.save(); ctx.font = font(9); ctx.fillStyle = pal.ink2; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.strokeStyle = pal.line; ctx.lineWidth = pal.an ? Math.max(1, 0.35 * k) : 1;   // (analysis style: the grid keeps its weight at print resolution)
     for (let v = 0; v <= vmax; v += 2000) { const yy = y + pt + H - v / vmax * H; ctx.beginPath(); ctx.moveTo(x + pl, yy); ctx.lineTo(x + w, yy); ctx.stroke(); ctx.fillText(v.toLocaleString('en-US'), x + pl - 5 * k, yy); }
     decs.forEach((d, i) => { let acc = 0; const bx = x + pl + i * bw; TFIVE.forEach(tn => { const v = val(tn, d); const hh = v / vmax * H; ctx.fillStyle = col[tn]; ctx.fillRect(bx + 2 * k, y + pt + H - acc - hh, bw - 4 * k, hh); acc += hh; });
       ctx.fillStyle = mark && d >= mark ? pal.an.red : pal.ink2; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.font = font(8.5); ctx.fillText(d === 1900 ? '<1910' : d + 's', bx + bw / 2, y + pt + H + 5 * k); });
@@ -764,7 +766,7 @@
   function drawPopChart(ctx, x, y, w, h, o) { o = o || {}; const pal = P(), k = o.k || 1, F = root.GA.pages.font(), font = (sz, wt) => `${wt || 500} ${Math.round(sz * k)}px ${F}`, col = tcol();
     const y0 = 1996, y1 = o.noProj ? 2025 : 2045; const vmax = Math.max(...TFIVE.map(tn => o.noProj ? TD.population[tn]['2025'] : TD.projection[tn]['2045'])) * 1.1; const pl = 46 * k, pb = 22 * k, pt = 10 * k, pr = 90 * k; const W2 = w - pl - pr, H = h - pb - pt;
     const X2 = (yr) => x + pl + (yr - y0) / (y1 - y0) * W2, Y2 = (v) => y + pt + H - v / vmax * H;
-    ctx.save(); ctx.font = font(9); ctx.fillStyle = pal.ink2; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.strokeStyle = pal.line; ctx.lineWidth = 1;
+    ctx.save(); ctx.font = font(9); ctx.fillStyle = pal.ink2; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.strokeStyle = pal.line; ctx.lineWidth = pal.an ? Math.max(1, 0.35 * k) : 1;
     for (let v = 0; v <= vmax; v += 5000) { ctx.beginPath(); ctx.moveTo(x + pl, Y2(v)); ctx.lineTo(x + pl + W2, Y2(v)); ctx.stroke(); ctx.fillText(v.toLocaleString('en-US'), x + pl - 5 * k, Y2(v)); }
     ctx.textAlign = 'center'; ctx.textBaseline = 'top'; for (let yr = 2000; yr <= y1; yr += 5) ctx.fillText(String(yr), X2(yr), y + pt + H + 5 * k);
     const AN = pal.an || null; if (!o.noProj) { ctx.fillStyle = AN ? AN.grey[0] : 'rgba(201,216,223,.35)'; ctx.fillRect(X2(2025), y + pt, X2(y1) - X2(2025), H); }
