@@ -11,7 +11,7 @@ from playwright.sync_api import sync_playwright
 OUTD = sys.argv[1]; WHICH = sys.argv[2].split(',') if len(sys.argv) > 2 else ['who_decides', 'who_holds', 'over_time', 'three_futures']
 DPI = float(os.environ.get('DPI', 250)); PORT = 8861; V3.PORT = PORT; V3.V2.PORT = PORT
 srv = subprocess.Popen([sys.executable, '-m', 'http.server', str(PORT), '--bind', '127.0.0.1'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
-JS = r'''async ([which, DPI]) => {
+JS = r'''async ([which, DPI, IZB]) => {
   await GA.ex21.ready(); await GA.ex21.readyAreas(); await GA.ex21.readyTime(); await GA.ex21.readyTownEdges();
   const PO = await (await fetch('/data/ex21/policy.json?r=' + Date.now())).json(); const D0 = GA.ex21.data, TD = GA.ex21.time, E = GA.ex21.CITY, pal = GA.palette, F = GA.pages.font();
   const D = DPI / 25.4, mm = (v) => v * D, t = (k, v) => GA.i18n.t(k, v), TC = pal.ex21t, CX = 442830, CY = 4109470;
@@ -83,11 +83,11 @@ JS = r'''async ([which, DPI]) => {
     const plus = (px, py, r) => { x.strokeStyle = INK; x.lineWidth = mm(0.25); x.beginPath(); x.moveTo(px - r, py); x.lineTo(px + r, py); x.moveTo(px, py - r); x.lineTo(px, py + r); x.stroke(); };
     const spaced = (s, px, py, sz, wt, col, sp) => { x.save(); x.font = `${wt || 600} ${Math.round(mm(sz))}px ${F}`; x.fillStyle = col || INK; x.textAlign = 'left'; x.direction = 'ltr'; let cx = px; [...s].forEach(ch => { x.fillText(ch, cx, py); cx += x.measureText(ch).width + mm(sp || sz * 0.18); }); x.restore(); return cx; };
     const bx = mm(30), by = mm(46), bw = mm(350), bh = mm(326); const P = win(bx, by, bw, bh, 15000, CX - 150, CY + 250);
-    // 1 base: the IGN 1931 map as a photocopy, veiled
-    const xer = await load('/exports/ex21_time/hist/mtn50_xerox.jpg?r=' + Date.now()); clipV(x, P.view); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(xer, P.ox, P.oy, P.full, P.fullH);
+    // 1 base: today's aerial photo (PNOA 2022) as a grey photocopy, veiled
+    const xer = await load('/exports/ex21_time/hist/' + (IZB || 'pnoa2022') + '_xerox.jpg?r=' + Date.now()); clipV(x, P.view); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(xer, P.ox, P.oy, P.full, P.fullH);
     x.fillStyle = 'rgba(255,255,255,.66)'; x.fillRect(P.view[0], P.view[1], bw, bh);
     // 2 today's built-up edge of each town (Catastro), white with a black line: the present laid over 1931
-    Object.values(GA.ex21.townEdges.edges.pnoa2022).forEach(rs => (rs || []).forEach(pg => { path(x, P, pg, true); x.fillStyle = 'rgba(255,255,255,.9)'; x.fill('evenodd'); x.fillStyle = 'rgba(41,16,12,.10)'; x.fill('evenodd'); x.strokeStyle = INK; x.lineWidth = mm(0.3); x.stroke(); }));
+    if (IZB === 'mtn50') Object.values(GA.ex21.townEdges.edges.pnoa2022).forEach(rs => (rs || []).forEach(pg => { path(x, P, pg, true); x.fillStyle = 'rgba(255,255,255,.9)'; x.fill('evenodd'); x.fillStyle = 'rgba(41,16,12,.10)'; x.fill('evenodd'); x.strokeStyle = INK; x.lineWidth = mm(0.3); x.stroke(); }));
     // 3 municipal boundaries: thin black dash-dot
     Object.values(PO.muni).forEach(rings => pieces(x, P, rings, () => { x.strokeStyle = INK; x.lineWidth = mm(0.22); x.setLineDash([mm(2.4), mm(0.9), mm(0.4), mm(0.9)]); x.stroke(); x.setLineDash([]); }));
     // 4 metro: L1 solid, extension dotted
@@ -126,14 +126,14 @@ JS = r'''async ([which, DPI]) => {
     const kr = (draw, label) => { draw(rx, y - mm(1)); sm(label, rx + mm(14), y, 2.5, 500, INK); y += mm(5.4); };
     kr((u, v) => { x.save(); x.beginPath(); x.rect(u, v - mm(2), mm(10), mm(4)); x.clip(); x.strokeStyle = pal.red; x.lineWidth = mm(0.3); x.beginPath(); for (let q = -4; q < 14; q += 1.25) { x.moveTo(u + mm(q), v + mm(2)); x.lineTo(u + mm(q + 4), v - mm(2)); } x.stroke(); x.restore(); }, 'POTAUG concerted zone = today’s base (3.71 km²)');
     kr((u, v) => { x.strokeStyle = INK; x.lineWidth = mm(1.1); x.beginPath(); x.moveTo(u, v); x.lineTo(u + mm(10), v); x.stroke(); x.strokeStyle = '#fff'; x.lineWidth = mm(0.6); x.setLineDash([mm(2), mm(2)]); x.stroke(); x.setLineDash([]); }, 'Fence (OSM outline)');
-    kr((u, v) => { x.fillStyle = '#fff'; x.fillRect(u, v - mm(1.8), mm(10), mm(3.6)); x.strokeStyle = INK; x.lineWidth = mm(0.3); x.strokeRect(u, v - mm(1.8), mm(10), mm(3.6)); }, 'Built-up edge today (Catastro) over the 1931 map');
+    if (IZB === 'mtn50') kr((u, v) => { x.fillStyle = '#fff'; x.fillRect(u, v - mm(1.8), mm(10), mm(3.6)); x.strokeStyle = INK; x.lineWidth = mm(0.3); x.strokeRect(u, v - mm(1.8), mm(10), mm(3.6)); }, 'Built-up edge today (Catastro) over the 1931 map');
     kr((u, v) => { x.strokeStyle = INK; x.lineWidth = mm(0.22); x.setLineDash([mm(2.4), mm(0.9), mm(0.4), mm(0.9)]); x.beginPath(); x.moveTo(u, v); x.lineTo(u + mm(10), v); x.stroke(); x.setLineDash([]); }, 'Municipal boundary (Catastro)');
     kr((u, v) => { x.strokeStyle = INK; x.lineWidth = mm(0.55); x.beginPath(); x.moveTo(u, v); x.lineTo(u + mm(4.5), v); x.stroke(); x.setLineDash([mm(0.1), mm(1.1)]); x.beginPath(); x.moveTo(u + mm(6), v); x.lineTo(u + mm(10), v); x.stroke(); x.setLineDash([]); }, 'Metro L1 · extension (in construction)');
     kr((u, v) => { x.strokeStyle = INK; x.lineWidth = mm(0.35); x.beginPath(); x.moveTo(u, v + mm(1.5)); x.bezierCurveTo(u + mm(4), v - mm(2), u + mm(6), v + mm(2), u + mm(10), v - mm(1)); x.stroke(); }, 'Who points at the land (schematic, not a route)');
     // title block: small, top-left, with the sheet number top-right
     spaced('WHO DECIDES ABOUT THE BASE LAND', bx, mm(24), 5.2, 700, INK, 0.9); sm('Armilla Air Base · three public documents, three futures for one piece of land', bx, mm(31), 2.9, 500, GR);
     plus(bx - mm(10), mm(22.5), mm(2)); sm('EX 2.2 · POLICY', W - mm(22), mm(24), 2.6, 700, INK, 'right'); sm('01 / 04', W - mm(22), mm(29), 2.6, 500, GR, 'right');
-    para(x, '+ ' + SRC + ' Base map: IGN MTN50, sheet 1026, 1931 (first edition), as served, printed in grey with a photocopy texture. Press, April 2024: Ahora Granada, Granada Digital, COPE.', bx, H - mm(14), (W / D) - 52, 2.2, 400, GR, 3);
+    para(x, '+ ' + SRC + (IZB === 'mtn50' ? ' Base map: IGN MTN50, sheet 1026, 1931 (first edition), as served, printed in grey with a photocopy texture.' : ' Base: PNOA 2022 orthophoto (IGN, CC BY 4.0), printed in grey with a photocopy texture.') + ' Press, April 2024: Ahora Granada, Granada Digital, COPE.', bx, H - mm(14), (W / D) - 52, 2.2, 400, GR, 3);
     return c.toDataURL('image/png'); }
 
   // ======================= 2 · WHO HOLDS A PIECE =======================
@@ -249,6 +249,6 @@ try:
     pg.wait_for_function('!!(GA.ex21 && GA.ex21.drawStrategy)', timeout=20000); pg.evaluate('GA.i18n.setLang("en")')
     os.makedirs(OUTD, exist_ok=True); n = {'who_decides_iz': '01b', 'who_decides': '01', 'who_holds': '02', 'over_time': '03', 'three_futures': '04'}
     for w in WHICH:
-      d = pg.evaluate(JS, [w, DPI]); open(os.path.join(OUTD, f'policy_{n[w]}_{w}.png'), 'wb').write(base64.b64decode(d.split(',')[1])); print(w, 'ok', flush=True)
+      d = pg.evaluate(JS, [w, DPI, os.environ.get('IZBASE', 'pnoa2022')]); open(os.path.join(OUTD, f'policy_{n[w]}_{w}.png'), 'wb').write(base64.b64decode(d.split(',')[1])); print(w, 'ok', flush=True)
     print('errors:', errs[:5])
 finally: srv.terminate()
