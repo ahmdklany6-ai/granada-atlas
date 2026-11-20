@@ -297,9 +297,13 @@
       ctx.direction = rtl ? 'rtl' : 'ltr'; ctx.textAlign = rtl ? 'right' : 'left'; ctx.textBaseline = 'alphabetic'; const tx = rtl ? bx + bw - pad : bx + pad;
       ctx.font = font(14, 600); ctx.fillStyle = pal.ink3; ctx.fillText(lines[0], tx, by + pad + 12 * k, bw - 2 * pad); ctx.font = font(13, 500); ctx.fillStyle = pal.ink; wl.forEach((l2, i) => ctx.fillText(l2, tx, by + pad + 32 * k + i * 18 * k, bw - 2 * pad)); ctx.restore(); }
     return { per }; }
-  function strategyLegend(t) { const pal = P(), C = pal.ex21, S = pal.ex21s; return [baseItem(t, false), { line: S.strip, w: 4, label: t('x38.lg.strip') }, { line: S.strip, w: 2, sym: 'join', label: t('x38.lg.join') },
+  function strategyLegend(t) { const pal = P(), C = pal.ex21, S = pal.ex21s;
+    // (analysis style: wk = the width the map draws, in the map's unit k — the strip's 35 m at 1:10,000 with the print weight k = 3.8 px at 200 dpi —
+    // and its 85 % tint; w stays for the page scripts that draw a key the older way)
+    const tw = (it, e) => (pal.an ? Object.assign(it, e) : it);
+    return [baseItem(t, false), tw({ line: S.strip, w: 4, label: t('x38.lg.strip') }, { wk: 7.2, alpha: 0.85 }), { line: S.strip, w: 2, sym: 'join', label: t('x38.lg.join') },
     pal.an ? { sw: S.corridorLine, alpha: 0.28, stroke: S.corridorLine, label: t('x38.lg.corridor') } /* the band's tint: the red under a 72 % white veil, as drawn */ : { sw: '#FFFFFF', stroke: S.corridorLine, label: t('x38.lg.corridor') },
-    pal.an ? { line: C.metro, wk: 4, label: t('x34.lg.l1') } : { line: C.metro, w: 4, label: t('x34.lg.l1') }, pal.an ? { line: C.metro, wk: 4, rail: true, label: t('x34.lg.metro') } : { line: C.metro, w: 4, rail: true, label: t('x34.lg.metro') },
+    tw({ line: C.metro, w: 4, label: t('x34.lg.l1') }, { wk: 4 }), tw({ line: C.metro, w: 4, rail: true, label: t('x34.lg.metro') }, { wk: 4 }),
     ...(TD ? ['free', '30-60', '15-30', '0-15'].map(c => ({ sw: edgeCol(c, true), alpha: 0.45, label: t('x36.edge.' + c, { ha: km2(TD.edge_ha[c] || 0) }) })) : []),
     { num: 1, label: t('x38.p.sport') }, { num: 2, label: t('x38.p.river') }, { num: 3, label: t('x38.p.armilla') }, { num: 4, label: t('x38.p.gabias') }]; }
   // the GAPS (owner request, 12 Nov 2026): three small maps of the agglomeration (34 municipalities, INE) — residents
@@ -537,11 +541,13 @@
     if (want.includes('base')) out.push(baseItem(t, baseSubject != null ? baseSubject : only === 'island'));
     if (want.includes('band')) out.push(AN && baseSubject === false ? { hatch: C.bandLine, dir: 1, label: t('x34.lg.band') } : { hatch: C.bandLine, label: t('x34.lg.band') });   // (dir: as drawCity hatches the band beside a base that is context)
     if (want.includes('fence')) Object.keys(C.fence).forEach(c => { const fc = AN && AN.fenceClass[c]; out.push(fc ? { line: fc.col, wk: fc.w, dk: fc.dash, round: fc.round, label: t('x34.lg.fence.' + c) } : { line: C.fence[c], w: 3, label: t('x34.lg.fence.' + c) }); });
-    // (analysis style: wk, dk = the width and the dash the map draws, in the map's unit k, so the key shows the same line)
-    if (want.includes('route')) out.push(AN ? { line: C.route, wk: 3.2, dk: [9, 4], label: t('x34.lg.route') } : { line: C.route, w: 2, dash: true, label: t('x34.lg.route') }, AN ? { line: C.straight, wk: 1.2, dk: [3, 4], label: t('x34.lg.straight') } : { line: C.straight, w: 1, dash: true, label: t('x34.lg.straight') });
+    // (analysis style: wk, dk = the width and the dash the map draws, in the map's unit k, so the key shows the same line; w and dash stay
+    // for the page scripts that draw a key the older way)
+    const tw = (it, e) => (AN ? Object.assign(it, e) : it);
+    if (want.includes('route')) out.push(tw({ line: C.route, w: 2, dash: true, label: t('x34.lg.route') }, { wk: 3.2, dk: [9, 4] }), tw({ line: C.straight, w: 1, dash: true, label: t('x34.lg.straight') }, { wk: 1.2, dk: [3, 4] }));
     if (want.includes('dead')) out.push({ line: C.dead, w: 2, sym: 'dead', label: t('x34.lg.dead') });
-    if (want.includes('metro')) out.push(AN ? { line: MC, wk: 6, label: t('x34.lg.l1') } : { line: MC, w: 4, label: t('x34.lg.l1') }, AN ? { line: MC, wk: 6, rail: true, label: t('x34.lg.metro') } : { line: MC, w: 4, rail: true, label: t('x34.lg.metro') });
-    if (want.includes('muni')) out.push(AN ? { line: C.muni, wk: 1.1, dk: [6, 4], label: t('x34.lg.muni2') } : { line: C.muni, dash: true, w: 1, label: t('x34.lg.muni2') });
+    if (want.includes('metro')) out.push(tw({ line: MC, w: 4, label: t('x34.lg.l1') }, { wk: 6 }), tw({ line: MC, w: 4, rail: true, label: t('x34.lg.metro') }, { wk: 6 }));
+    if (want.includes('muni')) out.push(tw({ line: C.muni, dash: true, w: 1, label: t('x34.lg.muni2') }, { wk: 1.1, dk: [6, 4] }));
     if (want.includes('height')) Object.keys(C.height).forEach(c => out.push({ sw: C.height[c], alpha: hAlpha(c), label: t('x34.lg.h.' + c) }));
     return out; }
   function cityLegend(t) { const C = P().ex21, T = P().tour;
@@ -681,7 +687,7 @@
   // for their key swatches = the drawing's × the picture's own alpha (tools/build_ex21_time.py: density 235, edge land 215)
   const EDGE_FILL = 0.16, cellDraw = (only, an) => (an && only === 'edge' ? 1 : 0.85), cellKey = (only) => cellDraw(only, true) * (only === 'edge' ? 215 : 235) / 255;
   // (analysis style: one entry — the red outline with its tint, as drawn)
-  function townEdgeLegend(t, key) { const col = P().ex21t; if (P().an) return [{ sw: P().an.red, alpha: EDGE_FILL, stroke: P().an.red, line: P().an.red, w: 2.4, label: t('x41.edge') +(TE && key && TE.edges[key] && TFIVE.some(tn => TE.edges[key][tn] === null) ? ' — ' + TFIVE.filter(tn => TE.edges[key][tn] === null).join(', ') + ': ' + t('x39.unknown') : '') }];
+  function townEdgeLegend(t, key) { const col = P().ex21t; if (P().an) return [{ sw: P().an.red, alpha: EDGE_FILL, stroke: P().an.red, line: P().an.red, w: 2.4, label: t('x41.edge') + (TE && key && TE.edges[key] && TFIVE.some(tn => TE.edges[key][tn] === null) ? ' — ' + TFIVE.filter(tn => TE.edges[key][tn] === null).join(', ') + ': ' + t('x39.unknown') : '') }];
     return TFIVE.map(tn => ({ line: col[tn], w: 2.4, label: tn + (TE && key && TE.edges[key] && TE.edges[key][tn] === null ? ' — ' + t('x39.unknown') : '') })); }
   // o.only = 'built' | 'density' | 'edge' | 'photo' (o.photo = a historical image of the same frame); the base is drawn as today's outline;
   // o.edges = a picture key of town_edges.json: each town's built-up edge at that date, in the town's colour (tcol)
@@ -776,6 +782,7 @@
     if (only === 'edge') { ['free', '30-60', '15-30', '0-15'].forEach(c => out.push({ sw: edgeCol(c, false), alpha: ka, label: t('x36.edge.' + c, { ha: km2(TD.edge_ha[c] || 0) }) }));
       if (AN && TD.edge_ha.above) out.push({ sw: edgeCol('above', false), alpha: ka, label: t('x41.time.above', { ha: km2(TD.edge_ha.above) }) }); }
     if (only !== 'built') out.push({ sw: C.built, label: t('x34.lg.built') });
+    if (AN) out.push({ line: C.street, wk: 0.7, label: t('x41.time.street') });   // the streets are drawn on the three maps: the key says what they are
     out.push(AN ? { line: C.muni, dash: true, w: 1, wk: 1.1, dk: [6, 4], label: t('x41.time.muni') } : { line: C.muni, dash: true, w: 1, label: t('x35.lg.muni') }); return out; }
   // ---------- WHO LIVES AROUND THE BASE (owner request, 16 Nov 2026): INE census sections (ADRH 2024) and the census by town ----------
   let PD = null, PDp = null;

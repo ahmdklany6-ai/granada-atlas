@@ -27,8 +27,10 @@ JS = r'''async ([m, DPI]) => { await GA.ex21.ready(); await GA.ex21.readyAreas()
   const NB = String.fromCharCode(160), nb = (s) => s.replace(/(\d) (%|km²|km|min|m)(?=[\s,.;:)]|$)/g, '$1' + NB + '$2');
   const fmt = (v) => Math.round(v).toLocaleString('en-US'), sg = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + ' %';
   const towns5 = D0.edge.filter(f => f.p.k === 'town').map(f => f.p.nm), deadEnds = D0.edge.filter(f => f.p.k === 'deadend').length;
+  // a string of another sheet family's group (x41.time.*), so the same thing reads the same on every sheet; fb = the wording if the key is gone
+  const tf = (k, v, fb) => { const s = t(k, v); return s === k ? fb : s; };
   // the grey ground every map is printed on, as key rows (the same colours, widths and dashes drawCity draws)
-  const ground = (muni) => [{ sw: C.built, label: t('x34.lg.built') }, { line: C.street, wk: 0.9, label: t('x40.lg.roads') }].concat(muni === false ? [] : [{ line: C.muni, wk: 1.1, dk: [6, 4], label: t('x41.time.muni') }])
+  const ground = (muni) => [{ sw: C.built, label: t('x34.lg.built') }, { line: C.street, wk: 0.9, label: t('x40.lg.roads') }].concat(muni === false ? [] : [{ line: C.muni, wk: 1.1, dk: [6, 4], label: tf('x41.time.muni', null, 'Municipal boundary (IGN via es-atlas, simplified)') }])
     .concat([{ line: C.runway, wk: 1.2, dk: [10, 6], label: 'Runway axis, between its two thresholds (RD 118/2019, art. 3)' }]);
   const GROUND = ' Ground: buildings and main roads from OpenStreetMap, municipal boundaries from IGN via es-atlas, printed in grey; the base is drawn as a white void behind its fence (a black line with white dashes).';
   const city = (x, bx, by, bw, bh, opt) => GA.ex21.drawCity(x, bx, by, bw, bh, Object.assign({ t, k: KF, noNorth: true, noScale: true, tidy: true }, opt));
@@ -60,7 +62,7 @@ JS = r'''async ([m, DPI]) => { await GA.ex21.ready(); await GA.ex21.readyAreas()
     const key = GA.ex21.mapLegend('growth', t); key.splice(3, 0, { sym: 'stop', line: AN.RED, label: 'Stops of line 1 (OSM); the two larger rings are the ends of the extension' });
     const c = await page({ title: ttl, sub: 'Residents 2015→2025 in each of the five towns (INE), and line 1 of the Metro de Granada with its extension (OSM)', num: '03 / 05', key: key.concat(ground(false)), noteH: 46 * 1.4,
       draw: (x, bx, by, bw, bh) => city(x, bx, by, bw, bh, { only: 'growth' }),
-      notes: [['THE METRO', `Line 1 today: ${L1.stops.length} stops, ${L1.duration_min} min from ${L1.from} to ${L1.to}, every ${L1.interval_min} min (as tagged in OSM, not a timetable). Its extension to Las Gabias, ${(trk.p.len_m / 1000).toFixed(1)} km, is under construction in OSM. The new stops are not drawn: no source publishes their positions.`, true],
+      notes: [['THE METRO', `Line 1 today: ${L1.stops.length} stops, ${L1.duration_min} min from ${L1.from} to ${L1.to}, every ${L1.interval_min} min (as tagged in OSM, not a timetable). Its extension to Las Gabias, ${(trk.p.len_m / 1000).toFixed(1)} km, is under construction in OSM. The new stops are not drawn: no source publishes their positions with a reuse licence.`, true],
         ['THE TOWNS', `Residents 1 Jan 2015 → 1 Jan 2025 (INE): ${five.map(a => `${a.p.name} ${sg(a.p.chg)}`).join(', ')}. The five together: ${fmt(p15)} → ${fmt(p25)} (${sg((p25 / p15 - 1) * 100)}). Granada city in the same years: ${sg(gr.p.chg)}.`]],
       src: t('x34.src.growth') + ' Inset: the whole line 1 and the extension; grey = the municipality of Granada, black = the base.' + GROUND });
     return c.toDataURL('image/png'); }
@@ -85,7 +87,7 @@ JS = r'''async ([m, DPI]) => { await GA.ex21.ready(); await GA.ex21.readyAreas()
     // the key in reading order: the proposal (red) first, then what it stands on. The same items as GA.ex21.strategyLegend, regrouped.
     const all = GA.ex21.strategyLegend(t), used = new Set(), take = (f) => all.filter(it => !used.has(it) && f(it) && used.add(it));
     const prop = take(it => it.line === S.strip || it.stroke === S.corridorLine), nums = take(it => it.num != null), bs = take(it => it.base), met = take(it => it.line === C.metro), open = take(() => true);
-    const above = TDd && TDd.edge_ha ? TDd.edge_ha.above : 0; if (above) open.push({ sw: GA.ex21.an.edgeCtx.above, alpha: 0.45, label: t('x41.time.above', { ha: GA.ex21.km2(above) }) });
+    const above = TDd && TDd.edge_ha ? TDd.edge_ha.above : 0; if (above) open.push({ sw: GA.ex21.an.edgeCtx.above, alpha: 0.45, label: tf('x41.time.above', { ha: GA.ex21.km2(above) }, `Open land, ground already above the height-limit surface: ${GA.ex21.km2(above)} km²`) });
     met.forEach(it => { it.label = it.label.replace(/,? with its stops/, ''); });   // (this map draws the line without its stops)
     const g = ground();   // first column: the proposal, its four places, the ground; second column: the base, the metro, the open-land cells
     const c = await page({ title: ttl, sub: cap(sub), num: '05 / 05', key: prop.concat(nums, g.slice(0, 3), bs, g.slice(3), met, open), noteH: 56 * 1.4,
