@@ -107,7 +107,7 @@
     // o.over(ctx, X, Y, k): a sheet's own layers (tools/ex21_pages/policy.py), drawn here so the names stay on top and inside the window
     if (o.over) { ctx.save(); o.over(ctx, X, Y, k); ctx.restore(); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.direction = 'ltr'; ctx.lineJoin = 'round'; }
     // 8 labels: towns with their change 2015 → 2025, the base
-    const towns = D.edge.filter(f => f.p.k === 'town'); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    const towns = o.noTowns ? [] : D.edge.filter(f => f.p.k === 'town'); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
     towns.forEach(f => { const a = D.area.find(m => m.p.name === f.p.nm); const [u, v] = f.g; const two = a && on('growth'); ctx.font = font(15, 700);
       const q = place(V, U.K, X(u), Y(v) - (two ? 4 : 13) * k, Math.max(ctx.measureText(f.p.nm.toUpperCase()).width, two ? 150 * k : 0), (two ? 34 : 18) * k, 8 * k); if (!q) return; const px = q[0], py = q[1] + (two ? 4 : 13) * k;
       ctx.lineWidth = 4 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(f.p.nm.toUpperCase(), px, py - 8 * k); ctx.fillStyle = (o.townCols && o.townCols[f.p.nm]) || C.town; ctx.fillText(f.p.nm.toUpperCase(), px, py - 8 * k); ctx.fillStyle = C.town;

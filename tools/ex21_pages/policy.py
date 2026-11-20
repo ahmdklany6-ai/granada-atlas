@@ -84,20 +84,35 @@ JS = r'''async ([which, DPI, IZB]) => {
     const spaced = (s, px, py, sz, wt, col, sp) => { x.save(); x.font = `${wt || 600} ${Math.round(mm(sz))}px ${F}`; x.fillStyle = col || INK; x.textAlign = 'left'; x.direction = 'ltr'; let cx = px; [...s].forEach(ch => { x.fillText(ch, cx, py); cx += x.measureText(ch).width + mm(sp || sz * 0.18); }); x.restore(); return cx; };
     const bx = mm(30), by = mm(46), bw = mm(350), bh = mm(326); const P = win(bx, by, bw, bh, 15000, CX - 150, CY + 250);
     // 1 base: today's aerial photo (PNOA 2022) as a grey photocopy, veiled
-    const xer = await load('/exports/ex21_time/hist/' + (IZB || 'pnoa2022') + '_xerox.jpg?r=' + Date.now()); clipV(x, P.view); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(xer, P.ox, P.oy, P.full, P.fullH);
-    x.fillStyle = 'rgba(255,255,255,.66)'; x.fillRect(P.view[0], P.view[1], bw, bh);
+    if (IZB === 'site') { // the website's own site map (buildings, streets, fields) drawn in grey, with a light photocopy grain
+      const c2 = document.createElement('canvas'); c2.width = W; c2.height = H; const x2 = c2.getContext('2d'); x2.fillStyle = '#fff'; x2.fillRect(0, 0, W, H);
+      GA.ex21.drawCity(x2, P.ox, P.oy, P.full, P.fullH, CTX(P, 2.0 * DPI / 200, { only: 'none', noBaseLabel: true, noTowns: true }));
+      clipV(x, P.view); x.filter = 'grayscale(1) contrast(1.08)'; x.drawImage(c2, 0, 0); x.filter = 'none';
+      const g = document.createElement('canvas'); g.width = 512; g.height = 512; const gx = g.getContext('2d'); const im = gx.createImageData(512, 512); for (let i = 0; i < im.data.length; i += 4) { const v = Math.random() < 0.5 ? 0 : 255; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 14; } gx.putImageData(im, 0, 0);
+      x.fillStyle = x.createPattern(g, 'repeat'); x.fillRect(P.view[0], P.view[1], bw, bh); }
+    else { const xer = await load('/exports/ex21_time/hist/' + (IZB || 'pnoa2022') + '_xerox.jpg?r=' + Date.now()); clipV(x, P.view); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(xer, P.ox, P.oy, P.full, P.fullH);
+    x.fillStyle = 'rgba(255,255,255,.66)'; x.fillRect(P.view[0], P.view[1], bw, bh); }
     // 2 today's built-up edge of each town (Catastro), white with a black line: the present laid over 1931
     if (IZB === 'mtn50') Object.values(GA.ex21.townEdges.edges.pnoa2022).forEach(rs => (rs || []).forEach(pg => { path(x, P, pg, true); x.fillStyle = 'rgba(255,255,255,.9)'; x.fill('evenodd'); x.fillStyle = 'rgba(41,16,12,.10)'; x.fill('evenodd'); x.strokeStyle = INK; x.lineWidth = mm(0.3); x.stroke(); }));
     // 3 municipal boundaries: thin black dash-dot
-    Object.values(PO.muni).forEach(rings => pieces(x, P, rings, () => { x.strokeStyle = INK; x.lineWidth = mm(0.22); x.setLineDash([mm(2.4), mm(0.9), mm(0.4), mm(0.9)]); x.stroke(); x.setLineDash([]); }));
+    const MW = IZB === 'site' ? 0.5 : 0.22; Object.values(PO.muni).forEach(rings => pieces(x, P, rings, () => { if (IZB === 'site') { x.strokeStyle = '#FFFFFF'; x.lineWidth = mm(MW * 3); x.stroke(); } x.strokeStyle = INK; x.lineWidth = mm(MW); x.setLineDash([mm(3.2), mm(1.1), mm(0.5), mm(1.1)]); x.stroke(); x.setLineDash([]); }));
     // 4 metro: L1 solid, extension dotted
     x.lineCap = 'round'; x.strokeStyle = INK; x.lineWidth = mm(0.55); x.beginPath(); D0.l1.lines.forEach(l => l.forEach((q, i) => i ? x.lineTo(P.X(q[0]), P.Y(q[1])) : x.moveTo(P.X(q[0]), P.Y(q[1])))); x.stroke();
     D0.metro.forEach(f => { if (f.p.k !== 'track') return; x.lineWidth = mm(0.55); x.setLineDash([mm(0.1), mm(1.1)]); path(x, P, f.g); x.stroke(); x.setLineDash([]); });
     // 5 THE ONE RED THING: the POTAUG concerted zone (hatched), then the fence as a black-and-white dashed line
-    path(x, P, baseRings, true); x.fillStyle = 'rgba(255,255,255,.55)'; x.fill('evenodd'); hatch(x, P, baseRings, pal.red, mm(1.6), mm(0.3));
+    path(x, P, baseRings, true); x.fillStyle = IZB === 'site' ? '#FFFFFF' : 'rgba(255,255,255,.55)'; x.fill('evenodd'); hatch(x, P, baseRings, pal.red, mm(1.6), mm(0.3));
     path(x, P, baseRings, true); x.lineCap = 'butt'; x.strokeStyle = INK; x.lineWidth = mm(1.1); x.stroke(); x.strokeStyle = '#FFFFFF'; x.lineWidth = mm(0.6); x.setLineDash([mm(2), mm(2)]); x.stroke(); x.setLineDash([]);
     // town names: small, black, spaced
-    D0.edge.filter(f => f.p.k === 'town').forEach(f => { const s0 = f.p.nm.toUpperCase(); x.font = `600 ${Math.round(mm(3))}px ${F}`; let w0 = 0; [...s0].forEach(ch => w0 += x.measureText(ch).width + mm(0.55)); const px = P.X(f.g[0]) - w0 / 2, py = Math.min(P.Y(f.g[1]) - mm(5), by + bh - mm(6));
+    if (IZB === 'site') { // the five municipalities named inside their own boundary, as close to the base as the lines allow
+      const inR = (rings, u, v) => { let c0 = false; rings.forEach(r => { for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const a1 = r[i], b1 = r[j]; if ((a1[1] > v) !== (b1[1] > v) && u < (b1[0] - a1[0]) * (v - a1[1]) / (b1[1] - a1[1]) + a1[0]) c0 = !c0; } }); return c0; };
+      const bcm = centroid(baseRings); const used = [];
+      Object.entries(PO.muni).forEach(([nm, mr]) => { const rings = mr.flat(); const dens = (rs) => rs.flatMap(r => r.flatMap((q, i) => { const q2 = r[(i + 1) % r.length]; const n = Math.max(1, Math.ceil(Math.hypot(q2[0] - q[0], q2[1] - q[1]) / 15)); return Array.from({ length: n }, (_, j) => [q[0] + (q2[0] - q[0]) * j / n, q[1] + (q2[1] - q[1]) * j / n]); })); const verts = dens(Object.values(PO.muni).flat(2).length ? Object.values(PO.muni).flat() : rings).concat(dens(baseRings)); let best = null, bd = 1e18;
+        for (let gy = by + mm(14); gy < by + bh - mm(14); gy += mm(3)) for (let gxp = bx + mm(30); gxp < bx + bw - mm(30); gxp += mm(3)) { const u = E.x0 + (gxp - P.ox) / P.s, v = E.y1 - (gy - P.oy) / P.s;
+          if (!inR(rings, u, v) || inR(baseRings, u, v)) continue; const clr = mm(16) / P.s; if (verts.some(q => Math.abs(q[0] - u) < clr * 1.6 && Math.abs(q[1] - v) < clr * 0.55)) continue; 
+          if (used.some(([a1, b1]) => Math.abs(a1 - gxp) < mm(50) && Math.abs(b1 - gy) < mm(10))) continue; const d = (u - bcm[0]) ** 2 + (v - bcm[1]) ** 2; if (d < bd) { bd = d; best = [gxp, gy]; } }
+        if (!best) return; used.push(best); const s0 = nm.toUpperCase(); x.font = `700 ${Math.round(mm(3.4))}px ${F}`; let w0 = 0; [...s0].forEach(ch => w0 += x.measureText(ch).width + mm(0.7)); const px = best[0] - w0 / 2, py = best[1];
+        x.fillStyle = 'rgba(255,255,255,.9)'; x.fillRect(px - mm(1.5), py - mm(3.6), w0 + mm(2.4), mm(7.6)); spaced(s0, px, py, 3.4, 700, INK, 0.7); sm('municipality', best[0], py + mm(3.4), 2.3, 500, GR, 'center'); }); }
+    else D0.edge.filter(f => f.p.k === 'town').forEach(f => { const s0 = f.p.nm.toUpperCase(); x.font = `600 ${Math.round(mm(3))}px ${F}`; let w0 = 0; [...s0].forEach(ch => w0 += x.measureText(ch).width + mm(0.55)); const px = P.X(f.g[0]) - w0 / 2, py = Math.min(P.Y(f.g[1]) - mm(5), by + bh - mm(6));
       x.fillStyle = 'rgba(255,255,255,.85)'; x.fillRect(px - mm(1.2), py - mm(3.2), w0 + mm(2), mm(4.4)); spaced(s0, px, py, 3, 600, INK, 0.55); });
     const bc = centroid(baseRings); const zx = P.X(bc[0]), zy = P.Y(bc[1]);
     x.fillStyle = '#FFFFFF'; x.fillRect(zx - mm(30), zy - mm(6.5), mm(60), mm(10.5)); sm('POTAUG 2000 · ART. 4.27', zx, zy - mm(1.6), 3.3, 700, pal.red, 'center'); sm('“to be dismantled as a Defence installation”', zx, zy + mm(2.6), 2.6, 500, pal.red, 'center');
@@ -127,13 +142,13 @@ JS = r'''async ([which, DPI, IZB]) => {
     kr((u, v) => { x.save(); x.beginPath(); x.rect(u, v - mm(2), mm(10), mm(4)); x.clip(); x.strokeStyle = pal.red; x.lineWidth = mm(0.3); x.beginPath(); for (let q = -4; q < 14; q += 1.25) { x.moveTo(u + mm(q), v + mm(2)); x.lineTo(u + mm(q + 4), v - mm(2)); } x.stroke(); x.restore(); }, 'POTAUG concerted zone = today’s base (3.71 km²)');
     kr((u, v) => { x.strokeStyle = INK; x.lineWidth = mm(1.1); x.beginPath(); x.moveTo(u, v); x.lineTo(u + mm(10), v); x.stroke(); x.strokeStyle = '#fff'; x.lineWidth = mm(0.6); x.setLineDash([mm(2), mm(2)]); x.stroke(); x.setLineDash([]); }, 'Fence (OSM outline)');
     if (IZB === 'mtn50') kr((u, v) => { x.fillStyle = '#fff'; x.fillRect(u, v - mm(1.8), mm(10), mm(3.6)); x.strokeStyle = INK; x.lineWidth = mm(0.3); x.strokeRect(u, v - mm(1.8), mm(10), mm(3.6)); }, 'Built-up edge today (Catastro) over the 1931 map');
-    kr((u, v) => { x.strokeStyle = INK; x.lineWidth = mm(0.22); x.setLineDash([mm(2.4), mm(0.9), mm(0.4), mm(0.9)]); x.beginPath(); x.moveTo(u, v); x.lineTo(u + mm(10), v); x.stroke(); x.setLineDash([]); }, 'Municipal boundary (Catastro)');
+    kr((u, v) => { x.strokeStyle = INK; x.lineWidth = mm(IZB === 'site' ? 0.5 : 0.22); x.setLineDash([mm(3.2), mm(1.1), mm(0.5), mm(1.1)]); x.beginPath(); x.moveTo(u, v); x.lineTo(u + mm(10), v); x.stroke(); x.setLineDash([]); }, 'Boundary of the five municipalities (Catastro)');
     kr((u, v) => { x.strokeStyle = INK; x.lineWidth = mm(0.55); x.beginPath(); x.moveTo(u, v); x.lineTo(u + mm(4.5), v); x.stroke(); x.setLineDash([mm(0.1), mm(1.1)]); x.beginPath(); x.moveTo(u + mm(6), v); x.lineTo(u + mm(10), v); x.stroke(); x.setLineDash([]); }, 'Metro L1 · extension (in construction)');
     kr((u, v) => { x.strokeStyle = INK; x.lineWidth = mm(0.35); x.beginPath(); x.moveTo(u, v + mm(1.5)); x.bezierCurveTo(u + mm(4), v - mm(2), u + mm(6), v + mm(2), u + mm(10), v - mm(1)); x.stroke(); }, 'Who points at the land (schematic, not a route)');
     // title block: small, top-left, with the sheet number top-right
     spaced('WHO DECIDES ABOUT THE BASE LAND', bx, mm(24), 5.2, 700, INK, 0.9); sm('Armilla Air Base · three public documents, three futures for one piece of land', bx, mm(31), 2.9, 500, GR);
     plus(bx - mm(10), mm(22.5), mm(2)); sm('EX 2.2 · POLICY', W - mm(22), mm(24), 2.6, 700, INK, 'right'); sm('01 / 04', W - mm(22), mm(29), 2.6, 500, GR, 'right');
-    para(x, '+ ' + SRC + (IZB === 'mtn50' ? ' Base map: IGN MTN50, sheet 1026, 1931 (first edition), as served, printed in grey with a photocopy texture.' : ' Base: PNOA 2022 orthophoto (IGN, CC BY 4.0), printed in grey with a photocopy texture.') + ' Press, April 2024: Ahora Granada, Granada Digital, COPE.', bx, H - mm(14), (W / D) - 52, 2.2, 400, GR, 3);
+    para(x, '+ ' + SRC + (IZB === 'mtn50' ? ' Base map: IGN MTN50, sheet 1026, 1931 (first edition), as served, printed in grey with a photocopy texture.' : (IZB === 'site' ? ' Base: buildings D. G. del Catastro, streets and land OpenStreetMap (ODbL), printed in grey.' : ' Base: PNOA 2022 orthophoto (IGN, CC BY 4.0), printed in grey with a photocopy texture.')) + ' Press, April 2024: Ahora Granada, Granada Digital, COPE.', bx, H - mm(14), (W / D) - 52, 2.2, 400, GR, 3);
     return c.toDataURL('image/png'); }
 
   // ======================= 2 · WHO HOLDS A PIECE =======================
