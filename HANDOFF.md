@@ -1151,6 +1151,28 @@ south (Armilla, Churriana de la Vega, Las Gabias, Alhendín, Ogíjares).
   without a photo keep the period family. Done for areas **B (21 of 22 parcels)** and **C (8 of 8)**; A, F, G, H still use
   the period families — run the tool with `AREAS=A,F,G,H`, look at the photos, add their notes. Caveat written under each
   section: the photo shows the street front, the section may show another side; openings stay schematic.
+- **Exercise 2.2 "The phenomenon and interest groups"** (brief read 20 Nov 2026; hand-in Wed 25 Nov, stage 1 Sun 22 Nov):
+  part A = the phenomenon on one A4 + the corrected 2.1 sheets; part B = three interest groups, each with a position, a short
+  programme, an urban plan 1:1000, a section 1:500 on a shared line, a representative area 1:250, a street view and a 3D
+  model, plus a comparison board with the collision points. The tutors asked for: the conflict stated exactly, the research
+  question, and future scenarios (the base goes / stays). Nothing for part B is drawn yet.
+- **What the plans say** (`data/ex21/policy_potaug.md`, quotes checked against the scanned Normativa pp. 249–250): the POTAUG
+  (Decreto 244/1999) makes the base a "zona de ordenación concertada" whose aim is its **dismantling as a Defence installation**
+  and a residential, facilities and services area as the central core of the five towns (art. 4.27); one Special Plan for the
+  whole zone (4.28); no building meanwhile except for Defence (4.30). Not changed by the 2004 and 2022 modifications. No
+  dwelling numbers, no date. The State renewed the base's easements in 2019 (RD 118/2019). Press, April 2024 (not official
+  documents): a migrant centre on base land refused by the towns; the Diputación asked for the Colonia Dávila plot
+  (105,000 m²) for a metropolitan park and a perimeter circuit — its position and the State's answer were NOT found, so it is
+  not drawn anywhere. The municipal plans (PGOU/PGOM) of the five towns are still unread.
+- **Policy map series** (owner, 20 Nov; English only): `tools/build_ex21_policy.py` (`CP` = folder with the five towns'
+  INSPIRE CadastralParcels) → `data/ex21/policy.json`: precise municipal outlines (union of cadastral zoning; the atlas's
+  `tour_area` outlines are quantised to ~200 m), the base split by municipality — Las Gabias 1.54 km² (41 %), Churriana 1.09
+  (29 %), Alhendín 0.91 (25 %), Armilla 0.10 (3 %), Ogíjares 0.07 (2 %) — each municipality's area, the scenario numbers.
+  `tools/ex21_pages/policy.py <out> [which]` draws four sheets: `who_decides` (A2, 1:15,000), `who_holds` (A2, 1:10,000),
+  `over_time` (A2, five dates at 1:35,000), `three_futures` (A1, 1:15,000: A base stays closed / B edge opens / C dismantled,
+  with a "where they collide" table). `drawCity` gained `o.over` (a sheet's own layers under the names), `o.avoid`,
+  `o.townCols`, `o.noMuni`, `o.noBaseLabel`. Future C's blocks, streets, park and centre are schematic and say so; which
+  open land may legally be built (POTAUG Vega protection) is not mapped.
 - **Wording**: the base's name on English maps is "Armilla Air Base" (`x34.base`; it was the Spanish official name while the
   sheet title was English). The key map's title no longer counts the areas ("the eight 1:500 areas" was written before S and
   R were added; the map shows ten).

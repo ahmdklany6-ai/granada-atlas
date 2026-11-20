@@ -74,14 +74,14 @@
     const path = (rs, close) => { ctx.beginPath(); rs.forEach(r => r.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); if (close) ctx.closePath(); };
     // 5.42 (owner request, 13 Nov 2026): one layer of information per map — o.only = 'island' | 'walk' | 'growth' | 'height';
     // every map keeps the same light context (municipal boundaries, buildings, streets, the base, town names)
-    const on = (n) => !o.only || o.only === n; const U = furniture(ctx, o, x, y, w, h, k, F), V = U.V;
+    const on = (n) => !o.only || o.only === n; const U = furniture(ctx, o, x, y, w, h, k, F), V = U.V; (o.avoid || []).forEach(b => U.K.push(b));   // o.avoid: boxes the names keep clear of (a sheet's own markers)
     ctx.save(); ctx.beginPath(); ctx.rect(V[0], V[1], V[2] - V[0], V[3] - V[1]); ctx.clip(); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(x, y, w, h); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     // names and figures on the map are Latin script: always left to right, also on the Arabic and Hebrew pages (17 Nov 2026: there the
     // walking distances and the 2015→2025 change were drawn mirrored — "2025→2015 · % 7.1+" — because the page's direction leaked in)
     ctx.direction = 'ltr';
     // 1 municipal boundaries (dashed); the residents' change 2015 → 2025 is written at each town
     const chg = (v) => { const b = T.chgBreaks; let i = 0; while (i < b.length && v >= b[i]) i++; return T.chg[i]; };
-    ctx.setLineDash([6 * k, 4 * k]); ctx.strokeStyle = C.muni; ctx.lineWidth = 1.1 * k; D.area.forEach(a => { path(a.g, true); ctx.stroke(); }); ctx.setLineDash([]);
+    if (!o.noMuni) { ctx.setLineDash([6 * k, 4 * k]); ctx.strokeStyle = C.muni; ctx.lineWidth = 1.1 * k; D.area.forEach(a => { path(a.g, true); ctx.stroke(); }); ctx.setLineDash([]); }
     // 2 the aeronautical height limits (allowed height above ground < 60 m)
     if (on('height')) { const e = D.ease.extent; ctx.save(); ctx.globalAlpha = o.focus != null && o.focus !== 'height' ? 0.25 : 1; ctx.imageSmoothingEnabled = true; ctx.drawImage(D.hImg, X(e[0]), Y(e[3]), (e[2] - e[0]) / mpp, (e[3] - e[1]) / mpp); ctx.restore(); }
     // 3 built footprints and main streets
@@ -104,13 +104,15 @@
       D.l1.stops.forEach(st => { ctx.beginPath(); ctx.arc(X(st.p[0]), Y(st.p[1]), 4.6 * k, 0, 7); ctx.fillStyle = C.metro; ctx.fill(); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.6 * k; ctx.stroke(); }); }
     if (on('growth')) D.metro.forEach(f => { if (f.p.k === 'track') { ctx.strokeStyle = C.metro; ctx.lineWidth = 6 * k; path(f.g); ctx.stroke(); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2.2 * k; ctx.setLineDash([7 * k, 7 * k]); path(f.g); ctx.stroke(); ctx.setLineDash([]); }
       else { ctx.beginPath(); ctx.arc(X(f.g[0]), Y(f.g[1]), 6 * k, 0, 7); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.strokeStyle = C.metro; ctx.lineWidth = 2.6 * k; ctx.stroke(); } });
+    // o.over(ctx, X, Y, k): a sheet's own layers (tools/ex21_pages/policy.py), drawn here so the names stay on top and inside the window
+    if (o.over) { ctx.save(); o.over(ctx, X, Y, k); ctx.restore(); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.direction = 'ltr'; ctx.lineJoin = 'round'; }
     // 8 labels: towns with their change 2015 → 2025, the base
     const towns = D.edge.filter(f => f.p.k === 'town'); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
     towns.forEach(f => { const a = D.area.find(m => m.p.name === f.p.nm); const [u, v] = f.g; const two = a && on('growth'); ctx.font = font(15, 700);
       const q = place(V, U.K, X(u), Y(v) - (two ? 4 : 13) * k, Math.max(ctx.measureText(f.p.nm.toUpperCase()).width, two ? 150 * k : 0), (two ? 34 : 18) * k, 8 * k); if (!q) return; const px = q[0], py = q[1] + (two ? 4 : 13) * k;
-      ctx.lineWidth = 4 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(f.p.nm.toUpperCase(), px, py - 8 * k); ctx.fillStyle = C.town; ctx.fillText(f.p.nm.toUpperCase(), px, py - 8 * k);
+      ctx.lineWidth = 4 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(f.p.nm.toUpperCase(), px, py - 8 * k); ctx.fillStyle = (o.townCols && o.townCols[f.p.nm]) || C.town; ctx.fillText(f.p.nm.toUpperCase(), px, py - 8 * k); ctx.fillStyle = C.town;
       if (a && on('growth')) { const s = (a.p.chg > 0 ? '+' : '') + a.p.chg.toFixed(1) + ' %'; ctx.font = font(12, 600); ctx.strokeText(s + ' · 2015→2025', px, py + 9 * k); ctx.fillStyle = C.town; ctx.fillText(s + ' · 2015→2025', px, py + 9 * k); } });
-    if (base) { const rx = X((D.runway[0][0] + D.runway[1][0]) / 2) - 26 * k, ry = Y((D.runway[0][1] + D.runway[1][1]) / 2); ctx.textAlign = 'right';
+    if (base && !o.noBaseLabel) { const rx = X((D.runway[0][0] + D.runway[1][0]) / 2) - 26 * k, ry = Y((D.runway[0][1] + D.runway[1][1]) / 2); ctx.textAlign = 'right';
       ctx.fillStyle = '#FFFFFF'; ctx.font = font(15, 700); ctx.fillText(t('x34.base').toUpperCase(), rx, ry); ctx.font = font(11, 500); ctx.direction = 'ltr'; ctx.fillText(`${km2(base.p.area_ha)} km² · ${base.p.perimeter_km} km`, rx, ry + 17 * k); ctx.textAlign = 'center'; }
     // frame, north, scale
     ctx.restore(); frameTop(ctx, o, U, k, F);
@@ -127,7 +129,8 @@
   function drawStrategy(ctx, x, y, w, h, o) {
     o = o || {}; if (!D || !AR) return false; const pal = P(), C = pal.ex21, S = pal.ex21s; const E = CITY, mpp = (E.x1 - E.x0) / w, k = o.k || w / 1000; const t = o.t || ((s) => s); const F = root.GA.pages.font();
     const X = (u) => x + (u - E.x0) / mpp, Y = (v) => y + (E.y1 - v) / mpp; const font = (sz, wt) => `${wt || 600} ${Math.round(sz * k)}px ${F}`;
-    drawCity(ctx, x, y, w, h, Object.assign({}, o, { only: 'strategy' }));   // context: boundaries, buildings, streets, the base, town names
+    const mk = D.metro.filter(q => q.p.k === 'station_now' || q.p.k === 'terminus').map(q => [X(q.g[0]) - 14 * k, Y(q.g[1]) - 14 * k, X(q.g[0]) + 14 * k, Y(q.g[1]) + 14 * k]);
+    drawCity(ctx, x, y, w, h, Object.assign({}, o, { only: 'strategy', avoid: (o.avoid || []).concat(mk) }));   // context: boundaries, buildings, streets, the base, town names (kept off the metro markers)
     const base = D.edge.find(f => f.p.k === 'base'); if (!base) return false; const V = o.view || [x, y, x + w, y + h];
     const path = (rs, close) => { ctx.beginPath(); rs.forEach(r => r.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])))); if (close) ctx.closePath(); };
     const halo = (s0, px, py, col, sz, wt, al) => { ctx.font = font(sz, wt); ctx.textAlign = al || 'center'; ctx.textBaseline = 'middle'; ctx.direction = /[֐-ࣿ]/.test(s0) ? 'rtl' : 'ltr'; ctx.lineJoin = 'round'; ctx.lineWidth = 3.6 * k; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(s0, px, py); ctx.fillStyle = col; ctx.fillText(s0, px, py); };
@@ -166,7 +169,7 @@
       ctx.fillStyle = '#FFFFFF'; ctx.font = font(12, 700); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; ctx.fillText(String(i + 1), px, py + 0.5 * k); });
     // labels on the map: the strip's length, the corridor
     const bS = D.edge.find(f => f.p.k === 'base').p; const per = bS && bS.perimeter_km;
-    if (cor) { const q = [(cor.M[0] + cor.P2[0]) / 2, (cor.M[1] + cor.P2[1]) / 2]; halo(t('x38.lab.corridor'), X(q[0]), Y(q[1]) - 150 / mpp, S.corridorLine, 12, 700); }
+    if (cor) { const q = [(cor.M[0] + cor.P2[0]) / 2, (cor.M[1] + cor.P2[1]) / 2]; ctx.font = font(12, 700); const lw2 = ctx.measureText(t('x38.lab.corridor')).width / 2 + 8 * k; halo(t('x38.lab.corridor'), Math.min(Math.max(X(q[0]), V[0] + lw2), V[2] - lw2), Y(q[1]) - 150 / mpp, S.corridorLine, 12, 700); }
     ctx.restore();
     // the 2045 scenario in a corner box (time.json: the pace of 2015–2025 continued — a scenario, not a forecast)
     if (TD && TD.projection && !o.noScenario) { const P5 = TD.projection.five, SC = TD.base_scenario; const lines = [t('x38.sc.title'), t('x36.box.need', { a: P5['2025'].toLocaleString('en-US'), b: P5['2045'].toLocaleString('en-US'), n: P5.dwellings_needed_2045.toLocaleString('en-US'), p: SC.persons_per_dwelling })];
