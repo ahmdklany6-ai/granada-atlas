@@ -1198,6 +1198,11 @@ south (Armilla, Churriana de la Vega, Las Gabias, Alhendín, Ogíjares).
     map on a sheet). Page scripts in the new style: `an_city.py` (01–05, the key map, the gaps), `an_time.py` (history, built,
     density, growth), `an_people.py` (ages, work), `policy.py` (`STYLE=analysis`, the default; `STYLE=soft` = the identity
     sheets), `maps_only.py` and `sheets2.py` (`STYLE=analysis`). The factory set stays in the identity style (owner).
+  - After the graphic designer's notes (Tal Stadler, 22 Nov 2026): lighter grey ground (`ex21.built` g2, `street` g3), photos under a
+    stronger white veil (`an.veil` 0.62), the towns' edges on the history pictures filled in red (`edgeFill()` 0.38 in the analysis
+    style only), and the key drawn ON each map (`AN.keyOnMap`: one column, small, white ground with no frame, in the corner with
+    least ink; `keyOn:false` puts it back under the map). Her trial fonts (Klim: Söhne, Untitled, Geograph) hold only ~67
+    characters — no í, ñ, ², %, dashes — so they are not used; they stay out of the repo.
   - Which red on which map: see the table in the scripts' docstrings; the rule is one kind of red element per map (a line, a
     hatch, or one ramp of red tints for a sequential variable), everything else black or grey.
 

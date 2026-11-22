@@ -80,16 +80,28 @@ AN_JS = r'''
     // key (cols) and the notes side by side under the map, sources at the foot. o = { mapW, mapH (mm), u, title, sub, code, num,
     //   draw(x, bx, by, bw, bh), metres (scale bar length), pxPerM, scale ('1:10,000'), labels, key: items, keyCols, kk,
     //   notes: [[heading, body, red?], …], extra(x, px, py, wmm) → y (a chart or a table under the key), extraH (mm), src }
-    const mapSheet = async (o) => { S.u = o.u || 1; const u = S.u, L = 30 * u, R = 22 * u, top = 46 * u; const keyRows = o.key ? Math.ceil(o.key.length / (o.keyCols || 2)) : 0; const noteW = o.notes && o.notes.length ? (o.noteW || 190 * u) : 0;
+    // the key ON the map (Tal's note, 22 Nov 2026): one column, small, on a soft white ground with no frame, in the corner of the window
+    // where the map has least ink (or o.corner 'tl'|'tr'|'bl'|'br'); returns the box it took
+    const keyOnMap = (x, items, V, o) => { o = o || {}; const u = S.u, sz = 2.3 * u, row = mm(4.9 * u), sw = mm(9 * u), pad = mm(4 * u), inset = mm(6 * u); x.save(); x.font = font(sz, 500); let tw = 0; items.forEach(it => { tw = Math.max(tw, x.measureText(it.label).width); }); x.restore();
+      const w = Math.min(pad * 2 + sw + mm(2.5 * u) + tw, (V[2] - V[0]) * 0.48), h = pad * 2 + items.length * row - mm(1 * u);
+      const spots = { tl: [V[0] + inset, V[1] + inset], tr: [V[2] - inset - w, V[1] + inset], bl: [V[0] + inset, V[3] - inset - h - mm(2 * u)], br: [V[2] - inset - w, V[3] - inset - h - mm(2 * u)] };
+      let c0 = o.corner && spots[o.corner] ? o.corner : null;
+      if (!c0) { let best = 1e18; ['bl', 'br', 'tr', 'tl'].forEach(k2 => { const [px, py] = spots[k2]; const d = x.getImageData(Math.round(px), Math.round(py), Math.max(1, Math.round(w)), Math.max(1, Math.round(h))).data; let ink = 0;
+        for (let i = 0; i < d.length; i += 64) { const r = d[i], g = d[i + 1], b = d[i + 2]; ink += (765 - r - g - b) + (r - b > 40 ? 600 : 0); } if (ink < best) { best = ink; c0 = k2; } }); }
+      const [px, py] = spots[c0]; x.save(); x.fillStyle = 'rgba(255,255,255,0.88)'; x.fillRect(px, py, w, h); x.restore();
+      items.forEach((it, j) => { const yy = py + pad + j * row + row * 0.35; swatch(x, it, px + pad, yy, sw, mm(3.2 * u), o.kk || mm(0.3 * u)); txt(x, it.label, px + pad + sw + mm(2.5 * u), yy + mm(sz * 0.36), sz, 500, INK, 'left', w - pad * 2 - sw - mm(2.5 * u)); });
+      return [px, py, px + w, py + h]; };
+    const mapSheet = async (o) => { S.u = o.u || 1; const u = S.u, L = 30 * u, R = 22 * u, top = 46 * u; const onMap = o.key && o.keyOn !== false; const keyRows = o.key && !onMap ? Math.ceil(o.key.length / (o.keyCols || 2)) : 0; /* (Tal, 22 Nov 2026) the key sits ON the map, small, no frame */ const noteW = o.notes && o.notes.length ? (o.noteW || 190 * u) : 0;
       const wmm = L + o.mapW + R + (o.sideW || 0), under = 20 * u + Math.max(keyRows * 5.4 * u + 6 * u, o.noteH || (noteW ? 40 * u : 0)) + (o.extraH || 0) + 26 * u; const hmm = top + o.mapH + under + (o.addH || 0);
       const [c, x] = sheet(wmm, hmm), W = c.width, H = c.height; head(x, W, { title: o.title, sub: o.sub, code: o.code, num: o.num, left: L, right: R });
       const bx = mm(L), by = mm(top), bw = Math.round(mm(o.mapW)), bh = Math.round(mm(o.mapH)); await o.draw(x, bx, by, bw, bh); const V = [bx, by, bx + bw, by + bh]; frame(x, V);
       let y = scale(x, V, o.pxPerM, o.metres || 1000, { scale: o.scale, labels: o.labels }) + mm(9 * u); const keyW = o.mapW - noteW - (noteW ? 12 * u : 0); let yk = y, yn = y;
-      if (o.key) yk = key(x, o.key, bx, y, { cols: o.keyCols || 2, colW: keyW / (o.keyCols || 2), kk: o.kk });
-      if (noteW) { const nx = bx + mm(o.mapW - noteW); (o.notes || []).forEach(([h0, b0, red]) => { yn = note(x, nx, yn, noteW, h0, b0, red ? RED : INK); }); }
+      if (o.key && !onMap) yk = key(x, o.key, bx, y, { cols: o.keyCols || 2, colW: keyW / (o.keyCols || 2), kk: o.kk });
+      if (onMap) keyOnMap(x, o.key, V, { kk: o.kk, corner: o.keyOn });
+      if (noteW) { const nx = onMap ? bx : bx + mm(o.mapW - noteW); (o.notes || []).forEach(([h0, b0, red]) => { yn = note(x, nx, yn, noteW, h0, b0, red ? RED : INK); }); }
       let ye = Math.max(yk, yn) + mm(6 * u); if (o.extra) ye = await o.extra(x, bx, ye, o.mapW);
       src(x, W, H, o.src, { left: L, right: R }); return c; };
-    return { S, mm, D, INK, GR, RED, A, pal, F, sheet, font, txt, width, spaced, spacedW, para, paraH, plus, head, frame, scale, swatch, key, note, src, leader, plate, mapSheet, set u(v) { S.u = v; }, get u() { return S.u; } };
+    return { S, mm, D, INK, GR, RED, A, pal, F, sheet, font, txt, width, spaced, spacedW, para, paraH, plus, head, frame, scale, swatch, key, keyOnMap, note, src, leader, plate, mapSheet, set u(v) { S.u = v; }, get u() { return S.u; } };
   })();
 '''
 
