@@ -17,7 +17,7 @@ OUTD = sys.argv[1]; ALL = ['ages', 'work']; ONLY = sys.argv[2].split(',') if len
 DPI = float(os.environ.get('DPI', 200)); PORT = 8865
 srv = subprocess.Popen([sys.executable, '-m', 'http.server', str(PORT), '--bind', '127.0.0.1'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
 JS = r'''async ([m, DPI]) => { await GA.ex21.ready(); await GA.ex21.readyPeople(); GA.ex21.setStyle('analysis'); ''' + AN_JS + r'''
-  const t = (k, v) => GA.i18n.t(k, v), D0 = GA.ex21.data, PD = GA.ex21.people, mm = AN.mm, C = AN.pal.ex21; const KF = 3.8 * DPI / 200;   // the line and label weight of a 1:10,000 map
+  const t = (k, v) => GA.i18n.t(k, v), D0 = GA.ex21.data, PD = GA.ex21.people, mm = AN.mm, C = AN.pal.ex21; const KF = AN.K;   // the line and label weight of a 1:10,000 map
   const split = (s) => { const i = s.indexOf(': '); return i > 0 ? [s.slice(0, i).toUpperCase(), s.slice(i + 2).trim()] : [s.toUpperCase(), '']; };
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   const NB = String.fromCharCode(160), nb = (s) => s.replace(/(\d) (%|km²|km|min|m)(?=[\s,.;:)—]|$)/g, '$1' + NB + '$2');   // a figure stays on one line with its unit

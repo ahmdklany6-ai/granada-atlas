@@ -18,7 +18,7 @@ OUTD = sys.argv[1]; ALL = ['island', 'walk', 'growth', 'height', 'strategy', 'ke
 DPI = float(os.environ.get('DPI', 200)); PORT = 8863
 srv = subprocess.Popen([sys.executable, '-m', 'http.server', str(PORT), '--bind', '127.0.0.1'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
 JS = r'''async ([m, DPI]) => { await GA.ex21.ready(); await GA.ex21.readyAreas(); await GA.ex21.readyTime(); GA.ex21.setStyle('analysis'); ''' + AN_JS + r'''
-  const t = (k, v) => GA.i18n.t(k, v), D0 = GA.ex21.data, E = GA.ex21.CITY, mm = AN.mm; const KF = 3.8 * DPI / 200;   // the line and label weight of a 1:10,000 map
+  const t = (k, v) => GA.i18n.t(k, v), D0 = GA.ex21.data, E = GA.ex21.CITY, mm = AN.mm; const KF = AN.K;   // the line and label weight of a 1:10,000 map
   const base = D0.edge.find(f => f.p.k === 'base').p, C = AN.pal.ex21, SERIES = 'EX 2.1 · CITY · 1:10,000';
   // what a map's title says after its number ("01 · The closed island: …" → "THE CLOSED ISLAND", "the base, its 300 m band …")
   const split = (s) => { const q = s.replace(/^\d+\s*·\s*/, ''); const i = q.indexOf(': '); return i > 0 ? [q.slice(0, i).toUpperCase(), q.slice(i + 2).trim()] : [q.toUpperCase(), '']; };

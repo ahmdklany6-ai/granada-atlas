@@ -21,6 +21,9 @@ import base64, os, time
 AN_JS = r'''
   const AN = (() => { const pal = GA.palette, A = GA.ex21.an, F = GA.pages.font(); if (!A) throw new Error('call GA.ex21.setStyle("analysis") first');
     const INK = pal.ink, GR = pal.ink3, RED = pal.red; const D = DPI / 25.4, mm = (v) => v * D; const S = { u: 1 };
+    // ONE table of line weights for every analysis sheet (Tal, 22 Nov 2026: "the same line weights in all documents"): every big map is drawn
+    // with K (the map line and label unit, px), every small multiple (the five dates, the ten pictures) with Ks — whatever the scale
+    const K = 3.0 * DPI / 200, Ks = 2.0 * DPI / 200;
     const sheet = (wmm, hmm) => { const c = document.createElement('canvas'); c.width = Math.round(mm(wmm)); c.height = Math.round(mm(hmm)); const x = c.getContext('2d'); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, c.width, c.height); x.lineJoin = 'round'; return [c, x]; };
     const font = (sz, wt) => `${wt || 500} ${Math.max(1, Math.round(mm(sz)))}px ${F}`;
     // one line of text; sizes in mm (not scaled by u: the caller decides)
@@ -58,6 +61,8 @@ AN_JS = r'''
       else if (it.hatch) { box(); GA.ex21.anHatch(x, [sx, yy - sh / 2, sx + sw, yy + sh / 2], it.hatch, Math.max(3, sh / 2.6), Math.max(1, sh / 16), it.dir || -1); x.strokeStyle = it.hatch; x.lineWidth = Math.max(1, sh / 22); x.strokeRect(sx, yy - sh / 2, sw, sh); }
       else if (it.fence) { x.beginPath(); x.moveTo(sx, yy); x.lineTo(sx + sw, yy); GA.ex21.anFence(x, kk, A); }
       else if (it.num) { const r = sh * 0.62, cx = sx + sw / 2; x.beginPath(); x.arc(cx, yy, r, 0, 7); x.fillStyle = RED; x.fill(); x.fillStyle = '#FFFFFF'; x.font = `700 ${Math.round(r * 1.25)}px ${F}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.direction = 'ltr'; x.fillText(String(it.num), cx, yy + r * 0.06); }
+      else if (it.curve) { x.strokeStyle = it.line || INK; x.lineWidth = Math.max(1, (it.wk || 1.4) * kk); x.beginPath(); x.moveTo(sx, yy + sh / 2); x.bezierCurveTo(sx + sw * 0.5, yy + sh / 2, sx + sw * 0.5, yy - sh / 2, sx + sw, yy - sh / 2); x.stroke(); x.fillStyle = it.line || INK; x.beginPath(); x.arc(sx + sw, yy - sh / 2, sh * 0.22, 0, 7); x.fill(); }
+      else if (it.dot) { x.beginPath(); x.arc(sx + sw / 2, yy, sh * 0.5, 0, 7); x.fillStyle = it.dot; x.fill(); if (it.ring) { x.strokeStyle = it.ring; x.lineWidth = Math.max(1, sh / 12); x.stroke(); } }
       else if (it.sym === 'dead' || it.sym === 'join' || it.sym === 'stop') { const r = sh * 0.5, cx = sx + sw / 2; if (it.sym === 'join') { x.strokeStyle = it.line; x.globalAlpha = 0.85; x.lineWidth = sh * 0.55; x.beginPath(); x.moveTo(sx, yy); x.lineTo(sx + sw, yy); x.stroke(); x.globalAlpha = 1; }
         x.beginPath(); x.arc(cx, yy, r, 0, 7); x.fillStyle = '#FFFFFF'; x.fill(); x.strokeStyle = it.line; x.lineWidth = r * 0.48; x.stroke(); if (it.sym !== 'stop') { x.beginPath(); x.moveTo(cx - r * 0.55, yy); x.lineTo(cx + r * 0.55, yy); if (it.sym === 'join') { x.moveTo(cx, yy - r * 0.55); x.lineTo(cx, yy + r * 0.55); } x.stroke(); } }
       else if (it.line) { const lw = (it.wk != null ? it.wk : (it.w || 1) * 1.4) * kk; x.globalAlpha = it.alpha || 1; x.strokeStyle = it.line; x.lineWidth = Math.max(1, lw); x.setLineDash(it.dk ? it.dk.map(v => v * kk) : it.dash ? [9 * kk, 4 * kk] : it.dots ? [1 * kk, 4.5 * kk] : []); x.lineCap = it.round || it.dots ? 'round' : 'butt';
@@ -101,7 +106,7 @@ AN_JS = r'''
       if (noteW) { const nx = onMap ? bx : bx + mm(o.mapW - noteW); (o.notes || []).forEach(([h0, b0, red]) => { yn = note(x, nx, yn, noteW, h0, b0, red ? RED : INK); }); }
       let ye = Math.max(yk, yn) + mm(6 * u); if (o.extra) ye = await o.extra(x, bx, ye, o.mapW);
       src(x, W, H, o.src, { left: L, right: R }); return c; };
-    return { S, mm, D, INK, GR, RED, A, pal, F, sheet, font, txt, width, spaced, spacedW, para, paraH, plus, head, frame, scale, swatch, key, keyOnMap, note, src, leader, plate, mapSheet, set u(v) { S.u = v; }, get u() { return S.u; } };
+    return { S, K, Ks, mm, D, INK, GR, RED, A, pal, F, sheet, font, txt, width, spaced, spacedW, para, paraH, plus, head, frame, scale, swatch, key, keyOnMap, note, src, leader, plate, mapSheet, set u(v) { S.u = v; }, get u() { return S.u; } };
   })();
 '''
 

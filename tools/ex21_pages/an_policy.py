@@ -47,7 +47,7 @@ JS = r'''async ([which, DPI]) => {
   const STYLE = ' Printed in black, greys and one red; the base is drawn as a white void behind its fence (a black line with white dashes).';
 
   // ======================= 1 · WHO DECIDES =======================
-  if (which === 'who_decides') { AN.u = 1; const [c, x] = AN.sheet(594, 420); const W = c.width, H = c.height; const k = 2.0 * DPI / 200;
+  if (which === 'who_decides') { AN.u = 1; const [c, x] = AN.sheet(594, 420); const W = c.width, H = c.height; const k = AN.K;
     AN.head(x, W, { title: 'WHO DECIDES ABOUT THE BASE LAND', sub: 'Armilla Air Base · three public documents, three futures for one piece of land', code: SERIES + ' · 1:15,000', num: '01 / 05' });
     const bx = mm(30), by = mm(46), bw = mm(350), bh = mm(326); const P = win(bx, by, bw, bh, 15000, CX - 150, CY + 250); const V = P.view;
     ground(x, P, k, { baseSubject: true, over: () => { muniLines(x, P, mm(0.5)); metro(x, P, mm(0.55)); } });
@@ -67,14 +67,13 @@ JS = r'''async ([which, DPI]) => {
     AN.frame(x, V); AN.scale(x, V, P.s, 1000, { scale: '1:15,000' });
     y = AN.note(x, rx, y, rw, 'ORIGINAL TEXT · ART. 4.27.1', '«La zona de ordenación concertada Aeródromo de Armilla tiene por finalidad su desmantelamiento como instalación para la Defensa y el desarrollo de un área residencial, dotacional y de servicios sobre los suelos actualmente afectados al mismo.»', RED, { sz: 2.6, lh: 3.7 });
     y = AN.note(x, rx, y, rw, 'THE CONFLICT', 'One piece of land, five municipalities, three levels of government. The region has wanted the base to become the centre of the five towns since 2000; the State keeps it; the towns grew 15 % in ten years around it.', INK) + mm(2);
-    const kk = mm(0.25); y = AN.key(x, [{ base: 'subject', label: 'POTAUG concerted zone = today’s base (' + PO.base_km2.toFixed(2) + ' km²)' }, { fence: true, label: 'Fence (OSM outline)' }, { line: INK, wk: 2, dk: [12.8, 4.4, 2, 4.4], label: 'Boundary of the five municipalities (Catastro)' },
-      { line: INK, wk: 2.2, label: 'Metro line 1 (OSM)' }, { line: INK, wk: 2.2, dots: true, label: 'Metro line 1 extension, in construction (OSM)' }], rx, y, { kk, colW: rw }) ;
-    AN.leader(x, rx, y + mm(1.5), rx + mm(10), y - mm(1.5), INK, [], 0.5); AN.txt(x, 'Who points at the land (schematic, not a route)', rx + mm(13), y + mm(0.9), 2.5, 500, INK);
+    AN.keyOnMap(x, [{ base: 'subject', label: 'POTAUG concerted zone = today’s base (' + PO.base_km2.toFixed(2) + ' km²)' }, { fence: true, label: 'Fence (OSM outline)' }, { line: INK, wk: 2, dk: [12.8, 4.4, 2, 4.4], label: 'Boundary of the five municipalities (Catastro)' },
+      { line: INK, wk: 2.2, label: 'Metro line 1 (OSM)' }, { line: INK, wk: 2.2, dots: true, label: 'Metro line 1 extension, in construction (OSM)' }, { curve: true, line: INK, label: 'Who points at the land (schematic, not a route)' }], V, { kk: mm(0.25) });
     AN.src(x, W, H, SRC + ' Base: buildings D. G. del Catastro, streets and land OpenStreetMap (ODbL), printed in grey. Press, April 2024: Ahora Granada, Granada Digital, COPE.' + STYLE);
     return c.toDataURL('image/png'); }
 
   // ======================= 2 · WHO HOLDS A PIECE =======================
-  if (which === 'who_holds') { AN.u = 1; const [c, x] = AN.sheet(594, 420); const W = c.width, H = c.height; const k = 2.6 * DPI / 200;
+  if (which === 'who_holds') { AN.u = 1; const [c, x] = AN.sheet(594, 420); const W = c.width, H = c.height; const k = AN.K;
     AN.head(x, W, { title: 'FIVE MUNICIPALITIES, ONE BASE', sub: 'Which town holds which part of the ' + PO.base_km2.toFixed(2) + ' km² · municipal outlines from the Catastro', code: SERIES + ' · 1:10,000', num: '02 / 05' });
     const bx = mm(30), by = mm(46), bw = mm(360), bh = mm(326); const P = win(bx, by, bw, bh, 10000, CX - 250, CY - 200); const V = P.view;
     const order = Object.entries(PO.base_split_km2).sort((p, q) => q[1] - p[1]); const ramp = a.ramp; const TONE = {}; order.forEach(([nm], i) => { TONE[nm] = [ramp[4], ramp[3], ramp[2], ramp[1], ramp[0]][i]; });
@@ -90,14 +89,14 @@ JS = r'''async ([which, DPI]) => {
     y += mm(5); AN.txt(x, '+ SHARE OF EACH MUNICIPALITY’S OWN TERRITORY THAT THE BASE TAKES', rx, y, 2.6, 700, INK); y += mm(7); const pcs = order.map(([nm, km]) => [nm, km / PO.muni_km2[nm] * 100]).sort((p, q) => q[1] - p[1]); const pmax = pcs[0][1];
     pcs.forEach(([nm, pc]) => { AN.txt(x, `${nm} (${PO.muni_km2[nm].toFixed(1)} km²)`, rx, y, 2.75, 600, INK); const w0 = barW * pc / pmax; x.fillStyle = TONE[nm]; x.fillRect(rx, y + mm(1.6), w0, mm(4.2)); AN.txt(x, `${pc.toFixed(1)} %`, rx + w0 + mm(2.5), y + mm(5), 2.6, 500, INK); y += mm(11.5); });
     y += mm(5); y = AN.note(x, rx, y, rw, 'WHY IT MATTERS', `No single town can plan the base. Las Gabias and Churriana hold ${share(PO.base_split_km2['Las Gabias'] + PO.base_split_km2['Churriana de la Vega'])} % of it; Armilla — whose name the base carries — holds ${share(PO.base_split_km2['Armilla'])} %, Ogíjares ${share(PO.base_split_km2['Ogíjares'])} %. For Churriana the base is about a sixth of its whole territory. That is why the POTAUG (art. 4.28) asks for ONE Special Plan for the whole zone and recommends a consortium or a shared company to run it (art. 4.29).`, INK);
-    AN.key(x, [{ sw: ramp[4], label: 'The base, by municipality: darker = a larger share (the same tones in the bars)' }, { fence: true, label: 'Fence (OSM outline)' }, { line: INK, wk: 2.2, dk: [14, 4.8, 2.2, 4.8], label: 'Municipal boundary (Catastro)' }], rx, y, { kk: mm(0.25), colW: rw });
+    AN.keyOnMap(x, [{ sw: ramp[4], label: 'The base, by municipality: darker = a larger share (the same tones in the bars)' }, { fence: true, label: 'Fence (OSM outline)' }, { line: INK, wk: 2.2, dk: [14, 4.8, 2.2, 4.8], label: 'Municipal boundary (Catastro)' }], V, { kk: mm(0.25) });
     AN.src(x, W, H, 'Sources: municipal outlines — D. G. del Catastro, INSPIRE CadastralParcels (union of each municipality’s cadastral zoning), 20 Nov 2026; base — OpenStreetMap way 130984030 (3.71 km² measured; Wikipedia gives 369 ha); POTAUG art. 4.28–4.29. Areas measured in EPSG:25830 on those outlines. Ground: buildings and streets, OpenStreetMap, printed in grey.' + STYLE);
     return c.toDataURL('image/png'); }
 
   // ======================= 3 · DECISIONS OVER TIME =======================
   if (which === 'over_time') { AN.u = 1; const [c, x] = AN.sheet(594, 420); const W = c.width, H = c.height;
     AN.head(x, W, { title: 'TWENTY-FIVE YEARS OF “DISMANTLE IT”', sub: 'The same frame, five dates · black lines: each town’s built-up edge at that date (Catastro, by recorded year of construction) · red: what that date’s decision touches', code: SERIES + ' · 1:35,000', num: '03 / 05' });
-    const pwm = 168, pw = mm(pwm), ph = Math.round(pw * 5600 / 6400), gx = mm(12), x0 = mm(30), y0 = mm(46), rowGap = mm(26); const k35 = 1.2 * DPI / 200;
+    const pwm = 168, pw = mm(pwm), ph = Math.round(pw * 5600 / 6400), gx = mm(12), x0 = mm(30), y0 = mm(46), rowGap = mm(26); const k35 = AN.Ks;
     const hist = (n) => load('/exports/ex21_time/hist/' + n + '.jpg');
     const cellsT = [['1931', 'A small aerodrome among fields (0.44 km²). IGN map, first edition. Nothing in red: no decision yet.', 'photo', 'mtn50', null],
       ['2000', 'The POTAUG is approved: the base (red hatch) is to be dismantled and become the centre of the five towns. Photo: SIGPAC 2001.', 'photo', 'sigpac2000', 'potaug'],
@@ -126,7 +125,7 @@ JS = r'''async ([which, DPI]) => {
   // ======================= 4 · THREE FUTURES =======================
   if (which === 'three_futures') { AN.u = 1.25; const [c, x] = AN.sheet(841, 594); const W = c.width, H = c.height; const S0 = PO.scenario;
     AN.head(x, W, { title: 'THREE FUTURES FOR THE SAME LAND', sub: 'Armilla Air Base and its edge in 2045 · scenarios drawn schematically — not plans, not forecasts · red = what changes in each future', code: SERIES + ' · 1:15,000', num: '04 / 05' });
-    const pwm = 250, pw = mm(pwm), ph = mm(330), gx = mm(15), x0 = mm(37.5), y0 = mm(54), DEN = 15000; const cxC = CX - 130, cyC = CY - 60, k17 = 1.9 * DPI / 200;
+    const pwm = 250, pw = mm(pwm), ph = mm(330), gx = mm(15), x0 = mm(37.5), y0 = mm(54), DEN = 15000; const cxC = CX - 130, cyC = CY - 60, k17 = AN.K;
     const tint = (img, col) => { const c2 = document.createElement('canvas'); c2.width = img.naturalWidth; c2.height = img.naturalHeight; const g = c2.getContext('2d'); g.drawImage(img, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = col; g.fillRect(0, 0, c2.width, c2.height); return c2; };
     const cells = (P, cv, al) => { x.save(); x.imageSmoothingEnabled = false; x.globalAlpha = al; x.drawImage(cv, P.ox, P.oy, P.full, P.fullH); x.restore(); };
     const neutral = tint(TD.img.edge, a.grey[2]), next = tint(TD.img.edge, RED);
@@ -157,7 +156,7 @@ JS = r'''async ([which, DPI]) => {
           x.restore(); path(x, P, baseRings, true); x.strokeStyle = INK; x.lineWidth = mm(0.5); x.setLineDash([mm(1.6), mm(1)]); x.stroke(); x.setLineDash([]); metro(x, P, mm(0.45));
           if (stn) { const sx0 = P.X(stn.g[0]), sy0 = P.Y(stn.g[1]); x.beginPath(); x.arc(sx0, sy0, mm(5.5), 0, 7); x.strokeStyle = RED; x.lineWidth = mm(0.7); x.stroke(); AN.plate(x, 'centre at the metro (schematic)', sx0 - mm(28), sy0 - mm(1), 3, 700, RED); } } }); }
       AN.frame(x, V); AN.scale(x, V, P.s, 1000, { scale: '1:15,000' });
-      let y = py + ph + mm(22 * AN.u); y = AN.key(x, key, px, y, { cols: 2, colW: pwm / 2, kk: mm(0.25) }) + mm(4);
+      AN.keyOnMap(x, key, V, { kk: mm(0.25) }); let y = py + ph + mm(18 * AN.u);
       AN.spaced(x, ttl, px, y, 4.2, 700, INK, 0.5); y += mm(6); AN.txt(x, who, px, y, 3, 600, GR); y += mm(6.5);
       y = AN.para(x, pos, px, y, pwm, 3.3, 600, INK, 4.5) + mm(1.5); y = AN.para(x, desc, px, y, pwm, 3, 400, INK, 4.2) + mm(2.5);
       nums.forEach(nl => { x.fillStyle = INK; x.fillRect(px, y - mm(2.3), mm(1.8), mm(1.8)); y = AN.para(x, nl, px + mm(4.5), y, pwm - 5, 3.1, 600, INK, 4.2); });
@@ -182,7 +181,7 @@ JS = r'''async ([which, DPI]) => {
   // What each municipality's own plan says, as far as public sources show (web search, 20 Nov 2026; the plan documents themselves could
   // not be opened from here). The sectors' outlines are NOT drawn: no plan map was read. A red dot marks only the town that plans the
   // growth, at the place the press describes (approximate), never a sector's shape.
-  if (which === 'five_plans') { AN.u = 1; const [c, x] = AN.sheet(594, 420); const W = c.width, H = c.height; const k = 1.5 * DPI / 200;
+  if (which === 'five_plans') { AN.u = 1; const [c, x] = AN.sheet(594, 420); const W = c.width, H = c.height; const k = AN.K;
     AN.head(x, W, { title: 'THE FIVE TOWNS’ FUTURE PLANS', sub: 'What each municipality’s own general plan says about growth — status, numbers and where, as public sources report them (20 Nov 2026)', code: SERIES + ' · 1:20,000', num: '05 / 05' });
     const bx = mm(30), by = mm(46), bw = mm(320), bh = mm(280); const P = win(bx, by, bw, bh, 20000, E.x0 + 3200, E.y1 - 2800); const V = P.view;
     ground(x, P, k, { over: () => { muniLines(x, P, mm(0.45)); metro(x, P, mm(0.5)); } });
@@ -238,10 +237,9 @@ JS = r'''async ([which, DPI]) => {
       AN.spaced(x, nm.toUpperCase(), rx, y0, 3, 700, INK, 0.45); y += mm(4.6);
       AN.txt(x, status, rx, y, 2.5, 700, g ? RED : INK); y += mm(4.4); y = AN.para(x, when, rx, y, rw, 2.5, 400, GR, 3.4); y = AN.para(x, what, rx, y, rw, 2.6, 500, INK, 3.5); y = AN.para(x, where, rx, y, rw, 2.4, 400, GR, 3.3) + mm(5.5); });
     AN.frame(x, V); let ys = AN.scale(x, V, P.s, 1000, { scale: '1:20,000' }) + mm(6);
-    ys = AN.key(x, [{ base: 'context', label: 'The base (POTAUG concerted zone)' }, { fence: true, label: 'Fence (OSM outline)' }, { line: INK, wk: 1.8, dk: [11.5, 4, 1.8, 4], label: 'Municipal boundary (Catastro)' }, { line: INK, wk: 2, label: 'Metro line 1 · extension dotted (OSM)' }], bx, ys, { cols: 2, colW: 160, kk: mm(0.25) });
-    x.beginPath(); x.arc(bx + mm(5), ys + mm(1), mm(1.8), 0, 7); x.fillStyle = RED; x.fill(); AN.txt(x, 'A town whose plan adds growth that a source puts in numbers — at the place the press describes, approximate', bx + mm(13), ys + mm(1.9), 2.5, 500, INK);
-    ys += mm(5.4); x.fillStyle = RED; x.globalAlpha = 0.55; x.fillRect(bx + mm(1), ys - mm(1), mm(8), mm(4)); x.globalAlpha = 1; x.strokeStyle = RED; x.lineWidth = mm(0.9); x.strokeRect(bx + mm(1), ys - mm(1), mm(8), mm(4)); AN.txt(x, 'Planned land, drawn SCHEMATICALLY: its size is the plan’s figure; laid on unbuilt 100 m cells (no building in OSM) of that municipality, nearest to where the press puts it — shape and exact place are ours', bx + mm(13), ys + mm(1.9), 2.5, 500, INK);
-    ys += mm(5.4); x.beginPath(); x.arc(bx + mm(5), ys + mm(1), mm(1.8), 0, 7); x.fillStyle = '#FFFFFF'; x.fill(); x.strokeStyle = INK; x.lineWidth = mm(0.35); x.stroke(); AN.txt(x, 'A town whose plan was found but its growth was not (missing, not zero) · numbers = the cards · sector outlines are not drawn: no plan map was read', bx + mm(13), ys + mm(1.9), 2.5, 500, INK);
+    AN.keyOnMap(x, [{ base: 'context', label: 'The base (POTAUG concerted zone)' }, { fence: true, label: 'Fence (OSM outline)' }, { line: INK, wk: 1.8, dk: [11.5, 4, 1.8, 4], label: 'Municipal boundary (Catastro)' }, { line: INK, wk: 2, label: 'Metro line 1 · extension dotted (OSM)' },
+      { dot: RED, label: 'Plan adds growth a source puts in numbers (number = card)' }, { sw: RED, alpha: 0.55, stroke: RED, label: 'Planned land, drawn schematically (see below)' }, { dot: '#FFFFFF', ring: INK, label: 'Plan found, growth not found (missing, not zero)' }], V, { kk: mm(0.25) });
+    AN.para(x, 'Planned land: its size is the plan’s own figure; it is laid on unbuilt 100 m cells (no building in OSM) of that municipality, nearest to where the press puts it — shape and exact place are ours. The dots stand at the place the press describes (approximate). Sector outlines are not drawn: no plan map was read.', bx, ys + mm(1), 300, 2.5, 400, INK, 3.5);
     y = Math.max(y, mm(46)); y = AN.note(x, rx, y + mm(2), rw, 'WHAT IT MEANS FOR THE BASE', 'No town plans to build on the base: its land is the POTAUG’s concerted zone, outside each town’s own plan. The planned growth sits at its edges — south of Armilla, along the metro in Las Gabias, and a town of twice its size in Ogíjares. Only Ogíjares and Las Gabias are writing new plans now.', INK);
     AN.src(x, W, H, 'Sources (read through a web search, 20 Nov 2026 — the plan documents could not be opened from here, so numbers are as the press and the official bulletin report them): BOJA 2015/148/74 (PGOU Churriana de la Vega); BOJA 2023/162/33 (revision of the PGOU of Armilla); BOJA 2026/43/80 (Alhendín SUB-07 / API S-10); BOJA 2026/93/56 (Ogíjares PGOM, second initial approval); Ahora Granada, Granada Digital, Granada es Noticia, COPE (2022–2025); Las Gabias, adaptación parcial a la LOUA (2023). Municipal outlines: D. G. del Catastro; ground and metro: OpenStreetMap (ODbL).' + STYLE);
     return c.toDataURL('image/png'); }

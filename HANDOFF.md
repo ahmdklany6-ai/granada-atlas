@@ -1203,6 +1203,8 @@ south (Armilla, Churriana de la Vega, Las Gabias, Alhendín, Ogíjares).
     style only), and the key drawn ON each map (`AN.keyOnMap`: one column, small, white ground with no frame, in the corner with
     least ink; `keyOn:false` puts it back under the map). Her trial fonts (Klim: Söhne, Untitled, Geograph) hold only ~67
     characters — no í, ñ, ², %, dashes — so they are not used; they stay out of the repo.
+    One table of line weights for every analysis sheet: `AN.K` (3.0 px per unit at 200 dpi) on every big map, `AN.Ks` (2.0) on the small
+    multiples (the five dates, the ten pictures), whatever the scale — the city, time, people and policy sheets all draw with it.
   - Which red on which map: see the table in the scripts' docstrings; the rule is one kind of red element per map (a line, a
     hatch, or one ramp of red tints for a sequential variable), everything else black or grey.
 

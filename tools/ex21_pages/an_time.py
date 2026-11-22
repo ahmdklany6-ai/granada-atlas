@@ -26,7 +26,7 @@ HIST = [('mtn50', '1931', 'map', 'MTN50, first edition'), ('ams1956', '1956–19
 srv = subprocess.Popen([sys.executable, '-m', 'http.server', str(PORT), '--bind', '127.0.0.1'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
 JS = r'''async ([m, DPI, HIST, one]) => { await GA.ex21.ready(); await GA.ex21.readyTime(); await GA.ex21.readyTownEdges(); GA.ex21.setStyle('analysis'); ''' + AN_JS + r'''
   const t = (k, v) => GA.i18n.t(k, v), TD = GA.ex21.time, TE = GA.ex21.townEdges, FIVE = GA.ex21.TFIVE, mm = AN.mm, km2 = GA.ex21.km2, n0 = (v) => Math.round(v).toLocaleString('en-US');
-  const KF = 3.8 * DPI / 200; const SERIES = 'EX 2.1 · TIME';   // KF = the line and label weight of a 1:10,000 map
+  const KF = AN.K; const SERIES = 'EX 2.1 · TIME';   // KF = the line and label weight of a 1:10,000 map
   const split = (s) => { const i = s.indexOf(':'); return i > 0 ? [s.slice(0, i).toUpperCase(), s.slice(i + 1).trim()] : [s.toUpperCase(), '']; };
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   const load = (u) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error(u)); im.src = u; });
