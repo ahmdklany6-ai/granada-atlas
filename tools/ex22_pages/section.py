@@ -32,7 +32,54 @@ XS = lambda s: DX0 + s * K
 svg.defs_add(f'<pattern id="baseHatch" patternUnits="userSpaceOnUse" width="2.6" height="2.6" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="2.6" stroke="{G[3]}" stroke-width="0.12"/></pattern>')
 svg.defs_add(f'<pattern id="redHatch" patternUnits="userSpaceOnUse" width="0.9" height="0.9" patternTransform="rotate(-45)"><line x1="0" y1="0" x2="0" y2="0.9" stroke="{RED}" stroke-width="0.16"/></pattern>')
 svg.defs_add(f'<pattern id="redDots" patternUnits="userSpaceOnUse" width="1.2" height="1.2"><circle cx="0.6" cy="0.6" r="0.22" fill="{RED}"/></pattern>')
-svg.defs_add(f'<pattern id="earth" patternUnits="userSpaceOnUse" width="1.6" height="1.6" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="1.6" stroke="{G[3]}" stroke-width="0.1"/></pattern>')
+svg.defs_add(f'<pattern id="earth" patternUnits="userSpaceOnUse" width="1.4" height="1.4" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="1.4" stroke="{INK}" stroke-width="0.07"/></pattern>')
+
+# ---- buildings in the sections: black and white, with floors, walls, slabs, windows and doors (owner, 22 Nov 2026: "more detail
+# in the buildings of the sections, but black and white"). Floors and use from the Catastro; heights = floors x 3 m (estimate);
+# window rhythm, doors and shop fronts are SCHEMATIC (one bay about every 3.6 m), roof shapes are not known and are drawn flat.
+FL = 3.0
+def _r(x, y, w, h, fill, stroke='none', sw=0.0):
+    return f'<rect x="{x:.2f}" y="{y:.2f}" width="{max(w, 0):.2f}" height="{max(h, 0):.2f}" fill="{fill}"' + (f' stroke="{stroke}" stroke-width="{sw}"' if stroke != 'none' else '') + '/>'
+def _l(x1, y1, x2, y2, sw, col=None):
+    return f'<line x1="{x1:.2f}" y1="{y1:.2f}" x2="{x2:.2f}" y2="{y2:.2f}" stroke="{col or INK}" stroke-width="{sw}"/>'
+def bw_elev(XS, YZ, s0, s1, z, lv, use, far=False):
+    """a building beyond the line, seen in elevation: white, black lines; floor lines, windows, a door or a shop front (schematic)"""
+    x0, x1 = XS(s0), XS(s1); w = s1 - s0; yb = YZ(z); yt = YZ(z + lv * FL)
+    lw, lw2 = (0.1, 0.045) if far else (0.16, 0.06)
+    o = [_r(x0, yt, x1 - x0, yb - yt, WHITE, INK, lw), _l(x0, yt, x1, yt, lw * 1.8)]
+    for f in range(1, lv): o.append(_l(x0, YZ(z + f * FL), x1, YZ(z + f * FL), lw2))
+    if w < 2.2: return ''.join(o)
+    nb = max(1, int(round(w / 3.6))); bw_ = w / nb; ww = min(1.2, bw_ * 0.45)
+    shop = use in ('retail', 'commercial')
+    for f in range(lv):
+        for i in range(nb):
+            cx = s0 + bw_ * (i + 0.5)
+            if f == 0 and shop: continue
+            if f == 0 and i == nb // 2:   # a door
+                o.append(_r(XS(cx - 0.5), YZ(z + 2.2), 1.0 * K, 2.2 * K, WHITE, INK, lw2)); o.append(_l(XS(cx), YZ(z + 2.2), XS(cx), YZ(z), lw2 * 0.8))
+                continue
+            yb_ = z + f * FL + 0.9; o.append(_r(XS(cx - ww / 2), YZ(yb_ + 1.3), ww * K, 1.3 * K, WHITE, INK, lw2))
+            if not far: o.append(_l(XS(cx), YZ(yb_ + 1.3), XS(cx), YZ(yb_), lw2 * 0.7))
+    if shop:
+        o.append(_r(XS(s0 + 0.4), YZ(z + 2.6), (w - 0.8) * K, 2.3 * K, WHITE, INK, lw2))
+        for q in range(1, int((w - 0.8) / 1.6) + 1): o.append(_l(XS(s0 + 0.4 + q * 1.6), YZ(z + 2.6), XS(s0 + 0.4 + q * 1.6), YZ(z + 0.3), lw2 * 0.7))
+    return ''.join(o)
+def bw_cut(XS, YZ, s0, s1, z, lv, use, left='facade', right='facade', col=None, fl=FL, inner=None):
+    """a building cut by the line: the cut walls and slabs solid (black, or red for a proposal), rooms white, window openings in
+    the façade walls (schematic); left/right = 'facade' (with openings), 'party' (a shared wall, no openings) or None"""
+    col = col or INK; x0, x1 = XS(s0), XS(s1); yb = YZ(z); yt = YZ(z + lv * fl); t = 0.3 * K; sl = 0.25 * K
+    o = [_r(x0, yt, x1 - x0, yb - yt, inner or WHITE)]
+    for f in range(1, lv + 1): y = YZ(z + f * fl); o.append(_r(x0, y, x1 - x0, sl, col))           # slabs (the top one is the roof)
+    o.append(_r(x0, yb - sl * 0.6, x1 - x0, sl * 0.6, col))                                      # ground slab
+    shop = use in ('retail', 'commercial', 'hall')
+    for side, xw in ((left, x0), (right, x1 - t)):
+        if side is None: continue
+        o.append(_r(xw, yt, t, yb - yt, col))
+        if side == 'facade':
+            for f in range(lv):
+                a_, b_ = (z + 0.25, z + 2.6) if (f == 0 and shop) else (z + f * fl + 0.9, z + f * fl + 2.2)
+                o.append(_r(xw - 0.02, YZ(b_), t + 0.04, (b_ - a_) * K, WHITE)); o.append(_l(xw + t / 2, YZ(b_), xw + t / 2, YZ(a_), 0.06, col))
+    return ''.join(o)
 
 def label(x, y, s, size=TY['small'], fill=INK, weight=400, anchor='middle', italic=False, halo=0.6, rot=None, spacing=0):
     svg.text(x, y, s, size, fill=fill, weight=weight, anchor=anchor, italic=italic, halo=halo, rotate=rot, spacing=spacing)
@@ -136,7 +183,7 @@ def section(top, proposal, title):
     YZ = lambda z: yb - (z - Z0) * K
     g = []
     svg.text(DX0, top - 4.0, title, TY['eyebrow'], weight=700, spacing=0.35, fill=RED if proposal else INK)
-    # buildings beyond the line (east, up to 40 m): pale, the farther the paler
+    # buildings beyond the line (east, up to 40 m): black and white elevations, the farther the finer the line
     far = []
     for gg, b in gd.blds:
         if not b.get('lv') or b.get('hu'): continue
@@ -144,10 +191,9 @@ def section(top, proposal, title):
         if max(ts) <= 0 or min(ts) > 40 or gg.intersects(LineString([tuple(A_), tuple(B_)])): continue
         s0, s1 = min(s for s, _ in ss), max(s for s, _ in ss)
         if s1 < 0 or s0 > L: continue
-        tmin = max(0.0, min(ts)); far.append((tmin, max(0, s0), min(L, s1), b['lv']))
-    for tmin, s0, s1, lv in sorted(far, key=lambda q: -q[0]):
-        z = grd((s0 + s1) / 2); h = lv * 3.0; col = G[1] if tmin > 20 else G[2]
-        g.append(f'<rect x="{XS(s0):.2f}" y="{YZ(z + h):.2f}" width="{(s1 - s0) * K:.2f}" height="{h * K:.2f}" fill="{col}" stroke="{G[3]}" stroke-width="{LW["hair"] * 1.5}"/>')
+        tmin = max(0.0, min(ts)); far.append((tmin, max(0, s0), min(L, s1), b['lv'], b.get('b')))
+    for tmin, s0, s1, lv, use in sorted(far, key=lambda q: -q[0]):
+        g.append(bw_elev(XS, YZ, s0, s1, grd((s0 + s1) / 2), lv, use, far=tmin > 20))
     # proposal trees beyond the line (pale red), then the ground
     if proposal and GROUP == 'residents':
         for (x, y) in RG.trees + RG.row:
@@ -159,10 +205,12 @@ def section(top, proposal, title):
     g.append('<path d="M' + ' L'.join(f'{x:.2f},{y:.2f}' for x, y in pts) + f' L{XS(L):.2f},{YZ(Z0):.2f} L{XS(0):.2f},{YZ(Z0):.2f} Z" fill="url(#earth)" stroke="none"/>')
     # the base: hatched band above the ground line from the fence on (closed land)
     # the cut buildings
-    for c in S['cuts']:
-        z = grd((c['s0'] + c['s1']) / 2); h = c['h_est']
-        if h is None: continue
-        g.append(f'<rect x="{XS(c["s0"]):.2f}" y="{YZ(z + h):.2f}" width="{(c["s1"] - c["s0"]) * K:.2f}" height="{h * K:.2f}" fill="{G[5]}" stroke="{INK}" stroke-width="{LW["thin"]}"/>')
+    cuts = [c for c in S['cuts'] if c['h_est'] is not None]
+    for i, c in enumerate(cuts):
+        z = grd((c['s0'] + c['s1']) / 2)
+        lft = 'party' if i > 0 and abs(cuts[i - 1]['s1'] - c['s0']) < 0.3 else 'facade'
+        rgt = None if i + 1 < len(cuts) and abs(cuts[i + 1]['s0'] - c['s1']) < 0.3 and cuts[i + 1]['lv'] >= c['lv'] else ('party' if i + 1 < len(cuts) and abs(cuts[i + 1]['s0'] - c['s1']) < 0.3 else 'facade')
+        g.append(bw_cut(XS, YZ, c['s0'], c['s1'], z, c['lv'], c['b'], lft, rgt))
     g.append('<path d="M' + ' L'.join(f'{x:.2f},{y:.2f}' for x, y in pts) + f'" fill="none" stroke="{INK}" stroke-width="{LW["ground"]}"/>')
     # the metro (vehicle drawn schematically: 2.65 x 3.4 m) and its crossing
     for m in S['metro']:
@@ -176,7 +224,7 @@ def section(top, proposal, title):
     cp = [(XS(s), YZ(lim(s))) for s in range(0, int(L) + 1)]
     g.append('<path d="M' + ' L'.join(f'{x:.2f},{y:.2f}' for x, y in cp) + f'" fill="none" stroke="{G[5]}" stroke-width="{LW["section"]}" stroke-dasharray="2.2 1.2"/>')
     # allowed height above the ground, measured at three places
-    for s0 in (20, 170, 330):
+    for s0 in (45, 172, 330):   # measured in open spaces: the street, the strip, the base
         z0, z1 = grd(s0), lim(s0); x = XS(s0)
         g.append(f'<line x1="{x:.2f}" y1="{YZ(z0) - 0.6:.2f}" x2="{x:.2f}" y2="{YZ(z1) + 0.6:.2f}" stroke="{G[5]}" stroke-width="{LW["thin"]}"/>'
                  f'<path d="M{x - 0.7:.2f},{YZ(z1) + 1.6:.2f} L{x:.2f},{YZ(z1) + 0.3:.2f} L{x + 0.7:.2f},{YZ(z1) + 1.6:.2f}" fill="none" stroke="{G[5]}" stroke-width="{LW["thin"]}"/>')
@@ -193,8 +241,7 @@ def section(top, proposal, title):
         it = RG.hall.intersection(LineString([tuple(A_), tuple(B_)]))
         if not it.is_empty:
             s0, _ = st(it.coords[0]); s1, _ = st(it.coords[-1]); s0, s1 = sorted((s0, s1)); z = grd((s0 + s1) / 2); h = 7.0
-            g.append(f'<rect x="{XS(s0):.2f}" y="{YZ(z + h):.2f}" width="{(s1 - s0) * K:.2f}" height="{h * K:.2f}" fill="{RED}" stroke="{RED}" stroke-width="{LW["thin"]}"/>')
-            g.append(f'<line x1="{XS(s0):.2f}" y1="{YZ(z + 3.5):.2f}" x2="{XS(s1):.2f}" y2="{YZ(z + 3.5):.2f}" stroke="{WHITE}" stroke-width="0.25"/>')
+            g.append(bw_cut(XS, YZ, s0, s1, z, 2, 'hall', 'facade', 'facade', col=RED, fl=3.5, inner=R[0]))   # the proposal: the same drawing, in red
             xm = XS((s0 + s1) / 2); zc = lim((s0 + s1) / 2)
             g.append(f'<line x1="{xm:.2f}" y1="{YZ(z + h) - 0.6:.2f}" x2="{xm:.2f}" y2="{YZ(zc) + 0.6:.2f}" stroke="{RED}" stroke-width="{LW["thin"]}" stroke-dasharray="0.6 0.5"/>')
             g.append(f'<text x="{xm + 1.2:.2f}" y="{(YZ(z + h) + YZ(zc)) / 2 + 0.8:.2f}" font-family="{FONT}" font-size="{TY["small"]}" font-weight="700" fill="{RED}" stroke="{WHITE}" stroke-width="0.6" paint-order="stroke">{zc - z - h:.0f} m to spare</text>')
@@ -237,7 +284,7 @@ def section(top, proposal, title):
         svg.add(f'<line x1="{x:.2f}" y1="{YZ(z) + 0.8:.2f}" x2="{x:.2f}" y2="{YZ(Z0) - 0.6:.2f}" stroke="{G[4]}" stroke-width="{LW["hair"] * 2}"/>')
         svg.text(x - 0.6, YZ(Z0) - 1.2, nm, TY['tiny'] + 0.15, fill=G[5], anchor='start', rotate=-90, halo=0.5)
     # names above
-    label(XS(45), YZ(grd(45) + 12.5), 'houses of Churriana, 1–3 floors', size=TY['small'], fill=G[5])
+    label(XS(72), YZ(grd(72) + 12.5), 'houses of Churriana, 1–3 floors', size=TY['small'], fill=G[5])
     label(XS(290), YZ(grd(290) + 3.2), 'the base: approach of runway 18, closed', size=TY['small'], fill=G[5])
     label(XS(122), YZ(grd(122) + 23.5), 'flight ceiling (RD 118/2019, our interpolation)', size=TY['small'], fill=G[5], italic=True)
     if not proposal: label(XS(172), YZ(grd(172) + 2.6), 'empty strip: two parcels, no building', size=TY['small'], fill=INK)
@@ -306,19 +353,21 @@ y += 2.2; rule(y)
 y += 6.0; head(y, 'KEY'); y += 5.2
 def sw(kind, yy, a=None):
     x = x0; y0 = yy - 2.4
-    if kind == 'cut': svg.add(f'<rect x="{x}" y="{y0:.2f}" width="6" height="3" fill="{G[5]}" stroke="{INK}" stroke-width="{LW["thin"]}"/>')
-    elif kind == 'far': svg.add(f'<rect x="{x}" y="{y0:.2f}" width="6" height="3" fill="{G[2]}" stroke="{G[3]}" stroke-width="{LW["hair"] * 1.5}"/>')
+    if kind in ('cut', 'hall'):
+        c_ = INK if kind == 'cut' else RED
+        svg.add(_r(x, y0, 6, 3.2, WHITE) + _r(x, y0, 6, 0.45, c_) + _r(x, y0 + 1.5, 6, 0.4, c_) + _r(x, y0 + 2.9, 6, 0.3, c_) + _r(x, y0, 0.55, 3.2, c_) + _r(x + 5.45, y0, 0.55, 3.2, c_)
+                + _r(x - 0.02, y0 + 0.7, 0.6, 0.6, WHITE) + _r(x + 5.43, y0 + 0.7, 0.6, 0.6, WHITE) + _r(x - 0.02, y0 + 2.05, 0.6, 0.6, WHITE) + _r(x + 5.43, y0 + 2.05, 0.6, 0.6, WHITE))
+    elif kind == 'far': svg.add(_r(x, y0, 6, 3.2, WHITE, INK, 0.16) + _l(x, y0 + 1.6, x + 6, y0 + 1.6, 0.06) + _r(x + 1.0, y0 + 0.45, 1.1, 0.75, WHITE, INK, 0.06) + _r(x + 3.9, y0 + 0.45, 1.1, 0.75, WHITE, INK, 0.06) + _r(x + 2.5, y0 + 2.0, 1.0, 1.2, WHITE, INK, 0.06))
     elif kind == 'ground': svg.add(f'<rect x="{x}" y="{y0 + 1.2:.2f}" width="6" height="1.8" fill="url(#earth)"/><line x1="{x}" y1="{y0 + 1.2:.2f}" x2="{x + 6}" y2="{y0 + 1.2:.2f}" stroke="{INK}" stroke-width="{LW["ground"]}"/>')
     elif kind == 'ceil': svg.add(f'<line x1="{x}" y1="{y0 + 1.5:.2f}" x2="{x + 6}" y2="{y0 + 1.5:.2f}" stroke="{G[5]}" stroke-width="{LW["section"]}" stroke-dasharray="2.2 1.2"/>')
-    elif kind == 'hall': svg.add(f'<rect x="{x}" y="{y0:.2f}" width="6" height="3" fill="{RED}"/>')
     elif kind == 'redground': svg.add(f'<line x1="{x}" y1="{y0 + 1.5:.2f}" x2="{x + 6}" y2="{y0 + 1.5:.2f}" stroke="{RED}" stroke-width="{LW["propBold"] + 0.4}"/>')
     elif kind == 'tree': svg.add(f'<circle cx="{x + 3:.2f}" cy="{y0 + 1.2:.2f}" r="1.3" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["prop"]}"/><line x1="{x + 3:.2f}" y1="{y0 + 2.5:.2f}" x2="{x + 3:.2f}" y2="{y0 + 3.3:.2f}" stroke="{RED}" stroke-width="0.35"/>')
     elif kind == 'treefar': svg.add(f'<circle cx="{x + 3:.2f}" cy="{y0 + 1.2:.2f}" r="1.3" fill="{WHITE}" stroke="{R[2]}" stroke-width="{LW["thin"]}"/>')
     elif kind == 'person': svg.add(f'<circle cx="{x + 3:.2f}" cy="{y0 + 0.4:.2f}" r="0.42" fill="{G[5]}"/><path d="M{x + 2.55:.2f},{y0 + 3:.2f} L{x + 2.7:.2f},{y0 + 1:.2f} L{x + 3.3:.2f},{y0 + 1:.2f} L{x + 3.45:.2f},{y0 + 3:.2f} Z" fill="{G[5]}"/>')
     elif kind == 'fence': svg.add(f'<line x1="{x + 3:.2f}" y1="{y0 - 0.2:.2f}" x2="{x + 3:.2f}" y2="{y0 + 3:.2f}" stroke="{INK}" stroke-width="{LW["mid"]}" stroke-dasharray="0.8 0.5"/>')
-items = [('cut', 'Building cut by the line (Catastro floors × 3 m, estimate)'), ('far', 'Building beyond the line, up to 40 m east'), ('ground', 'Ground (IGN MDT25)'),
+items = [('cut', 'Building cut by the line: walls and floors cut, window openings (Catastro floors × 3 m, estimate)'), ('far', 'Building beyond the line, up to 40 m east: floors, windows, doors, shop fronts'), ('ground', 'Ground (IGN MDT25)'),
          ('ceil', 'Flight ceiling: the easement surface over the line (RD 118/2019, our interpolation, approximate)'), ('fence', 'Fence: height not mapped'), ('person', 'Person, 1.75 m (for scale)'),
-         ('hall', 'Neighbourhood hall, proposed (2 floors)'), ('redground', 'Park and fence walk, proposed'), ('tree', 'Tree, proposed (crown about 5 m)'), ('treefar', 'Tree, proposed, beyond the line')]
+         ('hall', 'Neighbourhood hall, proposed (2 floors, cut)'), ('redground', 'Park and fence walk, proposed'), ('tree', 'Tree, proposed (crown about 5 m)'), ('treefar', 'Tree, proposed, beyond the line')]
 for kind, txt in items:
     sw(kind, y); lines = wrap(txt, TY['small'], CW - 9)
     for i, ln in enumerate(lines): svg.text(x0 + 7.6, y + i * LH(TY['small']), ln, TY['small'])
@@ -331,7 +380,7 @@ for v in (0, 5, 10, 25, 50): svg.text(x0 + v * K, y + 4.8, f'{v}' + (' m' if v =
 y += 9
 SRC = ('Sources: IGN MDT25 (CC BY 4.0) for the ground, sampled every metre (a 25 m model: it smooths the street level); D. G. del Catastro, INSPIRE buildings (floors) and parcels; '
        'OpenStreetMap contributors (streets, base outline, metro extension; ODbL); Origen de los datos: Ministerio de Defensa (aeronautical easements, RD 118/2019). '
-       'Notes: heights = floors × 3 m, an estimate; roofs are not drawn. The ceiling line is the lowest easement surface over the line, interpolated between the official drawn lines — approximate, not the legal value. '
+       'Notes: heights = floors × 3 m, an estimate. Windows, doors and shop fronts are schematic (one bay about every 3.6 m; use from the Catastro); roof shapes are not known and are drawn flat. The ceiling line is the lowest easement surface over the line, interpolated between the official drawn lines — approximate, not the legal value. '
        'The metro vehicle and the people are schematic. The proposal is drawn schematically — its shapes and sizes are ours.')
 lines = wrap(SRC, TY['tiny'], CW, avg=0.52)
 yS = SH - 12 - len(lines) * 2.1
