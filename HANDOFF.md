@@ -1305,3 +1305,27 @@ four areas go on the A1; how the city maps sit on the A1 (one 1:10,000 map is 64
 841 × 594 mm sheet — proposal: one main map at 1:10,000 cropped to the base and its band, the other three small at
 1:25,000); film or collage for the human scale. **To do then:** the phenomenon sentence, the draft and final text
 (≤ 150 words) with the two-sentence strategy, a page of policy excerpts, the human-scale sketch, the A1 sheet.
+
+## 42. Exercise 2.2 "Interest groups" — stage 1 (22 Nov 2026), on branch `claude/busy-thompson-newzwc` (print only, not on the site)
+**Groups (owner: "طيب اعمل", 22 Nov):** private developer · residents of the five towns · Ministry of Defence (a case-specific
+group, allowed by the brief). **Shared frame:** the north edge, Churriana de la Vega | Armilla, 710 × 570 m
+(443390–444100 E, 4110420–4110990 N, EPSG:25830) = the 1:1000 map on an A1 landscape sheet. **Shared section line S–S:**
+350 m square to the north fence from (443807, 4110985), fence at 228 m, 122 m into the base (chosen as the line, tried
+every 20 m along the strip, that cuts the most buildings). **The empty strip:** two Catastro parcels, 16,736 m², between
+Avenida de Poniente (metro extension) and Calle Santa Lucía; 2,298 Catastro dwellings within 400 m, 688 within 200 m.
+Flight ceiling over the strip 13–17 m above the ground (RD 118/2019 surfaces minus MDT25, smoothed over ~30 m).
+- Data: `tools/build_ex22_frame.py` → `data/ex22/frame.json` (Catastro buildings with floors/use/year/dwellings, Catastro
+  parcels, OSM streets/land use/places/base/metro extension, municipal line, 10 m grid of ground + limit, the section's
+  samples and cuts). Needs the Catastro BU and CP downloads and the easement KMZ (env CATASTRO, CP_DIR, KMZ_DIR).
+- Sheets (`tools/ex22_pages/`, SVG → Chromium vector PDF A1 + pdftoppm PNG): `positions.py` (00 three positions, short
+  programmes, the analysis behind them, schematic intents on the frame, where they meet and clash), `plan.py <out> residents`
+  (01 plan 1:1000), `section.py <out> residents` (02 plan strip + section today + section with the proposal, 1:500).
+  `_ex22.py` holds the palette (read from js/palette.js via node), ONE line-weight table and ONE type table for all groups;
+  `groups.py` holds the shared ground and each group's proposal as geometry, so plan and section draw the same things.
+- Developer and Defence are drawn as schematic intents only (positions sheet); their 1:1000 plans and 1:500 sections are
+  stage 2 (Wed 25.11), with the 1:250 area at one point for all three, street views + 3D, the comparison board with the
+  collision map, the phenomenon text (A4) and the corrected 2.1 A1 sheet.
+- Honesty notes on the sheets: proposals schematic; heights = floors × 3 m (estimate); the fence height is not mapped; the
+  metro extension's stops have no published positions ("M?" = a stop the residents ask for); Defence's "no gatherings under
+  the approach" is our reading on the model of US air-base land-use zones, not a published rule for Armilla; the developer's
+  homes are estimates (drawn blocks × 4 floors ÷ 100 m²; base land × 64 homes/ha, Sde Dov's planned density).
