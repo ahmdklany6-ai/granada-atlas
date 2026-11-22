@@ -1325,6 +1325,16 @@ Flight ceiling over the strip 13–17 m above the ground (RD 118/2019 surfaces m
 - Developer and Defence are drawn as schematic intents only (positions sheet); their 1:1000 plans and 1:500 sections are
   stage 2 (Wed 25.11), with the 1:250 area at one point for all three, street views + 3D, the comparison board with the
   collision map, the phenomenon text (A4) and the corrected 2.1 A1 sheet.
+- **Section buildings (owner, 22 Nov: "more detail … black and white" → "more texture" → "like the last 2.1 sections: textures and
+  the houses' real shapes"):** `tools/ex22_pages/_bw.py`. Cut buildings: black walls and slabs, the roof as the façade photo shows it
+  (clay tiles = a pitched roof, pitch schematic). Buildings up to 40 m beyond the line: drawn from what was read by eye from the
+  Catastro's façade photo of each parcel (`data/ex22/facades.json`, 19 parcels, photos of 2 June 2014 — the photos themselves stay
+  out of the repo): wall, base, roof, balconies, hoods, shutters, doors, garden walls, gates; number and place of openings
+  schematic. 40–100 m beyond: outlines only. Ground: a black cut band over a stippled soil, hatched on the base side; the air above
+  the ceiling hatched. Proposal in the same manner, in red. Textures are EXPLICIT lines and dots (`_bw.tex`), not SVG `<pattern>`
+  fills: patterns made Chromium's PDF 20 MB and slow to rasterise; explicit geometry gives 2.3 MB.
+- Fonts: Google's `latin` subset of IBM Plex Sans lacks ≈ → ←; `_ex22.export` asks for them by name (`&text=`), otherwise the PDF
+  embeds a fallback serif for those signs (check with `pdffonts`).
 - Honesty notes on the sheets: proposals schematic; heights = floors × 3 m (estimate); the fence height is not mapped; the
   metro extension's stops have no published positions ("M?" = a stop the residents ask for); Defence's "no gatherings under
   the approach" is our reading on the model of US air-base land-use zones, not a published rule for Armilla; the developer's

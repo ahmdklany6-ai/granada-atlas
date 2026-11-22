@@ -173,6 +173,8 @@ def export(svg, out_base, w_mm, h_mm, dpi=200):
     open(out_base + '.svg', 'w').write(s)
     page = ('<!doctype html><html><head><meta charset="utf-8">'
             '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=block">'
+            # the signs Google's 'latin' subset leaves out (\u2248 \u2192 \u2190): asked for by name, so they come from IBM Plex too and not from a fallback font
+            '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&text=%E2%89%88%E2%86%92%E2%86%90&display=block">'
             f'<style>@page {{ size: {w_mm}mm {h_mm}mm; margin: 0 }} html,body {{ margin:0; padding:0; background:#fff }} svg {{ display:block }}</style>'
             f'</head><body>{s}</body></html>')
     with sync_playwright() as p:
