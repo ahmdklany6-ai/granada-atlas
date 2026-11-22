@@ -685,9 +685,9 @@
   function readyTownEdges() { if (TEp) return TEp; TEp = fetch('data/ex21/town_edges.json?v=' + (root.GA_BUILD || '')).then(r => r.json()).then(j => (TE = j)).catch(e => { TEp = null; throw e; }); return TEp; }
   // the tint inside a town's edge; how strong the 100 m cell pictures are drawn (analysis style: the open land at full strength) and the same strength
   // for their key swatches = the drawing's × the picture's own alpha (tools/build_ex21_time.py: density 235, edge land 215)
-  const EDGE_FILL = 0.16, cellDraw = (only, an) => (an && only === 'edge' ? 1 : 0.85), cellKey = (only) => cellDraw(only, true) * (only === 'edge' ? 215 : 235) / 255;
+  const edgeFill = () => (P().an ? 0.38 : 0.16), cellDraw = (only, an) => (an && only === 'edge' ? 1 : 0.85), cellKey = (only) => cellDraw(only, true) * (only === 'edge' ? 215 : 235) / 255;
   // (analysis style: one entry — the red outline with its tint, as drawn)
-  function townEdgeLegend(t, key) { const col = P().ex21t; if (P().an) return [{ sw: P().an.red, alpha: EDGE_FILL, stroke: P().an.red, line: P().an.red, w: 2.4, label: t('x41.edge') + (TE && key && TE.edges[key] && TFIVE.some(tn => TE.edges[key][tn] === null) ? ' — ' + TFIVE.filter(tn => TE.edges[key][tn] === null).join(', ') + ': ' + t('x39.unknown') : '') }];
+  function townEdgeLegend(t, key) { const col = P().ex21t; if (P().an) return [{ sw: P().an.red, alpha: edgeFill(), stroke: P().an.red, line: P().an.red, w: 2.4, label: t('x41.edge') + (TE && key && TE.edges[key] && TFIVE.some(tn => TE.edges[key][tn] === null) ? ' — ' + TFIVE.filter(tn => TE.edges[key][tn] === null).join(', ') + ': ' + t('x39.unknown') : '') }];
     return TFIVE.map(tn => ({ line: col[tn], w: 2.4, label: tn + (TE && key && TE.edges[key] && TE.edges[key][tn] === null ? ' — ' + t('x39.unknown') : '') })); }
   // o.only = 'built' | 'density' | 'edge' | 'photo' (o.photo = a historical image of the same frame); the base is drawn as today's outline;
   // o.edges = a picture key of town_edges.json: each town's built-up edge at that date, in the town's colour (tcol)
@@ -720,7 +720,7 @@
       else { path(base.g); ctx.fillStyle = C.base; ctx.fill(); } }
     if (o.edges && TE && TE.edges[o.edges]) { const col = pal.ex21t, E2 = TE.edges[o.edges];
       TFIVE.forEach(tn => { const rs = E2[tn]; if (!rs || !rs.length) return; const pth = () => { ctx.beginPath(); rs.forEach(pg => pg.forEach(r => { r.forEach((q, i) => i ? ctx.lineTo(X(q[0]), Y(q[1])) : ctx.moveTo(X(q[0]), Y(q[1]))); ctx.closePath(); })); };
-        const ec = o.edgeCol || col[tn]; pth(); ctx.fillStyle = ec; ctx.globalAlpha = EDGE_FILL; ctx.fill('evenodd'); ctx.globalAlpha = 0.9; ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 6.4 * k; ctx.stroke(); ctx.globalAlpha = 1; pth(); ctx.strokeStyle = ec; ctx.lineWidth = (AN ? 2.6 : 3.4) * k; ctx.stroke(); });
+        const ec = o.edgeCol || col[tn]; pth(); ctx.fillStyle = ec; ctx.globalAlpha = o.edgeCol ? 0.16 : edgeFill(); ctx.fill('evenodd'); ctx.globalAlpha = 0.9; ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 6.4 * k; ctx.stroke(); ctx.globalAlpha = 1; pth(); ctx.strokeStyle = ec; ctx.lineWidth = 3.4 * k; ctx.stroke(); });
       if (AN && photo && base) { path(base.g); anFence(ctx, k, AN); } }   // the fence once more, over the edges: it stays whole where a town's edge runs along it
     // analysis style, with the towns' edges: a name never sits on a red edge, on the fence or on another name, and never inside ANOTHER town's edge or
     // inside the base — it takes a free place inside its own town's edge, or the nearest one beside it (two coarse masks of what is drawn; a name that finds no free place keeps its own)

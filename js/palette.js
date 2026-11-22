@@ -187,7 +187,7 @@
     red: SIG, redDark: A.r5, rose: A.r3, blush: A.r1, redTint: A.r2, redSoft: A.r1, blue: D.ink, olive: A.g5, grey: A.g5, grey2: A.g4, grey3: A.g3, gray1: A.g1, gray2: A.g2, line: A.g2, line2: A.g4,
     choro: [A.r1, A.r2, A.r3, A.r4, A.r5],                       // a sequential variable = one ramp of the red
     // the base as a small solid (insets, the agglomeration maps); on the large maps it is a white void behind its fence (an.hatch)
-    ex21: { base: D.ink, baseLine: D.ink, runway: A.g5, band: A.g1, bandLine: A.g5, built: A.g3, street: A.g4, muni: A.g5, metro: D.ink, route: SIG, straight: D.ink, dead: SIG, town: D.ink,
+    ex21: { base: D.ink, baseLine: D.ink, runway: A.g5, band: A.g1, bandLine: A.g5, built: A.g2, street: A.g3, muni: A.g5,   /* lighter ground: more contrast for the red (Tal, 22 Nov 2026) */ metro: D.ink, route: SIG, straight: D.ink, dead: SIG, town: D.ink,
       height: { above: A.r6, '0-15': A.r5, '15-30': A.r4, '30-60': A.r3 } },   // drawn semi-transparent (alpha per class in easements.json)
     ex21t: { 'Armilla': SIG, 'Churriana de la Vega': SIG, 'Las Gabias': SIG, 'Alhendín': SIG, 'Ogíjares': SIG },   // the towns' edge at a date = the red thing of the history pictures
     ex21s: { strip: SIG, corridor: SIG, corridorLine: SIG },      // the proposal is the red thing of the strategy map
@@ -200,7 +200,7 @@
     an: {
       red: SIG, ink: D.ink, grey: [A.g1, A.g2, A.g3, A.g4, A.g5, A.g6], ramp: [A.r1, A.r2, A.r3, A.r4, A.r5, A.r6],
       // widths and gaps in the drawings' unit k (the line and label weight of a map at its scale)
-      hatch: { gap: 5.6, w: 1.05, ctxGap: 10, ctxW: 0.7, ctxCol: A.g4 },          // the base: red hatch when it is the subject, sparse grey otherwise
+      hatch: { gap: 5.6, w: 1.05, ctxGap: 10, ctxW: 0.7, ctxCol: A.g3 },          // the base: red hatch when it is the subject, sparse grey otherwise
       fence: { w: 2.7, dash: 4.6 },                                               // a black line with white dashes
       // the fence by what lies outside it (map 01): black and grey line patterns instead of colours
       fenceClass: { housing: { col: D.ink, w: 5.4 }, industry: { col: D.ink, w: 5.4, dash: [7, 3.5] }, road: { col: A.g5, w: 5.4 }, green: { col: A.g5, w: 5.4, dash: [7, 3.5] }, open: { col: D.ink, w: 2.6, dash: [0.1, 5.2], round: true } },
@@ -213,7 +213,7 @@
       // plot kinds of the estate (map 01): one red, five patterns
       kind: { science: 'solid', logistics: 'hatch', industry: 'cross', energy: 'dots', quarry: 'lines' },
       branch: { public: SIG, greys: [A.g6, A.g4, A.g2, A.g5, A.g3] },             // work by branch: public administration and defence = red
-      grain: 13, veil: 0.3,                                                       // paper grain (alpha / 255) and the white veil over a photo printed in grey
+      grain: 8, veil: 0.62,                                                       // paper grain (alpha / 255) and the white veil over a photo printed in grey
     },
   };
   // 5.28 — "City growth (built-up extent 1932–2020)" layer (js/layers_growth.js): one fill per period, oldest → newest
