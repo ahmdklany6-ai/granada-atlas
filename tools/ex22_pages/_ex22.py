@@ -193,21 +193,49 @@ def export(svg, out_base, w_mm, h_mm, dpi=200):
 _VEGA_DONE = set()
 
 
+def _tile_furrows(w=6.0, h=6.0, gap=0.6, seed=3):
+    """dense, slightly wavering furrow lines (drawn here: fine hand-drawn rows, as in the owner's reference sheets — style only)"""
+    import random as _r
+    rr = _r.Random(seed); out = []
+    y = gap / 2
+    while y < h:
+        pts = []; x = 0.0; yy = y + rr.uniform(-0.04, 0.04)
+        while x <= w + 0.01:
+            pts.append(f'{x:.2f},{yy + 0.05 * math.sin(x * 2.1 + y * 3.0):.3f}'); x += 0.75
+        out.append('M' + ' L'.join(pts)); y += gap
+    return out
+
+
+def _tile_speckle(w=6.0, h=6.0, n=120, seed=5, rmin=0.05, rmax=0.16):
+    """gravel-like speckle: grey dots of mixed size, a few short strokes (style only)"""
+    import random as _r
+    rr = _r.Random(seed); d = []
+    for _ in range(n):
+        x, y = rr.uniform(0, w), rr.uniform(0, h); r = rr.uniform(rmin, rmax) * (1.8 if rr.random() < 0.08 else 1.0)
+        d.append(f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{r:.3f}"/>')
+    return ''.join(d)
+
+
 def vega_pat(svg, kind, ang=0.0):
-    """the url of the texture for a land-use kind (farmland furrows are turned to `ang` degrees, in 15° steps)"""
+    """the url of the texture for a land-use kind, black and white (owner, 23 Nov 2026, after reference sheets: dense furrows
+    for farmland, a gravel speckle for meadow and open ground, canopies over the speckle for orchards). Farmland is turned to
+    `ang` degrees (15° steps) so the rows run along the field."""
     if kind == 'farmland':
         a = int(round(ang / 15.0) * 15) % 180; pid = f'vegaFarm{a}'
         if pid not in _VEGA_DONE:
-            svg.defs_add(f'<pattern id="{pid}" patternUnits="userSpaceOnUse" width="1.5" height="1.5" patternTransform="rotate({a})"><line x1="0" y1="0.75" x2="1.5" y2="0.75" stroke="{G[3]}" stroke-width="0.11"/></pattern>')
+            fr = _tile_furrows()
+            svg.defs_add(f'<pattern id="{pid}" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate({a})"><rect width="6" height="6" fill="{WHITE}"/>'
+                         f'<path d="{" ".join(fr)}" fill="none" stroke="{G[4]}" stroke-width="0.1"/></pattern>')
             _VEGA_DONE.add(pid)
         return f'url(#{pid})'
     if kind == 'orchard':
         if 'vegaOrch' not in _VEGA_DONE:
-            svg.defs_add(f'<pattern id="vegaOrch" patternUnits="userSpaceOnUse" width="3" height="3"><circle cx="1.5" cy="1.5" r="0.55" fill="none" stroke="{G[4]}" stroke-width="0.1"/><circle cx="1.5" cy="1.5" r="0.1" fill="{G[4]}"/></pattern>')
+            can = ''.join(f'<circle cx="{cx}" cy="{cy}" r="1.2" fill="{WHITE}" stroke="{G[4]}" stroke-width="0.12" stroke-dasharray="0.25 0.12"/><circle cx="{cx}" cy="{cy}" r="0.55" fill="none" stroke="{G[3]}" stroke-width="0.06" stroke-dasharray="0.12 0.12"/>' for cx, cy in ((1.5, 1.5), (4.5, 4.5)))
+            svg.defs_add(f'<pattern id="vegaOrch" patternUnits="userSpaceOnUse" width="6" height="6"><rect width="6" height="6" fill="{WHITE}"/><g fill="{G[3]}">{_tile_speckle(n=45, seed=9)}</g>{can}</pattern>')
             _VEGA_DONE.add('vegaOrch')
         return 'url(#vegaOrch)'
     if 'vegaMead' not in _VEGA_DONE:
-        svg.defs_add(f'<pattern id="vegaMead" patternUnits="userSpaceOnUse" width="2.6" height="2.2"><path d="M0.5,1.4 l0.25,-0.5 l0.25,0.5 M1.8,0.6 l0.25,-0.5 l0.25,0.5" fill="none" stroke="{G[3]}" stroke-width="0.09"/></pattern>')
+        svg.defs_add(f'<pattern id="vegaMead" patternUnits="userSpaceOnUse" width="6" height="6"><rect width="6" height="6" fill="{WHITE}"/><g fill="{G[4]}">{_tile_speckle()}</g></pattern>')
         _VEGA_DONE.add('vegaMead')
     return 'url(#vegaMead)'
 
@@ -220,3 +248,41 @@ def long_angle(g, screen_flip=True):
     e = max(((c[i], c[i + 1]) for i in range(4)), key=lambda ab: math.hypot(ab[1][0] - ab[0][0], ab[1][1] - ab[0][1]))
     a = math.degrees(math.atan2(e[1][1] - e[0][1], e[1][0] - e[0][0]))
     return -a if screen_flip else a
+
+
+def vega_geom(g_sheet, kind, ang=None, seed=1):
+    """the same textures as vega_pat, as explicit geometry in sheet millimetres (Chromium prints SVG patterns as low-resolution
+    images): farmland = rows 0.8 mm apart along the field's long side, each slightly offset; meadow = a gravel speckle (about
+    one dot per mm²); orchard = the speckle with dashed canopies on a 6 mm grid. g_sheet: a shapely polygon already on the sheet."""
+    import random as _r
+    from shapely.prepared import prep
+    if g_sheet.is_empty: return ''
+    rr = _r.Random(seed); out = []
+    x0, y0, x1, y1 = g_sheet.bounds; pg = prep(g_sheet)
+    if kind == 'farmland':
+        a = math.radians(ang if ang is not None else long_angle(g_sheet, screen_flip=False))
+        ux, uy = math.cos(a), math.sin(a); nx, ny = -uy, ux
+        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2; R_ = math.hypot(x1 - x0, y1 - y0) / 2 + 1
+        segs = []
+        t = -R_
+        while t <= R_:
+            o = t + rr.uniform(-0.08, 0.08)
+            ln = LineString([(cx + nx * o - ux * R_, cy + ny * o - uy * R_), (cx + nx * o + ux * R_, cy + ny * o + uy * R_)]).intersection(g_sheet)
+            for q in ([ln] if ln.geom_type == 'LineString' else [q for q in getattr(ln, 'geoms', []) if q.geom_type == 'LineString']):
+                if not q.is_empty and q.length > 0.3: segs.append('M{:.2f},{:.2f} L{:.2f},{:.2f}'.format(*q.coords[0], *q.coords[-1]))
+            t += 0.8
+        return f'<path d="{" ".join(segs)}" fill="none" stroke="{G[3]}" stroke-width="0.08"/>' if segs else ''
+    n = int(g_sheet.area * 2.2); dots = []
+    tries = 0
+    while len(dots) < n and tries < n * 6:
+        tries += 1; x, y = rr.uniform(x0, x1), rr.uniform(y0, y1)
+        if pg.contains(Point(x, y)): dots.append(f'M{x:.2f},{y:.2f}h0.01')
+    out.append(f'<path d="{"".join(dots)}" stroke="{G[4]}" stroke-width="0.16" stroke-linecap="round" fill="none"/>' if dots else '')
+    if kind == 'orchard':
+        cs = []
+        for i in range(int(x0 // 6), int(x1 // 6) + 1):
+            for j in range(int(y0 // 6), int(y1 // 6) + 1):
+                cx, cy = i * 6 + 3 + (1.5 if j % 2 else 0), j * 6 + 3
+                if pg.contains(Point(cx, cy).buffer(1.3)): cs.append(f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="1.3" fill="{WHITE}" stroke="{G[4]}" stroke-width="0.12" stroke-dasharray="0.3 0.15"/><circle cx="{cx:.2f}" cy="{cy:.2f}" r="0.12" fill="{G[4]}"/>')
+        out.append(''.join(cs))
+    return ''.join(out)
