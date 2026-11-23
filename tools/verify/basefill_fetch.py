@@ -37,18 +37,18 @@ def overture():
     x = get('https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/?list-type=2&prefix=release/&delimiter=/', 60).decode()
     rels = sorted(re.findall(r'<Prefix>release/([^<]+)/</Prefix>', x)); rel = rels[-1]; print('overture releases', rels[-4:], flush=True)
     con = duckdb.connect(); con.execute('INSTALL spatial; LOAD spatial; INSTALL httpfs; LOAD httpfs; SET s3_region="us-west-2";')
-    q = f"""SELECT id, ST_X(geometry) AS lon, ST_Y(geometry) AS lat, to_json(names) AS names, to_json(categories) AS categories,
-              confidence, to_json(websites) AS websites, to_json(phones) AS phones, to_json(brand) AS brand, to_json(addresses) AS addresses,
-              operating_status
+    q = f"""SELECT id, ST_X(geometry) AS lon, ST_Y(geometry) AS lat, to_json(names) AS j_names, to_json(categories) AS j_categories,
+              confidence, to_json(websites) AS j_websites, to_json(phones) AS j_phones, to_json(brand) AS j_brand, to_json(addresses) AS j_addresses,
+              to_json(taxonomy) AS j_taxonomy, operating_status
             FROM read_parquet('s3://overturemaps-us-west-2/release/{rel}/theme=places/type=place/*', hive_partitioning=1)
             WHERE bbox.xmin BETWEEN {W} AND {E} AND bbox.ymin BETWEEN {S} AND {N}"""
     try: rows = con.execute(q).fetchall(); cols = [d[0] for d in con.description]
-    except Exception as e:  # older releases have no operating_status
-        print('retry without operating_status', e, flush=True); q = q.replace(',\n              operating_status', ''); rows = con.execute(q).fetchall(); cols = [d[0] for d in con.description]
+    except Exception as e:  # a release without taxonomy / operating_status
+        print('retry with fewer columns', e, flush=True); q = q.replace('to_json(taxonomy) AS j_taxonomy, ', ''); rows = con.execute(q).fetchall(); cols = [d[0] for d in con.description]
     recs = [dict(zip(cols, r)) for r in rows]
     for r in recs:
-        for k in ('names', 'categories', 'websites', 'phones', 'brand', 'addresses'):
-            if isinstance(r.get(k), str): r[k] = json.loads(r[k])
+        for k in list(r):
+            if k.startswith('j_'): v = r.pop(k); r[k[2:]] = json.loads(v) if isinstance(v, str) else v
     save('overture_places.json', {'release': rel, 'bbox': [W, S, E, N], 'n': len(recs), 'places': recs})
 
 # ---------- 2. GTFS ----------
@@ -65,6 +65,24 @@ def gtfs():
             if z and z[:2] == b'PK' and len(z) < 90e6:
                 fn = 'gtfs_%s.zip' % (r.get('mdb_source_id') or len(got)); save(fn, z); got.append({'file': fn, 'url': u, 'provider': r.get('provider'), 'name': r.get('name'), 'license': r.get('urls.license'), 'bbox': [r.get('location.bounding_box.minimum_longitude'), r.get('location.bounding_box.minimum_latitude'), r.get('location.bounding_box.maximum_longitude'), r.get('location.bounding_box.maximum_latitude')]}); break
     save('gtfs_index.json', got)
+
+def ctan():
+    B = 'http://api.ctan.es/v1/Consorcios'; out = {}
+    r = get(B, 60); out['consorcios'] = json.loads(r) if r else None; save('ctan_consorcios.json', out['consorcios'])
+    cs = (out['consorcios'] or {}).get('consorcios') or out['consorcios'] or []
+    gid = next((c.get('idConsorcio') for c in cs if isinstance(c, dict) and 'granada' in json.dumps(c, ensure_ascii=False).lower()), None)
+    if gid is None: raise RuntimeError('Granada consortium not found')
+    for name, path in (('paradas', '/paradas'), ('lineas', '/lineas'), ('nucleos', '/nucleos'), ('municipios', '/municipios'), ('modos', '/modostransporte')):
+        r = get(f'{B}/{gid}{path}', 120); save(f'ctan_{name}.json', r or b'null')
+    lines = json.loads(open(os.path.join(OUT, 'ctan_lineas.json')).read() or 'null') or {}
+    lines = lines.get('lineas', lines) if isinstance(lines, dict) else lines
+    hor = {}
+    for ln in lines or []:
+        lid = ln.get('idLinea'); time.sleep(0.3)
+        st = get(f'{B}/{gid}/lineas/{lid}/paradas', 60, tries=2)
+        h = get(f'{B}/{gid}/horarios_lineas?linea={lid}&lang=ES', 60, tries=2)
+        hor[str(lid)] = {'line': ln, 'paradas': json.loads(st) if st else None, 'horarios': json.loads(h) if h else None}
+    save('ctan_lineas_full.json', {'consorcio': gid, 'lines': hor})
 
 # ---------- 3. Catastro INSPIRE buildings ----------
 def catastro():
@@ -85,8 +103,10 @@ def catastro():
     tr = Transformer.from_crs('EPSG:25830', 'EPSG:4326', always_xy=True); out = []; done = []
     NS = {'gml': 'http://www.opengis.net/gml/3.2', 'bu-core2d': 'http://inspire.jrc.ec.europa.eu/schemas/bu-core2d/2.0',
           'bu-ext2d': 'http://inspire.jrc.ec.europa.eu/schemas/bu-ext2d/2.0'}
+    only = [v for v in os.environ.get('CATASTRO_ONLY', '').split(',') if v]
+    if only: want = {u: tt for u, tt in want.items() if any(o in norm(tt) for o in only)}
     for u, title in want.items():
-        z = get(u, 900, tries=3)
+        time.sleep(4); z = get(u, 1200, tries=5)
         if not z: done.append([title, 'download failed']); continue
         zf = zipfile.ZipFile(io.BytesIO(z)); gml = [n for n in zf.namelist() if n.endswith('building.gml')]
         if not gml: done.append([title, 'no building.gml', zf.namelist()[:5]]); continue
@@ -113,7 +133,7 @@ def catastro():
                 if W <= lon <= E and S <= lat <= N: out.append([round(lon, 6), round(lat, 6), int(beg) if beg else None, fl, use, ref.replace('ES.SDGC.BU.', '')])
             el.clear()
         done.append([title, len(out) - n0]); print('catastro', title, len(out) - n0, flush=True)
-        save('catastro_buildings.json', {'source': 'Dirección General del Catastro — INSPIRE Buildings (ATOM, province 18)', 'fields': ['lon', 'lat', 'year', 'floors_above', 'currentUse', 'ref'], 'municipalities': done, 'b': out})
+        save(os.environ.get('CATASTRO_FILE', 'catastro_buildings.json'), {'source': 'Dirección General del Catastro — INSPIRE Buildings (ATOM, province 18)', 'fields': ['lon', 'lat', 'year', 'floors_above', 'currentUse', 'ref'], 'municipalities': done, 'b': out})
 
 # ---------- 4. Overpass ----------
 def overpass():
@@ -129,8 +149,16 @@ def tcd():
     from pyproj import Transformer
     t = Transformer.from_crs('EPSG:4326', 'EPSG:25830', always_xy=True); x0, y0 = t.transform(W, S); x1, y1 = t.transform(E, N)
     x0, y0, x1, y1 = [int(v // 10 * 10) for v in (x0, y0, x1 + 10, y1 + 10)]; w, h = (x1 - x0) // 10, (y1 - y0) // 10
+    diag = {}
+    for u in ('https://image.discomap.eea.europa.eu/arcgis/rest/services/GioLandPublic/HRL_TreeCoverDensity_2018/ImageServer?f=pjson',
+              'https://image.discomap.eea.europa.eu/arcgis/rest/services/GioLandPublic?f=pjson',
+              'https://image.discomap.eea.europa.eu/arcgis/rest/services?f=pjson',
+              'https://copernicus.discomap.eea.europa.eu/arcgis/rest/services?f=pjson'):
+        r = get(u, 60, tries=2); diag[u] = (r or b'')[:3000].decode('utf-8', 'replace')
+    save('tcd_diag.json', diag)
     base = 'https://image.discomap.eea.europa.eu/arcgis/rest/services/GioLandPublic/HRL_TreeCoverDensity_2018/ImageServer/exportImage'
-    tiles = []; step = 2000
+    m = re.search(r'"(https://[^"]*TreeCoverDensity[^"]*ImageServer)', json.dumps(diag))
+    tiles = []; step = 1000
     for j in range(0, h, step):
         for i in range(0, w, step):
             bx = [x0 + i * 10, y1 - min(h, j + step) * 10, x0 + min(w, i + step) * 10, y1 - j * 10]
@@ -147,19 +175,21 @@ def sica():
         if r: save(f'sica_{ws}_caps.xml', r)
     # a test GetMap of every noise layer over the base (does anything draw there?)
     caps = open(os.path.join(OUT, 'sica_evaluacionambiental_caps.xml'), 'rb').read().decode('utf-8', 'replace')
-    names = sorted(set(re.findall(r'<Name>(evaluacionambiental:[^<]+)</Name>', caps))); res = {}
+    names = sorted(set(re.findall(r'<Name>(mer_[a-z_]+_(?:lden|ln))</Name>', caps))); res = {}
     for nm in names:
-        if not re.search(r'lden|ln|ruido|mer_', nm, re.I): continue
         u = f'https://gis.miteco.gob.es/geoserver/evaluacionambiental/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS={nm}&STYLES=&SRS=EPSG:4326&BBOX=-3.70,37.09,-3.58,37.17&WIDTH=400&HEIGHT=270&FORMAT=image/png&TRANSPARENT=TRUE'
         r = get(u, 60, tries=1)
         if r and r[:4] == b'\x89PNG':
             from PIL import Image
             im = Image.open(io.BytesIO(r)).convert('RGBA'); a = im.getchannel('A').histogram(); res[nm] = round(1 - a[0] / (im.width * im.height), 4)
-            if res[nm] > 0.001: save('sica_' + nm.split(':')[1] + '.png', r)
+            if res[nm] > 0.001: save('sica_' + nm + '.png', r)
         else: res[nm] = None
     save('sica_coverage.json', res)
 
-for nm, fn in (('sica', sica), ('overpass', overpass), ('tcd', tcd), ('gtfs', gtfs), ('overture', overture), ('catastro', catastro)):
-    if os.environ.get('ONLY') and nm not in os.environ['ONLY'].split(','): continue
+ONLY = os.environ.get('ONLY') or (open('tools/verify/basefill_only').read().strip() if os.path.exists('tools/verify/basefill_only') else '')
+for line in (open('tools/verify/basefill_env').read().splitlines() if os.path.exists('tools/verify/basefill_env') else []):
+    if '=' in line: k, v = line.split('=', 1); os.environ.setdefault(k.strip(), v.strip())
+for nm, fn in (('sica', sica), ('overpass', overpass), ('tcd', tcd), ('gtfs', gtfs), ('ctan', ctan), ('overture', overture), ('catastro', catastro)):
+    if ONLY and nm not in ONLY.split(','): continue
     print('=====', nm, flush=True); part(nm, fn)
 print(json.dumps(log, indent=1))
