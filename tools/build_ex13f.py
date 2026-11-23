@@ -16,17 +16,22 @@ from shapely import contains_xy, STRtree
 from PIL import Image, ImageDraw
 from scipy.ndimage import maximum_filter
 import warnings; warnings.filterwarnings('ignore')
-RAW = sys.argv[1]; ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); OUT = os.path.join(ROOT, 'data/ex13f'); os.makedirs(OUT, exist_ok=True)
+RAW = sys.argv[1]; ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# 5.48: the same builder makes the third frame, around the Base Aérea de Armilla (tools/build_ex13b.py sets EX13_ZONE=base):
+# the zone is then the base outline (data/vec/base_edge.json, OSM way 130984030) instead of the CITAI estate.
+ZONE = os.environ.get('EX13_ZONE', 'factory'); DIR = {'factory': 'ex13f', 'base': 'ex13b'}[ZONE]
+OUT = os.path.join(ROOT, 'data', DIR); os.makedirs(OUT, exist_ok=True)
 J = lambda n: json.load(open(os.path.join(RAW, n), encoding='utf-8'))
 CITY = lambda n: json.load(open(os.path.join(ROOT, 'data/ex13', n), encoding='utf-8'))
-F = (429000, 4101000, 441000, 4111000); FB = box(*F); WX, WY = F[2] - F[0], F[3] - F[1]
+F = {'factory': (429000, 4101000, 441000, 4111000), 'base': (437500, 4103500, 449500, 4113500)}[ZONE]; FB = box(*F); WX, WY = F[2] - F[0], F[3] - F[1]
 ll2u = Transformer.from_crs('EPSG:4326', 'EPSG:25830', always_xy=True); u2ll = Transformer.from_crs('EPSG:25830', 'EPSG:4326', always_xy=True)
 mw2u = Transformer.from_crs('ESRI:54009', 'EPSG:25830', always_xy=True); u2mw = Transformer.from_crs('EPSG:25830', 'ESRI:54009', always_xy=True)
 def dump(name, obj): json.dump(obj, open(os.path.join(OUT, name), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':')); print('wrote', name, os.path.getsize(os.path.join(OUT, name)), 'bytes')
 r1 = lambda v: None if v is None or not np.isfinite(v) else round(float(v), 1)
 from shapely.ops import transform as T
 toU = lambda g: T(lambda x, y, z=None: ll2u.transform(x, y), g)
-est = [f for f in json.load(open(os.path.join(ROOT, 'data/vec/escuzar_pole.json')))['features'] if f['properties'].get('k') == 'estate'][0]
+est = [f for f in json.load(open(os.path.join(ROOT, 'data/vec/escuzar_pole.json')))['features'] if f['properties'].get('k') == 'estate'][0] if ZONE == 'factory' else \
+      [f for f in json.load(open(os.path.join(ROOT, 'data/vec/base_edge.json')))['features'] if f['properties'].get('k') == 'base'][0]
 ESTATE = toU(shape(est['geometry']))
 def osm_geom(e):
     if e['type'] == 'node': return Point(*ll2u.transform(e['lon'], e['lat']))
@@ -91,7 +96,7 @@ xs = F[0] + 50 + 100 * np.arange(osm100.shape[1]); ys = F[3] - 50 - 100 * np.ara
 ghs100 = G[((MY - gt[5]) / gt[4]).astype(int), ((MX - gt[2]) / gt[0]).astype(int)] / 10000.0
 gaps = np.argwhere((ghs100 >= 0.25) & (osm100 < 0.05)); inE100 = contains_xy(ESTATE, XX, YY)
 city_m = CITY('morphology.json')
-morph = {'source': {'name': 'OpenStreetMap buildings (Overpass, %s), rasterised at 4 m (EPSG:25830)' % bdate[:10], 'license': 'ODbL 1.0', 'file': 'data/ex13f/fg.png', 'px_m': px, 'ox': F[0], 'oy': F[3], 'buildings': nb},
+morph = {'source': {'name': 'OpenStreetMap buildings (Overpass, %s), rasterised at 4 m (EPSG:25830)' % bdate[:10], 'license': 'ODbL 1.0', 'file': 'data/%s/fg.png' % DIR, 'px_m': px, 'ox': F[0], 'oy': F[3], 'buildings': nb},
          'check': city_m['check'], 'gaps': gaps.tolist(), 'grid': {'x0': F[0], 'y1': F[3], 'cell': 100},
          'stats': {'coverage_frame_pct': round(float(bld.mean()) * 100, 1), 'coverage_estate_pct': round(float(osm100[inE100].mean() * 100), 1), 'gap_cells': int(len(gaps)), 'gap_area_km2': round(len(gaps) * 0.01, 2),
                    'ghsl_built_cells': int((ghs100 >= 0.25).sum()), 'agree_pct': round(float(((ghs100 >= 0.25) & (osm100 >= 0.05)).sum() / max(1, (ghs100 >= 0.25).sum()) * 100), 1)}}
@@ -196,8 +201,9 @@ human = {'source': city_h['source'] | {'date': ev['osm3s']['timestamp_osm_base']
 dump('human.json', human); print('human', human['stats'])
 
 # ---------- frame ----------
-frame = {'id': 'factory', 'epsg': 25830, 'x0': F[0], 'y0': F[1], 'x1': F[2], 'y1': F[3], 'km': [12, 10], 'north': 'grid north (EPSG:25830, UTM 30N); true north differs by < 1° here',
-         'why': 'second frame around the Escúzar estate (CITAI / IFMIF-DONES) and the 10.7 km gap to the metro terminus at Las Gabias; it meets the city frame at the terminus',
+frame = {'id': ZONE, 'epsg': 25830, 'x0': F[0], 'y0': F[1], 'x1': F[2], 'y1': F[3], 'km': [(F[2] - F[0]) // 1000, (F[3] - F[1]) // 1000], 'north': 'grid north (EPSG:25830, UTM 30N); true north differs by < 1° here',
+         'why': 'second frame around the Escúzar estate (CITAI / IFMIF-DONES) and the 10.7 km gap to the metro terminus at Las Gabias; it meets the city frame at the terminus' if ZONE == 'factory' else
+                'third frame around the Base Aérea de Armilla and the five towns on its fence (Armilla, Churriana de la Vega, Las Gabias, Alhendín, Ogíjares); the city frame stops at y = 4,110,000, through the base',
          'municipalities': [m['name'] for m in MUNIS], 'osm_date': osm_date, 'buildings_date': bdate,
          'audit': [['density', 'GHS-POP R2023A 2020 (JRC)', '2020', 'residents per 100 m cell', '100 m', 'whole frame', 'modelled', 'CC BY 4.0'],
                    ['morphology', 'OpenStreetMap buildings', bdate[:10], 'footprint (binary)', '4 m raster', 'whole frame', 'volunteered mapping; gaps flagged against GHSL 2020', 'ODbL 1.0'],

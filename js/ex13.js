@@ -41,14 +41,16 @@
     return DATA;
   }
   // 5.26: the second analysis frame (Escúzar estate + the gap to the metro terminus), same structure as data/ex13
-  let FDATA = null;
-  async function loadFactory() {
-    if (FDATA) return FDATA;
-    const v = '?v=' + (root.GA_BUILD || ''); const j = (n) => fetch('data/ex13f/' + n + '.json' + v).then(r => { if (!r.ok) throw new Error('ex13f/' + n + ' ' + r.status); return r.json(); });
+  // 5.48: the third frame (data/ex13b, around the air base) has the same structure; one loader, one cache per folder
+  const FDATA = {};
+  const loadFactory = () => loadFrame('ex13f'), loadBase = () => loadFrame('ex13b');
+  function loadFrame(dir) { return FDATA[dir] || (FDATA[dir] = loadFrame0(dir).catch(e => { delete FDATA[dir]; throw e; })); }
+  async function loadFrame0(dir) {
+    const v = '?v=' + (root.GA_BUILD || ''); const j = (n) => fetch('data/' + dir + '/' + n + '.json' + v).then(r => { if (!r.ok) throw new Error(dir + '/' + n + ' ' + r.status); return r.json(); });
     const [frame, density, morphology, centre, climate, human] = await Promise.all([j('frame'), j('density'), j('morphology'), j('centre'), j('climate'), j('human')]);
     const src = morphology.source; const fgImg = await root.GA.ext.loadImage(src.file + v);
     const fgm = { file: src.file.replace(/^data\//, ''), px_m: src.px_m, ox: src.ox, oy: src.oy, width: fgImg.naturalWidth || fgImg.width, height: fgImg.naturalHeight || fgImg.height };
-    FDATA = { frame, density, morphology, centre, climate, human, fgm, fgImg }; return FDATA;
+    return { frame, density, morphology, centre, climate, human, fgm, fgImg };
   }
   const FR = () => DATA.frame;
 
@@ -479,5 +481,5 @@
     return `<div class="tbl-wrap"><table class="x13-tbl"><thead><tr><th></th><th>${t('x13.a.h.src')}</th><th>${t('x13.a.h.date')}</th><th>${t('x13.a.h.unit')}</th><th>${t('x13.a.h.res')}</th><th>${t('x13.a.h.kind')}</th><th>${t('x13.a.h.lim')}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
   PG.register('ex13', { plate: () => t('e13.plate'), title: () => t('e13.title'), render });
-  root.GA.ex13 = { pageCanvas, drawMap, legendItems, content, gisFiles, load, loadFactory, layersZip, layersGif, artOn, idArt, TOPICS, PAGES, POP, E, get data() { return DATA; } };
+  root.GA.ex13 = { pageCanvas, drawMap, legendItems, content, gisFiles, load, loadFactory, loadBase, layersZip, layersGif, artOn, idArt, TOPICS, PAGES, POP, E, get data() { return DATA; } };
 })(window);

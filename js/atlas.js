@@ -14,15 +14,17 @@
   const t = (k, v) => I.t(k, v); const esc = PG.esc;
   const nf = (v, d) => (v == null || !isFinite(v)) ? '—' : Number(v).toLocaleString('en-US', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 });
   const TOPICS = ['density', 'morphology', 'centre', 'climate', 'human'];
-  const AREAS = ['city', 'factory', 'metro'];
+  const AREAS = ['city', 'base', 'factory', 'metro']; // 5.48: the air base, with its own analysis frame (data/ex13b)
   const CITY_BB = [[-3.80, 37.06], [-3.53, 37.235]];       // Granada with both study areas in view
   const CORRIDOR_M = 600;                                   // metro corridor: 600 m each side of the new track
   const REDUCED = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const S = { area: 'city', topic: null, min: false, reveal: { timer: null, step: 0 } };
-  let map, APP, X13 = null, XF = null, SOUTH = null, EXT = null, ready = false; const cache = {};
+  let map, APP, X13 = null, XF = null, XB = null, SOUTH = null, EXT = null, ready = false; const cache = {};
   const P = () => root.GA.palette; const C = () => root.GA.palette.ex13;
   const $ = (s, r) => (r || document).querySelector(s);
-  const dotCol = (a) => a === 'factory' ? P().south.estate : a === 'metro' ? P().south.metro : P().red;
+  const dotCol = (a) => a === 'factory' ? P().south.estate : a === 'metro' ? P().south.metro : a === 'base' ? P().tour.baseLine : P().red;
+  const areaName = (a) => t((a === 'base' ? 'v35' : 'v23') + '.area.' + a);
+  const fenceShare = (c) => { const fs = SOUTH && SOUTH.edge ? SOUTH.edge.features.filter(f => f.properties.k === 'fence') : []; const len = (f) => f.properties.len_m || 0; const all = fs.reduce((s, f) => s + len(f), 0); return all ? fs.filter(f => f.properties.c === c).reduce((s, f) => s + len(f), 0) / all * 100 : null; };
   const dot = (a) => `<span class="atl-dot" style="background:${dotCol(a)}" aria-hidden="true"></span>`;
   const U = (ll) => PJ.EPSG25830.forward(ll), L = (xy) => { const ll = PJ.EPSG25830.inverse(xy); return [+ll[0].toFixed(6), +ll[1].toFixed(6)]; };
 
@@ -86,7 +88,7 @@
     const side = $('#atl-side'); if (!side) return; $('[data-i18n="v23.menu"]', side).textContent = t('v23.menu'); $('#atl-side-x').setAttribute('aria-label', t('close'));
     SECTIONS.forEach(k => { const h = $(`[data-sec-t="${k}"]`, side); h.querySelector('.atl-sec-n').textContent = t('v23.sec.' + k); h.setAttribute('aria-expanded', String(!!open[k])); h.querySelector('.atl-caret').textContent = open[k] ? '▾' : '▸'; $('#atl-sec-' + k).hidden = !open[k]; });
     $('#atl-sec-research').innerHTML = `<p class="fine">${t('v23.researchLead')}</p><div class="atl-list" role="radiogroup">${TOPICS.map((k, i) => `<button type="button" class="atl-item ${S.topic === k ? 'on' : ''}" role="radio" aria-checked="${S.topic === k}" data-topic="${k}"><span class="atl-num">${String(i + 1).padStart(2, '0')}</span><span>${t('e13.t.' + k)}</span></button>`).join('')}<button type="button" class="atl-item atl-none ${!S.topic ? 'on' : ''}" role="radio" aria-checked="${!S.topic}" data-topic=""><span class="atl-num">—</span><span>${t('v23.noTopic')}</span></button></div>`;
-    $('#atl-sec-areas').innerHTML = `<div class="atl-list" role="radiogroup">${AREAS.map(a => `<button type="button" class="atl-item ${S.area === a ? 'on' : ''}" role="radio" aria-checked="${S.area === a}" data-area="${a}">${dot(a)}<span>${t('v23.area.' + a)}</span></button>`).join('')}</div><p class="fine"><button type="button" class="btn btn-tiny" data-atl-go="areas">${t('nav.areas')}</button> <button type="button" class="btn btn-tiny" data-atl-pn="study">${t('v8.tabStudy')}</button></p>`;
+    $('#atl-sec-areas').innerHTML = `<div class="atl-list" role="radiogroup">${AREAS.map(a => `<button type="button" class="atl-item ${S.area === a ? 'on' : ''}" role="radio" aria-checked="${S.area === a}" data-area="${a}">${dot(a)}<span>${areaName(a)}</span></button>`).join('')}</div><p class="fine"><button type="button" class="btn btn-tiny" data-atl-go="areas">${t('nav.areas')}</button> <button type="button" class="btn btn-tiny" data-atl-pn="study">${t('v8.tabStudy')}</button></p>`;
     let lx = $('#atl-layers-x'); if (!lx) { lx = document.createElement('div'); lx.id = 'atl-layers-x'; lx.className = 'atl-layers-x'; $('#atl-sec-layers').insertBefore(lx, $('#atl-sec-layers').firstChild); }
     lx.innerHTML = `<button type="button" class="btn btn-tiny" data-atl-reset="layers">${t('v23.resetLayers')}</button> <button type="button" class="btn btn-tiny" data-atl-reset="topic" ${S.topic ? '' : 'disabled'}>${t('v23.resetTopic')}</button> <button type="button" class="btn btn-tiny" data-atl-legend>${t('v23.legendToggle')}</button>`;
     $('#atl-sec-history').innerHTML = `<p class="fine">${t('v23.historyLead')}</p><p><button type="button" class="btn btn-small" data-atl-page="history">${t('nav.history')}</button> </p><p class="atl-gr-btns">${root.GA.growth ? root.GA.growth.buttonsHTML() : ''}</p><p class="fine">${t('gr.hint')}</p>`; // 5.28: the city growth layer's own state
@@ -123,17 +125,22 @@
     cache.all = (async () => {
       X13 = await root.GA.ex13.load();
       XF = root.GA.ex13.loadFactory ? await root.GA.ex13.loadFactory().catch(() => null) : null; // 5.26: second frame (factory)
-      const [metro, pole, ext] = await Promise.all([D.single('south_metro').catch(() => null), D.single('escuzar_pole').catch(() => null), fetch('data/ref/history_extents.json?v=' + (root.GA_BUILD || '')).then(r => r.json()).catch(() => null)]);
-      SOUTH = { metro, pole }; EXT = ext; return true; })();
+      XB = root.GA.ex13.loadBase ? await root.GA.ex13.loadBase().catch(() => null) : null; // 5.48: third frame (the air base)
+      const [metro, pole, edge, ext] = await Promise.all([D.single('south_metro').catch(() => null), D.single('escuzar_pole').catch(() => null), D.single('base_edge').catch(() => null), fetch('data/ref/history_extents.json?v=' + (root.GA_BUILD || '')).then(r => r.json()).catch(() => null)]);
+      SOUTH = { metro, pole, edge }; EXT = ext; return true; })();
     return cache.all;
   }
   const track = () => SOUTH && SOUTH.metro && SOUTH.metro.features.find(f => f.properties.k === 'track');
   const estate = () => SOUTH && SOUTH.pole && SOUTH.pole.features.find(f => f.properties.k === 'estate');
+  const baseF = () => SOUTH && SOUTH.edge && SOUTH.edge.features.find(f => f.properties.k === 'base');
+  const zone = (a) => (a || S.area) === 'base' ? baseF() : estate(); // the outline whose figures the panel gives (base or estate)
   const bboxOf = (coords) => { let a = [180, 90, -180, -90]; const add = (c) => { if (typeof c[0] === 'number') a = [Math.min(a[0], c[0]), Math.min(a[1], c[1]), Math.max(a[2], c[0]), Math.max(a[3], c[1])]; else c.forEach(add); }; add(coords); return [[a[0], a[1]], [a[2], a[3]]]; };
   // 5.26: two analysis frames — the city frame (also used for the metro corridor) and the factory frame. Topic layers are
   // built per frame (ids of the factory frame end in ~f) from the same classes and colours.
-  const FRM = () => (S.area === 'factory' && XF ? 'factory' : 'city'); const DS = (fr) => ((fr || FRM()) === 'factory' ? XF : X13);
-  const IDF = (fr) => (id) => (fr === 'factory' ? id + '~f' : id);
+  // 5.48: a third frame around the air base (ids end in ~b)
+  const FRAMES = ['city', 'factory', 'base'];
+  const FRM = () => (S.area === 'factory' && XF ? 'factory' : S.area === 'base' && XB ? 'base' : 'city'); const DS = (fr) => ({ factory: XF, base: XB }[fr || FRM()] || X13);
+  const IDF = (fr) => (id) => (fr === 'factory' ? id + '~f' : fr === 'base' ? id + '~b' : id);
   const frameLL = () => { const F = DS().frame; return [L([F.x0, F.y1]), L([F.x1, F.y1]), L([F.x1, F.y0]), L([F.x0, F.y0])]; }; // tl, tr, br, bl (image source order)
   // padding that keeps the fitted area clear of the context panel (left on desktop, bottom sheet on phones) and the legend
   function pad(p) { const pn = $('#atl-panel'); const w = innerWidth; if (w < 700) return { top: p, left: p, right: p, bottom: Math.min(innerHeight * 0.45, (pn && !S.min ? pn.offsetHeight : 40) + p) }; return { top: p + 20, bottom: p, left: (pn && !S.min ? pn.offsetWidth + 24 : 0) + p, right: p + (w > 1100 && !document.body.classList.contains('atl-nolegend') ? 290 : 0) }; } // wide screens: room for the map legend beside the analysed area
@@ -161,7 +168,7 @@
   function segD(x, y, a, b) { const dx = b[0] - a[0], dy = b[1] - a[1]; const l2 = dx * dx + dy * dy; let u = l2 ? ((x - a[0]) * dx + (y - a[1]) * dy) / l2 : 0; u = Math.max(0, Math.min(1, u)); return Math.hypot(x - a[0] - u * dx, y - a[1] - u * dy); }
   // does an area lie inside the analysis frame? (the factory does not: the data was processed for the 10 × 10 km frame)
   function coverage(area) {
-    const F = X13.frame; if (area === 'city') return { ok: true }; if (area === 'factory' && XF) return { ok: true, frame: 'factory' };
+    const F = X13.frame; if (area === 'city') return { ok: true }; if (area === 'factory' && XF) return { ok: true, frame: 'factory' }; if (area === 'base' && XB) return { ok: true, frame: 'base' };
     if (area === 'metro') { const b = corridor().bbU; const inside = b[0] >= F.x0 && b[2] <= F.x1 && b[1] >= F.y0 && b[3] <= F.y1; return { ok: true, partial: !inside }; }
     const e = estate(); if (!e) return { ok: false, dist: null }; const pts = (e.geometry.type === 'Polygon' ? e.geometry.coordinates : e.geometry.coordinates.flat()).flat().map(U);
     const d = Math.min(...pts.map(([x, y]) => Math.hypot(Math.max(F.x0 - x, 0, x - F.x1), Math.max(F.y0 - y, 0, y - F.y1)))); return { ok: false, dist: d };
@@ -174,7 +181,7 @@
   function add(l) { if (!map.getLayer(l.id)) map.addLayer(l); }
   function setVis(id, on) { if (has(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'); }
   function topicLayerIds(k, fr) { return (cache['ids_' + (fr || FRM()) + '_' + k] || []); }
-  const allTopicIds = () => ['city', 'factory'].flatMap(fr => TOPICS.flatMap(k => topicLayerIds(k, fr)));
+  const allTopicIds = () => FRAMES.flatMap(fr => TOPICS.flatMap(k => topicLayerIds(k, fr)));
   function buildBase() {
     addOnce('atl-veil', { type: 'geojson', data: FC([{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[-20, 20], [20, 20], [20, 60], [-20, 60], [-20, 20]]] } }]) });
     add({ id: 'atl-veil', type: 'fill', source: 'atl-veil', layout: { visibility: 'none' }, paint: { 'fill-color': '#FFFFFF', 'fill-opacity': 0.5, 'fill-opacity-transition': { duration: 600 } } });
@@ -261,7 +268,7 @@
     cache[key] = ids; return ids;
   }
   // opacity per layer when shown (the same strengths as the Exercise 1.3 maps)
-  function fullOpacity(id) { id = id.replace(/~f$/, ''); if (/^atl-den-/.test(id)) return 0.88; if (id === 'atl-fg') return 0.95; if (id === 'atl-gap') return 0.55; if (/^atl-cen-/.test(id)) return 0.9; if (/^atl-lst-/.test(id)) return 0.82; if (id === 'atl-veg') return 1; if (id === 'atl-far') return 0.42; if (id === 'atl-park') return 0.75; if (id === 'atl-square') return 0.92; return 1; }
+  function fullOpacity(id) { id = id.replace(/~[fb]$/, ''); if (/^atl-den-/.test(id)) return 0.88; if (id === 'atl-fg') return 0.95; if (id === 'atl-gap') return 0.55; if (/^atl-cen-/.test(id)) return 0.9; if (/^atl-lst-/.test(id)) return 0.82; if (id === 'atl-veg') return 1; if (id === 'atl-far') return 0.42; if (id === 'atl-park') return 0.75; if (id === 'atl-square') return 0.92; return 1; }
   function opacityProps(id) { const l = map.getLayer(id); if (!l) return []; return l.type === 'fill' ? ['fill-opacity'] : l.type === 'line' ? ['line-opacity'] : l.type === 'raster' ? ['raster-opacity'] : l.type === 'circle' ? ['circle-opacity', 'circle-stroke-opacity'] : l.type === 'symbol' ? ['text-opacity'] : []; }
   function setOp(id, v) { opacityProps(id).forEach(p => map.setPaintProperty(id, p, v)); }
   // reveal groups: the order in which a topic's classes appear (low → high, cool → hot, open → meeting places)
@@ -282,7 +289,7 @@
     S.reveal.timer = setTimeout(step, 250); renderPanel();
   }
   function showTopicLayers(k) {
-    const fr = FRM(); ['city', 'factory'].forEach(f => TOPICS.forEach(o => topicLayerIds(o, f).forEach(id => setVis(id, o === k && f === fr))));
+    const fr = FRM(); FRAMES.forEach(f => TOPICS.forEach(o => topicLayerIds(o, f).forEach(id => setVis(id, o === k && f === fr))));
   }
   // the topic's companion GIS layers (existing atlas layers) — switched on with the topic, never switched off by it
   const COMPANION = { density: [], morphology: [], centre: [], climate: [], human: [] };
@@ -291,11 +298,11 @@
   // ---------- WHERE / WHAT ----------
   async function setArea(a, opts) {
     if (!AREAS.includes(a)) return; opts = opts || {}; await loadAll(); S.area = a; S.min = false; closeSide();
-    const hl = []; if (a === 'factory' && estate()) hl.push(estate()); if (a === 'metro' && track()) hl.push(track());
+    const hl = []; if (a === 'factory' && estate()) hl.push(estate()); if (a === 'base' && baseF()) hl.push(baseF()); if (a === 'metro' && track()) hl.push(track());
     map.getSource('atl-hl').setData(FC(hl));
     if (a === 'metro') APP.L.S.south_metro && !APP.L.S.south_metro.on && APP.L.setOn('south_metro', true);
     if (a === 'factory') APP.L.S.escuzar_pole && !APP.L.S.escuzar_pole.on && APP.L.setOn('escuzar_pole', true);
-    const bb = a === 'city' ? CITY_BB : a === 'factory' ? bboxOf(estate().geometry.coordinates) : corridor().ll;
+    const bb = a === 'city' ? CITY_BB : a === 'factory' ? bboxOf(estate().geometry.coordinates) : a === 'base' ? bboxOf(baseF().geometry.coordinates) : corridor().ll;
     if (!opts.noFly) map.fitBounds(bb, { padding: pad(a === 'city' ? 40 : 70), duration: REDUCED ? 0 : 1800, maxZoom: a === 'city' ? 12 : 15, essential: true });
     if (S.topic && coverage(a).ok) { buildTopic(S.topic); setFrameOutline(); applyTopicLayers(S.topic); } // 5.26: the factory has its own frame
     applyMask(); markers(); renderSide(); renderPanel(); $('#atl-back').hidden = a === 'city';
@@ -321,10 +328,10 @@
   // ---------- markers: the two study areas, clickable at every scale ----------
   let MK = {};
   function markers() {
-    if (!SOUTH) return; const pos = { factory: estate() ? centroid(estate().geometry) : null, metro: track() ? midpoint(track().geometry) : null };
-    ['factory', 'metro'].forEach(a => { if (!pos[a]) return; if (!MK[a]) { const el = document.createElement('button'); el.type = 'button'; el.className = 'atl-mk atl-mk-' + a; el.addEventListener('click', (e) => { e.stopPropagation(); setArea(a); });
+    if (!SOUTH) return; const pos = { base: baseF() ? centroid(baseF().geometry) : null, factory: estate() ? centroid(estate().geometry) : null, metro: track() ? midpoint(track().geometry) : null };
+    ['base', 'factory', 'metro'].forEach(a => { if (!pos[a]) return; if (!MK[a]) { const el = document.createElement('button'); el.type = 'button'; el.className = 'atl-mk atl-mk-' + a; el.addEventListener('click', (e) => { e.stopPropagation(); setArea(a); });
         MK[a] = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(pos[a]).addTo(map); }
-      const el = MK[a].getElement(); el.innerHTML = `<span class="atl-mk-pin" style="background:${dotCol(a)}" aria-hidden="true"></span><span class="atl-mk-t">${esc(t('v23.mk.' + a))}</span>`; el.setAttribute('aria-label', t('v23.goArea', { a: t('v23.area.' + a) })); el.classList.toggle('on', S.area === a); });
+      const el = MK[a].getElement(); el.innerHTML = `<span class="atl-mk-pin" style="background:${dotCol(a)}" aria-hidden="true"></span><span class="atl-mk-t">${esc(t((a === 'base' ? 'v35' : 'v23') + '.mk.' + a))}</span>`; el.setAttribute('aria-label', t('v23.goArea', { a: areaName(a) })); el.classList.toggle('on', S.area === a); });
   }
   const centroid = (g) => { const pts = (g.type === 'Polygon' ? g.coordinates[0] : g.coordinates[0][0]); const s = pts.reduce((a, p) => [a[0] + p[0], a[1] + p[1]], [0, 0]); return [s[0] / pts.length, s[1] / pts.length]; };
   const midpoint = (g) => { const p = g.type === 'MultiLineString' ? g.coordinates.flat() : g.coordinates; return p[Math.floor(p.length / 2)]; };
@@ -344,7 +351,7 @@
       if (k === 'human') { const s = d.human.stats; out.push([t('x13.i.reach'), nf(s.reach_pct, 1) + ' %'], [t('x13.i.hAreas'), t('x13.i.hAreasV', { q: nf(s.squares), p: nf(s.parks), m: nf(s.markets) })]); }
       return out;
     }
-    if (S.area === 'factory' && XF) return factoryIndicators(k);
+    if ((S.area === 'factory' && XF) || (S.area === 'base' && XB)) return factoryIndicators(k);
     if (S.area !== 'metro') return out;
     const key = 'mi_' + k; if (cache[key]) return cache[key];
     const den = d.density, cx = den.corners.x, cy = den.corners.y; const cells = [];
@@ -366,11 +373,12 @@
   }
   // 5.26: the factory, computed live from the factory frame: inside the CITAI estate (393 ha) and within 1 km of it.
   // Where the area has little (few residents, few shops) the numbers say so — nothing is estimated.
-  function estDist(x, y) { const e = estate(); if (!e) return Infinity; if (!cache.estU) cache.estU = (e.geometry.type === 'Polygon' ? [e.geometry.coordinates] : e.geometry.coordinates).map(pg => pg[0].map(U));
-    const inside = cache.estU.some(r => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [xi, yi] = r[i], [xj, yj] = r[j]; if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) c = !c; } return c; });
-    if (inside) return 0; let d = Infinity; cache.estU.forEach(r => { for (let i = 1; i < r.length; i++) d = Math.min(d, segD(x, y, r[i - 1], r[i])); }); return d; }
+  // 5.48: the same figures for the air base (its OSM outline), from the base frame
+  function estDist(x, y) { const e = zone(); if (!e) return Infinity; const ck = 'estU_' + S.area; if (!cache[ck]) cache[ck] = (e.geometry.type === 'Polygon' ? [e.geometry.coordinates] : e.geometry.coordinates).map(pg => pg[0].map(U)); const ZU = cache[ck];
+    const inside = ZU.some(r => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [xi, yi] = r[i], [xj, yj] = r[j]; if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) c = !c; } return c; });
+    if (inside) return 0; let d = Infinity; ZU.forEach(r => { for (let i = 1; i < r.length; i++) d = Math.min(d, segD(x, y, r[i - 1], r[i])); }); return d; }
   function factoryIndicators(k) {
-    const key = 'fi_' + k; if (cache[key]) return cache[key]; const d = XF, out = [];
+    const key = 'fi_' + S.area + '_' + k; if (cache[key]) return cache[key]; const d = DS(), out = []; const t = (q, v) => I.t(S.area === 'base' ? q.replace(/^v24\.i\./, 'v35.i.') : q, v); // base: the same rows, named for the base
     const den = d.density, cx = den.corners.x, cy = den.corners.y; const cells = [];
     den.pop.forEach((row, r) => row.forEach((p, q) => { if (p == null) return; const x = (cx[r][q] + cx[r + 1][q + 1]) / 2, y = (cy[r][q] + cy[r + 1][q + 1]) / 2; const dd = estDist(x, y); if (dd <= 1000) cells.push({ r, q, p, v: p * 100, dd }); }));
     const popIn = cells.filter(c => c.dd === 0).reduce((s, c) => s + c.p, 0), pop1 = cells.reduce((s, c) => s + c.p, 0);
@@ -410,7 +418,7 @@
     if (k === 'centre') { const br = X13.centre.breaks; c.centre.forEach((col, i) => items.push(sw(col, (i < br.length - 1 ? `<span dir="ltr">${nf(br[i])}–${nf(br[i + 1])}</span>` : t('x13.atLeast', { v: `<span dir="ltr">${nf(br[i])}</span>` })) + ' ' + t('x13.placesKm2'), 0.9))); items.push(dt(c.centreLine, t('x13.lg.peak'), true), ln(c.hist, t('x13.lg.hist'), true)); }
     if (k === 'climate') { const br = X13.climate.breaks; c.lst.forEach((col, i) => items.push(sw(col, i === 0 ? t('x13.below', { v: `<span dir="ltr">${br[0]} °C</span>` }) : i < br.length ? `<span dir="ltr">${br[i - 1]}–${br[i]} °C</span>` : t('x13.atLeast', { v: `<span dir="ltr">${br[br.length - 1]} °C</span>` }), 0.82))); items.push(ln(c.veg, t('x13.lg.veg'))); }
     if (k === 'human') items.push(sw(c.square, t('x13.lg.square'), 0.92), sw(c.park, t('x13.lg.park'), 0.75), dt(c.market, t('x13.lg.market')), dt(c.cafe, t('x13.lg.cafe')), dt(c.play, t('x13.lg.play')), dt(c.civic, t('x13.lg.civic'), true), sw(c.far, t('x13.lg.far'), 0.42));
-    items.push(ln(P().ink, t(FRM() === 'factory' ? 'v24.lg.frameF' : 'v23.lg.frame'), true)); if (S.area === 'metro') items.push(ln(P().ink, t('v23.lg.corridor')));
+    items.push(ln(P().ink, t(FRM() === 'factory' ? 'v24.lg.frameF' : FRM() === 'base' ? 'v35.lg.frameB' : 'v23.lg.frame'), true)); if (S.area === 'metro') items.push(ln(P().ink, t('v23.lg.corridor')));
     return `<ul class="lg">${items.join('')}</ul>`;
   }
   function areaHTML() {
@@ -418,19 +426,21 @@
     if (a === 'city') facts = t('v23.intro.city', { pop: `<span class="num">${nf(X13.frame.stats.pop)}</span>`, area: `<span class="num">${nf(X13.frame.stats.area_km2, 1)} km²</span>` });
     if (a === 'factory') { const e = estate(); const gap = SOUTH.pole.features.find(f => f.properties.k === 'gap'); const v = SOUTH.pole.features.find(f => f.properties.k === 'village');
       facts = t('v23.intro.factory', { ha: `<span class="num">${nf(e && e.properties.ha)}</span>`, km: `<span class="num">${nf(gap && gap.properties.km, 1)}</span>`, pop: `<span class="num">${nf(v && v.properties.pop)}</span>` }); }
+    if (a === 'base') { const b = baseF();
+      facts = t('v35.intro.base', { ha: `<span class="num">${nf(b && b.properties.area_ha)}</span>`, km: `<span class="num">${nf(b && b.properties.perimeter_km, 1)}</span>`, housing: `<span class="num">${nf(fenceShare('housing'))}</span>` }); }
     if (a === 'metro') { const tr = track(); facts = t('v23.intro.metro', { km: `<span class="num">${nf(tr && tr.properties.len_m / 1000, 1)}</span>` }) + `<details class="atl-st"><summary>${t('v24.stTitle')}</summary><p class="fine"><b>${t('v24.stNames')}</b></p><p class="fine">${t('v24.stWhy', { date: t('v24.stDate') })}</p></details>`; } // 5.26: planned stations named, never placed
-    return `<div class="atl-area">${dot(a)}<b>${t('v23.area.' + a)}</b></div><div class="atl-p">${facts}</div>`;
+    return `<div class="atl-area">${dot(a)}<b>${areaName(a)}</b></div><div class="atl-p">${facts}</div>`;
   }
   function renderStep() { const el = $('#atl-step'); if (!el) return; el.innerHTML = S.topic ? '' : (root.GA.ltrNums || String)(growthLabel()); }
   function renderPanel() {
     const box = $('#atl-panel'); if (!box || !X13) return; box.classList.toggle('min', S.min);
     const head = `<div class="atl-ph"><span class="plate">${S.topic ? t('v23.analysis') : t('v23.atlas')}</span><button type="button" class="icon-btn" data-atl-min aria-expanded="${!S.min}" aria-label="${esc(t(S.min ? 'v23.expand' : 'v23.collapse'))}">${S.min ? '▴' : '▾'}</button></div>`;
-    if (S.min) { box.innerHTML = (root.GA.ltrNums || String)(head.replace('</div>', `<b class="atl-ph-t">${S.topic ? esc(t('e13.t.' + S.topic)) : esc(t('v23.area.' + S.area))}</b></div>`)); return; }
+    if (S.min) { box.innerHTML = (root.GA.ltrNums || String)(head.replace('</div>', `<b class="atl-ph-t">${S.topic ? esc(t('e13.t.' + S.topic)) : esc(areaName(S.area))}</b></div>`)); return; }
     let h = head;
     if (!S.topic) {
       if (S.area === 'city') {
         h += `<h2 class="atl-h">${t('v23.title')}</h2><p class="atl-p">${t('v23.lead')}</p>${areaHTML()}`;
-        h += `<div class="atl-cards">${['factory', 'metro'].map(a => `<button type="button" class="atl-card" data-area="${a}">${dot(a)}<b>${t('v23.area.' + a)}</b><span>${t('v23.card.' + a)}</span><span class="atl-go">${t('v23.go')} →</span></button>`).join('')}</div>`;
+        h += `<div class="atl-cards">${['base', 'factory', 'metro'].map(a => `<button type="button" class="atl-card" data-area="${a}">${dot(a)}<b>${areaName(a)}</b><span>${t((a === 'base' ? 'v35' : 'v23') + '.card.' + a)}</span><span class="atl-go">${t('v23.go')} →</span></button>`).join('')}</div>`;
         h += `<div class="atl-anim"><p class="fine">${t('v23.growthLead')}</p><p class="atl-step" id="atl-step">${growthLabel()}</p><p class="atl-gr-btns">${root.GA.growth ? root.GA.growth.buttonsHTML() : ''}</p></div>`;
       } else h += areaHTML();
       h += `<p class="atl-hint">${t('v23.pickTopic')}</p><div class="atl-chips">${TOPICS.map((k, i) => `<button type="button" class="atl-chip" data-topic="${k}">${String(i + 1).padStart(2, '0')} ${t('e13.t.' + k)}</button>`).join('')}</div>`;
@@ -443,7 +453,7 @@
     h += `<dl class="atl-ind">${ind.map(r => `<div><dt>${r[0]}</dt><dd>${r[1]}</dd></div>`).join('')}</dl>`;
     h += `<div class="atl-lg">${legendHTML(k)}</div>`;
     h += `<div class="atl-ctl"><button type="button" class="btn btn-tiny" data-atl-play>${t(S.reveal.timer ? 'v23.playing' : 'v23.replay')}</button> <button type="button" class="btn btn-tiny" data-atl-page="ex13">${t('v23.openPage')}</button> <button type="button" class="btn btn-tiny" data-topic="">${t('v23.clearTopic')}</button></div>`;
-    h += `<details class="atl-src"><summary>${t('v23.sources')}</summary><p>${t('x13.src.' + k, k === 'climate' ? { n: String(DS().climate.stats.scenes) } : { date: String((k === 'human' ? DS().human.source.date : DS().centre.source.date) || '').slice(0, 10), n: nf(DS().centre.stats.in_frame), dup: nf(DS().centre.stats.duplicates) })}</p>${FRM() === 'factory' ? `<p>${t('v24.fr.note')}</p>` : `<p>${t('x13.lim.' + k, { d: (X13.density.stats.diff_pct > 0 ? '+' : '') + nf(X13.density.stats.diff_pct, 1) + ' %', r: 'r = ' + nf(X13.centre.stats.overture_corr, 2), min: String(X13.climate.stats.min_obs) })}</p>`}${S.area === 'metro' ? `<p>${t('v23.corrNote')}</p>` : ''}</details>`;
+    h += `<details class="atl-src"><summary>${t('v23.sources')}</summary><p>${t('x13.src.' + k, k === 'climate' ? { n: String(DS().climate.stats.scenes) } : { date: String((k === 'human' ? DS().human.source.date : DS().centre.source.date) || '').slice(0, 10), n: nf(DS().centre.stats.in_frame), dup: nf(DS().centre.stats.duplicates) })}</p>${FRM() !== 'city' ? `<p>${t(FRM() === 'base' ? 'v35.fr.note' : 'v24.fr.note')}</p>` : `<p>${t('x13.lim.' + k, { d: (X13.density.stats.diff_pct > 0 ? '+' : '') + nf(X13.density.stats.diff_pct, 1) + ' %', r: 'r = ' + nf(X13.centre.stats.overture_corr, 2), min: String(X13.climate.stats.min_obs) })}</p>`}${S.area === 'metro' ? `<p>${t('v23.corrNote')}</p>` : ''}</details>`;
     box.innerHTML = (root.GA.ltrNums || String)(h);
   }
   function onPanelClick(e) {
@@ -486,7 +496,7 @@
   // first (the same legendHTML as the panel and the map paint); every other layer that is on is folded under "also on
   // the map". legendAvoid() is the screen box of the analysed area (frame / corridor / estate) that the legend keeps clear of.
   function mapLegendHTML() { if (!ready || !S.topic || !coverage(S.area).ok) return ''; return `<h4><span class="num">${String(TOPICS.indexOf(S.topic) + 1).padStart(2, '0')}</span> ${t('e13.t.' + S.topic)}</h4>${legendHTML(S.topic)}`; }
-  function analysedBB() { if (S.area === 'metro') return corridor().ll; if (S.area === 'factory') return bboxOf(estate().geometry.coordinates); return frameBB(); }
+  function analysedBB() { if (S.area === 'metro') return corridor().ll; if (S.area === 'factory') return bboxOf(estate().geometry.coordinates); if (S.area === 'base') return bboxOf(baseF().geometry.coordinates); return frameBB(); }
   function legendAvoid() { if (!ready || !S.topic || !map) return null; const bb = analysedBB(); const a = map.project(bb[0]), b = map.project(bb[1]);
     return { left: Math.min(a.x, b.x), right: Math.max(a.x, b.x), top: Math.min(a.y, b.y), bottom: Math.max(a.y, b.y) }; }
   const legendChanged = () => { document.body.classList.toggle('atl-maplg', !!mapLegendHTML()); dispatchEvent(new Event('ga:legend')); };
