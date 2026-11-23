@@ -279,29 +279,29 @@ def vega_geom(g_sheet, kind, ang=None, seed=1, sc=1.0):
             for q in ([ln] if ln.geom_type == 'LineString' else [q for q in getattr(ln, 'geoms', []) if q.geom_type == 'LineString']):
                 if q.is_empty or q.length < 0.3: continue
                 (dark if k_row % 7 in (0, 3) else rows).append('M{:.2f},{:.2f} L{:.2f},{:.2f}'.format(*q.coords[0], *q.coords[-1]))
-                d = rr.uniform(0, 0.8 * f)
+                d = rr.uniform(0, 1.6 * f)
                 while d < q.length:   # sprouts: short strokes along the row, leaning a little, in loose groups
-                    p_ = q.interpolate(d); h = rr.uniform(0.15, 0.32) * f; k = rr.uniform(-0.6, 0.6)
+                    p_ = q.interpolate(d); h = rr.uniform(0.3, 0.6) * f; k = rr.uniform(-0.6, 0.6)
                     sprouts.append(f'M{p_.x - (nx * 0.6 + ux * k) * h / 2:.2f},{p_.y - (ny * 0.6 + uy * k) * h / 2:.2f}l{(nx * 0.6 + ux * k) * h:.2f},{(ny * 0.6 + uy * k) * h:.2f}')
-                    d += rr.uniform(0.3, 1.6) * f
-            t += 0.9 * f; k_row += 1
-        return ((f'<path d="{" ".join(rows)}" fill="none" stroke="{G[3]}" stroke-width="{0.05 * f:.3f}"/>' if rows else '') + (f'<path d="{" ".join(dark)}" fill="none" stroke="{G[4]}" stroke-width="{0.08 * f:.3f}"/>' if dark else '')
-                + (f'<path d="{"".join(sprouts)}" fill="none" stroke="{G[4]}" stroke-width="{0.06 * f:.3f}" stroke-linecap="round"/>' if sprouts else ''))
+                    d += rr.uniform(0.9, 3.0) * f
+            t += 1.6 * f; k_row += 1
+        return ((f'<path d="{" ".join(rows)}" fill="none" stroke="{G[3]}" stroke-width="{0.06 * f:.3f}" opacity="0.55"/>' if rows else '') + (f'<path d="{" ".join(dark)}" fill="none" stroke="{G[3]}" stroke-width="{0.1 * f:.3f}" opacity="0.6"/>' if dark else '')
+                + (f'<path d="{"".join(sprouts)}" fill="none" stroke="{G[3]}" stroke-width="{0.08 * f:.3f}" stroke-linecap="round" opacity="0.6"/>' if sprouts else ''))
     if kind == 'meadow':   # grass strokes, nearly upright, a few clumps denser
         strokes = []
-        for (x, y) in pts(int(g_sheet.area * 3.2 * dens)):
-            h = rr.uniform(0.2, 0.5) * f; k = rr.uniform(-0.2, 0.2)
+        for (x, y) in pts(int(g_sheet.area * 1.1 * dens)):
+            h = rr.uniform(0.45, 0.9) * f; k = rr.uniform(-0.2, 0.2)
             strokes.append(f'M{x:.2f},{y:.2f}l{k * h:.2f},{-h:.2f}')
-        return f'<path d="{"".join(strokes)}" fill="none" stroke="{G[4]}" stroke-width="{0.05 * f:.3f}" stroke-linecap="round"/>' if strokes else ''
-    dots = [f'M{x:.2f},{y:.2f}h0.01' for x, y in pts(int(g_sheet.area * 3.0 * dens))]
+        return f'<path d="{"".join(strokes)}" fill="none" stroke="{G[3]}" stroke-width="{0.07 * f:.3f}" stroke-linecap="round" opacity="0.6"/>' if strokes else ''
+    dots = [f'M{x:.2f},{y:.2f}h0.01' for x, y in pts(int(g_sheet.area * 1.2 * dens))]
     big = [f'M{x:.2f},{y:.2f}h0.01' for x, y in pts(int(g_sheet.area * 0.05 * dens))]
-    out.append((f'<path d="{"".join(dots)}" stroke="{G[4]}" stroke-width="{0.11 * f:.3f}" stroke-linecap="round" fill="none"/>' if dots else '') + (f'<path d="{"".join(big)}" stroke="{G[5]}" stroke-width="{0.26 * f:.3f}" stroke-linecap="round" fill="none"/>' if big else ''))
+    out.append((f'<path d="{"".join(dots)}" stroke="{G[3]}" stroke-width="{0.16 * f:.3f}" stroke-linecap="round" fill="none" opacity="0.6"/>' if dots else '') + (f'<path d="{"".join(big)}" stroke="{G[3]}" stroke-width="{0.32 * f:.3f}" stroke-linecap="round" fill="none" opacity="0.7"/>' if big else ''))
     if kind == 'orchard':
         cs = []
         st_ = 6 * f; rc = 1.3 * f
         for i in range(int(x0 // st_), int(x1 // st_) + 1):
             for j in range(int(y0 // st_), int(y1 // st_) + 1):
                 cx, cy = i * st_ + st_ / 2 + (st_ / 4 if j % 2 else 0), j * st_ + st_ / 2
-                if pg.contains(Point(cx, cy).buffer(rc)): cs.append(f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="{rc:.2f}" fill="{WHITE}" stroke="{G[4]}" stroke-width="{0.1 * f:.3f}" stroke-dasharray="{0.3 * f:.2f} {0.15 * f:.2f}"/><circle cx="{cx:.2f}" cy="{cy:.2f}" r="{0.12 * f:.2f}" fill="{G[4]}"/>')
+                if pg.contains(Point(cx, cy).buffer(rc)): cs.append(f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="{rc:.2f}" fill="{WHITE}" stroke="{G[3]}" stroke-width="{0.12 * f:.3f}" stroke-dasharray="{0.4 * f:.2f} {0.2 * f:.2f}"/><circle cx="{cx:.2f}" cy="{cy:.2f}" r="{0.14 * f:.2f}" fill="{G[3]}"/>')
         out.append(''.join(cs))
     return ''.join(out)
