@@ -20,7 +20,7 @@ svg.defs_add(f'<pattern id="baseHatch" patternUnits="userSpaceOnUse" width="1.6"
 svg.defs_add(f'<pattern id="redHatch" patternUnits="userSpaceOnUse" width="1.0" height="1.0" patternTransform="rotate(-45)"><line x1="0" y1="0" x2="0" y2="1.0" stroke="{RED}" stroke-width="0.18"/></pattern>')
 svg.defs_add(f'<pattern id="redCross" patternUnits="userSpaceOnUse" width="1.3" height="1.3" patternTransform="rotate(45)"><path d="M0,0 L0,1.3 M0,0 L1.3,0" stroke="{RED}" stroke-width="0.16"/></pattern>')
 LH = lambda sz: sz * 1.28
-BS, PS, EB = 3.6, 5.9, 3.0                  # body, position, eyebrow sizes on this sheet (mm)
+BS, PS, EB = 4.2, 6.6, 3.0                  # body, position, eyebrow sizes on this sheet (mm)
 def mark(x, y, kind, r=1.5):
     """clash = filled, partly = half, agreement = open (shapes, not glyphs)"""
     if kind == 'c': svg.add(f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{r}" fill="{RED}"/>')
@@ -42,36 +42,28 @@ for ln in wrap(intro, 3.7, 560): svg.text(x0, y, ln, 3.7, fill=INK); y += LH(3.7
 # ---- three columns ---------------------------------------------------------------------------------------------------------
 GUT = 14; CWd = (W - 2 * GUT) / 3; top = 70
 crop = (443480, 4110490, 444040, 4110990); ks = CWd / (crop[2] - crop[0]); mh = (crop[3] - crop[1]) * ks
+RES_POS = '\u201cThe base can stay, but its fence must stop being the back of our towns: give us its edge, green and walkable, with no new homes.\u201d'
 COLS = [
     {'n': 1, 'name': 'Private developer', 'max': 'profit, building rights, speed', 'q': 'Where is it worth building, and how much?',
-     'pos': '“The metro is arriving at an empty strip and a 3.7 km² base that the regional plan already wants dismantled: build here — now on the strip, later on the base — as densely as the ceiling allows.”',
-     'prog': [('Phase 1 — apartment blocks on the empty strip, 4 floors (about 12 m, just under today’s 12–18 m ceiling), shops on the avenue', f'≈ {dw1:,.0f} homes'),
-              ('Phase 2 — if the base leaves: a district on its land in this frame, at Sde Dov’s planned density (6,400 homes per km²)', f'≈ {DV.P["dw2"]:,.0f} homes'),
-              ('The whole base at the same density (for comparison)', f'≈ {371 * 64:,.0f} homes')],
-     'why': ['POTAUG (2000), art. 4.27: the aim is the base’s “dismantling” and a residential, facilities and services area.',
-             'If the five towns grow as in 2015–2025, they need 14,177 more homes by 2045 (our scenario, INE).',
-             'The metro extension runs along the strip (first test run to Las Gabias 31 July 2026; opening expected in the coming months).'],
-     'note': f'Estimates: phase 1 = the drawn blocks × 4 floors ÷ 100 m² per home; phase 2 = {DV.P["base_in_ha"] / 100:.2f} km² × 6,400 homes per km² (Sde Dov: 16,000 units on about 2.5 km², Globes).'},
+     'pos': '“The metro reaches an empty strip beside a base the regional plan wants dismantled: build here, now on the strip and later on the base.”',
+     'prog': [('Phase 1: 4-floor blocks on the strip', f'≈ {dw1:,.0f} homes'),
+              ('Phase 2: a district on the base, if it leaves', f'≈ {DV.P["dw2"]:,.0f} homes')],
+     'why': ['Regional plan (2000, art. 4.27): dismantle the base.', '14,177 more homes needed by 2045 (our scenario).'],
+     'note': 'Estimates: blocks × 4 floors ÷ 100 m² per home; base land × Sde Dov’s density.'},
     {'n': 2, 'name': 'Residents of the five towns', 'max': 'quality of life, stability, cost of living', 'q': 'What will change in my daily life?',
-     'pos': '“We do not ask the base to leave — we ask that its 8.7 km fence stop being the back of our towns and that its edge be ours: green, walkable and quiet, with no towers and no new homes.”',
-     'prog': [('An edge park on the empty strip, with allotments, a playground and a 2-floor neighbourhood hall', f'{strip_ha / 100:.3f} km²'),
-              ('A fence walk with a tree row along the whole fence of the frame (schematic width 9 m)', f'{RS.P["prom_m"]:,.0f} m'),
-              ('Crossings over the metro avenue; the dead end joined; the park opens onto the San Cayetano stop', f'{len(RS.crossings)} + 1'),
-              ('New homes or building rights', '0')],
-     'why': ['42 % of the fence backs onto housing; 13 dead ends stop at it (2.1).',
-             f'{F["strip"]["dwellings_400m"]:,} homes lie within 400 m of the strip (Catastro).',
-             'The Junta’s metro project (2022) calls this land “the future park”; its San Cayetano stop is at the strip’s north edge.'],
-     'note': 'The demonstration plan of stage 1: sheets 01 (plan 1:1000) and 02 (section 1:500).'},
+     'pos': RES_POS,
+     'prog': [('Edge park with a hall, allotments and a playground', f'{strip_ha / 100:.3f} km²'),
+              ('Fence walk with a tree row', f'{RS.P["prom_m"]:,.0f} m'),
+              ('New homes', '0')],
+     'why': [f'{F["strip"]["dwellings_400m"]:,} homes within 400 m of the strip.', 'The metro project already calls it “the future park”.'],
+     'note': 'Plan 1:1000 and section 1:500: sheets 01 and 02.'},
     {'n': 3, 'name': 'Ministry of Defence', 'max': 'security, operations, a safe approach', 'q': 'What must stay clear for the base to keep flying?',
-     'pos': '“Armilla is the Air Force’s helicopter-pilot school and it stays, so the towns may grow but not into its approach: the edge stays low, open and quiet, and the fence stays closed.”',
-     'prog': [('The aeronautical easements of 2019 stay: nothing above the ceiling (about 12–18 m over the strip)', 'RD 118/2019'),
-              ('Outside the fence, under the approach: low uses without gatherings — fields, open land, parking; no schools, no crowds', f'{strip_ha / 100:.3f} km²'),
-              ('A patrol road inside the fence, 6 m in', f'{DF.patrol.length:,.0f} m'),
-              ('The base keeps its land and its fence', '3.71 km²')],
-     'why': ['The State renewed the base’s easements in 2019: it plans to stay (RD 118/2019).',
-             'Ala 78, the Air Force’s main helicopter-pilot school, trains here.',
-             'Abroad, bases keep working where the towns plan the land around them together (Fort Worth’s joint land-use study, 2008).'],
-     'note': 'The “no gatherings” rule is our reading of the group, on the model of land-use zones around US air bases; no such rule is published for Armilla.'},
+     'pos': '“Armilla trains the Air Force’s helicopter pilots and stays: the towns may grow, but the edge under the approach stays low, open and quiet.”',
+     'prog': [('Easements stay: nothing above 12–18 m', 'RD 118/2019'),
+              ('The strip stays low and open, no gatherings', f'{strip_ha / 100:.3f} km²'),
+              ('Patrol road inside the fence', f'{DF.patrol.length:,.0f} m')],
+     'why': ['Easements renewed in 2019: the base stays.', 'Ala 78, the helicopter-pilot school, trains here.'],
+     'note': '“No gatherings” is our reading, not a published rule.'},
 ]
 
 def ctx(xm, ym):
@@ -147,7 +139,7 @@ for ci, C in enumerate(COLS):
         svg.text(cx + CWd, y, b, BS, weight=700, anchor='end')
         y += LH(BS) * len(lines) + 1.8
     y += 2.6
-    svg.text(cx, y, 'FROM THE ANALYSIS', EB, fill=INK, weight=700, spacing=0.35); y += 6.0
+    svg.text(cx, y, 'WHY', EB, fill=INK, weight=700, spacing=0.35); y += 6.0
     for w in C['why']:
         lines = wrap(w, BS, CWd - 3.6)
         svg.add(f'<circle cx="{cx + 0.9:.2f}" cy="{y - 1.05:.2f}" r="0.6" fill="{INK}"/>')
@@ -183,14 +175,6 @@ ty += 6.0
 foot = ('Positions are our representation of each group (brief: \u201ceach group is a conceptual representation\u201d). Sources: D. G. del Catastro; INE padr\u00f3n; POTAUG, Decreto 244/1999, art. 4.27\u20134.30; '
         'RD 118/2019 (BOE); OpenStreetMap contributors (ODbL); Globes (Sde Dov); NCTCOG (Fort Worth JLUS). Diagrams are schematic; estimates are labelled.')
 for ln in wrap(foot, 2.2, W, avg=0.52): svg.text(x0, ty, ln, 2.2, fill=G[5]); ty += 2.8
-ty += 6.0
-svg.add(f'<line x1="{x0}" y1="{ty - 5:.2f}" x2="{x0 + W}" y2="{ty - 5:.2f}" stroke="{INK}" stroke-width="{LW["thin"]}"/>')
-svg.text(x0, ty + 1, 'NEXT \u2014 STAGE 2, WEDNESDAY 25.11', EB, fill=INK, weight=700, spacing=0.35)
-nxt = ('The developer\u2019s and Defence\u2019s plans (1:1000) and sections (1:500) on the same frame and line; the representative area at 1:250, at the same point for all three; '
-       'a street-level view and a 3D model for each group; the comparison board with the map of the collision points; the phenomenon text (one A4) and the corrected 2.1 sheet.')
-yy = ty + 6.5
-for ln in wrap(nxt, BS, W, avg=0.53): svg.text(x0, yy, ln, BS); yy += LH(BS)
-ty = yy
 print('columns end at', [round(C['end'], 1) for C in COLS], '| sheet ends at', round(ty, 1), '| dw1', round(dw1))
 name = os.path.join(OUT, '2.2_00_three_positions')
 ok = export(svg, name, SW, SH, dpi=int(os.environ.get('DPI', 150)))

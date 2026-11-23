@@ -111,7 +111,7 @@ def residents():
 TEXT = {
     'residents': {
         'name': 'Residents', 'of': 'of the five towns',
-        'position': '“We do not ask the base to leave — we ask that its 8.7 km fence stop being the back of our towns and that its edge be ours: green, walkable and quiet, with no towers and no new homes.”',
+        'position': '“The base can stay, but its fence must stop being the back of our towns: give us its edge, green and walkable, with no new homes.”',
         'max': 'quality of life, stability, cost of living', 'q': 'What will change in my daily life?',
         'why': ['42 % of the fence (3.6 km) backs onto housing; 13 dead ends stop at it (2.1, map 01).',
                 'The five towns grew 15 % in ten years: 91,476 residents in 2025 (INE).',
