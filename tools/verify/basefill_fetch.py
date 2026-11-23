@@ -63,26 +63,21 @@ def gtfs():
     save('gtfs_index.json', got)
 
 def ctan():
-    out = {}; r = None
-    for B in ('https://api.ctan.es/v1/Consorcios', 'http://api.ctan.es/v1/Consorcios', 'https://api.ctan.es/v1/Consorcios/3/lineas'):
-        r = get(B, 60, tries=2); print('ctan', B, (r or b'')[:200], flush=True)
-        if r: B = 'https://api.ctan.es/v1/Consorcios' if B.endswith('lineas') else B; break
-    if not r: raise RuntimeError('api.ctan.es did not answer')
-    out['consorcios'] = json.loads(r) if r else None; save('ctan_consorcios.json', out['consorcios'])
-    cs = (out['consorcios'] or {}).get('consorcios') or out['consorcios'] or []
-    gid = next((c.get('idConsorcio') for c in cs if isinstance(c, dict) and 'granada' in json.dumps(c, ensure_ascii=False).lower()), None)
-    if gid is None: raise RuntimeError('Granada consortium not found')
-    for name, path in (('paradas', '/paradas'), ('lineas', '/lineas'), ('nucleos', '/nucleos'), ('municipios', '/municipios'), ('modos', '/modostransporte')):
-        r = get(f'{B}/{gid}{path}', 120); save(f'ctan_{name}.json', r or b'null')
-    lines = json.loads(open(os.path.join(OUT, 'ctan_lineas.json')).read() or 'null') or {}
-    lines = lines.get('lineas', lines) if isinstance(lines, dict) else lines
-    hor = {}
-    for ln in lines or []:
-        lid = ln.get('idLinea'); time.sleep(0.3)
-        st = get(f'{B}/{gid}/lineas/{lid}/paradas', 60, tries=2)
-        h = get(f'{B}/{gid}/horarios_lineas?linea={lid}&lang=ES', 60, tries=2)
-        hor[str(lid)] = {'line': ln, 'paradas': json.loads(st) if st else None, 'horarios': json.loads(h) if h else None}
-    save('ctan_lineas_full.json', {'consorcio': gid, 'lines': hor})
+    # CTAN open API (Red de Consorcios de Transporte de Andalucía): consortium 3 = Área de Granada (its lines are
+    # "Granada - Jun - Alfacar", "Granada - Pulianas" …, checked 23 Nov 2026). Lines, stops, the stops of each line and
+    # each line's timetable as published; parsed offline by tools/build_bus_ctan.py.
+    B = 'https://api.ctan.es/v1/Consorcios/3'
+    for name, path in (('lineas', '/lineas'), ('paradas', '/paradas'), ('nucleos', '/nucleos'), ('municipios', '/municipios')):
+        r = get(B + path, 120); save(f'ctan_{name}.json', r or b'null')
+    L = json.loads(open(os.path.join(OUT, 'ctan_lineas.json')).read() or 'null') or {}
+    L = L.get('lineas', []) if isinstance(L, dict) else L
+    full = {}
+    for ln in L:
+        lid = ln.get('idLinea'); time.sleep(0.25)
+        st = get(f'{B}/lineas/{lid}/paradas', 60, tries=2); h = get(f'{B}/horarios_lineas?linea={lid}&lang=ES', 60, tries=2)
+        full[str(lid)] = {'line': ln, 'paradas': json.loads(st) if st else None, 'horarios': json.loads(h) if h else None}
+        print('ctan line', lid, ln.get('codigo'), len(st or b''), len(h or b''), flush=True)
+    save('ctan_lineas_full.json', {'consorcio': 3, 'fetched': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()), 'lines': full})
 
 # ---------- 3. Catastro INSPIRE buildings ----------
 def catastro():
