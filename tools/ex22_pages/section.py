@@ -81,7 +81,7 @@ def bw_cut(XS, YZ, s0, s1, z, lv, use, left='facade', right='facade', col=None, 
             zf = z + f * fl
             if w_m >= 4: dx = s0 + 0.32 * w_m; o.append(_r(XS(dx - 0.45), YZ(zf + 2.1), 0.9 * K, 2.1 * K, 'none', INK, 0.04))
         for f in range(lv):     # people at home, for scale (schematic)
-            if w_m >= 6 and (f + int(s0)) % 2 == 0: o.append(_bw.person(XS(s0 + 0.52 * w_m), YZ(z + f * fl + (0.15 if f == 0 else 0)), K, kind=(0, 2, 3)[(int(s0) + f) % 3]))
+            if w_m >= 6 and (f + int(s0)) % 2 == 0: o.append(_bw.figure(XS(s0 + 0.52 * w_m), YZ(z + f * fl + (0.15 if f == 0 else 0)), K, kind=(0, 2, 3)[(int(s0) + f) % 3], seed=int(s0) + f))
         if roof == 'tile':      # clay tiles in the photo: a pitched roof, its pitch schematic (about 30 %, at most 1.6 m), eaves over the façades
             hr = min(1.6, 0.3 * w_m / 2) * K; xm = (x0 + x1) / 2; ex0 = x0 - (0.45 * K if left == 'facade' else 0); ex1 = x1 + (0.45 * K if right == 'facade' else 0)
             pts = f'{ex0:.2f},{yt + 0.12 * K:.2f} {xm:.2f},{yt - hr:.2f} {ex1:.2f},{yt + 0.12 * K:.2f}'
@@ -97,7 +97,7 @@ def bw_cut(XS, YZ, s0, s1, z, lv, use, left='facade', right='facade', col=None, 
         for j in range(1, nb_): xx = XS(s0 + w_m * j / nb_); o.append(_l(xx, yt, xx, yb, 0.12, col))
         o.append(_r(x0, yt - 0.6 * K, x1 - x0, 0.6 * K, WHITE, col, 0.1))
         for j, (q_, f_, kd) in enumerate(((0.2, 0, 3), (0.62, 0, 0), (0.42, 1, 2), (0.8, 1, 3))):
-            if f_ < lv: o.append(_bw.person(XS(s0 + q_ * w_m), YZ(z + f_ * fl + (0.15 if f_ == 0 else 0)), K, kind=kd))
+            if f_ < lv: o.append(_bw.figure(XS(s0 + q_ * w_m), YZ(z + f_ * fl + (0.15 if f_ == 0 else 0)), K, kind=kd, seed=int(s0 * 3) + j))
     for side, xw in ((left, x0), (right, x1 - t)):
         if side is None: continue
         o.append(_r(xw, yt, t, yb - yt, col))
@@ -215,8 +215,12 @@ def tree_images(col):
         d = os.environ.get('TREE_IMAGES'); out = []
         c = tuple(int(col[i:i + 2], 16) for i in (1, 3, 5)) if col else None
         for f in sorted(glob.glob(os.path.join(d, '*.png'))) if d else []:
-            im = Image.open(f).convert('RGBA'); a = im.getchannel('A')
-            if col is None: out.append((base64.b64encode(open(f, 'rb').read()).decode(), im.width, im.height)); continue   # as supplied (olive)
+            im = Image.open(f).convert('RGBA')
+            bb = im.getchannel('A').point(lambda v: 255 if v > 60 else 0).getbbox()   # trim the faint edge, so the trunk stands on the ground
+            if bb: im = im.crop(bb)
+            a = im.getchannel('A')
+            if col is None:   # as supplied (olive)
+                b = io.BytesIO(); im.save(b, 'PNG', optimize=True); out.append((base64.b64encode(b.getvalue()).decode(), im.width, im.height)); continue
             L = im.convert('L').point(lambda v: min(255, max(0, int((v - 150) * 2.5))))   # 0 = darkest ink, 255 = paper
             rgb = [Image.eval(L, lambda v, k=k: int(k + (255 - k) * v / 255 * 0.7)) for k in c]
             t = Image.merge('RGBA', rgb + [a]); b = io.BytesIO(); t.save(b, 'PNG', optimize=True)
@@ -230,12 +234,14 @@ def tree_svg(x, yg, col, sw, seed=0, op=1.0, h=None, r=None):
     imgs = tree_images(None)   # owner request (23 Nov): the trees keep their own olive colour
     if imgs:
         b64, pw, ph = imgs[seed % len(imgs)]; hh = (h or (8.0 + (seed * 37 % 7) * 0.5)) * K; ww = hh * pw / ph
+        yg -= LW['ground'] / 2
         return (f'<image x="{x - ww / 2:.2f}" y="{yg - hh:.2f}" width="{ww:.2f}" height="{hh:.2f}" opacity="{op}" '
                 f'preserveAspectRatio="none" href="data:image/png;base64,{b64}"/>')
     kind = ('round', 'cypress', 'light', 'round', 'conifer', 'round', 'cypress', 'light')[seed % 8]
     return f'<g opacity="{op}">' + _bw.tree_real(kind, x, yg, K, col, 0.07, seed) + '</g>'
 
 
+FADE = _bw._P['grey']                                     # the line of the façades behind the cut
 Z0, Z1 = 659.0, 696.0                                      # the drawn height range (m a.s.l.)
 def section(top, proposal, title):
     yb = top + (Z1 - Z0) * K                                 # y of Z0
@@ -271,8 +277,11 @@ def section(top, proposal, title):
         tmin, s0, s1, lv, use, yr, ref = q; sd = int(s0 * 13 + s1 * 7 + (yr or 0)) % 997
         if ref in FAC:
             ob = FAC[ref] if widest.get(ref) is q else {k_: v_ for k_, v_ in FAC[ref].items() if k_ not in FRONT}
-            g.append('<g opacity="0.5">' + _bw.elev_obs(XS(s0), XS(s1), YZ(grd((s0 + s1) / 2)), lv, ob, seed=sd, K=K, far=True) + '</g>')   # behind the cut: lighter line, faded
-        else: g.append('<g opacity="0.5">' + _bw.elev(XS(s0), XS(s1), YZ(grd((s0 + s1) / 2)), lv, use, yr, seed=sd, K=K, far=True) + '</g>')
+            e_ = _bw.elev_obs(XS(s0), XS(s1), YZ(grd((s0 + s1) / 2)), lv, ob, seed=sd, K=K, far=True)
+        else: e_ = _bw.elev(XS(s0), XS(s1), YZ(grd((s0 + s1) / 2)), lv, use, yr, seed=sd, K=K, far=True)
+        # behind the cut: a lighter line (warm grey, from the palette) instead of transparency, so each façade is opaque and
+        # the nearer one hides the farther one (owner, 23 Nov 2026: the buildings showed through each other)
+        g.append(e_.replace(_bw.INK, FADE))
     # proposal trees beyond the line (pale red), then the ground
     if proposal and GROUP == 'residents':
         for (x, y) in RG.trees + RG.row:
@@ -365,10 +374,10 @@ def section(top, proposal, title):
         for i in range(-4, 5): g.append(f'<line x1="{XS(sm_ + i * 1.6 - 0.4):.2f}" y1="{YZ(zz) + 0.1:.2f}" x2="{XS(sm_ + i * 1.6 + 0.4):.2f}" y2="{YZ(zz) + 0.1:.2f}" stroke="{RED}" stroke-width="0.9"/>')
     # street life for scale, schematic: people, cars on the streets the line crosses, street lights on the avenue
     for k_, s0 in enumerate((40, 47, 118, 132, 176, 186, 223) if proposal else (40, 118, 132, 223)):
-        z = grd(s0); g.append(_bw.person(XS(s0), YZ(z), K, kind=(0, 3, 0, 2, 3, 0, 1)[k_ % 7]))
+        z = grd(s0); g.append(_bw.figure(XS(s0), YZ(z), K, kind=(0, 3, 5, 2, 4, 1, 0)[k_ % 7], seed=k_))
     for s0 in [c['d'] for c in S['streets'] if c.get('hw') in ('residential', 'secondary', 'tertiary') and c['d'] < FENCE]:
         for off in ((-2.2, 2.2) if s0 > 100 and s0 < 110 else (1.6,)):
-            z = grd(s0 + off); g.append(_bw.car(XS(s0 + off), YZ(z), K))
+            z = grd(s0 + off); g.append(_bw.car_flat(XS(s0 + off), YZ(z), K, seed=int(s0 * 5 + off * 3)))
     for s0 in (99.0, 124.5): g.append(_bw.lamp(XS(s0), YZ(grd(s0)), K, side=1 if s0 < 110 else -1))
     svg.add(''.join(g))
     # axes: height every 5 m on the left, distance every 10 m below
@@ -474,16 +483,16 @@ def sw(kind, yy, a=None):
     elif kind == 'ground': svg.add(_r(x, y0 + 0.9, 6, 1.0, RED) + _bw.tex('bwDots3', x, y0 + 1.9, 6, 1.4))
     elif kind == 'ceil': svg.add(f'<line x1="{x}" y1="{y0 + 1.5:.2f}" x2="{x + 6}" y2="{y0 + 1.5:.2f}" stroke="{G[5]}" stroke-width="{LW["section"]}" stroke-dasharray="2.2 1.2"/>')
     elif kind == 'redground': svg.add(f'<line x1="{x}" y1="{y0 + 1.5:.2f}" x2="{x + 6}" y2="{y0 + 1.5:.2f}" stroke="{RED}" stroke-width="{LW["propBold"] + 0.4}"/>')
-    elif kind == 'tree': svg.add(f'<circle cx="{x + 3:.2f}" cy="{y0 + 1.2:.2f}" r="1.3" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["prop"]}"/><line x1="{x + 3:.2f}" y1="{y0 + 2.5:.2f}" x2="{x + 3:.2f}" y2="{y0 + 3.3:.2f}" stroke="{RED}" stroke-width="0.35"/>')
-    elif kind == 'treefar': svg.add(f'<circle cx="{x + 3:.2f}" cy="{y0 + 1.2:.2f}" r="1.3" fill="{WHITE}" stroke="{R[2]}" stroke-width="{LW["thin"]}"/>')
-    elif kind == 'person': svg.add(f'<circle cx="{x + 3:.2f}" cy="{y0 + 0.4:.2f}" r="0.42" fill="{G[5]}"/><path d="M{x + 2.55:.2f},{y0 + 3:.2f} L{x + 2.7:.2f},{y0 + 1:.2f} L{x + 3.3:.2f},{y0 + 1:.2f} L{x + 3.45:.2f},{y0 + 3:.2f} Z" fill="{G[5]}"/>')
+    elif kind == 'tree': svg.add(tree_svg(x + 3, y0 + 3.4, RED, LW['prop'], 0, h=1.9))   # the same image as in the section (small)
+    elif kind == 'treefar': svg.add(tree_svg(x + 3, y0 + 3.4, R[2], LW['thin'], 3, op=0.6, h=1.9))
+    elif kind == 'person': svg.add(_bw.figure(x + 1.6, y0 + 3.0, K, kind=0, seed=3) + _bw.car_flat(x + 4.6, y0 + 3.0, K, seed=2))   # the same drawings as in the sections
     elif kind == 'fence': svg.add(f'<line x1="{x + 3:.2f}" y1="{y0 - 0.2:.2f}" x2="{x + 3:.2f}" y2="{y0 + 3:.2f}" stroke="{INK}" stroke-width="{LW["mid"]}" stroke-dasharray="0.8 0.5"/>')
 SAMPLE = {'wall': 'sand', 'balcony': 'iron', 'shutters': 'roller', 'hoods': True, 'roof': 'tile', 'door': 'wood', 'garage': 'white', 'bars': True}   # the row on C. Rafael Alberti, as read from its photos
 items = [('cut', 'Building cut by the line: walls, floors and roof cut (Catastro floors × 3 m, estimate); what shows inside is schematic'),
          ('far', 'Building beyond the line, up to 40 m east, drawn from the façade photograph the Catastro publishes for its parcel: wall, base, roof, balconies, shutters, doors, garden wall and gate. Number and place of the openings: schematic.'),
          ('tex', ''), ('sky', 'Buildings 40–100 m beyond the line: outline only'), ('ground', 'Ground, cut (IGN MDT25)'), ('baseground', 'Ground of the base (closed; nothing inside is surveyed)'),
          ('ceil', 'Flight ceiling: the easement surface over the line (RD 118/2019, our interpolation, approximate); hatched = the air it keeps free'), ('fence', 'Fence: height not mapped'), ('person', 'People, cars, street lights: schematic, for scale'),
-         ('hall', 'Neighbourhood hall, proposed (2 floors, cut)'), ('redground', 'Park and fence walk, proposed'), ('tree', 'Tree, proposed (crown about 5 m)'), ('treefar', 'Tree, proposed, beyond the line')]
+         ('hall', 'Neighbourhood hall, proposed (2 floors, cut)'), ('redground', 'Park and fence walk, proposed'), ('tree', 'Tree, proposed, on the line (drawn 8–11 m; species not chosen)'), ('treefar', 'Tree, proposed, beyond the line')]
 for kind, txt in items:
     if kind == 'far':     # a sample front, larger than the other swatches
         y += 2.2; svg.add(_bw.elev_obs(x0, x0 + 12, y + 5.4, 2, SAMPLE, seed=3, K=1.0)); lines = wrap(txt, TY['small'], CW - 15.5)

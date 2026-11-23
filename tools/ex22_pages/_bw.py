@@ -527,3 +527,76 @@ def tree_real(kind, x, yg, K=2.0, col=INK, sw=0.1, seed=0, h=None):
     o.append(f'<path d="{"".join(dots)}" fill="none" stroke="{col}" stroke-width="{0.11 * min(1, K / 2) + 0.03:.2f}" stroke-linecap="round"/>')
     o += [b for i_, b in enumerate(skel) if i_ < 7]   # the trunk's first forks show below and through the crown
     return ''.join(o)
+
+
+# ---- flat-colour people and cars (owner, 23 Nov 2026: "like the example" — flat figures in muted colours, own drawing) ----------
+def _pal():
+    import json, os, subprocess
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    js = "const P=require('./js/palette.js');process.stdout.write(JSON.stringify(P))"
+    return json.loads(subprocess.run(['node', '-e', js], cwd=root, capture_output=True, text=True, check=True).stdout)
+
+
+_P = _pal(); _B = _P['base']
+COATS = [_B['lightBlue'], _B['khaki'], _B['burgundy'], _B['blueGrey'], _B['chartreuse'], _P['blue'], _P['rose'], _P['olive'], _B['oxblood']]
+LEGS = [_B['brown'], _B['wine'], _P['blue'], _P['ink2'], _B['olive']]
+SKIN = [_P['lst']['3'] if isinstance(_P.get('lst'), dict) else '#DCC3B5', _P['redTint'], _P['rose'], _P['slope'][4][1] if isinstance(_P.get('slope'), list) else '#9C7A55']
+HAIR = [_B['brown'], _B['wine'], _B['khaki'], _B['oxblood']]
+CARS = [_B['blueGrey'], _B['khaki'], _B['burgundy'], _B['olive'], _P['blue'], _B['chartreuse'], _B['oxblood']]
+
+
+def figure(x, y, K=2.0, kind=0, seed=0):
+    """a person for scale (1.75 m), flat colours from the palette, no outline: 0 standing, 1 walking, 2 adult with child,
+    3 pair, 4 cyclist (side on), 5 with a bag"""
+    m = lambda v: v * K; rnd = random.Random(seed * 977 + kind * 31 + 5)
+    def one(bx, h=1.75, walk=False, bag=False):
+        s = h / 1.75; c = rnd.choice(COATS); lg = rnd.choice(LEGS); sk = rnd.choice(SKIN); hr = rnd.choice(HAIR)
+        hy = y - m(h * 0.92); hw = m(0.115 * s); sh = y - m(h * 0.82); hip = y - m(h * 0.47); kn = y - m(0.02)
+        cw = m(0.22 * s); long_ = rnd.random() < 0.45; hem = hip + (m(h * 0.18) if long_ else 0)
+        q = []
+        if walk:
+            q.append(f'<path d="M{bx - m(0.05):.2f},{hip:.2f} L{bx - m(0.24 * s):.2f},{kn:.2f} L{bx - m(0.14 * s):.2f},{kn:.2f} L{bx + m(0.04):.2f},{hip + m(0.2):.2f} L{bx + m(0.16 * s):.2f},{kn:.2f} L{bx + m(0.27 * s):.2f},{kn:.2f} L{bx + m(0.07):.2f},{hip:.2f} Z" fill="{lg}"/>')
+        else:
+            q.append(f'<path d="M{bx - m(0.15 * s):.2f},{hip:.2f} L{bx - m(0.13 * s):.2f},{kn:.2f} L{bx - m(0.02):.2f},{kn:.2f} L{bx:.2f},{hip + m(0.15):.2f} L{bx + m(0.02):.2f},{kn:.2f} L{bx + m(0.13 * s):.2f},{kn:.2f} L{bx + m(0.15 * s):.2f},{hip:.2f} Z" fill="{lg}"/>')
+        q.append(f'<path d="M{bx - cw * 0.85:.2f},{sh + m(0.04):.2f} Q{bx:.2f},{sh - m(0.06):.2f} {bx + cw * 0.85:.2f},{sh + m(0.04):.2f} L{bx + cw * (1.15 if long_ else 0.95):.2f},{hem:.2f} L{bx - cw * (1.15 if long_ else 0.95):.2f},{hem:.2f} Z" fill="{c}"/>')
+        q.append(f'<path d="M{bx + cw * 0.8:.2f},{sh + m(0.06):.2f} L{bx + cw * 1.15:.2f},{hip + m(0.05):.2f}" stroke="{c}" stroke-width="{m(0.09 * s):.2f}" stroke-linecap="round"/>')
+        q.append(f'<path d="M{bx - cw * 0.8:.2f},{sh + m(0.06):.2f} L{bx - cw * 1.15:.2f},{hip + m(0.05):.2f}" stroke="{c}" stroke-width="{m(0.09 * s):.2f}" stroke-linecap="round"/>')
+        q.append(f'<circle cx="{bx:.2f}" cy="{hy:.2f}" r="{hw:.2f}" fill="{sk}"/>')
+        q.append(f'<path d="M{bx - hw * 1.05:.2f},{hy + hw * 0.1:.2f} A{hw * 1.05:.2f},{hw * 1.05:.2f} 0 0 1 {bx + hw * 1.05:.2f},{hy + hw * 0.1:.2f} Z" fill="{hr}"/>')
+        if bag: q.append(f'<rect x="{bx + cw * 1.0:.2f}" y="{hip - m(0.05):.2f}" width="{m(0.18):.2f}" height="{m(0.24):.2f}" rx="{m(0.03):.2f}" fill="{rnd.choice(HAIR)}"/>')
+        return ''.join(q)
+    if kind == 1: return one(x, walk=True)
+    if kind == 2: return one(x - m(0.3)) + one(x + m(0.25), h=1.1)
+    if kind == 3: return one(x - m(0.3)) + one(x + m(0.3), h=1.65, walk=True)
+    if kind == 5: return one(x, bag=True)
+    if kind == 4:   # a cyclist, side on (wheels 0.68 m)
+        c = rnd.choice(COATS); r_ = m(0.34); xa, xb = x - m(0.52), x + m(0.52); yw = y - r_
+        q = [f'<circle cx="{xa:.2f}" cy="{yw:.2f}" r="{r_:.2f}" fill="none" stroke="{INK}" stroke-width="0.07"/>',
+             f'<circle cx="{xb:.2f}" cy="{yw:.2f}" r="{r_:.2f}" fill="none" stroke="{INK}" stroke-width="0.07"/>',
+             f'<path d="M{xa:.2f},{yw:.2f} L{x - m(0.05):.2f},{yw:.2f} L{x + m(0.32):.2f},{yw - m(0.42):.2f} L{x - m(0.18):.2f},{yw - m(0.42):.2f} Z M{x + m(0.32):.2f},{yw - m(0.42):.2f} L{xb:.2f},{yw:.2f} M{x + m(0.28):.2f},{yw - m(0.52):.2f} h{m(0.12):.2f}" fill="none" stroke="{INK}" stroke-width="0.06"/>',
+             f'<path d="M{x - m(0.15):.2f},{yw - m(0.48):.2f} L{x - m(0.03):.2f},{yw - m(0.05):.2f}" stroke="{rnd.choice(LEGS)}" stroke-width="{m(0.13):.2f}" stroke-linecap="round"/>',
+             f'<path d="M{x - m(0.22):.2f},{yw - m(0.45):.2f} L{x - m(0.02):.2f},{yw - m(1.0):.2f} L{x + m(0.2):.2f},{yw - m(0.95):.2f} L{x + m(0.02):.2f},{yw - m(0.42):.2f} Z" fill="{c}"/>',
+             f'<path d="M{x + m(0.12):.2f},{yw - m(0.9):.2f} L{x + m(0.32):.2f},{yw - m(0.55):.2f}" stroke="{c}" stroke-width="{m(0.08):.2f}" stroke-linecap="round"/>',
+             f'<circle cx="{x + m(0.07):.2f}" cy="{yw - m(1.14):.2f}" r="{m(0.11):.2f}" fill="{rnd.choice(SKIN)}"/>',
+             f'<path d="M{x - m(0.05):.2f},{yw - m(1.13):.2f} A{m(0.12):.2f},{m(0.12):.2f} 0 0 1 {x + m(0.19):.2f},{yw - m(1.13):.2f} Z" fill="{rnd.choice(HAIR)}"/>']
+        return ''.join(q)
+    return one(x)
+
+
+def car_flat(x, y, K=2.0, seed=0):
+    """a car seen from the front (the section cuts across the street), 1.8 m wide and 1.45 m high: a flat body colour from the
+    palette, a cream windscreen, a dark outline"""
+    m = lambda v: v * K; rnd = random.Random(seed * 53 + 11); c = rnd.choice(CARS); cr = _B['cream']; sw = 0.06
+    w2 = m(0.88); yb = y - m(0.12); kind = rnd.randrange(3)
+    roof = m(1.45) if kind != 2 else m(1.7)          # 2 = a van, taller
+    tw = m(0.62) if kind != 2 else m(0.8)
+    q = [f'<rect x="{x - w2 + m(0.06):.2f}" y="{y - m(0.32):.2f}" width="{m(0.3):.2f}" height="{m(0.32):.2f}" rx="{m(0.05):.2f}" fill="{INK}"/>',
+         f'<rect x="{x + w2 - m(0.36):.2f}" y="{y - m(0.32):.2f}" width="{m(0.3):.2f}" height="{m(0.32):.2f}" rx="{m(0.05):.2f}" fill="{INK}"/>',
+         f'<path d="M{x - w2:.2f},{yb:.2f} V{y - m(0.8):.2f} Q{x - w2:.2f},{y - m(0.92):.2f} {x - w2 + m(0.12):.2f},{y - m(0.95):.2f} L{x - tw:.2f},{y - roof:.2f} H{x + tw:.2f} L{x + w2 - m(0.12):.2f},{y - m(0.95):.2f} Q{x + w2:.2f},{y - m(0.92):.2f} {x + w2:.2f},{y - m(0.8):.2f} V{yb:.2f} Z" fill="{c}" stroke="{INK}" stroke-width="{sw}" stroke-linejoin="round"/>',
+         f'<path d="M{x - w2 + m(0.2):.2f},{y - m(0.98):.2f} L{x - tw + m(0.07):.2f},{y - roof + m(0.1):.2f} H{x + tw - m(0.07):.2f} L{x + w2 - m(0.2):.2f},{y - m(0.98):.2f} Z" fill="{cr}" stroke="{INK}" stroke-width="{sw * 0.8}"/>',
+         f'<rect x="{x - w2 - m(0.12):.2f}" y="{y - m(0.98):.2f}" width="{m(0.14):.2f}" height="{m(0.1):.2f}" fill="{INK}"/><rect x="{x + w2 - m(0.02):.2f}" y="{y - m(0.98):.2f}" width="{m(0.14):.2f}" height="{m(0.1):.2f}" fill="{INK}"/>',
+         f'<circle cx="{x - w2 + m(0.28):.2f}" cy="{y - m(0.62):.2f}" r="{m(0.12):.2f}" fill="{cr}" stroke="{INK}" stroke-width="{sw * 0.7}"/><circle cx="{x + w2 - m(0.28):.2f}" cy="{y - m(0.62):.2f}" r="{m(0.12):.2f}" fill="{cr}" stroke="{INK}" stroke-width="{sw * 0.7}"/>',
+         f'<rect x="{x - m(0.4):.2f}" y="{y - m(0.7):.2f}" width="{m(0.8):.2f}" height="{m(0.16):.2f}" fill="{INK}"/>',
+         f'<rect x="{x - w2 - m(0.03):.2f}" y="{y - m(0.4):.2f}" width="{2 * w2 + m(0.06):.2f}" height="{m(0.14):.2f}" fill="{cr}" stroke="{INK}" stroke-width="{sw * 0.7}"/>',
+         f'<rect x="{x - m(0.22):.2f}" y="{y - m(0.42):.2f}" width="{m(0.44):.2f}" height="{m(0.12):.2f}" fill="{WHITE}" stroke="{INK}" stroke-width="{sw * 0.5}"/>']
+    return ''.join(q)
