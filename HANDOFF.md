@@ -1365,3 +1365,7 @@ Flight ceiling over the strip 13–17 m above the ground (RD 118/2019 surfaces m
   S: river square at the south tip's dead end, banks replanted, walks along the Dílar and the Acequia Nueva, footbridges.
 - River channels in the sections are schematic (width/depth not surveyed); on W and E the flight ceiling is 50–65 m up
   and is noted above the drawing instead of drawn.
+- 23 Nov (later): the developer and Defence on the three edge areas too: `AREA=W|E|S … plan.py/section.py <out> developer|defence`
+  (`edges.developer` / `edges.defence`; codes 2.2-DW…MS). Developer: bars parallel to the fence on the same open land, as high as
+  the ceiling allows (1 m under it) and at most 6 floors (our cap), 20 m from the river (our assumption), courts over parking,
+  phase 2 on the base. Defence: the north-edge security band and the open land kept open. All 25 stage-1 sheets in one PDF.

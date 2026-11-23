@@ -197,11 +197,11 @@ def developer(F, gd):
                            base_in=base_in, grid2=grid2, grid2c=grid2c, P=dict(P, floors=P['fl_max']))
 
 
-def defence(F, gd):
+def defence(F, gd, strip=None):
     """The Ministry of Defence. The base stays and stays closed; the easements of 2019 stay. Outside the fence the strip under
     the approach stays open (crops or meadow; no buildings, no gatherings — our reading); inside it, a security band: the fence
     kept, a clear zone, an inner fence, a patrol road and masts for lights and cameras. All shapes and sizes are ours: schematic."""
-    strip = unary_union([p for p in gd.parcels if p.contains(Point(443700, 4110820)) or p.contains(Point(443822, 4110818))])
+    if strip is None: strip = unary_union([p for p in gd.parcels if p.contains(Point(443700, 4110820)) or p.contains(Point(443822, 4110818))])
     base = gd.base; FR = gd.FR
     def ring_at(d):
         g = base.buffer(-d)

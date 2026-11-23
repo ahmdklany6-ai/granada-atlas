@@ -8,6 +8,7 @@ Every element is a PROPOSAL drawn schematically — shapes, sizes and positions 
 elements that the plan (plan.py) and the section (section.py) both draw, so the two sheets show the same thing.
 Not part of the site or of the tests."""
 import math, os, json
+import numpy as np
 from types import SimpleNamespace
 from shapely.geometry import Polygon, LineString, Point, MultiLineString, box
 from shapely.ops import unary_union, linemerge, substring
@@ -243,6 +244,92 @@ def build(F, gd):
                   (0, 'New homes, works in the river channel', '0')]
         E.names = [('RÍO DÍLAR', river.interpolate(0.75, normalized=True), 'water'), ('ALHENDÍN | OGÍJARES', Point(F['frame'][0] + 110, F['frame'][1] + 30), 'town')]
     return E
+
+
+def target(F, gd, E):
+    """the open land each area's proposals work on (the same piece for the three groups)"""
+    if AREA == 'W': return E.polys['park'][0]
+    if AREA == 'E': return E.polys['park'][0]
+    strip = unary_union([poly(r) for r in F['strip']['r']])
+    return strip.difference(gd.base).difference(gd.built.buffer(6)).difference(E.river.buffer(9)).buffer(-1).buffer(1)
+
+
+def developer(F, gd, E=None):
+    """The private developer on an edge area: housing bars parallel to the fence on the same open land the residents want,
+    as high as the flight ceiling allows (1 m under it, floors of 3 m, a 0.6 m parapet) and at most 6 floors (our cap: the
+    towns' own scale); 20 m kept free from the river (our assumption); shops on the ground floor beside the main road; garden
+    courts over one level of parking; phase 2 on the base land in the frame, only if the base leaves (as on the north edge).
+    Schematic: shapes, sizes and counts are ours."""
+    import groups as _g
+    E = E or build(F, gd); FR = box(*F['frame'])
+    land = target(F, gd, E)
+    if E.river is not None: land = land.difference(E.river.buffer(20))
+    land = land.difference(gd.built.buffer(6))
+    inner = land.buffer(-4 if AREA != 'W' else -2, join_style=2)
+    c0 = land.centroid; fp = gd.fence_line.interpolate(gd.fence_line.project(c0)); fq = gd.fence_line.interpolate(gd.fence_line.project(c0) + 5)
+    ang = math.atan2(fq.y - fp.y, fq.x - fp.x); U = (math.cos(ang), math.sin(ang)); N = (-U[1], U[0])
+    at = lambda u, v: (c0.x + U[0] * u + N[0] * v, c0.y + U[1] * u + N[1] * v)
+    quad = lambda u0, u1, v0, v1: Polygon([at(u0, v0), at(u1, v0), at(u1, v1), at(u0, v1)])
+    DEP, LEN, GAP, STEP = 12.0, 40.0, 8.0, 30.0
+    mains = _lines(F, lambda s: s['hw'] in ('primary', 'secondary', 'tertiary'))
+    def lay(ov, ou):
+      B = []
+      for v in np.arange(-400 + ov, 400, STEP):
+        for u in np.arange(-400 + ou, 400, LEN + GAP):
+            g = quad(u, u + LEN, v, v + DEP).intersection(inner)
+            if g.is_empty or g.area < 250: continue
+            g = max(g.geoms, key=lambda q: q.area) if hasattr(g, 'geoms') else g
+            if g.area < 250 or g.minimum_rotated_rectangle.area > g.area * 1.2: continue
+            pts = list(g.exterior.coords) + [(g.centroid.x, g.centroid.y)]
+            ceil = min(allowed_at(F, x, y) for x, y in pts)
+            fl = int(min(6, (ceil - 1.0 - 0.6) // 3.0))
+            if fl >= 2: B.append(SimpleNamespace(row='N', g=g, floors=fl, ceil=ceil, shop=(not mains.is_empty and g.distance(mains) < 30)))
+      return B
+    B = max((lay(ov, ou) for ov in range(0, 30, 3) for ou in range(0, 48, 12)), key=lambda B_: sum(b.g.area * b.floors for b in B_))   # the grid's offset that builds most
+    blocks = unary_union([b.g for b in B]) if B else Polygon()
+    court = inner.difference(blocks.buffer(6))
+    court = unary_union([q for q in (court.geoms if hasattr(court, 'geoms') else [court]) if q.area > 300]) if not court.is_empty else court
+    park = court.buffer(-3) if not court.is_empty else court
+    base_in = gd.base.intersection(FR)
+    grid2 = []
+    for i in range(-12, 13):
+        for j in range(-12, 13):
+            c = (base_in.centroid.x + U[0] * i * 74 + N[0] * j * 54, base_in.centroid.y + U[1] * i * 74 + N[1] * j * 54)
+            r = _rect(c, 60, 40, ang).intersection(base_in.buffer(-12))
+            if r.area > 400: grid2.append(r)
+    grid2c = [r.buffer(-12, join_style=2) for r in grid2]
+    P = {'strip_m2': land.area, 'm2_per_dw': 100, 'gfa': sum(b.g.area * b.floors for b in B), 'shop_m2': sum(b.g.area for b in B if b.shop)}
+    P['dw1'] = (P['gfa'] - P['shop_m2']) / 100; P['blocks'] = len(B); P['fl_min'] = min((b.floors for b in B), default=0); P['fl_max'] = max((b.floors for b in B), default=0)
+    P['court_m2'] = court.area; P['sq_m2'] = 0; P['spaces'] = park.area / 28; P['cover'] = blocks.area / max(1, land.area)
+    P['base_in_ha'] = base_in.area / 1e4; P['dens_sde_dov'] = 16000 / 250; P['dw2'] = P['base_in_ha'] * P['dens_sde_dov']; P['floors'] = P['fl_max']
+    return SimpleNamespace(strip=land, inner=inner, B=B, blocks=[b.g for b in B], court=court, sq=Polygon(), park=park, stop=None,
+                           base_in=base_in, grid2=grid2, grid2c=grid2c, P=P)
+
+
+def defence(F, gd, E=None):
+    """The Ministry of Defence on an edge area: the same security band inside the fence as on the north edge; the area's
+    open land kept open (crops or meadow; no buildings, no gatherings — our reading)."""
+    import groups as _g
+    E = E or build(F, gd)
+    return _g.defence(F, gd, strip=target(F, gd, E))
+
+
+GTEXT = {   # the developer's and Defence's reasons, per area (their positions are the group's own, as on the north edge)
+    'developer': {
+        'W': ['The corridor between the ring road and the fence is open land beside the Vega’s cycle path, about 0.046 km² (Catastro).',
+              'The flight ceiling is about 60 m above the ground here (our calculation): it does not limit housing; our cap of 6 floors does.',
+              'The river is kept at 20 m (our assumption); the rest of the corridor is building land for the developer.'],
+        'E': ['The field by Carretera de Sierra Nevada is about 0.08 km² of farmland beside Armilla’s houses (OSM, Catastro): the town’s next block.',
+              'The flight ceiling is about 52–54 m above the ground here (our calculation): our cap of 6 floors limits the blocks, not the ceiling.'],
+        'S': ['The tip lies under the approach to runway 36: the flight ceiling is about 14–18 m above the ground (our calculation): the blocks stop at 5 floors.',
+              'The open land beside the river keeps its farm buildings; the blocks stand around them and 20 m from the river (our assumption).']},
+    'defence': {
+        'W': ['The fence here runs beside the ring road and the cycle path: a long edge with people along it.',
+              'The easements of 2019 stay; the river corridor stays open, without buildings or gatherings.'],
+        'E': ['Carretera de Sierra Nevada and a cycle path run right beside the fence; the field is the last open land before the houses.',
+              'The easements of 2019 stay; the field stays farmland, without buildings or gatherings.'],
+        'S': ['The tip of the base sits under the approach to runway 36: the ceiling is only 14–18 m above the ground here.',
+              'Three cycle paths and two roads meet at the fence: Defence keeps the land open and the band inside the fence clear.']}}
 
 
 TEXT = {

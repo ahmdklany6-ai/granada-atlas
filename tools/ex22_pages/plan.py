@@ -117,7 +117,7 @@ ROMAN = {1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI'}
 def developer():
     """The private developer: housing on the strip now, under today's ceiling; a district on the base later, only if it leaves.
     Everything here is a PROPOSAL, drawn schematically."""
-    D_ = groups.developer(F, gd); P = D_.P
+    D_ = groups.developer(F, gd) if AREA == 'N' else edges.developer(F, gd); P = D_.P
     under, over = [], []
     # phase 2 on the base: plots in a hatch, their courts white, a dashed outline (not built: a reserve)
     under.append('<path d="' + ' '.join(V.dgeom(r) for r in D_.grid2) + f'" fill="url(#redHatch)" stroke="{RED}" stroke-width="{LW["thin"]}" stroke-dasharray="1.2 0.8" fill-rule="evenodd"/>')
@@ -142,10 +142,26 @@ def developer():
             if b.g.contains(mid): ox, oy = -ox, -oy
             over.append(f'<line x1="{X(a_[0] - ox):.2f}" y1="{Y(a_[1] - oy):.2f}" x2="{X(b_[0] - ox):.2f}" y2="{Y(b_[1] - oy):.2f}" stroke="{WHITE}" stroke-width="0.35" stroke-dasharray="1.2 0.6"/>')
     # the stop, the reason to build here
-    over.append(f'<path d="{V.dgeom(groups.residents(F, gd).platform, close=False)}" fill="none" stroke="{INK}" stroke-width="2.2" opacity="0.55"/>')
-    mx_, my_ = X(D_.stop[0]), Y(D_.stop[1]) + 7.5
-    over.append(f'<circle cx="{mx_:.2f}" cy="{my_:.2f}" r="2.3" fill="{WHITE}" stroke="{INK}" stroke-width="{LW["mid"]}"/><text x="{mx_:.2f}" y="{my_ + 0.85:.2f}" font-family="{FONT}" font-size="2.4" font-weight="700" fill="{INK}" text-anchor="middle">M</text>')
-    over.append(f'<text x="{mx_ + 3.2:.2f}" y="{my_ + 0.7:.2f}" font-family="{FONT}" font-size="{TY["map"]}" font-weight="600" fill="{INK}" stroke="{WHITE}" stroke-width="0.6" paint-order="stroke">San Cayetano (Junta project, approx.)</text>')
+    if D_.stop: over.append(f'<path d="{V.dgeom(groups.residents(F, gd).platform, close=False)}" fill="none" stroke="{INK}" stroke-width="2.2" opacity="0.55"/>')
+    mx_, my_ = (X(D_.stop[0]), Y(D_.stop[1]) + 7.5) if D_.stop else (0, 0)
+    if D_.stop: over.append(f'<circle cx="{mx_:.2f}" cy="{my_:.2f}" r="2.3" fill="{WHITE}" stroke="{INK}" stroke-width="{LW["mid"]}"/><text x="{mx_:.2f}" y="{my_ + 0.85:.2f}" font-family="{FONT}" font-size="2.4" font-weight="700" fill="{INK}" text-anchor="middle">M</text>')
+    if D_.stop: over.append(f'<text x="{mx_ + 3.2:.2f}" y="{my_ + 0.7:.2f}" font-family="{FONT}" font-size="{TY["map"]}" font-weight="600" fill="{INK}" stroke="{WHITE}" stroke-width="0.6" paint-order="stroke">San Cayetano (Junta project, approx.)</text>')
+    if AREA != 'N':   # the edge areas: no metro, no station square
+        bS_ = [b for b in D_.B if b.shop]; g2 = max(D_.grid2, key=lambda r: r.area) if D_.grid2 else None; b0 = max(D_.B, key=lambda b: b.g.area) if D_.B else None
+        callouts = [(1, (b0.g.centroid.x, b0.g.centroid.y + 10) if b0 else None), (2, (bS_[0].g.centroid.x + 8, bS_[0].g.centroid.y - 8) if bS_ else None),
+                    (4, (D_.court.representative_point().x, D_.court.representative_point().y) if not D_.court.is_empty else None),
+                    (5, (D_.park.representative_point().x + 12, D_.park.representative_point().y - 3) if not D_.park.is_empty else None),
+                    (6, (g2.centroid.x, g2.centroid.y) if g2 else None)]
+        rows = [(1, f'Housing blocks on the open land, {P["fl_min"]}–{P["fl_max"]} floors: as high as the flight ceiling allows, 1 m under it, and at most 6 floors (our cap; floors of 3 m)' + ('; 20 m kept free from the river (our assumption)' if AREA in ('W', 'S') else ''), f'≈ {P["dw1"]:,.0f} homes'),
+                (2, 'Shops on the ground floor of the blocks beside the main road', f'{P["shop_m2"]:,.0f} m²'),
+                (4, 'Garden courts between the blocks, for the residents (private)', f'{P["court_m2"] / 1e6:.3f} km²'),
+                (5, 'One level of parking under the courts (about 28 m² per space)', f'≈ {P["spaces"]:,.0f} spaces'),
+                (6, 'Phase 2, only if the base leaves and its easements are lifted: a district on the base land in this frame, at the density planned for Sde Dov (Tel Aviv)', f'≈ {P["dw2"]:,.0f} homes'),
+                (0, 'Public park on this land', '0')]
+        legend = [('fill', RED, RED, 'Housing block, proposed (VI = floors)'), ('shop', None, None, 'Shops on the ground floor'), ('fill', R[0], R[0], 'Garden court (private)'),
+                  ('fill', 'none', RED, 'Parking under the court', '0.5 0.6'), ('pat', 'url(#redHatch)', RED, 'Phase 2 plots on the base (if it leaves)', '1.2 0.8')]
+        P['_under'] = len(under)
+        return under + over, callouts, rows, legend, P
     bN = [b for b in D_.B if b.shop]; bS = [b for b in D_.B if b.row == 'S']; bM = [b for b in D_.B if b.row == 'M']
     g2 = max(D_.grid2, key=lambda r: r.area)
     callouts = [(1, (bM[0].g.centroid.x, bM[0].g.centroid.y + 11) if bM else None), (2, (bN[-1].g.centroid.x + 2, bN[-1].g.centroid.y + 12)),
@@ -170,14 +186,14 @@ def developer():
 def defence():
     """The Ministry of Defence: the base stays closed, its easements stay, the strip under the approach stays open, the fence
     gets a security band inside. Everything here is a PROPOSAL, drawn schematically."""
-    M_ = groups.defence(F, gd); P = M_.P
+    M_ = groups.defence(F, gd) if AREA == 'N' else edges.defence(F, gd); P = M_.P
     under, over = [], []
     # the strip: open land, crops or meadow — furrows along the fence
     svg.defs_add(f'<clipPath id="stripclipD"><path d="{V.dgeom(M_.strip)}"/></clipPath>')
     fur = []
     o_ = M_.strip.centroid
-    for j in range(-40, 41):
-        a = (o_.x + N[0] * j * 2.4 - U[0] * 200, o_.y + N[1] * j * 2.4 - U[1] * 200); b = (a[0] + U[0] * 400, a[1] + U[1] * 400)
+    for j in range(-170, 171):
+        a = (o_.x + N[0] * j * 2.4 - U[0] * 400, o_.y + N[1] * j * 2.4 - U[1] * 400); b = (a[0] + U[0] * 800, a[1] + U[1] * 800)
         fur.append(f'M{X(a[0]):.2f},{Y(a[1]):.2f} L{X(b[0]):.2f},{Y(b[1]):.2f}')
     under.append(f'<g clip-path="url(#stripclipD)"><path d="{" ".join(fur)}" stroke="{RED}" stroke-width="{LW["hair"] * 1.6}" fill="none"/></g>')
     under.append(f'<path d="{V.dgeom(M_.strip)}" fill="none" stroke="{RED}" stroke-width="{LW["propBold"]}"/>')
@@ -198,14 +214,21 @@ def defence():
     for (x, y) in M_.masts:
         over.append(f'<circle cx="{X(x):.2f}" cy="{Y(y):.2f}" r="1.1" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["prop"]}"/><circle cx="{X(x):.2f}" cy="{Y(y):.2f}" r="0.35" fill="{RED}"/>')
     pr = M_.patrol if M_.patrol.geom_type == 'LineString' else max(M_.patrol.geoms, key=lambda g: g.length)
-    q1 = pr.interpolate(pr.project(Point(443985, 4110640))); q2 = pr.interpolate(pr.project(Point(443520, 4110800)))
-    fq = fence_line.interpolate(fence_line.project(Point(443700, 4110770)))
-    c15 = max([l for l in contour_lines(F, 15) if l.length > 60], key=lambda l: l.length); q15 = c15.interpolate(0.42, normalized=True)
+    if AREA == 'N':
+        q1 = pr.interpolate(pr.project(Point(443985, 4110640))); q2 = pr.interpolate(pr.project(Point(443520, 4110800)))
+        fq = fence_line.interpolate(fence_line.project(Point(443700, 4110770)))
+        c15 = max([l for l in contour_lines(F, 15) if l.length > 60], key=lambda l: l.length); q15 = c15.interpolate(0.42, normalized=True)
+    else:
+        q1 = pr.interpolate(0.7, normalized=True); q2 = pr.interpolate(0.25, normalized=True)
+        fq = fence_line.intersection(FR).interpolate(0.45, normalized=True) if not fence_line.intersection(FR).is_empty else q2
+        cl_ = [l for lv_ in (15, 20, 30, 50) for l in contour_lines(F, lv_) if l.length > 60]
+        q15 = (max(cl_, key=lambda l: l.length).interpolate(0.42, normalized=True) if cl_ else Point(M_.strip.centroid.x - 40, M_.strip.centroid.y + 40))
     m0 = M_.masts[len(M_.masts) // 2]
     callouts = [(1, (q15.x + 7, q15.y + 3)), (2, (M_.strip.centroid.x + 30, M_.strip.centroid.y - 8)), (3, (q2.x - 3, q2.y + 9)), (4, (q2.x + 16, q2.y + 2)),
                 (5, (q1.x - 8, q1.y - 6)), (6, (m0[0] + 5, m0[1] - 5)), (7, (fq.x - 22, fq.y + 6))]
-    rows = [(1, 'The easements of 2019 stay: nothing may rise above the flight ceiling — about 12–18 m over the strip, under 10 m at the end of our line in the base', 'RD 118/2019'),
-            (2, 'The strip under the approach stays open: crops or meadow, no buildings, no gatherings (our reading)', f'{P["strip_m2"] / 1e6:.3f} km²'),
+    _cs = [allowed_at(F, *p_) for p_ in list(M_.strip.exterior.coords if M_.strip.geom_type == 'Polygon' else max(M_.strip.geoms, key=lambda q: q.area).exterior.coords)]
+    rows = [(1, 'The easements of 2019 stay: nothing may rise above the flight ceiling — ' + ('about 12–18 m over the strip, under 10 m at the end of our line in the base' if AREA == 'N' else f'about {min(_cs):.0f}–{max(_cs):.0f} m above the ground on this open land'), 'RD 118/2019'),
+            (2, ('The strip under the approach stays open' if AREA == 'N' else 'The open land by the fence stays open') + ': crops or meadow, no buildings, no gatherings (our reading)', f'{P["strip_m2"] / 1e6:.3f} km²'),
             (3, 'A clear zone 6 m wide inside the fence: no planting, no storage', f'{P["clear_m2"] / 1e6:.4f} km²'),
             (4, 'An inner fence 6 m behind the outer one', f'{P["road_m"]:,.0f} m'),
             (5, 'A patrol road 4 m wide behind the inner fence', f'{P["road_m"]:,.0f} m'),
@@ -326,7 +349,10 @@ TEXT = {
 
 # ---- draw the sheet -----------------------------------------------------------------------------------------------------
 T = TEXT[GROUP]
-if AREA != 'N':
+if AREA != 'N' and GROUP != 'residents':
+    _ws = edges.GTEXT[GROUP][AREA]
+    T = dict(TEXT[GROUP], why=_ws, code={'developer': 'D', 'defence': 'M'}[GROUP] + AREA, daily=lambda F: [], daily_head='')
+elif AREA != 'N':
     _ET = edges.TEXT[AREA]
     T = dict(TEXT['residents'], position=_ET['position'], why=_ET['why'], daily_head=_ET['daily_head'], daily=lambda F, _d=_ET['daily']: _d, fn=edge_plan, code=_ET['code'])
 prop_svg, callouts, rows, legend, PQ = T['fn']()
@@ -478,7 +504,7 @@ y += 15.5; svg.text(x0, y, T['name'], TY['title'], weight=700)
 y += 7.0; svg.text(x0, y, T['of'], TY['sub'], weight=500)
 y += 6.4; svg.text(x0, y, 'Urban plan 1:1000', TY['sub'], weight=500, fill=RED)
 y += 5.2
-for ln in wrap('The north edge of the base, Churriana de la Vega | Armilla — the same frame and the same section line for all three groups.' if AREA == 'N' else edges.TEXT[AREA]['where'] + ' The residents’ position, on one more stretch of the edge.', TY['small'], CW):
+for ln in wrap('The north edge of the base, Churriana de la Vega | Armilla — the same frame and the same section line for all three groups.' if AREA == 'N' else edges.TEXT[AREA]['where'] + ' The ' + {'residents': 'residents’', 'developer': 'developer’s', 'defence': 'Ministry of Defence’s'}[GROUP] + ' position, on one more stretch of the edge.', TY['small'], CW):
     svg.text(x0, y, ln, TY['small'], fill=G[5]); y += LH(TY['small'])
 y += 2.6; rule(y)
 y += 6.0; head(y, 'POSITION', RED)
@@ -508,7 +534,7 @@ for nmb, txt, q in rows:
     svg.text(x0 + CW, y, q, TY['small'], weight=600, anchor='end')
     y += max(1, len(lines)) * LH(TY['small']) + 1.5
 y += 1.6; rule(y)
-if T.get('daily'):
+if T.get('daily') and T['daily'](F):
     y += 6.0; head(y, T['daily_head'], RED); y += 5.0
     for w in T['daily'](F):
         lines = wrap(w, TY['small'], CW - 3.2)
@@ -612,6 +638,6 @@ for v in (0, 10, 20, 50, 100): svg.text(x0 + v * V.k, y + 4.8, f'{v}' + (' m' if
 y += 9.0
 print('column ends at', round(y, 1), 'mm; sources start at', round(yS, 1), 'mm', '| programme', {k2: (round(v, 1) if isinstance(v, float) else v) for k2, v in PQ.items()})
 
-name = os.path.join(OUT, f'2.2_{GROUP}_01_plan_1-1000' if AREA == 'N' else f'2.2_residents_{AREA}_01_plan_1-1000')
+name = os.path.join(OUT, f'2.2_{GROUP}_01_plan_1-1000' if AREA == 'N' else f'2.2_{GROUP}_{AREA}_01_plan_1-1000')
 ok = export(svg, name, SW, SH, dpi=int(os.environ.get('DPI', 150)))
 print('fonts loaded:', ok, '->', name + '.pdf')
