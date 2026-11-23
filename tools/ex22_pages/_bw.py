@@ -85,6 +85,17 @@ def tex(name, x, y, w, h):
             while xx <= x + w and yb > ya: segs.append((xx, ya, xx, yb)); xx += 1.8
             k += 1
         return _hl(x, y, w, h, 0.3, 0.035) + _path(segs, 0.03)
+    if name == 'bwBlock':   # split-face concrete blocks (about 40 x 20 cm at 1:500), coursed, joints staggered, a rough fleck in each
+        rr = random.Random(sd); segs = []; dots = []; ch, bl = 0.42, 0.84; k = _m.floor(y / ch)
+        while k * ch < y + h:
+            ya, yb = max(y, k * ch), min(y + h, (k + 1) * ch); off = bl / 2 if k % 2 else 0.0; xx = _m.ceil((x - off) / bl) * bl + off
+            while xx <= x + w and yb > ya:
+                segs.append((xx, ya, xx, yb))
+                if xx + bl * 0.5 < x + w and (yb - ya) > ch * 0.6 and rr.random() < 0.55: dots.append((xx + bl * rr.uniform(0.2, 0.8), (ya + yb) / 2 + rr.uniform(-0.08, 0.08)))
+                xx += bl
+            k += 1
+        return (_hl(x, y, w, h, ch, 0.03) + _path(segs, 0.03)
+                + (f'<path d="' + ''.join(f'M{a:.2f},{b_:.2f}h0.12' for a, b_ in dots) + f'" stroke="{INK}" stroke-width="0.03" fill="none"/>' if dots else ''))
     if name == 'bwRubble':
         rr = random.Random(sd); segs = []; k = _m.floor(y / 0.55)
         while k * 0.55 < y + h:
@@ -194,6 +205,30 @@ def elev(x0, x1, yg, lv, btype, year, seed=0, K=2.0, far=False):
                 else: o.append(win(cx, yb, 0.9, 1.9, 0.1) + rail(cx, yb, 1.3))
         o.append(tile_roof(1.0 + 0.2 * (seed % 2)))
         if seed % 3 == 0: o.append(_r(x0 + w * 0.7, top - m(1.9), m(0.5), m(1.0), WHITE, INK, LW))
+    elif st == 'house' and seed % 2 == 0 and w > m(5):
+        # 1965–1989, 1–2 floors, the terrace house of split-face concrete block (the type in the owner's street photo,
+        # 23 Nov 2026 — drawn as a type, not that house): block walls, a rendered ground floor round the garage, a wide
+        # window behind a full roller shutter, an arched porch in a block arch with an iron gate under a tiled hood, a roller
+        # garage door, a stone-clad pier at the party wall, a tiled roof with a fascia
+        o.append(wall('bwBlock'))
+        gw = min(3.0, w / K * 0.45); gx = x0 + w * 0.62; pw = 1.3; px = x0 + m(0.4) + m(pw) / 2 + m(0.35)
+        o.append(_r(px + m(pw / 2 + 0.45), yg - fh + m(0.25), x1 - (px + m(pw / 2 + 0.45)), fh - m(0.25), WHITE) + _r(px + m(pw / 2 + 0.45), yg - fh + m(0.25), x1 - (px + m(pw / 2 + 0.45)), fh - m(0.25), 'none', INK, LW))   # the rendered band
+        o.append(garage(gx, yg, gw, 2.4))
+        # the arched porch: a ring of blocks (voussoirs) round a round-headed opening, an iron gate, a tiled hood above
+        r_ = m(pw / 2); ys_ = yg - m(2.3) + r_
+        o.append(f'<path d="M{px - r_:.2f},{yg:.2f} V{ys_:.2f} A{r_:.2f},{r_:.2f} 0 0 1 {px + r_:.2f},{ys_:.2f} V{yg:.2f} Z" fill="{WHITE}" stroke="{INK}" stroke-width="{LW * 1.3}"/>')
+        o.append(f'<path d="M{px - r_ - m(0.25):.2f},{ys_:.2f} A{r_ + m(0.25):.2f},{r_ + m(0.25):.2f} 0 0 1 {px + r_ + m(0.25):.2f},{ys_:.2f}" fill="none" stroke="{INK}" stroke-width="{LW}"/>'
+                 + ''.join(_l(px + r_ * _m.cos(a_), ys_ - r_ * _m.sin(a_), px + (r_ + m(0.25)) * _m.cos(a_), ys_ - (r_ + m(0.25)) * _m.sin(a_), 0.03) for a_ in [i * _m.pi / 7 for i in range(1, 7)]))
+        o.append(''.join(_l(px - r_ + m(j * 0.16), ys_ - (0 if abs(j * 0.16 - pw / 2) > pw / 2 - 0.05 else _m.sqrt(max(0.0, (pw / 2) ** 2 - (j * 0.16 - pw / 2) ** 2)) * K), px - r_ + m(j * 0.16), yg - m(0.05), 0.035) for j in range(1, int(pw / 0.16) + 1)) + _l(px - r_, yg - m(1.0), px + r_, yg - m(1.0), 0.04))
+        hx0, hx1, hy = px - r_ - m(0.6), px + r_ + m(0.6), yg - m(2.95)   # the hood sits above the block arch
+        o.append(clip_tex('bwTile', f'<polygon points="{hx0:.2f},{hy + m(0.3):.2f} {hx0 + m(0.2):.2f},{hy:.2f} {hx1 - m(0.2):.2f},{hy:.2f} {hx1:.2f},{hy + m(0.3):.2f}"/>', (hx0, hy, hx1 - hx0, m(0.3)), INK, LW * 1.2))
+        o.append(_r(x0, yg - m(1.1), m(0.4), m(1.1), WHITE) + _r(x0, yg - m(1.1), m(0.4), m(1.1), 'url(#bwRubble)', INK, LW))   # the stone-clad pier
+        if lv > 1:   # upstairs: a wide window behind a full roller shutter, a block sill and lintel; a small barred window over the porch
+            ww_ = min(2.6, w / K * 0.4); cx = gx; yb = yg - fh
+            o.append(_r(cx - m(ww_) / 2, yb - m(2.1), m(ww_), m(1.4), WHITE) + _r(cx - m(ww_) / 2, yb - m(2.1), m(ww_), m(1.4), 'url(#bwShutter)', INK, LW))
+            o.append(_r(cx - m(ww_ / 2 + 0.2), yb - m(0.75), m(ww_ + 0.4), m(0.12), WHITE, INK, LW) + _r(cx - m(ww_ / 2 + 0.2), yb - m(2.25), m(ww_ + 0.4), m(0.15), WHITE, INK, LW))
+            o.append(win(px, yb, 0.7, 1.0, 1.0, grille=True))
+        o.append(tile_roof(0.9, 0.3) + _r(x0 - m(0.3), top - m(0.05), w + m(0.6), m(0.18), WHITE, INK, LW)); o.append(floors())
     elif st == 'house':   # 1965–1989, 1–2 floors: render, a hatched base, roller shutters, a garage door, a roof terrace
         o.append(wall('bwStipple', 'bwShade', 0.6)); n = bays(3.4); dk = seed % n; gk = (dk + 1) % n if w > m(7) else -1
         for f in range(lv):
@@ -294,7 +329,7 @@ def defs_obs():
     return ''
 
 
-WALL_TEX = {'white': None, 'cream': 'bwDots1', 'sand': 'bwDots2', 'yellow': 'bwDots2', 'ochre': 'bwDots3', 'green': 'bwDots3', 'grey': 'bwDots2', 'brick': 'bwBrick'}
+WALL_TEX = {'block': 'bwBlock', 'white': None, 'cream': 'bwDots1', 'sand': 'bwDots2', 'yellow': 'bwDots2', 'ochre': 'bwDots3', 'green': 'bwDots3', 'grey': 'bwDots2', 'brick': 'bwBrick'}
 DOOR_TEX = {'white': 'bwShutter', 'brown': 'bwHatchH', 'green': 'bwHatchH', 'grey': 'bwHatchH'}
 
 
@@ -312,6 +347,8 @@ def tree_ink(x, yg, K=2.0, h=5.5, r=2.2, seed=0, sw=0.1):
 def elev_obs(x0, x1, yg, lv, obs, seed=0, K=2.0, far=False):
     """a building beyond the cut drawn from what its Catastro façade photo shows (obs), in black and white. The number and the
     place of the openings stay schematic; floors from the Catastro (x 3 m)."""
+    if obs.get('type') == 'block_house':   # a reading of the split-face block terrace house (owner's photo type): drawn as that type
+        return elev(x0, x1, yg, lv, 'residential', 1980, seed=seed * 2, K=K, far=far)
     lv = max(1, int(lv)); m = lambda v: v * K; w = x1 - x0; fh = m(3.0); top = yg - lv * fh; LW = 0.045 if far else 0.06; o = []
     n = max(1, int(round(w / m(3.3)))); dk = seed % n; gk = (dk + 1) % n if obs.get('garage') and n > 1 else -1
     def win(cx, yb, ww, wh, sill=0.9, f=0):

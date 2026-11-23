@@ -278,7 +278,8 @@ def section(top, proposal, title):
         if ref in FAC:
             ob = FAC[ref] if widest.get(ref) is q else {k_: v_ for k_, v_ in FAC[ref].items() if k_ not in FRONT}
             e_ = _bw.elev_obs(XS(s0), XS(s1), YZ(grd((s0 + s1) / 2)), lv, ob, seed=sd, K=K, far=True)
-        else: e_ = _bw.elev(XS(s0), XS(s1), YZ(grd((s0 + s1) / 2)), lv, use, yr, seed=sd, K=K, far=True)
+        else:
+            e_ = _bw.elev(XS(s0), XS(s1), YZ(grd((s0 + s1) / 2)), lv, use, yr, seed=sd, K=K, far=True)
         # behind the cut: a lighter line (warm grey, from the palette) instead of transparency, so each façade is opaque and
         # the nearer one hides the farther one (owner, 23 Nov 2026: the buildings showed through each other)
         g.append(e_.replace(_bw.INK, FADE))
