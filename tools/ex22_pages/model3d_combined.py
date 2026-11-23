@@ -112,42 +112,59 @@ def colour(g):
     return B['red']
 
 
+def layer_of(g):
+    """the few layers the owner switches (23 Nov 2026: "not a hundred layers — one group per alternative"); colours stay per part"""
+    if g.startswith('0_CONTEXT_buildings'): return '0_CONTEXT_buildings'
+    if g.startswith('0_CONTEXT_'): return '0_CONTEXT_ground_streets_fence'
+    if g.startswith('0_GREEN_'): return '0_GREEN_landuse_water_trees_schematic'
+    if g.startswith('9_'): return '9_CHECK_flight_ceiling_approx'
+    return {'1': '1_RESIDENTS', '2': '2_DEVELOPER', '3': '3_DEFENCE'}[g[0]]
+
+
+def colour2(g):
+    if g.startswith('0_CONTEXT_buildings'): return P['gray1']          # all buildings one light beige-white (owner, 23 Nov 2026)
+    return colour(g)
+
+
+def write_obj(Mx, base, notes):
+    """one OBJ group (= Rhino layer) per switchable part, a material per element inside it, and a normal per face so Rhino
+    shades every face flat (shared vertices with averaged normals made the buildings look smudged and dark)"""
+    L = lambda p: (round(p[0] - M3.OX, 2), round(p[1] - M3.OY, 2), round(p[2] - M3.OZ, 2))
+    order = sorted(Mx.groups, key=lambda g: (layer_of(g), g))
+    with open(base + '.obj', 'w') as f:
+        f.write('mtllib ' + os.path.basename(base) + '.mtl\n# ' + '\n# '.join(notes.split('\n')) + '\n# units: metres; x = E - %.0f, y = N - %.0f (EPSG:25830), z = height above %.0f m a.s.l.\n' % (M3.OX, M3.OY, M3.OZ))
+        vi, ni, cur = 1, 1, None; NRM = {}
+        for g in order:
+            lay = layer_of(g)
+            if lay != cur: f.write(f'o {lay}\ng {lay}\n'); cur = lay
+            f.write(f'usemtl {g}\n'); idx = {}; out = []
+            for t in Mx.groups[g]:
+                a, b, c = (np.array(L(p), float) for p in t); n = np.cross(b - a, c - a); nl = np.linalg.norm(n)
+                if nl < 1e-9: continue
+                n = n / nl
+                if n[2] < -0.2 and not g.endswith('terrain_sides'): n = -n
+                ids = []
+                for p in t:
+                    k = L(p)
+                    if k not in idx: idx[k] = vi + len(idx); f.write('v %.2f %.2f %.2f\n' % k)
+                    ids.append(idx[k])
+                nk = (round(n[0], 3), round(n[1], 3), round(n[2], 3))
+                if nk not in NRM: NRM[nk] = ni; ni += 1; f.write('vn %.3f %.3f %.3f\n' % nk)   # normals shared across the file
+                k_ = NRM[nk]; out.append('f %d//%d %d//%d %d//%d\n' % (ids[0], k_, ids[1], k_, ids[2], k_))
+            f.writelines(out); vi += len(idx)
+    hexf = lambda h: ' '.join(f'{int(h[i:i + 2], 16) / 255:.3f}' for i in (1, 3, 5))
+    with open(base + '.mtl', 'w') as f:
+        for g in order: f.write(f'newmtl {g}\nKd {hexf(colour2(g))}\nKa 0 0 0\nKs 0 0 0\nNs 0\nillum 1\nd {0.35 if g.startswith("9_") else 1.0}\n\n')
+
+
 Mx = Mesh(); context(Mx); alternatives(Mx)
 os.makedirs(OUT, exist_ok=True)
 base = os.path.join(OUT, 'ex22_three_alternatives')
-Mx.write(base, 'Exercise 2.2 · the whole Armilla Air Base and the five towns around it (4.6 x 4.45 km), the three alternatives on their own layers.\n' + M3.NOTES.split('\n', 1)[1] + '\nLayers: 0_CONTEXT_* (existing, measured or estimated), 0_GREEN_* (OSM land use and water; trees SCHEMATIC, not surveyed), 1_RESIDENTS_*, 2_DEVELOPER_*, 3_DEFENCE_* (the three alternatives, schematic), 9_CHECK_* (flight ceiling, approximate).')
-# materials: one per layer, and usemtl lines put into the OBJ
-hexf = lambda h: ' '.join(f'{int(h[i:i + 2], 16) / 255:.3f}' for i in (1, 3, 5))
-with open(base + '.mtl', 'w') as f:
-    for g in Mx.groups: f.write(f'newmtl {g}\nKd {hexf(colour(g))}\nKa 0 0 0\nd {0.35 if g.startswith("9_") else 1.0}\n\n')
-src = open(base + '.obj').read().split('\n')
-with open(base + '.obj', 'w') as f:
-    f.write('mtllib ex22_three_alternatives.mtl\n')
-    for ln in src:
-        f.write(ln + '\n')
-        if ln.startswith('g '): f.write(f'usemtl {ln[2:]}\n')
-os.remove(base + '.json') if os.path.exists(base + '.json') and os.environ.get('KEEP_JSON') != '1' else None
-# the RhinoPython script that nests the layers and colours them
-parents = {'0_CONTEXT_': '0 CONTEXT (existing)', '0_GREEN_': '0 GREEN (land use, water, schematic trees)', '1_RESIDENTS_': '1 RESIDENTS', '2_DEVELOPER_': '2 DEVELOPER', '3_DEFENCE_': '3 DEFENCE', '9_CHECK_': '9 CHECK (flight ceiling, approx.)'}
-cols = {g: [int(colour(g)[i:i + 2], 16) for i in (1, 3, 5)] for g in Mx.groups}
-open(os.path.join(OUT, 'ex22_layers_rhino.py'), 'w').write(f'''# RhinoPython (Rhino 7/8: Tools > PythonScript > Run, or _RunPythonScript): run AFTER importing ex22_three_alternatives.obj
-# with "groups as layers". Nests the layers under one parent per alternative and colours them, so each alternative is one switch.
-import rhinoscriptsyntax as rs
-import System.Drawing as SD
-PARENTS = {json.dumps(parents)}
-COLS = {json.dumps(cols)}
-for pre, parent in PARENTS.items():
-    if not rs.IsLayer(parent): rs.AddLayer(parent)
-for lay in rs.LayerNames():
-    name = lay.split('::')[-1]
-    for pre, parent in PARENTS.items():
-        if name.startswith(pre) and not lay.startswith(parent):
-            rs.ParentLayer(lay, parent)
-            full = parent + '::' + name
-            if name in COLS: rs.LayerColor(full, SD.Color.FromArgb(*COLS[name]))
-            break
-for p in ('2 DEVELOPER', '3 DEFENCE', '9 CHECK (flight ceiling, approx.)'): rs.LayerVisible(p, False)   # start with the residents' alternative on
-print('Layers organised: turn 1 RESIDENTS / 2 DEVELOPER / 3 DEFENCE on and off.')
-''')
-print({g: len(t) for g, t in Mx.groups.items() if not g.startswith('0_CONTEXT_buildings')})
+NOTE2 = ('Exercise 2.2 · the whole Armilla Air Base and the five towns around it (4.6 x 4.45 km), the three alternatives on their own layers.\n' + M3.NOTES.split('\n', 1)[1] +
+         '\nLayers: 0_CONTEXT_* (existing), 0_GREEN_* (OSM land use and water; trees SCHEMATIC, not surveyed), 1_RESIDENTS, 2_DEVELOPER, 3_DEFENCE (schematic), 9_CHECK (flight ceiling, approximate).')
+write_obj(Mx, base, NOTE2)
+if os.environ.get('KEEP_JSON') == '1':
+    L = lambda p: (round(p[0] - M3.OX, 3), round(p[1] - M3.OY, 3), round(p[2] - M3.OZ, 3))
+    json.dump({g: [[c for p in t for c in L(p)] for t in tris] for g, tris in Mx.groups.items()}, open(base + '.json', 'w'), separators=(',', ':'))
+print('layers', sorted({layer_of(g) for g in Mx.groups}))
 print('obj MB', round(os.path.getsize(base + '.obj') / 1e6, 1))
