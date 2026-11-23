@@ -402,5 +402,53 @@ def elev_obs(x0, x1, yg, lv, obs, seed=0, K=2.0, far=False):
         gx = x0 + w * 0.6; r_ = m(1.6); o.append(f'<path d="M{gx - r_:.2f},{yg:.2f} V{yg - m(2.4):.2f} A{r_:.2f},{r_:.2f} 0 0 1 {gx + r_:.2f},{yg - m(2.4):.2f} V{yg:.2f} Z" fill="{WHITE}" stroke="{INK}" stroke-width="0.1"/>'
                                                          + ''.join(_l(gx, yg - m(2.4), gx + r_ * __import__('math').cos(a), yg - m(2.4) - r_ * __import__('math').sin(a), 0.035) for a in [i * 3.1416 / 8 for i in range(1, 8)]) + ''.join(_l(gx - r_ + m(j * 0.2), yg - m(2.4), gx - r_ + m(j * 0.2), yg, 0.03) for j in range(1, 16)))
     if gd == 'pots': o += [f'<ellipse cx="{x0 + m(1 + j * 1.6):.2f}" cy="{yg - m(0.9):.2f}" rx="{m(0.5):.2f}" ry="{m(0.6):.2f}" fill="{WHITE}" stroke="{INK}" stroke-width="0.05"/>' + _r(x0 + m(0.75 + j * 1.6), yg - m(0.4), m(0.5), m(0.4), WHITE, INK, 0.05) for j in range(int(w / m(1.6)))]
-    if obs.get('tree') and not far: o.append(tree_ink(x0 + w * (0.2 + 0.5 * ((seed // 3) % 2)), yg, K, seed=seed))
+    if obs.get('tree') and not far: o.append(tree_kind('round', x0 + w * (0.2 + 0.5 * ((seed // 3) % 2)), yg, K, seed=seed, h=5.5))   # the street tree the photo shows
     return ''.join(o)
+
+
+# ---- trees as in the owner's reference photo (a square in the Vega, 23 Nov 2026): tall narrow cypresses, rough conical
+# conifers, round broadleaf trees on a clear trunk, light small trees, clipped shrubs. Drawn types, not portraits.
+def _crown(pts_fn, n, seed, jit):
+    import math
+    rr = random.Random(seed); P = [pts_fn(i / n, 1 - jit * rr.random()) for i in range(n)]
+    d = f'M{P[0][0]:.2f},{P[0][1]:.2f} ' + ' '.join(f'L{p[0]:.2f},{p[1]:.2f}' for p in P[1:]) + ' Z'
+    xs = [p[0] for p in P]; ys = [p[1] for p in P]
+    return d, (min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys))
+
+
+def tree_kind(kind, x, yg, K=2.0, col=INK, sw=0.12, seed=0, h=None):
+    import math
+    """one tree from the reference photo. kind: cypress | conifer | round | light | shrub; h = height in m (a type size if None)"""
+    m = lambda v: v * K; o = ''
+    if kind == 'cypress':                         # tall and narrow, widest low down, pointed, a slightly ragged edge
+        h = h or 11.0; w = m(h * 0.085); rr = random.Random(seed); n = 22; L = []; Rr = []
+        for i in range(n + 1):
+            t = i / n; wid = w * (min(1, t * 5) ** 0.6) * (1 - t) ** 0.85 * (0.88 + 0.24 * rr.random()); yy = yg - m(0.5) - m(h - 0.5) * t
+            Rr.append((x + wid, yy)); L.append((x - wid * (0.88 + 0.24 * rr.random()), yy))
+        P = Rr + list(reversed(L)); d = 'M' + ' L'.join(f'{px:.2f},{py:.2f}' for px, py in P) + ' Z'
+        xs = [p[0] for p in P]; ys = [p[1] for p in P]
+        return _l(x, yg, x, yg - m(0.6), sw + 0.2).replace(INK, col) + clip_tex('bwDots3', f'<path d="{d}"/>', (min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)), col, sw)
+    if kind == 'conifer':                         # a rough conifer: a broad irregular cone, bushy edge, uneven sides
+        h = h or 9.0; rr = random.Random(seed); n = 30; Rr = []; L = []
+        for i in range(n + 1):
+            t = i / n; base = m(h * 0.3) * (1 - t) ** 0.95 * min(1, t * 7 + 0.35)
+            Rr.append((x + base * (0.75 + 0.5 * rr.random()), yg - m(1.2) - m(h - 1.2) * t)); L.append((x - base * (0.75 + 0.5 * rr.random()), yg - m(1.2) - m(h - 1.2) * t))
+        P = Rr + list(reversed(L)); d = 'M' + ' L'.join(f'{px:.2f},{py:.2f}' for px, py in P) + ' Z'
+        xs = [p[0] for p in P]; ys = [p[1] for p in P]
+        return _l(x, yg, x, yg - m(1.4), sw + 0.25).replace(INK, col) + clip_tex('bwDots3', f'<path d="{d}"/>', (min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)), col, sw)
+    if kind in ('round', 'light'):                # a broadleaf: a clear trunk, a rounded lumpy crown (light = smaller, airier)
+        h = h or (7.5 if kind == 'round' else 6.0); cr = h * (0.34 if kind == 'round' else 0.3); cy = yg - m(h - cr)
+        o += f'<path d="M{x - m(0.12):.2f},{yg:.2f} L{x - m(0.08):.2f},{cy + m(cr * 0.4):.2f} L{x + m(0.08):.2f},{cy + m(cr * 0.4):.2f} L{x + m(0.12):.2f},{yg:.2f} Z" fill="{col}"/>'
+        rr = random.Random(seed); d = ''; lumps = 14 if kind == 'round' else 11
+        P = []
+        for i in range(lumps):
+            a0 = 2 * math.pi * i / lumps; a1 = 2 * math.pi * (i + 1) / lumps; r0 = m(cr) * (0.72 + 0.34 * rr.random())
+            P.append(((x + r0 * math.cos(a0), cy + r0 * 0.9 * math.sin(a0)), (x + m(cr) * 1.18 * math.cos((a0 + a1) / 2), cy + m(cr) * 1.05 * math.sin((a0 + a1) / 2))))
+        d = f'M{P[0][0][0]:.2f},{P[0][0][1]:.2f} ' + ' '.join(f'Q{c[0]:.2f},{c[1]:.2f} {P[(i + 1) % lumps][0][0]:.2f},{P[(i + 1) % lumps][0][1]:.2f}' for i, (p, c) in enumerate(P)) + ' Z'
+        bb = (x - m(cr) * 1.25, cy - m(cr) * 1.15, m(cr) * 2.5, m(cr) * 2.3)
+        o += clip_tex('bwDots2' if kind == 'round' else 'bwDots1', f'<path d="{d}"/>', bb, col, sw)
+        return o
+    if kind == 'shrub':                           # a clipped shrub, about 1 m
+        h = h or 1.1; d = f'M{x - m(0.9):.2f},{yg:.2f} C{x - m(1.0):.2f},{yg - m(h):.2f} {x + m(1.0):.2f},{yg - m(h):.2f} {x + m(0.9):.2f},{yg:.2f} Z'
+        return clip_tex('bwDots2', f'<path d="{d}"/>', (x - m(1.0), yg - m(h), m(2.0), m(h)), col, sw)
+    return ''

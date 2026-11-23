@@ -205,18 +205,10 @@ svg.text(DX0 + L * K, PY0 - 3.2, 'north ←    → south', TY['small'], fill=G[5
 
 
 # ---- 2/3 the sections ------------------------------------------------------------------------------------------------------
-def tree_svg(x, yg, col, sw, seed=0, op=1.0, h=5.0, r=2.5):
-    """a proposed tree, drawn: a trunk with two branches and a scalloped crown (crown about 5 m, schematic)"""
-    import random as _rd
-    rr = _rd.Random(seed); cx, cy = x, yg - h * K; R0 = r * K; n = 9; pts = []
-    for i in range(n):
-        a0 = 2 * math.pi * i / n; a1 = 2 * math.pi * (i + 1) / n; rad = R0 * (0.92 + 0.12 * rr.random())
-        pts.append((cx + rad * math.cos(a0), cy + rad * math.sin(a0), cx + R0 * 1.12 * math.cos((a0 + a1) / 2), cy + R0 * 1.12 * math.sin((a0 + a1) / 2), cx + rad * math.cos(a1), cy + rad * math.sin(a1)))
-    d = f'M{pts[0][0]:.2f},{pts[0][1]:.2f} ' + ' '.join(f'Q{p[2]:.2f},{p[3]:.2f} {p[4]:.2f},{p[5]:.2f}' for p in pts) + ' Z'
-    tr = (f'<line x1="{x:.2f}" y1="{yg:.2f}" x2="{x:.2f}" y2="{cy + R0 * 0.2:.2f}" stroke="{col}" stroke-width="{sw + 0.08}"/>'
-          f'<path d="M{x:.2f},{yg - 2.4 * K:.2f} L{x - 0.9 * K:.2f},{cy + 0.2 * K:.2f} M{x:.2f},{yg - 2.8 * K:.2f} L{x + 0.8 * K:.2f},{cy - 0.1 * K:.2f}" fill="none" stroke="{col}" stroke-width="{sw * 0.7:.2f}"/>')
-    leaves = ''.join(f'<path d="M{cx + rr.uniform(-0.6, 0.6) * R0:.2f},{cy + rr.uniform(-0.5, 0.6) * R0:.2f} q{0.25 * K:.2f},{-0.25 * K:.2f} {0.5 * K:.2f},0" fill="none" stroke="{col}" stroke-width="{sw * 0.55:.2f}"/>' for _ in range(5))
-    return f'<g opacity="{op}"><path d="{d}" fill="{WHITE}" stroke="{col}" stroke-width="{sw}"/>{tr}{leaves}</g>'
+def tree_svg(x, yg, col, sw, seed=0, op=1.0, h=None, r=None):
+    """a proposed tree, of the kinds in the owner's reference photo (cypress, rough conifer, round broadleaf, light tree), mixed by seed"""
+    kind = ('round', 'cypress', 'light', 'round', 'conifer', 'round', 'cypress', 'light')[seed % 8]
+    return f'<g opacity="{op}">' + _bw.tree_kind(kind, x, yg, K, col, sw, seed) + '</g>'
 
 
 Z0, Z1 = 659.0, 696.0                                      # the drawn height range (m a.s.l.)
