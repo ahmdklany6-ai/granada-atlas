@@ -67,7 +67,7 @@ def bw_elev(XS, YZ, s0, s1, z, lv, use, far=False):
         o.append(_r(XS(s0 + 0.4), YZ(z + 2.6), (w - 0.8) * K, 2.3 * K, WHITE, INK, lw2))
         for q in range(1, int((w - 0.8) / 1.6) + 1): o.append(_l(XS(s0 + 0.4 + q * 1.6), YZ(z + 2.6), XS(s0 + 0.4 + q * 1.6), YZ(z + 0.3), lw2 * 0.7))
     return ''.join(o)
-def bw_cut(XS, YZ, s0, s1, z, lv, use, left='facade', right='facade', col=None, fl=FL, inner=None, roof=None):
+def bw_cut(XS, YZ, s0, s1, z, lv, use, left='facade', right='facade', col=None, fl=FL, inner=None, roof=None, ex=True):
     """a building cut by the line: the cut walls and slabs solid (black, or red for a proposal), rooms white, window openings in
     the façade walls (schematic); left/right = 'facade' (with openings), 'party' (a shared wall, no openings) or None"""
     col = col or INK; x0, x1 = XS(s0), XS(s1); yb = YZ(z); yt = YZ(z + lv * fl); t = 0.3 * K; sl = 0.25 * K
@@ -76,25 +76,23 @@ def bw_cut(XS, YZ, s0, s1, z, lv, use, left='facade', right='facade', col=None, 
     o.append(_r(x0, yb - sl * 0.6, x1 - x0, sl * 0.6, col))                                      # ground slab
     shop = use in ('retail', 'commercial', 'hall')
     w_m = s1 - s0
-    if col == INK:   # what one sees inside, on the far wall of each floor (thin, schematic): a door, a window in wide rooms
+    if ex:   # what one sees inside, on the far wall of each floor (thin, schematic): a door, a window in wide rooms
         for f in range(lv):
             zf = z + f * fl
             if w_m >= 4: dx = s0 + 0.32 * w_m; o.append(_r(XS(dx - 0.45), YZ(zf + 2.1), 0.9 * K, 2.1 * K, 'none', INK, 0.04))
-            if w_m >= 8: wx = s0 + 0.7 * w_m; o.append(_r(XS(wx - 0.6), YZ(zf + 2.2), 1.2 * K, 1.3 * K, 'url(#bwGlass)', INK, 0.04))
         for f in range(lv):     # people at home, for scale (schematic)
             if w_m >= 6 and (f + int(s0)) % 2 == 0: o.append(_bw.person(XS(s0 + 0.52 * w_m), YZ(z + f * fl + (0.15 if f == 0 else 0)), K, kind=(0, 2, 3)[(int(s0) + f) % 3]))
         if roof == 'tile':      # clay tiles in the photo: a pitched roof, its pitch schematic (about 30 %, at most 1.6 m), eaves over the façades
             hr = min(1.6, 0.3 * w_m / 2) * K; xm = (x0 + x1) / 2; ex0 = x0 - (0.45 * K if left == 'facade' else 0); ex1 = x1 + (0.45 * K if right == 'facade' else 0)
             pts = f'{ex0:.2f},{yt + 0.12 * K:.2f} {xm:.2f},{yt - hr:.2f} {ex1:.2f},{yt + 0.12 * K:.2f}'
-            o.append(_bw.clip_tex('bwTile', f'<polygon points="{pts}"/>', (ex0, yt - hr, ex1 - ex0, hr + 0.12 * K), INK, 0.06))
-            o.append(f'<polyline points="{ex0:.2f},{yt + 0.12 * K:.2f} {xm:.2f},{yt - hr:.2f} {ex1:.2f},{yt + 0.12 * K:.2f}" fill="none" stroke="{INK}" stroke-width="{0.22 * K:.2f}" stroke-linejoin="round"/>')
+            o.append(f'<polygon points="{pts}" fill="{WHITE}"/><polyline points="{ex0:.2f},{yt + 0.12 * K:.2f} {xm:.2f},{yt - hr:.2f} {ex1:.2f},{yt + 0.12 * K:.2f}" fill="none" stroke="{col}" stroke-width="{0.22 * K:.2f}" stroke-linejoin="round"/>')   # the roof, cut: no texture
         elif roof == 'metal':   # a curved metal-sheet roof (the corner shop)
             d = f'M{x0:.2f},{yt:.2f} Q{(x0 + x1) / 2:.2f},{yt - 1.4 * K:.2f} {x1:.2f},{yt:.2f}'
-            o.append(_bw.clip_tex('bwRib', f'<path d="{d} Z"/>', (x0, yt - 1.4 * K, x1 - x0, 1.4 * K)) + f'<path d="{d}" fill="none" stroke="{INK}" stroke-width="{0.15 * K:.2f}"/>')
+            o.append(f'<path d="{d}" fill="none" stroke="{col}" stroke-width="{0.15 * K:.2f}"/>')
         elif roof == 'flat_balustrade':
             o.append(_l(x0, yt - 0.9 * K, x1, yt - 0.9 * K, 0.14) + ''.join(f'<ellipse cx="{x0 + j * 0.22 * K:.2f}" cy="{yt - 0.45 * K:.2f}" rx="{0.06 * K:.2f}" ry="{0.36 * K:.2f}" fill="{WHITE}" stroke="{INK}" stroke-width="0.04"/>' for j in range(1, int(w_m / 0.22))))
-        else: o.append(_r(x0, yt - 0.5 * K, x1 - x0, 0.5 * K, WHITE, INK, 0.06))   # a parapet (roof form not known: drawn flat)
-    if col != INK:   # a proposed building: its structure as thin lines (bays about every 5.5 m), a parapet; people for scale
+        else: o.append(_r(x0, yt - 0.5 * K, x1 - x0, 0.5 * K, WHITE, col, 0.06))   # a parapet (roof form not known: drawn flat)
+    if not ex:   # a proposed building: its structure as thin lines (bays about every 5.5 m), a parapet; people for scale
         nb_ = max(1, int(round(w_m / 5.5)))
         for j in range(1, nb_): xx = XS(s0 + w_m * j / nb_); o.append(_l(xx, yt, xx, yb, 0.12, col))
         o.append(_r(x0, yt - 0.6 * K, x1 - x0, 0.6 * K, WHITE, col, 0.1))
@@ -256,8 +254,8 @@ def section(top, proposal, title):
         tmin, s0, s1, lv, use, yr, ref = q; sd = int(s0 * 13 + s1 * 7 + (yr or 0)) % 997
         if ref in FAC:
             ob = FAC[ref] if widest.get(ref) is q else {k_: v_ for k_, v_ in FAC[ref].items() if k_ not in FRONT}
-            g.append(_bw.elev_obs(XS(s0), XS(s1), YZ(grd((s0 + s1) / 2)), lv, ob, seed=sd, K=K, far=tmin > 20))
-        else: g.append(_bw.elev(XS(s0), XS(s1), YZ(grd((s0 + s1) / 2)), lv, use, yr, seed=sd, K=K, far=tmin > 20))
+            g.append('<g opacity="0.5">' + _bw.elev_obs(XS(s0), XS(s1), YZ(grd((s0 + s1) / 2)), lv, ob, seed=sd, K=K, far=True) + '</g>')   # behind the cut: lighter line, faded
+        else: g.append('<g opacity="0.5">' + _bw.elev(XS(s0), XS(s1), YZ(grd((s0 + s1) / 2)), lv, use, yr, seed=sd, K=K, far=True) + '</g>')
     # proposal trees beyond the line (pale red), then the ground
     if proposal and GROUP == 'residents':
         for (x, y) in RG.trees + RG.row:
@@ -273,7 +271,7 @@ def section(top, proposal, title):
         dots.append(f'<circle cx="{XS(s_):.2f}" cy="{YZ(grd(s_)) + dz * K:.2f}" r="{rs.uniform(0.05, 0.11):.2f}" fill="{INK}"/>')
     g.append(''.join(dots))
     band = [(x, y + 1.2 * K) for x, y in pts]   # the cut ground: a 1.2 m band, solid black (as the 2.1 sections, in black)
-    g.append('<path d="M' + ' L'.join(f'{x:.2f},{y:.2f}' for x, y in pts) + ' L' + ' L'.join(f'{x:.2f},{y:.2f}' for x, y in reversed(band)) + f' Z" fill="{INK}" stroke="none"/>')
+    g.append('<path d="M' + ' L'.join(f'{x:.2f},{y:.2f}' for x, y in pts) + ' L' + ' L'.join(f'{x:.2f},{y:.2f}' for x, y in reversed(band)) + f' Z" fill="{RED}" stroke="none"/>')
     # the base side of the cut ground: hatched (closed land: nothing inside it is surveyed) — as on the 2.1 sections
     bpts = [(x, y) for (x, y) in pts if x >= XS(FENCE)]; bid = f'baseband{int(top)}'
     svg.defs_add(f'<clipPath id="{bid}"><path d="M' + ' L'.join(f'{x:.2f},{y - 0.05:.2f}' for x, y in bpts) + ' L' + ' L'.join(f'{x:.2f},{y + 1.2 * K + 0.05:.2f}' for x, y in reversed(bpts)) + ' Z"/></clipPath>')
@@ -294,8 +292,8 @@ def section(top, proposal, title):
         z = grd((c['s0'] + c['s1']) / 2)
         lft = 'party' if i > 0 and abs(cuts[i - 1]['s1'] - c['s0']) < 0.3 else 'facade'
         rgt = None if i + 1 < len(cuts) and abs(cuts[i + 1]['s0'] - c['s1']) < 0.3 and cuts[i + 1]['lv'] >= c['lv'] else ('party' if i + 1 < len(cuts) and abs(cuts[i + 1]['s0'] - c['s1']) < 0.3 else 'facade')
-        rf = ref_of(c); g.append(bw_cut(XS, YZ, c['s0'], c['s1'], z, c['lv'], c['b'], lft, rgt, roof=(FAC.get(rf) or {}).get('roof')))
-    g.append('<path d="M' + ' L'.join(f'{x:.2f},{y:.2f}' for x, y in pts) + f'" fill="none" stroke="{INK}" stroke-width="{LW["ground"]}"/>')
+        rf = ref_of(c); g.append(bw_cut(XS, YZ, c['s0'], c['s1'], z, c['lv'], c['b'], lft, rgt, roof=(FAC.get(rf) or {}).get('roof'), col=RED))   # the cut in the studio red (owner, 23 Nov 2026)
+    g.append('<path d="M' + ' L'.join(f'{x:.2f},{y:.2f}' for x, y in pts) + f'" fill="none" stroke="{RED}" stroke-width="{LW["ground"]}"/>')
     # the metro (vehicle drawn schematically: 2.65 x 3.4 m) and its crossing
     for m in S['metro']:
         s0 = m['d']; z = grd(s0)
@@ -335,7 +333,7 @@ def section(top, proposal, title):
         it = RG.hall.intersection(LineString([tuple(A_), tuple(B_)]))
         if not it.is_empty:
             s0, _ = st(it.coords[0]); s1, _ = st(it.coords[-1]); s0, s1 = sorted((s0, s1)); z = grd((s0 + s1) / 2); h = 7.0
-            g.append(bw_cut(XS, YZ, s0, s1, z, 2, 'hall', 'facade', 'facade', col=RED, fl=3.5, inner=R[0]))   # the proposal: the same drawing, in red
+            g.append(bw_cut(XS, YZ, s0, s1, z, 2, 'hall', 'facade', 'facade', col=RED, fl=3.5, inner=R[0], ex=False))   # the proposal: the same drawing, in red
             xm = XS((s0 + s1) / 2); zc = lim((s0 + s1) / 2)
             g.append(f'<line x1="{xm:.2f}" y1="{YZ(z + h) - 0.6:.2f}" x2="{xm:.2f}" y2="{YZ(zc) + 0.6:.2f}" stroke="{RED}" stroke-width="{LW["thin"]}" stroke-dasharray="0.6 0.5"/>')
             g.append(f'<text x="{xm + 1.2:.2f}" y="{(YZ(z + h) + YZ(zc)) / 2 + 0.8:.2f}" font-family="{FONT}" font-size="{TY["small"]}" font-weight="700" fill="{RED}" stroke="{WHITE}" stroke-width="0.6" paint-order="stroke">{zc - z - h:.0f} m to spare</text>')
@@ -451,12 +449,12 @@ y += 6.0; head(y, 'KEY'); y += 5.2
 def sw(kind, yy, a=None):
     x = x0; y0 = yy - 2.4
     if kind in ('cut', 'hall'):
-        c_ = INK if kind == 'cut' else RED
+        c_ = RED
         svg.add(_r(x, y0, 6, 3.2, WHITE) + _r(x, y0, 6, 0.45, c_) + _r(x, y0 + 1.5, 6, 0.4, c_) + _r(x, y0 + 2.9, 6, 0.3, c_) + _r(x, y0, 0.55, 3.2, c_) + _r(x + 5.45, y0, 0.55, 3.2, c_)
                 + _r(x - 0.02, y0 + 0.7, 0.6, 0.6, WHITE) + _r(x + 5.43, y0 + 0.7, 0.6, 0.6, WHITE) + _r(x - 0.02, y0 + 2.05, 0.6, 0.6, WHITE) + _r(x + 5.43, y0 + 2.05, 0.6, 0.6, WHITE))
     elif kind == 'sky': svg.add(_r(x, y0 + 0.9, 3.6, 2.3, WHITE, G[4], 0.07) + _r(x + 2.6, y0, 3.4, 3.2, WHITE, G[3], 0.07))
-    elif kind == 'baseground': svg.add(_r(x, y0 + 0.9, 6, 1.2, INK) + ''.join(_l(x + 0.2 + j * 1.25, y0 + 2.1, x + 1.4 + j * 1.25, y0 + 0.9, 0.24, WHITE) for j in range(4)))
-    elif kind == 'ground': svg.add(_r(x, y0 + 0.9, 6, 1.0, INK) + _bw.tex('bwDots3', x, y0 + 1.9, 6, 1.4))
+    elif kind == 'baseground': svg.add(_r(x, y0 + 0.9, 6, 1.2, RED) + ''.join(_l(x + 0.2 + j * 1.25, y0 + 2.1, x + 1.4 + j * 1.25, y0 + 0.9, 0.24, WHITE) for j in range(4)))
+    elif kind == 'ground': svg.add(_r(x, y0 + 0.9, 6, 1.0, RED) + _bw.tex('bwDots3', x, y0 + 1.9, 6, 1.4))
     elif kind == 'ceil': svg.add(f'<line x1="{x}" y1="{y0 + 1.5:.2f}" x2="{x + 6}" y2="{y0 + 1.5:.2f}" stroke="{G[5]}" stroke-width="{LW["section"]}" stroke-dasharray="2.2 1.2"/>')
     elif kind == 'redground': svg.add(f'<line x1="{x}" y1="{y0 + 1.5:.2f}" x2="{x + 6}" y2="{y0 + 1.5:.2f}" stroke="{RED}" stroke-width="{LW["propBold"] + 0.4}"/>')
     elif kind == 'tree': svg.add(f'<circle cx="{x + 3:.2f}" cy="{y0 + 1.2:.2f}" r="1.3" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["prop"]}"/><line x1="{x + 3:.2f}" y1="{y0 + 2.5:.2f}" x2="{x + 3:.2f}" y2="{y0 + 3.3:.2f}" stroke="{RED}" stroke-width="0.35"/>')
