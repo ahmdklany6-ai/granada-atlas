@@ -1153,3 +1153,6 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
   inside the base (frame 8.5 %); 0 shops inside, 193 within 1 km; summer surface temperature 51.3 °C inside the base
   (frame 46.3 °C; 30 Landsat scenes 2024–2026).
 - Test `tests/ui_test_v37.py`; `tests/ui_test_v23.py` now expects three study-area markers.
+- 5.49 (follow-up): with three analysis frames to load, the atlas's opening "fit to the city" (`atlas.js` init `go()`)
+  ran only after loading, and pulled back a visitor (or a test) that had already moved the map. The fit now runs at
+  once, before the frames load. Found by `tests/ui_test_v33.py` (pictograms at zoom 13), which passes again.

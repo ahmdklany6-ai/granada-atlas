@@ -475,9 +475,12 @@
   function relabel() { const b = $('#atl-back'); if (b) b.textContent = '← ' + t('v23.back'); const bg = $('#atl-burger'); if (bg) bg.setAttribute('aria-label', t('v23.menu')); renderSide(); renderPanel(); markers(); if (ready) legendChanged(); }
   async function init() {
     APP = root.GA.app; map = APP.map; buildShell(); if (root.GA.panels.isOpen('analysis')) S.min = true; buildOverlay(); relabel();
-    const go = async () => { buildBase(); await loadAll(); ready = true; relabel(); markers();
+    const go = async () => { buildBase();
       const legacy = !!root.__gaLegacyView; // test hook only: the pre-5.25 suites keep their old opening view (no city fit, no animation)
+      // 5.48: the city fit happens at once, BEFORE the analysis frames load — loading three frames takes longer, and a fit
+      // after it would pull back a visitor who had already moved the map
       if (!PG.current && !legacy && !(root.GA.tour && root.GA.tour.state.on)) map.fitBounds(CITY_BB, { padding: pad(40), duration: 0 }); // 5.27: never over the story tour's view // the city first, never inside a study area
+      await loadAll(); ready = true; relabel(); markers();
       // 5.28: the city growth extents are a normal layer (js/layers_growth.js), OFF unless the visitor switched it on
       map.on('styledata', () => { if (map.getLayer('atl-veil')) raise(); }); APP.L.onChange(() => setTimeout(raise, 0)); };
     if (map.loaded()) go(); else map.once('load', go);
