@@ -323,13 +323,10 @@ def section(top, proposal, title):
     # the metro (vehicle drawn schematically: 2.65 x 3.4 m) and its crossing
     for m in S['metro']:
         s0 = m['d']; z = grd(s0)
-        g.append(f'<rect x="{XS(s0 - 1.33):.2f}" y="{YZ(z + 3.8):.2f}" width="{2.65 * K:.2f}" height="{3.4 * K:.2f}" rx="0.8" fill="{WHITE}" stroke="{INK}" stroke-width="{LW["thin"]}"/>'
-                 + _bw._r(XS(s0 - 1.05), YZ(z + 3.2), 2.1 * K, 1.1 * K, 'url(#bwGlass)', INK, 0.06) +
-                 f'<rect x="{XS(s0 - 0.45):.2f}" y="{YZ(z + 2.0):.2f}" width="{0.9 * K:.2f}" height="{1.6 * K:.2f}" fill="none" stroke="{INK}" stroke-width="0.06"/>'
-                 f'<path d="M{XS(s0 - 0.5):.2f},{YZ(z + 3.8):.2f} L{XS(s0):.2f},{YZ(z + 4.9):.2f} L{XS(s0 + 0.5):.2f},{YZ(z + 3.8):.2f} M{XS(s0 - 0.6):.2f},{YZ(z + 4.9):.2f} H{XS(s0 + 0.6):.2f}" fill="none" stroke="{INK}" stroke-width="0.08"/>'
+        g.append(_bw.tram_flat(XS(s0), YZ(z), K) +   # flat colours, front view (owner, 23 Nov 2026)
                  f'<line x1="{XS(s0 + 3.2):.2f}" y1="{YZ(z):.2f}" x2="{XS(s0 + 3.2):.2f}" y2="{YZ(z + 6.5):.2f}" stroke="{INK}" stroke-width="0.18"/><line x1="{XS(s0 + 3.2):.2f}" y1="{YZ(z + 6.0):.2f}" x2="{XS(s0 - 0.8):.2f}" y2="{YZ(z + 6.0):.2f}" stroke="{INK}" stroke-width="0.1"/>'
                  f'<line x1="{XS(s0 - 0.8):.2f}" y1="{YZ(z + 5.0):.2f}" x2="{XS(s0 + 0.8):.2f}" y2="{YZ(z + 5.0):.2f}" stroke="{INK}" stroke-width="0.06"/>')
-        g.append(f'<line x1="{XS(s0 - 3):.2f}" y1="{YZ(z + 0.25):.2f}" x2="{XS(s0 + 3):.2f}" y2="{YZ(z + 0.25):.2f}" stroke="{INK}" stroke-width="{LW["mid"]}"/>')
+        g.append(f'<line x1="{XS(s0 - 3):.2f}" y1="{YZ(z + 0.08):.2f}" x2="{XS(s0 + 3):.2f}" y2="{YZ(z + 0.08):.2f}" stroke="{INK}" stroke-width="{LW["mid"]}"/>')
     # the fence: its height is not mapped — a thin dashed post and a question mark
     zf = grd(FENCE)
     g.append(f'<line x1="{XS(FENCE):.2f}" y1="{YZ(zf):.2f}" x2="{XS(FENCE):.2f}" y2="{YZ(zf + 2.2):.2f}" stroke="{INK}" stroke-width="{LW["mid"]}" stroke-dasharray="0.8 0.5"/>')

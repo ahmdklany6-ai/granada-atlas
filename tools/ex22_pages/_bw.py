@@ -600,3 +600,29 @@ def car_flat(x, y, K=2.0, seed=0):
          f'<rect x="{x - w2 - m(0.03):.2f}" y="{y - m(0.4):.2f}" width="{2 * w2 + m(0.06):.2f}" height="{m(0.14):.2f}" fill="{cr}" stroke="{INK}" stroke-width="{sw * 0.7}"/>',
          f'<rect x="{x - m(0.22):.2f}" y="{y - m(0.42):.2f}" width="{m(0.44):.2f}" height="{m(0.12):.2f}" fill="{WHITE}" stroke="{INK}" stroke-width="{sw * 0.5}"/>']
     return ''.join(q)
+
+
+def tram_flat(x, y, K=2.0):
+    """the metro (Metro de Granada) seen from the front, as the section crosses the track: 2.65 m wide, body to 3.8 m, the
+    pantograph to the wire at 4.9 m. Flat colours from the palette, a dark outline (owner, 23 Nov 2026: "like the example");
+    the livery is schematic, not the real one."""
+    m = lambda v: v * K; w2 = m(1.325); cr = _B['cream']; lo = _B['khaki']; gl = _B['lightBlue']; sw = 0.06
+    yt, yb = y - m(3.8), y - m(0.45)
+    q = [f'<rect x="{x - w2 + m(0.25):.2f}" y="{y - m(0.45):.2f}" width="{m(0.5):.2f}" height="{m(0.45):.2f}" fill="{INK}"/>',
+         f'<rect x="{x + w2 - m(0.75):.2f}" y="{y - m(0.45):.2f}" width="{m(0.5):.2f}" height="{m(0.45):.2f}" fill="{INK}"/>',
+         # the pantograph: a diamond from the roof box to the wire
+         f'<path d="M{x - m(0.45):.2f},{yt - m(0.25):.2f} L{x - m(0.15):.2f},{y - m(4.35):.2f} L{x - m(0.55):.2f},{y - m(4.9):.2f} M{x + m(0.45):.2f},{yt - m(0.25):.2f} L{x + m(0.15):.2f},{y - m(4.35):.2f} L{x + m(0.55):.2f},{y - m(4.9):.2f} M{x - m(0.7):.2f},{y - m(4.9):.2f} H{x + m(0.7):.2f}" fill="none" stroke="{INK}" stroke-width="0.09" stroke-linecap="round"/>',
+         f'<rect x="{x - m(0.6):.2f}" y="{yt - m(0.28):.2f}" width="{m(1.2):.2f}" height="{m(0.3):.2f}" fill="{_P["ink2"]}"/>',
+         # body: cream top with a rounded roof, khaki lower half, dark skirt
+         f'<path d="M{x - w2:.2f},{yb:.2f} V{yt + m(0.35):.2f} Q{x - w2:.2f},{yt:.2f} {x - w2 + m(0.4):.2f},{yt:.2f} H{x + w2 - m(0.4):.2f} Q{x + w2:.2f},{yt:.2f} {x + w2:.2f},{yt + m(0.35):.2f} V{yb:.2f} Z" fill="{cr}" stroke="{INK}" stroke-width="{sw}"/>',
+         f'<rect x="{x - w2:.2f}" y="{y - m(1.75):.2f}" width="{2 * w2:.2f}" height="{m(1.3):.2f}" fill="{lo}" stroke="{INK}" stroke-width="{sw}"/>',
+         f'<rect x="{x - w2 - m(0.03):.2f}" y="{yb:.2f}" width="{2 * w2 + m(0.06):.2f}" height="{m(0.2):.2f}" fill="{_P["ink2"]}"/>',
+         # destination box, windscreen with a wiper, side mirrors
+         f'<rect x="{x - m(0.6):.2f}" y="{yt + m(0.18):.2f}" width="{m(1.2):.2f}" height="{m(0.22):.2f}" rx="{m(0.04):.2f}" fill="{_P["ink2"]}"/>',
+         f'<rect x="{x - w2 + m(0.22):.2f}" y="{yt + m(0.55):.2f}" width="{2 * w2 - m(0.44):.2f}" height="{m(1.3):.2f}" rx="{m(0.08):.2f}" fill="{gl}" stroke="{INK}" stroke-width="{sw * 0.8}"/>',
+         f'<path d="M{x - m(0.7):.2f},{yt + m(0.75):.2f} L{x - m(0.05):.2f},{yt + m(1.7):.2f} L{x + m(0.75):.2f},{yt + m(0.85):.2f}" fill="none" stroke="{INK}" stroke-width="0.05"/>',
+         f'<rect x="{x - w2 - m(0.22):.2f}" y="{yt + m(0.7):.2f}" width="{m(0.16):.2f}" height="{m(0.45):.2f}" rx="{m(0.05):.2f}" fill="{INK}"/><rect x="{x + w2 + m(0.06):.2f}" y="{yt + m(0.7):.2f}" width="{m(0.16):.2f}" height="{m(0.45):.2f}" rx="{m(0.05):.2f}" fill="{INK}"/>',
+         # lamps
+         f'<circle cx="{x:.2f}" cy="{y - m(1.1):.2f}" r="{m(0.17):.2f}" fill="{WHITE}"/>',
+         f'<circle cx="{x - w2 + m(0.4):.2f}" cy="{y - m(1.1):.2f}" r="{m(0.1):.2f}" fill="{WHITE}"/><circle cx="{x + w2 - m(0.4):.2f}" cy="{y - m(1.1):.2f}" r="{m(0.1):.2f}" fill="{WHITE}"/>']
+    return ''.join(q)
