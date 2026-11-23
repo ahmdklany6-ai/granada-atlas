@@ -195,6 +195,12 @@ if GROUP == 'defence':
         p1, p2 = tp(*a), tp(*b); fur.append(f'M{p1[0]:.2f},{p1[1]:.2f} L{p2[0]:.2f},{p2[1]:.2f}')
     pg.append(f'<g clip-path="url(#dfstrip)"><path d="{" ".join(fur)}" stroke="{RED}" stroke-width="0.1" fill="none"/></g><path d="{dp(DF.strip.intersection(band.buffer(2)))}" fill="none" stroke="{RED}" stroke-width="{LW["propBold"]}"/>')
     pg.append(f'<path d="{dp(DF.clear.intersection(band.buffer(2)))}" fill="{R[0]}" stroke="none"/><path d="{dp(DF.road.intersection(band.buffer(2)))}" fill="{R[1]}" stroke="{RED}" stroke-width="{LW["thin"]}"/>')
+if not EDGE:   # the north frame: the same textures on its open ground (the triangle of the empty strip, pitches, parks)
+    _strip = unary_union([poly(r) for r in F['strip']['r']])
+    _open = ([_strip] if GROUP != 'defence' else []) + [poly(q['r'][0]) for q in F['places'] if q['kind'] in ('pitch', 'park') and q['r']] + [poly(q['r'][0]) for q in F.get('parks', []) if q['r']]
+    for _g in _open:
+        _gc = _g.intersection(band.buffer(2))
+        if not _gc.is_empty: pg.append(vega_geom(stf(tp, _gc).buffer(0), 'meadow', seed=len(pg), sc=2.0))
 for g, b in gd.blds:
     if not g.intersects(band): continue
     f = floors_fill(b)

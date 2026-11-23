@@ -391,6 +391,15 @@ for q in F['places']:
 # the proposal's fills and lines
 NU = PQ.get('_under', 8)
 g += prop_svg[:NU]
+if AREA == 'N':   # the north frame (owner, 23 Nov 2026): the same textures on its open ground — the triangle of the empty strip, the grass
+    # pitches and parks; over the proposal's pale fills, under its buildings and symbols
+    from shapely.ops import transform as _tf
+    _strip = unary_union([poly(r) for r in F['strip']['r']])
+    _open = [('meadow', _strip)] if GROUP != 'defence' else []
+    _open += [('meadow', poly(q['r'][0])) for q in F['places'] if q['kind'] in ('pitch', 'park') and q['r']] + [('meadow', poly(q['r'][0])) for q in F.get('parks', []) if q['r']]
+    for _k, _g in _open:
+        if _g.is_empty: continue
+        g.append(vega_geom(_tf(lambda x, y, z=None: (X(x), Y(y)), _g.intersection(FR)).buffer(0), _k, seed=len(g)))
 # water: rivers, streams, irrigation ditches (OSM)
 for w in F.get('water', []):
     for r in w['r']: g.append(f'<path d="{V.d(r, close=False)}" fill="none" stroke="{WATER}" stroke-width="{2.2 if w.get("ww") == "river" else 0.6 if w.get("ww") == "stream" else 0.4}" stroke-linecap="round" stroke-linejoin="round"/>')
@@ -584,7 +593,7 @@ def keycol(items, xx, yy):
     return yy
 ctx = [('bld', G[2], G[5], '1–2 floors (Catastro)'), ('bld', G[3], G[5], '3 floors'), ('bld', G[4], G[5], '4 floors or more'), ('bld', WHITE, G[4], 'Hall or shed: height not derived from floors'),
        ('line', G[3], LW['parcel'] * 3, 'Parcel (Catastro)'), ('basek', None, None, 'The base, closed'), ('fence', None, None, 'The fence'), ('metro', None, None, 'Metro extension, under construction'),
-       ('line', G[5], LW['mid'] + 0.05, 'Municipal line', MUNI_DASH), ('line', G[4], LW['thin'] * 1.6, 'Flight ceiling: allowed height above the ground (m)', '1.4 0.9'), ('sec', None, None, 'Shared section line S–S (sheet 02)' if AREA == 'N' else 'Section line S–S (sheet 02)')] + ([('line', WATER, 1.2, 'River, stream, irrigation ditch (OSM)')] if F.get('water') else []) + ([('vega', 'farmland', None, 'Farmland (OSM land use)'), ('vega', 'orchard', None, 'Orchard (OSM)'), ('vega', 'meadow', None, 'Meadow, grass (OSM)')] if AREA != 'N' else [])
+       ('line', G[5], LW['mid'] + 0.05, 'Municipal line', MUNI_DASH), ('line', G[4], LW['thin'] * 1.6, 'Flight ceiling: allowed height above the ground (m)', '1.4 0.9'), ('sec', None, None, 'Shared section line S–S (sheet 02)' if AREA == 'N' else 'Section line S–S (sheet 02)')] + ([('line', WATER, 1.2, 'River, stream, irrigation ditch (OSM)')] if F.get('water') else []) + ([('vega', 'farmland', None, 'Farmland (OSM land use)'), ('vega', 'orchard', None, 'Orchard (OSM)'), ('vega', 'meadow', None, 'Meadow, grass (OSM)')] if AREA != 'N' else [('vega', 'meadow', None, 'Open ground: the empty strip, grass pitches and parks (texture)')])
 y = max(keycol(legend, x0, ky), keycol(ctx, x0 + cw2 + 1, ky)) + 0.6
 y += 1.0; rule(y)
 
