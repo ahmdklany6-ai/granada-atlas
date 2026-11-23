@@ -18,7 +18,7 @@ W, S, E, N = -3.75, 37.06, -3.46, 37.27   # atlas region (data/manifest.json reg
 log = {}
 def get(u, t=180, data=None, hdr=None, tries=4):
     for k in range(tries):
-        try: return urllib.request.urlopen(urllib.request.Request(u, data=data, headers=dict(UA, **(hdr or {}))), timeout=t).read()
+        try: return urllib.request.urlopen(urllib.request.Request(urllib.parse.quote(u, safe=':/?&=%,;+@'), data=data, headers=dict(UA, **(hdr or {}))), timeout=t).read()
         except Exception as e: print('retry', u[:120], e, flush=True); time.sleep(4 + 6 * k)
     return None
 def save(name, data):
@@ -37,18 +37,14 @@ def overture():
     x = get('https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/?list-type=2&prefix=release/&delimiter=/', 60).decode()
     rels = sorted(re.findall(r'<Prefix>release/([^<]+)/</Prefix>', x)); rel = rels[-1]; print('overture releases', rels[-4:], flush=True)
     con = duckdb.connect(); con.execute('INSTALL spatial; LOAD spatial; INSTALL httpfs; LOAD httpfs; SET s3_region="us-west-2";')
-    q = f"""SELECT id, ST_X(geometry) AS lon, ST_Y(geometry) AS lat, to_json(names) AS j_names, to_json(categories) AS j_categories,
-              confidence, to_json(websites) AS j_websites, to_json(phones) AS j_phones, to_json(brand) AS j_brand, to_json(addresses) AS j_addresses,
-              to_json(taxonomy) AS j_taxonomy, operating_status
-            FROM read_parquet('s3://overturemaps-us-west-2/release/{rel}/theme=places/type=place/*', hive_partitioning=1)
-            WHERE bbox.xmin BETWEEN {W} AND {E} AND bbox.ymin BETWEEN {S} AND {N}"""
-    try: rows = con.execute(q).fetchall(); cols = [d[0] for d in con.description]
-    except Exception as e:  # a release without taxonomy / operating_status
-        print('retry with fewer columns', e, flush=True); q = q.replace('to_json(taxonomy) AS j_taxonomy, ', ''); rows = con.execute(q).fetchall(); cols = [d[0] for d in con.description]
-    recs = [dict(zip(cols, r)) for r in rows]
-    for r in recs:
-        for k in list(r):
-            if k.startswith('j_'): v = r.pop(k); r[k[2:]] = json.loads(v) if isinstance(v, str) else v
+    q = f"""SELECT ST_X(geometry) AS lon, ST_Y(geometry) AS lat, to_json(p) AS j FROM (SELECT * EXCLUDE (geometry) FROM
+            read_parquet('s3://overturemaps-us-west-2/release/{rel}/theme=places/type=place/*', hive_partitioning=1)
+            WHERE bbox.xmin BETWEEN {W} AND {E} AND bbox.ymin BETWEEN {S} AND {N}) p"""
+    q = q.replace('ST_X(geometry) AS lon, ST_Y(geometry) AS lat, to_json(p) AS j FROM (SELECT * EXCLUDE (geometry) FROM', 'ST_X(geometry) AS lon, ST_Y(geometry) AS lat, to_json(p) AS j FROM (SELECT * FROM')
+    rows = con.execute(q).fetchall()
+    recs = []
+    for lon, lat, j in rows:
+        r = json.loads(j) if isinstance(j, str) else j; r.pop('geometry', None); r['lon'] = lon; r['lat'] = lat; recs.append(r)
     save('overture_places.json', {'release': rel, 'bbox': [W, S, E, N], 'n': len(recs), 'places': recs})
 
 # ---------- 2. GTFS ----------
@@ -67,8 +63,12 @@ def gtfs():
     save('gtfs_index.json', got)
 
 def ctan():
-    B = 'http://api.ctan.es/v1/Consorcios'; out = {}
-    r = get(B, 60); out['consorcios'] = json.loads(r) if r else None; save('ctan_consorcios.json', out['consorcios'])
+    out = {}; r = None
+    for B in ('https://api.ctan.es/v1/Consorcios', 'http://api.ctan.es/v1/Consorcios', 'https://api.ctan.es/v1/Consorcios/3/lineas'):
+        r = get(B, 60, tries=2); print('ctan', B, (r or b'')[:200], flush=True)
+        if r: B = 'https://api.ctan.es/v1/Consorcios' if B.endswith('lineas') else B; break
+    if not r: raise RuntimeError('api.ctan.es did not answer')
+    out['consorcios'] = json.loads(r) if r else None; save('ctan_consorcios.json', out['consorcios'])
     cs = (out['consorcios'] or {}).get('consorcios') or out['consorcios'] or []
     gid = next((c.get('idConsorcio') for c in cs if isinstance(c, dict) and 'granada' in json.dumps(c, ensure_ascii=False).lower()), None)
     if gid is None: raise RuntimeError('Granada consortium not found')
@@ -168,6 +168,16 @@ def tcd():
             fn = f'tcd_{i}_{j}.tif'; save(fn, r); tiles.append({'file': fn, 'bbox': bx})
     save('tcd_index.json', {'epsg': 25830, 'px': 10, 'frame': [x0, y0, x1, y1], 'tiles': tiles})
 
+def worldcover():
+    import rasterio
+    from rasterio.windows import from_bounds
+    u = '/vsicurl/https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N36W006_Map.tif'
+    with rasterio.open(u) as ds:
+        w = from_bounds(W, S, E, N, ds.transform).round_offsets().round_lengths(); a = ds.read(1, window=w); tr = ds.window_transform(w)
+    import numpy as np
+    buf = io.BytesIO(); np.savez_compressed(buf, cls=a); save('worldcover_2021.npz', buf.getvalue())
+    save('worldcover_2021_meta.json', {'transform': list(tr)[:6], 'shape': list(a.shape), 'crs': 'EPSG:4326', 'classes': {str(k): int((a == k).sum()) for k in np.unique(a)}, 'url': u})
+
 # ---------- 6. SICA noise capabilities ----------
 def sica():
     for ws in ('evaluacionambiental',):
@@ -189,7 +199,7 @@ def sica():
 ONLY = os.environ.get('ONLY') or (open('tools/verify/basefill_only').read().strip() if os.path.exists('tools/verify/basefill_only') else '')
 for line in (open('tools/verify/basefill_env').read().splitlines() if os.path.exists('tools/verify/basefill_env') else []):
     if '=' in line: k, v = line.split('=', 1); os.environ.setdefault(k.strip(), v.strip())
-for nm, fn in (('sica', sica), ('overpass', overpass), ('tcd', tcd), ('gtfs', gtfs), ('ctan', ctan), ('overture', overture), ('catastro', catastro)):
+for nm, fn in (('sica', sica), ('overpass', overpass), ('tcd', tcd), ('gtfs', gtfs), ('ctan', ctan), ('worldcover', worldcover), ('overture', overture), ('catastro', catastro)):
     if ONLY and nm not in ONLY.split(','): continue
     print('=====', nm, flush=True); part(nm, fn)
 print(json.dumps(log, indent=1))
