@@ -1,0 +1,36 @@
+/* Build 5.50 — the analysis cards that were empty for study areas south of the city (owner report, 23 Nov 2026,
+   "analysis_Base" PDF): construction years from the Catastro, data coverage ("outside the data", never 0), and the
+   extended places, bus, trees, canopy and noise sources. [ar, he, en]. Numbers stay left-to-right (⁦…⁩). */
+(function (root) {
+  root.GA.i18n.add({
+    // construction periods: OSM start_date + the Catastro year of construction
+    'v36.withYear': ['مبانٍ لها سنة بناء', 'מבנים עם שנת בנייה', 'Buildings with a construction year'],
+    'v36.yearSrc': ['مصدر السنة', 'מקור השנה', 'Source of the year'],
+    'v36.yearSrcV': ['OSM ‏{o} · الكاتاسترو ‏{c}', 'OSM ‏{o} · קדסטר ‏{c}', 'OSM {o} · Catastro {c}'],
+    'v36.bldUnit': ['مبانٍ', 'מבנים', 'buildings'],
+    'v36.catDetail': ['سنة البناء من سجل الكاتاسترو (INSPIRE، ⁦2026⁩) حيث لا يوجد تاريخ في OSM', 'שנת הבנייה מרשם הקדסטר (INSPIRE, ⁦2026⁩) כשאין תאריך ב-OSM', 'Year of construction from the Catastro (INSPIRE, 2026) where OSM has no date'],
+    'v36.catCaveat': ['سنة الكاتاسترو هي سنة البناء المسجّلة للمبنى المسّاحي؛ ترميم كبير قد يغيّرها. مبنى بلا سنة يبقى «بلا بيانات».', 'שנת הקדסטר היא שנת הבנייה הרשומה למבנה הקדסטרלי; שיפוץ גדול עשוי לשנות אותה. מבנה בלי שנה נשאר "אין נתונים".', 'The Catastro year is the year of construction recorded for the cadastral building; a major renovation can replace it. A building without a year stays "no data".'],
+    'v36.mPeriods': ['السنة من start_date في OSM إن وُجد، وإلا من سنة البناء في الكاتاسترو (INSPIRE Buildings، dateOfConstruction): لكل مبنى في OSM وسيط سنوات المباني المسّاحية التي يقع مركزها داخله.', 'השנה מ-start_date ב-OSM אם קיים, אחרת משנת הבנייה בקדסטר (INSPIRE Buildings, dateOfConstruction): לכל מבנה ב-OSM החציון של שנות המבנים הקדסטרליים שמרכזם בתוכו.', 'Year from the OSM start_date where present, otherwise the Catastro year of construction (INSPIRE Buildings, dateOfConstruction): for each OSM building, the median year of the cadastral buildings whose centre falls inside it.'],
+    // noise: the road and railway strategic maps are drawn with the agglomeration map (5.50)
+    'g3.noiseDetail': ['SICA، المرحلة الثالثة: التجمّع الحضري + الطرق الرئيسية + السكك؛ خريطة البلدية 2022 كملف PDF', 'SICA, שלב שלישי: האגלומרציה + כבישים ראשיים + מסילות; מפת העירייה 2022 כ-PDF', 'SICA, 3rd phase: agglomeration + main roads + railways; municipal 2022 map as PDF'],
+    'v36.noiseBlank': ['خارج مدينة غرناطة تُرسم فقط خرائط الطرق الرئيسية والسكك؛ شوارع البلدات غير منمذجة — الفراغ في الخريطة لا يعني الهدوء.', 'מחוץ לעיר גרנדה מוצגות רק מפות הכבישים הראשיים והמסילות; רחובות העיירות אינם ממודלים — ריק במפה אינו אומר שקט.', 'Outside the city of Granada only the main-road and railway maps exist; town streets are not modelled — blank on the map does not mean quiet.'],
+    // canopy fallback: ESA WorldCover 2021 tree-cover class
+    'v36.wcTree': ['غطاء أشجار (WorldCover)', 'כיסוי עצים (WorldCover)', 'Tree cover (WorldCover)'],
+    'v36.wcOther': ['غطاء أرضي آخر', 'כיסוי קרקע אחר', 'Other land cover'],
+    'v36.wcShare': ['حصة غطاء الأشجار (WorldCover)', 'שיעור כיסוי העצים (WorldCover)', 'Tree-cover share (WorldCover)'],
+    'v36.wcFind': ['⁦{p}⁩ من المنطقة مصنّفة «غطاء أشجار» في ESA WorldCover 2021 (يشمل البساتين وأشجار الحور والزيتون). خدمة كثافة الأشجار من كوبرنيكوس لم تستجب، لذلك تُعرض هذه الفئة بدل الكثافة.', '⁦{p}⁩ מהאזור מסווגים "כיסוי עצים" ב-ESA WorldCover 2021 (כולל מטעים, צפצפות וזיתים). שירות צפיפות העצים של קופרניקוס לא הגיב, ולכן מוצג הסיווג במקום הצפיפות.', '{p} of the area is classed "tree cover" in ESA WorldCover 2021 (orchards, poplar groves and olives included). The Copernicus tree-density service did not answer, so this class is shown instead of a density.'],
+    'v36.wcMethod': ['ESA WorldCover 2021 v200، خلايا 10 م، الفئة 10 «غطاء أشجار»؛ الحصة = خلايا الأشجار ÷ كل الخلايا ذات البيانات داخل الحدود. تصنيف وليس كثافة.', 'ESA WorldCover 2021 v200, תאים של 10 מ׳, מחלקה 10 "כיסוי עצים"; השיעור = תאי עצים ÷ כל התאים עם נתונים בתוך הגבול. סיווג, לא צפיפות.', 'ESA WorldCover 2021 v200, 10 m cells, class 10 "tree cover"; share = tree cells ÷ all cells with data inside the boundary. A class, not a density.'],
+    // metropolitan buses (Consorcio de Transporte Metropolitano del Área de Granada, CTAN open API)
+    'v36.busSrcCtan': ['ملف الخدمة المرفوع (خطوط المدينة) + الكونسورسيوم الحضري لمنطقة غرناطة (CTAN)', 'קובץ השירות שסופק (קווי העיר) + הקונסורציום המטרופוליני של אזור גרנדה (CTAN)', 'Supplied service file (city lines) + Granada metropolitan consortium (CTAN)'],
+    'v36.busLicCtan': ['ملف المدينة: الترخيص غير مذكور · CTAN: بيانات مفتوحة من شبكة كونسورسيومات الأندلس', 'קובץ העיר: רישיון לא צוין · CTAN: נתונים פתוחים של רשת הקונסורציומים של אנדלוסיה', 'city file: licence not stated · CTAN: open data of the Andalusian transport consortia'],
+    'v36.busCtanNote': ['⁦{n}⁩ محطة من خطوط الكونسورسيوم خارج مدينة غرناطة؛ الجداول تُنشر حسب البلدات لا حسب المحطات، ففي ⁦{a}⁩ محطة لم تُذكر بلدتها في جدول الخط فاحتُسبت كل رحلات ذلك الاتجاه (تقريب).', '⁦{n}⁩ תחנות של קווי הקונסורציום מחוץ לעיר גרנדה; לוחות הזמנים מתפרסמים לפי יישובים ולא לפי תחנות, ולכן ב-⁦{a}⁩ תחנות שהיישוב שלהן לא מופיע בלוח הקו נספרו כל הנסיעות בכיוון הזה (קירוב).', '{n} stops of the consortium lines outside the city of Granada; timetables are published per town, not per stop, so at {a} stops whose town is not named in the line’s timetable every trip of that direction was counted (an approximation).'],
+    'v36.busCtanMethod': ['خارج المدينة: الجدول الساري يوم الاثنين ⁦26/10/2026⁩ من CTAN؛ تُحتسب الرحلة عند المحطة إذا كان لها وقت عند بلدة المحطة.', 'מחוץ לעיר: לוח הזמנים התקף ביום שני ⁦26/10/2026⁩ מ-CTAN; נסיעה נספרת בתחנה אם יש לה שעה ביישוב של התחנה.', 'Outside the city: the CTAN timetable valid on Monday 26 Oct 2026; a trip counts at a stop when it has a time at the stop’s town.'],
+    'v36.placesDate2': ['ملف المستخدم (10/2026) داخل بلدية غرناطة؛ إصدار Overture ‏⁦{r}⁩ خارجها', 'קובץ המשתמש (10/2026) בתוך עיריית גרנדה; גרסת Overture ‏⁦{r}⁩ מחוצה לה', 'user-supplied file (10/2026) inside the Granada municipality; Overture release {r} outside it'],
+    'v36.treesCaveatWc': ['شجرة غير مرسومة ليست شجرة غائبة؛ غطاء الأشجار من ⁦2021⁩.', 'עץ שאינו ממופה אינו עץ חסר; כיסוי העצים משנת ⁦2021⁩.', 'An unmapped tree is not a missing tree; the tree cover dates from 2021.'],
+    // coverage: an area outside a dataset is missing data, not zero
+    'v36.outside': ['خارج نطاق البيانات', 'מחוץ לכיסוי הנתונים', 'outside the data'],
+    'v36.outsideNote': ['هذه المنطقة خارج نطاق ملف البيانات، فلا يُعرض عدد (وليس صفرًا).', 'האזור מחוץ לכיסוי קובץ הנתונים, לכן לא מוצג מספר (ולא אפס).', 'This area lies outside the data file’s coverage, so no count is shown (it is not zero).'],
+    'v36.outsideBus': ['هذه المنطقة خارج نطاق ملف الجداول الزمنية؛ المحطات المرسومة في OSM في بطاقة «محطات النقل العام».', 'האזור מחוץ לכיסוי קובץ לוחות הזמנים; התחנות הממופות ב-OSM בכרטיס "תחנות תחבורה ציבורית".', 'This area lies outside the timetable file’s coverage; the stops mapped in OSM are in the “Public transport stops” card.'],
+    'v36.partial': ['* البيانات تغطي ⁦{p}⁩ فقط من المنطقة؛ الأرقام أقل من الحقيقة.', '* הנתונים מכסים רק ⁦{p}⁩ מהאזור; המספרים נמוכים מהמציאות.', '* The data covers only {p} of the area; the counts are lower than the real ones.'],
+  });
+})(window);

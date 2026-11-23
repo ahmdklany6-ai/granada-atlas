@@ -49,7 +49,7 @@ def main():
             pg.evaluate('GA.app.L.setOn("trees", true)'); wait(pg, 'GA.app.L.S.trees.status === "ok"', 30000)
             urls = pg.evaluate('performance.getEntriesByType("resource").map(e => e.name).filter(u => /data\\/vec\\//.test(u))')
             check('data files are requested with the data version', urls and all('d=' in u for u in urls), urls[:3])
-            check('trees layer is citywide from the dated snapshot (no zoom limit, no Overpass)', pg.evaluate('GA.app.L.S.trees.statusExtra') == 7426)
+            check('trees layer covers the region from the dated snapshot (no zoom limit, no Overpass; 5.50: 11,778 trees, was 7,426 in the municipality)', pg.evaluate('GA.app.L.S.trees.statusExtra') == 11778)
             pg.evaluate('GA.app.L.setOn("trees", false)')
 
             # Layers panel lists every new layer with its controls

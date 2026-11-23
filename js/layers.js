@@ -43,7 +43,7 @@
     const lid = (id, k) => 'ly-' + id + (k ? '-' + k : '');
 
     // ---------- shared processing ----------
-    const procB = (f) => { const p = f.properties; const lv = p.lv != null && isFinite(+p.lv) ? +p.lv : null; p.band = lv == null ? 'no_data' : A.levelBand(lv); const y = A.parseYear(p.sd); p.period = y == null ? 'no_data' : A.periodOf(y); return f; };
+    const procB = (f) => { const p = f.properties; const lv = p.lv != null && isFinite(+p.lv) ? +p.lv : null; p.band = lv == null ? 'no_data' : A.levelBand(lv); const y = A.parseYear(p.sd) || (p.cy ? +p.cy : null); p.period = y == null ? 'no_data' : A.periodOf(y); return f; }; // 5.50: Catastro year where OSM has none
     const procS = (f) => { f.properties.tier = A.streetTier({ highway: f.properties.hw }) || 'other'; return f; };
     const procL = (f) => { f.properties.cat = A.luCategory({ landuse: f.properties.lu }) || 'other'; return f; };
     const matchExpr = (prop, obj, fallback) => ['match', ['get', prop]].concat(Object.entries(obj).flat(), [fallback]);

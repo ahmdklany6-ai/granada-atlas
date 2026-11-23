@@ -9,15 +9,15 @@ on:
       script:
         description: 'script in tools/verify/ that writes to out/<dir>'
         required: true
-        default: 'ex13b_fetch.py'
+        default: 'basefill_fetch.py'
       dir:
         description: 'output folder under out/'
         required: true
-        default: 'ex13b'
+        default: 'basefill'
       branch:
         description: 'data branch to push to'
         required: true
-        default: 'claude/data-ex13b'
+        default: 'claude/data-basefill'
 permissions:
   contents: write
 jobs:

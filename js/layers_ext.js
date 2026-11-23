@@ -160,13 +160,13 @@
 
     // ---------- Strategic noise (SICA) ----------
     defs.push({ id: 'noise', group: 'env', title: () => t('ly3.noise'), def: { on: false, opacity: 0.85, opts: { ind: 'lden' } },
-      build() { ['lden', 'ln'].forEach(k => raster('noise-' + k, RC.tiles('noise', X.wmsTiles(X.SVC.noise, 'evaluacionambiental:mer_aglomeracion_' + k)), 0.85, 'MITECO · SICA')); },
+      build() { ['lden', 'ln'].forEach(k => raster('noise-' + k, RC.tiles('noise', X.wmsTiles(X.SVC.noise, X.noiseLayers(k))), 0.85, 'MITECO · SICA')); }, // 5.50: + main roads and railways (they reach the towns south of the city)
       layers: () => ['lden', 'ln'].map(k => lid('noise-' + k)), visLayers: () => [lid('noise-' + S.noise.opts.ind)],
       applyOpacity(o) { ['lden', 'ln'].forEach(k => map.getLayer(lid('noise-' + k)) && map.setPaintProperty(lid('noise-' + k), 'raster-opacity', o)); },
       controls() { const o = S.noise.opts; return `<label class="row2">${t('ly3.noiseInd')} <select data-ly-ctl="noise" data-k="ind"><option value="lden" ${o.ind === 'lden' ? 'selected' : ''}>Lden — ${t('ly3.lden')}</option><option value="ln" ${o.ind === 'ln' ? 'selected' : ''}>Ln — ${t('ly3.ln')}</option></select></label>`; },
       onControl(el) { S.noise.opts.ind = el.value; H.applyVis(this); },
       legend() { const k = S.noise.opts.ind; return `${rcLegend('noise', { ind: k })}<p class="lyr-src">${t('rc.classified')} ${t(k === 'lden' ? 'ly3.ldenNote' : 'ly3.lnNote')} ${t('ly3.noiseNote')}</p>`; },
-      src: () => 'MITECO · SICA — strategic noise maps, Granada agglomeration (3rd phase in this service)' });
+      src: () => 'MITECO · SICA — strategic noise maps: Granada agglomeration, main roads and railways (3rd phase in this service)' });
 
     // ---------- Land-surface temperature (MODIS 8-day, 1 km) ----------
     defs.push({ id: 'lst', group: 'env', title: () => t('ly3.lst'), def: { on: false, opacity: 0.65 },
