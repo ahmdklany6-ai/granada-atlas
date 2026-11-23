@@ -36,6 +36,14 @@
   }
   async function load(ring) { const s = start(ring); return s.done; }
 
+  // ---------- coverage (5.50) ----------
+  // A dataset that stops short of the area must not report "0": the share of the area's box inside the dataset's
+  // documented coverage (data/manifest.json layers[id].coverage = [w, s, e, n]) decides between a value, a partial value
+  // and "outside the data" (shown as missing).
+  function coverOf(id, bb) { const L = (D.manifest && D.manifest.layers && D.manifest.layers[id]) || {}; const c = L.coverage; if (!c) return { share: 1 };
+    const w = Math.max(0, Math.min(bb[2], c[2]) - Math.max(bb[0], c[0])), h = Math.max(0, Math.min(bb[3], c[3]) - Math.max(bb[1], c[1]));
+    const a = (bb[2] - bb[0]) * (bb[3] - bb[1]); return { share: a > 0 ? (w * h) / a : 0, box: c }; }
+
   // ---------- indicators ----------
   const baseCompute = GAL.compute;
   GAL.compute = async function (area, parsed, extras) {
@@ -49,19 +57,19 @@
       const ks = Object.keys(by).filter(k => k !== '_none'); const n = ks.reduce((s, k) => s + by[k], 0);
       const H = n ? -ks.reduce((s, k) => { const p = by[k] / n; return s + p * Math.log(p); }, 0) : null; const even = n && ks.length > 1 ? H / Math.log(ks.length) : (n ? 0 : null);
       const cf = open.map(f => f.properties.cf).filter(v => v != null).sort((a, b) => a - b);
-      R.places = { nAll: all.length, n: open.length, closed: all.length - open.length, by, cats, perKm2: open.length / aKm2, evenness: even, groupsPresent: ks.length, confMedian: cf.length ? cf[cf.length >> 1] : null, lowConf: cf.filter(v => v < 0.5).length, knownOpen: open.filter(f => f.properties.s === 'open').length, tempClosed: open.filter(f => f.properties.s === 'temporarily_closed').length, missingStatus: open.filter(f => !f.properties.s).length, pts: open };
+      R.places = { cover: coverOf('places', bb).share, nAll: all.length, n: open.length, closed: all.length - open.length, by, cats, perKm2: open.length / aKm2, evenness: even, groupsPresent: ks.length, confMedian: cf.length ? cf[cf.length >> 1] : null, lowConf: cf.filter(v => v < 0.5).length, knownOpen: open.filter(f => f.properties.s === 'open').length, tempClosed: open.filter(f => f.properties.s === 'temporarily_closed').length, missingStatus: open.filter(f => !f.properties.s).length, pts: open };
     }
     if (extras.busSvc) {
       const stops = extras.busSvc.features; const inS = stops.filter(f => inside(f.geometry.coordinates)); const served = inS.filter(f => f.properties.trips_day > 0);
       const routes = [...new Set(served.flatMap(f => String(f.properties.routes || '').split(/[;,]\s*|\s+/).filter(Boolean)))];
       const c = G.centroidLL(ring); let near = Infinity; stops.forEach(f => { if (f.properties.trips_day > 0) { const d = G.haversine(c, f.geometry.coordinates); if (d < near) near = d; } });
       const td = served.map(f => f.properties.trips_day).sort((a, b) => a - b);
-      R.bus = { mapped: inS.length, withService: served.length, noService: inS.length - served.length, maxTrips: td.length ? td[td.length - 1] : 0, medianTrips: td.length ? td[td.length >> 1] : null, routes, nearestServed: isFinite(near) ? near : null, pts: inS };
+      R.bus = { cover: coverOf('bus_service', bb).share, mapped: inS.length, withService: served.length, noService: inS.length - served.length, maxTrips: td.length ? td[td.length - 1] : 0, medianTrips: td.length ? td[td.length >> 1] : null, routes, nearestServed: isFinite(near) ? near : null, pts: inS };
     }
     if (ext.trees) {
       const tr = ext.trees.pts.filter(p => inside(p.ll)); const spec = tr.filter(p => p.tags.species || p.tags.genus || p.tags['species:es']).length;
       let rowLen = 0; ext.trees.ways.filter(w => w.tags.natural === 'tree_row').forEach(w => { try { root.GA.clip.clipLine(w.coords, ring).forEach(l => rowLen += G.lineLength(l)); } catch (e) { } });
-      R.trees = { n: tr.length, perHa: tr.length / (R.area_m2 / 1e4), speciesTagged: spec, rowLen, pts: tr, ts: ext.trees.ts };
+      R.trees = { cover: coverOf('trees_osm', bb).share, n: tr.length, perHa: tr.length / (R.area_m2 / 1e4), speciesTagged: spec, rowLen, pts: tr, ts: ext.trees.ts };
     }
     if (ext.tcd) R.canopy = X.tcdStats(ext.tcd, ring);
     if (ext.flood) R.flood = ext.flood;
@@ -93,9 +101,9 @@
       insertAfter('parks', { id: 'places', title: t('g3.places'), mainLayer: 'places', src: { name: 'Overture Maps Foundation — Places', detail: t('g3.placesDate'), license: 'CDLA-Permissive-2.0' }, highlightField: 'g',
         spec: { context: { buildings: ctxB, streets: ctxS }, layers: [{ type: 'point', items: Pl.pts.map(f => ({ g: f.geometry, fill: PL.PLACE_COL[f.properties.g || '_none'], r: 3 })) }] },
         legend: gs.slice(0, 9).map(g => ({ dot: PL.PLACE_COL[g], label: `${t('pg.' + g)} (${Pl.by[g]})`, key: g })),
-        ind: [[t('v5.placesCount'), nf(Pl.n)], [t('g.perKm2'), u(nf(Pl.perKm2), 'perkm2'), 'est'], [t('g3.mix'), Pl.evenness == null ? '—' : nf(Pl.evenness, 2), 'est']],
+        ind: Pl.cover < 0.02 ? [[t('v5.placesCount'), t('v36.outside')], [t('g.perKm2'), '—'], [t('g3.mix'), '—']] : [[t('v5.placesCount'), nf(Pl.n) + (Pl.cover < 0.98 ? ' *' : '')], [t('g.perKm2'), u(nf(Pl.perKm2), 'perkm2'), 'est'], [t('g3.mix'), Pl.evenness == null ? '—' : nf(Pl.evenness, 2), 'est']],
         chart: Pl.n ? { kind: 'stack', items: gs.map(g => ({ label: t('pg.' + g), v: Pl.by[g] / Pl.n, col: PL.PLACE_COL[g], key: g })) } : null,
-        find: Pl.n ? [t('v5.fPlaces', { n: nf(Pl.n), g: t('pg.' + top), p: pct(Pl.by[top] / Pl.n), k: Pl.groupsPresent }), t('v5.fPlacesStatus', { o: nf(Pl.knownOpen), u: nf(Pl.missingStatus), tc: nf(Pl.tempClosed || 0), c: nf(Pl.closed) }), t('v5.fPlacesConf', { l: nf(Pl.lowConf) }), t('g3.placesCaveat')] : [t('g3.fPlacesNone'), t('g3.placesCaveat')],
+        find: Pl.n ? [t('v5.fPlaces', { n: nf(Pl.n), g: t('pg.' + top), p: pct(Pl.by[top] / Pl.n), k: Pl.groupsPresent }), t('v5.fPlacesStatus', { o: nf(Pl.knownOpen), u: nf(Pl.missingStatus), tc: nf(Pl.tempClosed || 0), c: nf(Pl.closed) }), t('v5.fPlacesConf', { l: nf(Pl.lowConf) }), t('g3.placesCaveat')].concat(Pl.cover < 0.98 && Pl.cover >= 0.02 ? [t('v36.partial', { p: pct(Pl.cover) })] : []) : [Pl.cover < 0.02 ? t('v36.outsideNote') : t('g3.fPlacesNone'), t('g3.placesCaveat')],
         method: t('g3.mPlaces') });
     }
     // scheduled bus service
@@ -104,9 +112,9 @@
       const card = { id: 'bus', title: t('g3.bus'), mainLayer: 'bus_service', src: { name: t('g3.busSrcName'), detail: t('ly3.busDate'), license: t('g3.busLic') },
         spec: { context: { buildings: ctxB, streets: ctxS }, layers: [{ type: 'point', items: B.pts.slice().sort((a, b) => b.properties.trips_day - a.properties.trips_day).map(f => ({ g: f.geometry, fill: f.properties.trips_day ? PL.BUS_LV[f.properties.service_level] || P.red : '#FFFFFF', stroke: f.properties.trips_day ? '#FFFFFF' : GA.palette.grey, width: 1.2, r: f.properties.trips_day ? 3 + Math.sqrt(f.properties.trips_day / 909) * 14 : 3 })) }] },
         legend: PL.BUS_ORDER.map(l => ({ dot: PL.BUS_LV[l], label: t('bl.' + l), key: l })),
-        ind: [[t('g3.stopsMapped'), nf(B.mapped)], [t('g3.stopsServed'), nf(B.withService)], [t('g3.maxTrips'), B.mapped ? nf(B.maxTrips) : '—']],
+        ind: B.cover < 0.02 ? [[t('g3.stopsMapped'), t('v36.outside')], [t('g3.stopsServed'), '—'], [t('g3.maxTrips'), '—']] : [[t('g3.stopsMapped'), nf(B.mapped) + (B.cover < 0.98 ? ' *' : '')], [t('g3.stopsServed'), nf(B.withService)], [t('g3.maxTrips'), B.mapped ? nf(B.maxTrips) : '—']],
         chart: B.withService ? { kind: 'hbars', unit: t('g3.depUnit'), items: B.pts.filter(f => f.properties.trips_day > 0).sort((a, b) => b.properties.trips_day - a.properties.trips_day).slice(0, 8).map(f => ({ label: f.properties.stop_name, v: f.properties.trips_day, col: PL.BUS_LV[f.properties.service_level] || P.red })) } : null,
-        find: [B.mapped ? t('g3.fBus', { m: nf(B.mapped), s: nf(B.withService), r: nf(B.routes.length), x: nf(B.maxTrips) }) : t('g3.fBusNone', { d: nf(B.nearestServed) }), t('g3.busCaveat')], method: t('g3.mBus') };
+        find: [B.cover < 0.02 ? t('v36.outsideBus') : B.mapped ? t('g3.fBus', { m: nf(B.mapped), s: nf(B.withService), r: nf(B.routes.length), x: nf(B.maxTrips) }) : t('g3.fBusNone', { d: nf(B.nearestServed) })].concat(B.cover < 0.98 && B.cover >= 0.02 ? [t('v36.partial', { p: pct(B.cover) })] : [], [t('g3.busCaveat')]), method: t('g3.mBus') };
       insertAfter('transit', card);
     }
     // trees and canopy
@@ -115,7 +123,7 @@
       insertAfter('places', { id: 'trees', title: t('g3.trees'), mainLayer: 'canopy', src: { name: 'Copernicus HRL Tree Cover Density + OpenStreetMap', detail: `TCD 2018 · 10 m · OSM ${T && T.ts ? T.ts.slice(0, 10) : '—'}`, license: 'Copernicus (free, full and open) · ODbL' },
         spec: { raster: ext.tcd ? { grid: ext.tcd, nearest: true, colour: X.tcdColour, missing: X.tcdHatch } : null, rasterStep: 1, context: { buildings: ctxB, buildingColor: 'rgba(34,36,40,.16)' }, layers: [{ type: 'point', items: T ? T.pts.map(p => ({ g: { type: 'Point', coordinates: p.ll }, fill: GA.palette.trees, stroke: '#FFFFFF', width: 0.8, r: 2.4 })) : [] }] },
         legend: GA.rasterClass.canopyLegend().concat([{ dot: GA.palette.trees, label: t('ly3.treePt') }]),
-        ind: [[t('g3.canopy'), C ? pct(C.mean / 100) : '—', 'est'], [t('g3.treesMapped'), T ? nf(T.n) : '—'], [t('g3.treesHa'), T ? u(nf(T.perHa, 1), 'perha') : '—', 'est']],
+        ind: [[t('g3.canopy'), C ? pct(C.mean / 100) : '—', 'est'], [t('g3.treesMapped'), T ? (T.cover < 0.02 ? t('v36.outside') : nf(T.n) + (T.cover < 0.98 ? ' *' : '')) : '—'], [t('g3.treesHa'), T ? u(nf(T.perHa, 1), 'perha') : '—', 'est']],
         chart: C ? { kind: 'stack', items: [{ label: t('g3.tcd0'), v: C.hist[0] / C.n, col: GA.palette.canopyZero }].concat(X.TCD_CLASSES.slice(1).map((c, i) => ({ label: c.k + ' %', v: C.hist[i + 1] / C.n, col: `rgb(${c.col.slice(0, 3).join(',')})` }))) } : null,
         find: [C ? t('g3.fCanopy', { m: pct(C.mean / 100), a: pct(C.any), d: pct(C.dense) }) : gapMsg('tcd', st), T ? t('g3.fTrees', { n: nf(T.n), s: nf(T.speciesTagged), r: nf(T.rowLen) }) : t('g3.failed', { s: 'Overpass', e: esc((st.trees && st.trees.error) || '') }), t('g3.treesCaveat')],
         method: t('g3.mTrees') });

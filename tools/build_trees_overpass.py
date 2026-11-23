@@ -3,6 +3,9 @@ municipality, `out tags geom qt`). Keeps only the tags that describe the tree (s
 Searches done on 2 Nov 2026 found NO open municipal tree inventory: the Ayuntamiento's CKAN portal (opendata.granada.org,
 6 datasets: air quality, districts, waste, tourism licences, mobility, SDG indicators), datos.gob.es and the Junta de
 Andalucía portal list none for Granada — OpenStreetMap is the only open source of mapped tree positions.
+Since 5.50 the export covers the whole atlas region and the south (-3.75…-3.46 E, 37.06…37.27 N, runner fetch
+tools/verify/basefill_fetch.py), so study areas outside the municipality (the air base, Armilla, Las Gabias) are no longer
+shown as "0 trees" for lack of data. Other elements in the export (tourism) are skipped here.
 Usage: python3 tools/build_trees_overpass.py export.json"""
 import json, sys, os
 KEEP = ['species', 'genus', 'species:es', 'taxon', 'species:wikidata', 'leaf_type', 'leaf_cycle', 'denotation', 'height', 'diameter_crown',
@@ -11,6 +14,7 @@ j = json.load(open(sys.argv[1], encoding='utf8'))
 ts = j['osm3s']['timestamp_osm_base']
 pts, rows = [], []
 for e in j['elements']:
+    if (e.get('tags') or {}).get('natural') not in ('tree', 'tree_row'): continue
     t = {k: v for k, v in (e.get('tags') or {}).items() if k in KEEP}
     if e['type'] == 'node':
         rec = [e['id'], round(e['lon'], 6), round(e['lat'], 6)]
@@ -19,13 +23,13 @@ for e in j['elements']:
     elif e['type'] == 'way' and e.get('geometry'):
         rows.append({'id': e['id'], 'c': [[round(g['lon'], 6), round(g['lat'], 6)] for g in e['geometry']], **({'t': t} if t else {})})
 lons = [p[1] for p in pts]; lats = [p[2] for p in pts]
-assert -3.75 < min(lons) and max(lons) < -3.5 and 37.1 < min(lats) and max(lats) < 37.25, (min(lons), max(lons), min(lats), max(lats))
+assert -3.76 < min(lons) and max(lons) < -3.45 and 37.05 < min(lats) and max(lats) < 37.28, (min(lons), max(lons), min(lats), max(lats))
 cnt = lambda k: sum(1 for p in pts if len(p) > 3 and k in p[3])
 sp = sum(1 for p in pts if len(p) > 3 and any(k in p[3] for k in ('species', 'genus', 'species:es', 'taxon')))
-out = {'source': 'OpenStreetMap contributors (ODbL) — natural=tree nodes and natural=tree_row ways inside the Granada municipality (admin_level 8), via Overpass API',
+out = {'source': 'OpenStreetMap contributors (ODbL) — natural=tree nodes and natural=tree_row ways in the atlas region and the south (-3.75…-3.46 E, 37.06…37.27 N; until 5.49 the Granada municipality only), via Overpass API',
        'osm_timestamp': ts, 'count': len(pts), 'rows': len(rows), 'with_height': cnt('height'), 'with_crown': cnt('diameter_crown'),
        'with_trunk': cnt('circumference') + cnt('diameter'), 'with_species': sp, 'with_leaf_type': cnt('leaf_type'),
-       'fields': {'pts': '[osm node id, lon, lat, {tags}]', 'rows': '{id: osm way id, c: [[lon,lat]...], t: tags}'},
+       'bbox': [-3.75, 37.06, -3.46, 37.27], 'fields': {'pts': '[osm node id, lon, lat, {tags}]', 'rows': '{id: osm way id, c: [[lon,lat]...], t: tags}'},
        'searched': 'No open municipal tree inventory found (opendata.granada.org CKAN, datos.gob.es, Junta de Andalucía open data; searched 2026-11-02).',
        'caveat': 'Volunteered mapping: incomplete. A missing tree on the map does not mean no tree on the ground. No open municipal tree inventory was found.',
        'pts': pts, 'rows_geom': rows}

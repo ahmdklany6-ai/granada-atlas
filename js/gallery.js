@@ -96,12 +96,13 @@
 
     // 3 construction periods
     const pK = A.PERIODS; const PERIOD_COL = P.period;
-    list.push({ id: 'periods', title: t('g.periods'), mainLayer: 'buildings_period', src: src.osm,
+    list.push({ id: 'periods', title: t('g.periods'), mainLayer: 'buildings_period', src: B.yearCat ? { name: 'OpenStreetMap + Dirección General del Catastro', detail: t('v36.catDetail'), license: 'ODbL 1.0 · Catastro (free reuse with attribution)' } : src.osm,
       spec: { context: { streets: ctxS }, layers: [{ type: 'fill', items: o.geo.buildings.features.map(f => f.properties.period && f.properties.period !== 'no_data' ? { g: f.geometry, fill: PERIOD_COL[f.properties.period] } : { g: f.geometry, fill: GA.palette.paper, stroke: GA.palette.line, width: 0.3 }) }] },
       legend: pK.map(k => ({ sw: PERIOD_COL[k], label: root.GA.report.periodLabel(k), key: k })).concat([{ sw: GA.palette.paper, label: t('nodata'), key: 'no_data' }]),
-      ind: [[t('h.start'), `${nf(B.startTagged)} <small>(${pct(B.startCoverage, 1)})</small>`]],
-      find: [B.startCoverage < 0.3 ? t('g.fPeriodsLow', { n: nf(B.startTagged), N: nf(B.count) }) : t('g.fPeriods')],
-      gap: B.startCoverage < 0.3, method: t('g.mPeriods') });
+      ind: B.yearCat ? [[t('v36.withYear'), `${nf(B.startTagged)} <small>(${pct(B.startCoverage, 1)})</small>`], [t('v36.yearSrc'), t('v36.yearSrcV', { o: nf(B.yearOsm), c: nf(B.yearCat) })]] : [[t('h.start'), `${nf(B.startTagged)} <small>(${pct(B.startCoverage, 1)})</small>`]],
+      chart: B.startTagged ? { kind: 'hbars', unit: t('v36.bldUnit'), items: pK.map(k => ({ label: root.GA.report.periodLabel(k), v: B.periods[k] || 0, col: PERIOD_COL[k] })) } : null,
+      find: [B.startCoverage < 0.3 ? t('g.fPeriodsLow', { n: nf(B.startTagged), N: nf(B.count) }) : t('g.fPeriods')].concat(B.yearCat ? [t('v36.catCaveat')] : []),
+      gap: B.startCoverage < 0.3, method: B.yearCat ? t('v36.mPeriods') : t('g.mPeriods') });
 
     // 4 streets
     const ST = o.streets; const tiers = ['primary', 'collector', 'local', 'pedestrian'];

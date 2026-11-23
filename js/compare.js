@@ -54,9 +54,14 @@
     const w = {}; const st = X.results || {};
     ['q10', 'q50', 'q100', 'q500'].forEach(k => { const key = 'flood_t' + k.slice(1) + '_share'; const z = X.R.flood && X.R.flood.zones[k]; w[key] = !X.R.flood ? (st.flood && st.flood.state === 'loading' ? 'loading' : 'unavailable') : z.status === 'not_modelled' ? 'not_modelled' : z.status === 'failed' ? 'unavailable' : null; });
     if (!X.R.canopy) w.canopy_mean = st.tcd && st.tcd.state === 'loading' ? 'loading' : 'unavailable';
+    // 5.50: the area lies outside the dataset's coverage → "outside the data", never 0
+    const out = (r) => r && r.cover != null && r.cover < 0.02;
+    if (out(X.R.places)) ['places_n', 'places_per_km2'].forEach(k => w[k] = 'outside');
+    if (out(X.R.bus)) ['bus_mapped', 'bus_sched'].forEach(k => w[k] = 'outside');
+    if (out(X.R.trees)) ['trees_mapped', 'trees_per_ha'].forEach(k => w[k] = 'outside');
     return w;
   }
-  const whyLabel = (why) => why === 'not_modelled' ? t('v5.notModelled') : why === 'loading' ? t('v5.loading') : why === 'unavailable' ? t('v5.unavail') : t('nodata');
+  const whyLabel = (why) => why === 'outside' ? t('v36.outside') : why === 'not_modelled' ? t('v5.notModelled') : why === 'loading' ? t('v5.loading') : why === 'unavailable' ? t('v5.unavail') : t('nodata');
   function indicators(X) {
     const o = X.R.osm, B = o.buildings, aKm2 = X.R.area_m2 / 1e6, T = X.R.terrain;
     const lvs = o.geo.buildings.features.map(f => f.properties.levels).filter(v => v != null).sort((a, b) => a - b);
@@ -68,9 +73,10 @@
       health_n: X.R.fac.health.n, health_per_km2: X.R.fac.health.perKm2, education_n: X.R.fac.education.n, education_per_km2: X.R.fac.education.perKm2, stay_n: X.R.fac.stay.n, stay_per_km2: X.R.fac.stay.perKm2,
       bus_n: X.R.transit.n, bus_per_km2: X.R.transit.perKm2, bus_cover300: X.R.transit.cover300,
       elev_min: T ? T.min : null, elev_max: T ? T.max : null, relief_m: T ? T.relief : null, steep_share_15deg: T ? (sc['15-25'] + sc['25-35'] + sc['35+']) / sn : null, slope_p90_deg: T ? T.slopeP90 : null,
-      places_n: X.R.places ? X.R.places.n : null, places_per_km2: X.R.places ? X.R.places.perKm2 : null, places_mix: X.R.places && X.R.places.n ? X.R.places.evenness : null, places_food_share: X.R.places && X.R.places.n ? (X.R.places.by.food_and_drink || 0) / X.R.places.n : null, places_closed_share: X.R.places && X.R.places.nAll ? X.R.places.closed / X.R.places.nAll : null,
-      bus_mapped: X.R.bus ? X.R.bus.mapped : null, bus_sched: X.R.bus ? X.R.bus.withService : null, bus_sched_share: X.R.bus && X.R.bus.mapped ? X.R.bus.withService / X.R.bus.mapped : null, bus_max_trips: X.R.bus && X.R.bus.mapped ? X.R.bus.maxTrips : null, bus_routes: X.R.bus && X.R.bus.mapped ? X.R.bus.routes.length : null, bus_nearest_m: X.R.bus ? X.R.bus.nearestServed : null,
-      canopy_mean: X.R.canopy ? X.R.canopy.mean / 100 : null, trees_mapped: X.R.trees ? X.R.trees.n : null, trees_per_ha: X.R.trees ? X.R.trees.n / (X.R.area_m2 / 1e4) : null,
+      places_n: X.R.places && X.R.places.cover >= 0.02 ? X.R.places.n : null, places_per_km2: X.R.places && X.R.places.cover >= 0.02 ? X.R.places.perKm2 : null, // 5.50: outside the data → missing, never 0
+       places_mix: X.R.places && X.R.places.n ? X.R.places.evenness : null, places_food_share: X.R.places && X.R.places.n ? (X.R.places.by.food_and_drink || 0) / X.R.places.n : null, places_closed_share: X.R.places && X.R.places.nAll ? X.R.places.closed / X.R.places.nAll : null,
+      bus_mapped: X.R.bus && X.R.bus.cover >= 0.02 ? X.R.bus.mapped : null, bus_sched: X.R.bus && X.R.bus.cover >= 0.02 ? X.R.bus.withService : null, bus_sched_share: X.R.bus && X.R.bus.mapped ? X.R.bus.withService / X.R.bus.mapped : null, bus_max_trips: X.R.bus && X.R.bus.mapped ? X.R.bus.maxTrips : null, bus_routes: X.R.bus && X.R.bus.mapped ? X.R.bus.routes.length : null, bus_nearest_m: X.R.bus ? X.R.bus.nearestServed : null,
+      canopy_mean: X.R.canopy ? X.R.canopy.mean / 100 : null, trees_mapped: X.R.trees && X.R.trees.cover >= 0.02 ? X.R.trees.n : null, trees_per_ha: X.R.trees && X.R.trees.cover >= 0.02 ? X.R.trees.n / (X.R.area_m2 / 1e4) : null,
       flood_t10_share: fz(X, 'q10'), flood_t50_share: fz(X, 'q50'), flood_t100_share: fz(X, 'q100'), flood_t500_share: fz(X, 'q500'), _why: whyOf(X),
     };
   }

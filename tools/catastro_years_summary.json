@@ -1,0 +1,64 @@
+{
+ "municipalities": [
+  [
+   "18004-ALBOLOTE buildings",
+   6343
+  ],
+  [
+   "18015-ALHENDIN buildings",
+   2709
+  ],
+  [
+   "18022-ARMILLA buildings",
+   5340
+  ],
+  [
+   "18023-ATARFE buildings",
+   5166
+  ],
+  [
+   "18037-CAJAR buildings",
+   1664
+  ],
+  [
+   "18070-DILAR buildings",
+   983
+  ],
+  [
+   "18086-GOJAR buildings",
+   2241
+  ],
+  [
+   "18900-GRANADA buildings",
+   20277
+  ],
+  [
+   "18113-JUN buildings",
+   1341
+  ],
+  [
+   "18128-MARACENA buildings",
+   4705
+  ],
+  [
+   "18135-MONACHIL buildings",
+   2623
+  ],
+  [
+   "18148-OGIJARES buildings",
+   4318
+  ],
+  [
+   "18156-PELIGROS buildings",
+   4781
+  ],
+  [
+   "18168-PULIANAS buildings",
+   1796
+  ]
+ ],
+ "points": 64185,
+ "tiles_buildings": 101674,
+ "tiles_with_year": 51532,
+ "lite_with_period": 51497
+}

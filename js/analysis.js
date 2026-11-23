@@ -150,7 +150,7 @@
     const B = parsed.buildings.map(b => ({ b, c: G.centroidLL(b.outers[0]), a: featArea(b) })).filter(x => inPoly(x.c, ring, bb));
     const bands = { '1-2': 0, '3-4': 0, '5-8': 0, '9+': 0 }, bandArea = { '1-2': 0, '3-4': 0, '5-8': 0, '9+': 0 };
     const periods = {}; PERIODS.forEach(p => periods[p[2]] = 0);
-    let levelsTagged = 0, levelsSum = 0, startTagged = 0, heightTagged = 0, roofShape = 0, footprint = 0;
+    let levelsTagged = 0, levelsSum = 0, startTagged = 0, heightTagged = 0, roofShape = 0, footprint = 0, yearOsm = 0, yearCat = 0;
     const types = {};
     const features = [];
     B.forEach(({ b, a }) => {
@@ -160,8 +160,9 @@
       if (isFinite(lv) && lv > 0) { levelsTagged++; levelsSum += lv; band = levelBand(lv); bands[band]++; bandArea[band] += a; }
       if (t.height) heightTagged++;
       if (t['roof:shape']) roofShape++;
-      const y = parseYear(t.start_date || t['building:start_date']); let period = null;
-      if (y) { startTagged++; period = periodOf(y); if (period) periods[period]++; }
+      // 5.50: the OSM start_date, else the Catastro year of construction (tools/build_catastro_years.py); counted apart
+      const yO = parseYear(t.start_date || t['building:start_date']), yC = yO ? null : parseYear(t['catastro:year']); const y = yO || yC; let period = null;
+      if (y) { startTagged++; if (yO) yearOsm++; else yearCat++; period = periodOf(y); if (period) periods[period]++; }
       types[t.building] = (types[t.building] || 0) + 1;
       features.push({ type: 'Feature', properties: { band: band || 'no_data', levels: isFinite(lv) ? lv : null, period: period || 'no_data', btype: t.building, name: t.name || '' }, geometry: { type: 'Polygon', coordinates: [G.closeRing(b.outers[0])].concat(b.inners.map(G.closeRing)) } });
     });
@@ -209,7 +210,7 @@
         count: B.length, footprint, gsi: footprint / selArea,
         levelsTagged, levelsCoverage: B.length ? levelsTagged / B.length : 0, meanLevelsTagged: levelsTagged ? levelsSum / levelsTagged : null,
         bands, bandArea, heightTagged, roofShape,
-        startTagged, startCoverage: B.length ? startTagged / B.length : 0, periods,
+        startTagged, startCoverage: B.length ? startTagged / B.length : 0, periods, yearOsm, yearCat,
         types: Object.entries(types).sort((a, b) => b[1] - a[1]),
         // Gross floor area only from tagged levels, and only when coverage is high enough to be meaningful.
         floorAreaTagged: B.reduce((s, x) => { const lv = parseFloat(x.b.tags['building:levels']); return isFinite(lv) && lv > 0 ? s + x.a * lv : s; }, 0),
