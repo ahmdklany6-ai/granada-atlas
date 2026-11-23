@@ -155,8 +155,8 @@ def base_model(M):
             M.quad('flight_ceiling_approx', (x0, y0, v[0]), (x0 + d, y0, v[1]), (x0 + d, y0 + d, v[2]), (x0, y0 + d, v[3]))
 
 
-def residents(M):
-    R = groups.residents(F, gd); lift = lambda d: (lambda x, y: zg(x, y) + d)
+def residents(M, Fr=None, gr=None):
+    R = groups.residents(Fr or F, gr or gd); lift = lambda d: (lambda x, y: zg(x, y) + d)
     M.flat('P_park', R.park.union(R.prom), lift(0.1))
     M.flat('P_paths', R.paths.buffer(1.5), lift(0.16))
     M.flat('P_allotments', R.allot, lift(0.25))
@@ -192,8 +192,19 @@ def _area(a):
 
 
 def all_residents(M):
-    residents(M)                                   # the north edge (the shared frame)
+    _, Fn, gn = _area('N'); residents(M, Fn, gn)   # the north edge, computed on its own frame (fast), drawn on this one
     lift = lambda d: (lambda x, y: zg(x, y) + d)
+    # the walk along the WHOLE fence (2.1 map 05: a public strip outside the fence), 9 m wide, off buildings and streets; a tree
+    # row every 12 m on it
+    from shapely.prepared import prep
+    walk = gd.fence_line.buffer(9, cap_style=2).difference(gd.base).difference(unary_union([g for g, _ in gd.blds]).buffer(1.5)).intersection(FR)
+    M.flat('P_fence_walk', walk, lift(0.12))
+    pw = prep(walk.buffer(-2)); fl = gd.fence_line
+    for t in range(6, int(fl.length), 12):
+        p = fl.interpolate(t); q = fl.interpolate(min(fl.length, t + 1)); dx, dy = q.x - p.x, q.y - p.y; n = math.hypot(dx, dy) or 1
+        for sd in (1, -1):
+            c = (p.x - dy / n * 5 * sd, p.y + dx / n * 5 * sd)
+            if pw.contains(Point(c)): M.tree('P_tree', c[0], c[1], h=8.0 + (t % 5) * 0.6); break
     for a in 'WES':
         edges, Fa, ga = _area(a); E = edges.build(Fa, ga)
         for k, gs in E.polys.items():
