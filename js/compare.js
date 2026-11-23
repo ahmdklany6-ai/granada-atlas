@@ -76,7 +76,8 @@
       places_n: X.R.places && X.R.places.cover >= 0.02 ? X.R.places.n : null, places_per_km2: X.R.places && X.R.places.cover >= 0.02 ? X.R.places.perKm2 : null, // 5.50: outside the data → missing, never 0
        places_mix: X.R.places && X.R.places.n ? X.R.places.evenness : null, places_food_share: X.R.places && X.R.places.n ? (X.R.places.by.food_and_drink || 0) / X.R.places.n : null, places_closed_share: X.R.places && X.R.places.nAll ? X.R.places.closed / X.R.places.nAll : null,
       bus_mapped: X.R.bus && X.R.bus.cover >= 0.02 ? X.R.bus.mapped : null, bus_sched: X.R.bus && X.R.bus.cover >= 0.02 ? X.R.bus.withService : null, bus_sched_share: X.R.bus && X.R.bus.mapped ? X.R.bus.withService / X.R.bus.mapped : null, bus_max_trips: X.R.bus && X.R.bus.mapped ? X.R.bus.maxTrips : null, bus_routes: X.R.bus && X.R.bus.mapped ? X.R.bus.routes.length : null, bus_nearest_m: X.R.bus ? X.R.bus.nearestServed : null,
-      canopy_mean: X.R.canopy ? X.R.canopy.mean / 100 : null, trees_mapped: X.R.trees && X.R.trees.cover >= 0.02 ? X.R.trees.n : null, trees_per_ha: X.R.trees && X.R.trees.cover >= 0.02 ? X.R.trees.n / (X.R.area_m2 / 1e4) : null,
+      canopy_mean: X.R.canopy ? X.R.canopy.mean / 100 : null, canopy_src: X.R.canopy ? (X.R.canopy.wc ? 'wc' : 'tcd') : null, // 5.51: 'wc' = share of the WorldCover tree-cover class (the density service did not answer)
+      trees_mapped: X.R.trees && X.R.trees.cover >= 0.02 ? X.R.trees.n : null, trees_per_ha: X.R.trees && X.R.trees.cover >= 0.02 ? X.R.trees.n / (X.R.area_m2 / 1e4) : null,
       flood_t10_share: fz(X, 'q10'), flood_t50_share: fz(X, 'q50'), flood_t100_share: fz(X, 'q100'), flood_t500_share: fz(X, 'q500'), _why: whyOf(X),
     };
   }
@@ -92,6 +93,10 @@
     ['flood_t10_share', 'cmp3.flood10', 'pct'], ['flood_t50_share', 'v5.floodT50', 'pct'], ['flood_t100_share', 'cmp3.flood100', 'pct'], ['flood_t500_share', 'cmp3.flood500', 'pct'],
     ['relief_m', 'g.relief', (v) => nf(v) + ' m'], ['steep_share_15deg', 'g.steepShare', 'pct'], ['slope_p90_deg', 'g.slopeP90', (v) => nf(v, 1) + '°'],
   ];
+  // 5.51: an indicator's label; the canopy row names the measure actually shown (mean density, or the WorldCover class share)
+  const labelOf = (key, inds) => { const row = IND_ROWS.find(r => r[0] === key); const arr = [].concat(inds || []).filter(v => v && v.canopy_mean != null);
+    if (key === 'canopy_mean' && arr.some(v => v.canopy_src === 'wc')) return arr.every(v => v.canopy_src === 'wc') ? t('v36.wcShare') : t('v37.canopyMixed');
+    return row ? t(row[1]) : key; };
   const fmtInd = (row, v) => v == null || !isFinite(v) ? null : row[2] === 'pct' ? nf(v * 100, v < 0.1 ? 1 : 0) + I.pctSign() : row[2](v);
   const ALL_TOPICS = ['fg', 'heights', 'periods', 'streets', 'landuse', 'parks', 'places', 'health', 'education', 'stay', 'transit', 'bus', 'trees', 'flood', 'noise', 'elevation', 'slope'];
   const TOPIC_KEY = { fg: 'gsi', heights: 'median_floors', periods: 'start_coverage', streets: 'street_km_per_km2', landuse: 'green_share', parks: 'green_share', health: 'health_per_km2', education: 'education_per_km2', stay: 'stay_per_km2', transit: 'bus_per_km2', elevation: 'relief_m', slope: 'steep_share_15deg', places: 'places_per_km2', bus: 'bus_sched_share', trees: 'canopy_mean', flood: 'flood_t100_share' };
@@ -109,7 +114,7 @@
     const row = IND_ROWS.find(r => r[0] === key); const vals = inds.map(v => v[key]);
     const known = vals.map((v, i) => [v, i]).filter(([v]) => v != null && isFinite(v));
     let s = '';
-    if (known.length >= 2) { known.sort((a, b) => b[0] - a[0]); const hi = known[0], lo = known[known.length - 1]; s = hi[0] === lo[0] ? t('cmp.find.same', { m: t(row[1]), v: fmtInd(row, hi[0]) }) : t('cmp.find.range', { m: t(row[1]), a: hi[1] + 1, va: fmtInd(row, hi[0]), b: lo[1] + 1, vb: fmtInd(row, lo[0]) }); }
+    if (known.length >= 2) { known.sort((a, b) => b[0] - a[0]); const hi = known[0], lo = known[known.length - 1]; s = hi[0] === lo[0] ? t('cmp.find.same', { m: labelOf(key, inds), v: fmtInd(row, hi[0]) }) : t('cmp.find.range', { m: labelOf(key, inds), a: hi[1] + 1, va: fmtInd(row, hi[0]), b: lo[1] + 1, vb: fmtInd(row, lo[0]) }); }
     const miss = vals.map((v, i) => v == null ? i + 1 : null).filter(Boolean); if (miss.length) s += ' ' + t('cmp.find.missing', { n: miss.join(', ') });
     return s;
   }
@@ -206,7 +211,7 @@
         h += `</div><div class="cmp-lg">${lg ? GAL.legendHTML(lg.legend) : ''}<small>${cs[0] && cs[0].src ? esc(cs[0].src.name) + ' · ' + esc(cs[0].src.license) : ''}</small></div><p class="cmp-find">${topicFinding(tp, Xs, inds)}</p></section>`;
       });
       h += `<h3 class="sub">${t('cmp.tableTitle')}</h3><div class="tbl-wrap"><table class="tbl cmp"><thead><tr><th></th>${Xs.map(x => `<th><span class="area-tag" style="color:${x.style.color}"><i style="border-color:${x.style.color};border-top-style:${x.style.dash.length ? 'dashed' : 'solid'}"></i>${x.no}</span> <bdi>${esc(x.area.name)}</bdi></th>`).join('')}</tr></thead><tbody>`
-        + IND_ROWS.map(r => `<tr><th>${t(r[1])}</th>${inds.map(v => { const s2 = fmtInd(r, v[r[0]]); return s2 == null ? `<td class="missing">${whyLabel((v._why || {})[r[0]])}</td>` : `<td class="num">${s2}</td>`; }).join('')}</tr>`).join('')
+        + IND_ROWS.map(r => `<tr><th>${labelOf(r[0], inds)}</th>${inds.map(v => { const s2 = fmtInd(r, v[r[0]]); return s2 == null ? `<td class="missing">${whyLabel((v._why || {})[r[0]])}</td>` : `<td class="num">${s2}</td>`; }).join('')}</tr>`).join('')
         + `</tbody></table></div><p class="fine">${t('cmp.tableNote')}</p>
         <div class="actions"><button class="btn btn-primary" id="ex-pdf">${t('v5.composedPDF')}</button><button class="btn" id="ws-csv">${t('cmp.exportCsv')}</button><button class="btn btn-gis" id="ws-gis">${t('cmp.exportGis')}</button></div>`;
       h += `<details class="assign" id="ws-assign" ${assignOpen ? 'open' : ''}><summary>${t('v5.assignTitle')} — ${n >= 4 ? t('v5.subComplete', { n }) : t('v5.subIncomplete', { n })}</summary>${exHTML(Xs)}</details>`;
@@ -369,5 +374,5 @@
     return { open, close, render, isOpen: () => !el.hidden, get lastXs() { return lastXs; }, exportSheets, indicators };
   }
 
-  root.GA.compare = { create, prepare, onUpdate, whyLabel, ringOf, indicators, styleOf, IND_ROWS, cache, wrap, legendCanvas, fmtInd, ALL_TOPICS, fairness, topicFinding };
+  root.GA.compare = { labelOf, create, prepare, onUpdate, whyLabel, ringOf, indicators, styleOf, IND_ROWS, cache, wrap, legendCanvas, fmtInd, ALL_TOPICS, fairness, topicFinding };
 })(window);

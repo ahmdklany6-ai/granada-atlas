@@ -4,7 +4,8 @@ The "Trees and canopy" card read Copernicus HRL Tree Cover Density 2018 live fro
 from the GitHub runner), so the canopy was missing. ESA WorldCover 2021 v200 (10 m, CC BY 4.0, read on the runner from
 the public S3 bucket, tile N36W006) classifies every 10 m cell; class 10 = "Tree cover". It is a class map, not a density:
 the card states which source it shows. Output: data/canopy/worldcover_trees_2021.png in EPSG:25830, 10 m, over the atlas
-region: grey value 255 = tree cover, 1 = other land cover, 0 = no data. Usage: python3 tools/build_worldcover_trees.py raw_dir"""
+region: grey value 255 = tree cover, 60 = other land cover, 0 = no data (5.51: 60 instead of 1, so that a browser that
+shifts grey levels slightly when it decodes the image can never turn "other" into "no data"). Usage: python3 tools/build_worldcover_trees.py raw_dir"""
 import json, os, sys
 import numpy as np
 from PIL import Image
@@ -20,10 +21,11 @@ X, Y = np.meshgrid(x0 + 5 + 10 * np.arange(nx), y1 - 5 - 10 * np.arange(ny)); LO
 c = ((LON - t[2]) / t[0]).astype(int); r = ((LAT - t[5]) / t[4]).astype(int)
 ok = (r >= 0) & (r < a.shape[0]) & (c >= 0) & (c < a.shape[1]); v = np.zeros((ny, nx), np.uint8)
 cls = a[np.clip(r, 0, a.shape[0] - 1), np.clip(c, 0, a.shape[1] - 1)]
-v[ok & (cls == 10)] = 255; v[ok & (cls != 10) & (cls != 0)] = 1
+v[ok & (cls == 10)] = 255; v[ok & (cls != 10) & (cls != 0)] = 60
 Image.fromarray(v, 'L').save(os.path.join(ROOT, 'data/canopy/worldcover_trees_2021.png'), optimize=True)
 meta = {'file': 'canopy/worldcover_trees_2021.png', 'epsg': 25830, 'px': 10, 'ox': x0, 'oy': y1, 'width': nx, 'height': ny,
-        'values': {'255': 'tree cover (WorldCover class 10)', '1': 'other land cover', '0': 'no data'},
+        'values': {'255': 'tree cover (WorldCover class 10)', '60': 'other land cover', '0': 'no data'}, 'read_as': 'grey > 128 = tree cover; 30–128 = other; < 30 or transparent = no data',
+        'cells': {'tree': int((v == 255).sum()), 'other': int((v == 60).sum()), 'no_data': int((v == 0).sum())},
         'source': 'ESA WorldCover 2021 v200, 10 m — © ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium',
         'license': 'CC BY 4.0', 'tool': 'tools/build_worldcover_trees.py', 'tree_share_region': round(float((v == 255).sum() / max(1, (v > 0).sum())), 4)}
 M = json.load(open(os.path.join(ROOT, 'data/manifest.json'))); M.setdefault('canopy', {})['worldcover'] = meta

@@ -1183,3 +1183,44 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
 - Coverage rule (new): `layers[id].coverage` in the manifest; `GA.galleryExt.coverOf(id, bbox)`; an area outside a
   dataset shows "outside the data" (cards, key indicators via `compare.whyOf` 'outside'), never 0; partial cover is starred.
 - Strings `js/i18n_v36.js`; test `tests/ui_test_v38.py` (base square, canopy service down).
+
+## 46. Build 5.51 — the review of 5.50 (same day, 23 Nov 2026)
+5.50 was merged while the older browser suites were still running (the owner had asked twice whether it was finished);
+the owner then wrote "finish and publish". The live check of 5.50 passed (69/69). An independent review of the 5.50
+change (seven reviewers, each finding checked by a skeptic) and my own re-reading found the faults below; 5.51 fixes them.
+- Metropolitan buses (`tools/build_bus_ctan.py`, rewritten):
+  - The CTAN API's general stop list (`/paradas`, 851 stops) leaves out most stops of the RETURN direction; the lines'
+    own stop lists hold 1,325 distinct stops. 5.50 published 542 stops outside the municipality (74 in the owner's
+    "Base" square); 5.51 publishes 827 (119), all on a current line. In a line's stop list the field `idNucleo` is the
+    municipality (INE) code — checked: equal to the general list's `idMunicipio` for all 749 stops present in both.
+  - A timetable gives times at TIMING POINTS (towns, or named stops), never at every stop. 5.50 matched a timing point
+    to a stop's town by shared words, stop-words included ("de", "la"), so a trip could count at the wrong town's point.
+    Now: whole-name matching (accents, abbreviations and glued names handled; a street-type name is a stop, never a
+    town), each timing point placed on the line's stop sequence; a trip counts at a stop when a timing point covering
+    it has a time (stop, then place, then municipality), else when the nearest timing points before and after it both
+    have one (`approx: 1`: 270 of 827 stops). 22 of 750 timing points could not be placed (listed by the `--diag` run).
+    The between-points rule is conservative: counting every trip that passes both ends of the stretch would add 10 %
+    at those stops in total.
+  - Five lines (0154, 0315, 0346, 0365, 0366) have only a timetable that starts AFTER 26 Oct 2026 (30 Oct / 16 Nov);
+    5.50 dropped them silently. They are counted with the timetable in force when read and listed in the manifest
+    (`layers.bus_service.ctan.later_timetable`). 0365 and 0366 pass the east side of the base.
+  - 16 Monday rows are noted "only Fridays, Saturdays and eves of holidays" (night buses); they are no longer counted.
+  - Hand check: stop "Cno. Bajo de Armilla" — Monday rows with a time at the Armilla timing point: 0150 12 (13 less
+    one Friday/Saturday-only), 0153 18, 0155 15, 0156 39, 0157 9, 0256 4 = 97 = the builder's value.
+  - Stated limits (manifest and card): 238 stops of these lines lie inside the Granada municipality and are NOT in the
+    layer (inside the city only the owner's urban-lines file is shown); 58 stops of the general list are on no current
+    line and are left out.
+- Construction years: the period MAP layer's legend still said "Only 39 of 101,674 buildings carry a usable date in
+  OSM", its source line "OSM start_date" and the popups showed "no data" for a building with a Catastro year. The legend
+  now reads `manifest.layers.buildings.periodCoverage` = {dated 70,943, osm 39, catastro 70,904} (written by
+  `tools/build_catastro_years.py`); popups (`layers.js bldPopup`, `viewer.js`) and the report row name the source.
+- Tree cover: the canopy MAP layer and the studio climate sheets still asked only the Copernicus service (down since
+  23 Nov: neither the browser nor the GitHub runner got an answer). New in `js/ext.js`: `canopyGrid` (live service,
+  given up after `TCD_WAIT` = 15 s, else WorldCover), `wcImage` (the raster as a picture for the map), `canopyState` /
+  `canopyReport` / `onCanopyDown` (two failed requests with no success, or four in a row, mark the service down for
+  the session). The map layer then shows `ly-canopy-wc` with its own legend and source line; the studio sheets name
+  WorldCover; the indicator is labelled "Tree-cover share (WorldCover)" (`GA.compare.labelOf`). The raster's grey
+  levels are now 255 / 60 / 0 and read with wide margins.
+- Bus MAP layer: source line and popup now tell consortium stops (inferred) from the city file; the trees note no
+  longer says "inside the municipality".
+- Tests: `tests/ui_test_v39.py` (new); `tests/ui_test_v3.py` expects 692 + 827 stops.

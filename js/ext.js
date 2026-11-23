@@ -126,17 +126,48 @@
   }
   // 5.50: when the Copernicus service does not answer, the ESA WorldCover 2021 tree-cover class (static, 10 m, the atlas
   // region; tools/build_worldcover_trees.py) — 100 = tree cover, 0 = other land cover, -1 = no data. A class, not a density.
+  // 5.51: grey levels are read with wide margins (> 128 tree, 30–128 other, below 30 or transparent = no data); the map
+  // layer, the studio maps and the analysis card all fall back to it (canopyGrid / wcImage), and a request to the live
+  // service is given up after TCD_WAIT so that the fallback is reached even when the service hangs instead of failing.
+  const TCD_WAIT = 15000; const canopyState = { live: null, fails: 0, oks: 0, listeners: [] };   // live: null = not tried yet, true / false = last outcome
+  // one failed request is not an outage: the map layer reports every tile; the service counts as down after two failures with no success, or four in a row
+  function canopyReport(ok, err) {
+    if (ok) { canopyState.oks++; canopyState.fails = 0; if (canopyState.live == null) canopyState.live = true; return; }
+    canopyState.fails++; canopyState.err = err || canopyState.err;
+    if (canopyState.live !== false && ((canopyState.oks === 0 && canopyState.fails >= 2) || canopyState.fails >= 4)) canopyDown(err);
+  }
+  function canopyDown(err) { if (canopyState.live === false) return; canopyState.live = false; canopyState.err = err || canopyState.err; canopyState.listeners.slice().forEach(fn => { try { fn(); } catch (e) { console.warn(e); } }); }
+  const onCanopyDown = (fn) => { canopyState.listeners.push(fn); if (canopyState.live === false) fn(); };
+  const wcMeta = () => { const m = root.GA.data.manifest && root.GA.data.manifest.canopy && root.GA.data.manifest.canopy.worldcover; if (!m) throw new Error('WorldCover layer missing'); return m; };
   let wcImg = null;
+  const wcRaw = () => { if (!wcImg) wcImg = root.GA.data.loadManifest().then(() => loadImage('data/' + wcMeta().file + '?v=' + (root.GA_BUILD || ''), 45000)).catch(e => { wcImg = null; throw e; }); return wcImg; };
   async function wcGrid(ring, padM) {
-    const meta = root.GA.data.manifest && root.GA.data.manifest.canopy && root.GA.data.manifest.canopy.worldcover; if (!meta) throw new Error('WorldCover layer missing');
+    const im = await wcRaw(); const meta = wcMeta();
     const U = ring.map(p => PJ.EPSG25830.forward(p)); const pad = padM == null ? 60 : padM;
     const x0 = Math.floor((Math.min(...U.map(p => p[0])) - pad) / 10) * 10, x1 = Math.ceil((Math.max(...U.map(p => p[0])) + pad) / 10) * 10;
     const y0 = Math.floor((Math.min(...U.map(p => p[1])) - pad) / 10) * 10, y1 = Math.ceil((Math.max(...U.map(p => p[1])) + pad) / 10) * 10;
-    if (!wcImg) wcImg = loadImage('data/' + meta.file + '?v=' + (root.GA_BUILD || ''), 45000).catch(e => { wcImg = null; throw e; });
-    const im = await wcImg; const w = Math.round((x1 - x0) / 10), h = Math.round((y1 - y0) / 10); const c0 = Math.round((x0 - meta.ox) / 10), r0 = Math.round((meta.oy - y1) / 10);
+    const w = Math.round((x1 - x0) / 10), h = Math.round((y1 - y0) / 10); const c0 = Math.round((x0 - meta.ox) / 10), r0 = Math.round((meta.oy - y1) / 10);
     const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d', { willReadFrequently: true }); g.imageSmoothingEnabled = false; g.drawImage(im, -c0, -r0);
-    const px = g.getImageData(0, 0, w, h).data; const arr = new Int16Array(w * h); for (let i = 0; i < arr.length; i++) { const v = px[i * 4], a = px[i * 4 + 3]; arr[i] = !a || v === 0 ? -1 : v > 128 ? 100 : 0; }
+    const px = g.getImageData(0, 0, w, h).data; const arr = new Int16Array(w * h); for (let i = 0; i < arr.length; i++) { const v = px[i * 4], a = px[i * 4 + 3]; arr[i] = a < 128 || v < 30 ? -1 : v > 128 ? 100 : 0; }
     return { width: w, height: h, ox: x0, oy: y1, px: 10, py: 10, arr, nodata: -1, scale: 1, wc: true, src: 'ESA WorldCover 2021 v200 (10 m), tree-cover class' };
+  }
+  // the same raster as a picture for the map: tree cover in the darkest canopy colour, everything else clear; corners in lon / lat
+  let wcPic = null;
+  function wcImage() {
+    if (!wcPic) wcPic = wcRaw().then(im => { const meta = wcMeta(); const c = document.createElement('canvas'); c.width = meta.width; c.height = meta.height; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0);
+      const d = g.getImageData(0, 0, c.width, c.height), q = d.data, col = TCD_CLASSES[4].col;
+      for (let i = 0; i < q.length; i += 4) { if (q[i + 3] >= 128 && q[i] > 128) { q[i] = col[0]; q[i + 1] = col[1]; q[i + 2] = col[2]; q[i + 3] = 255; } else q[i + 3] = 0; }
+      g.putImageData(d, 0, 0); const L = (x, y) => { const ll = PJ.EPSG25830.inverse([x, y]); return [+ll[0].toFixed(6), +ll[1].toFixed(6)]; };
+      const xr = meta.ox + meta.width * meta.px, yb = meta.oy - meta.height * meta.px;
+      return { url: c.toDataURL('image/png'), coordinates: [L(meta.ox, meta.oy), L(xr, meta.oy), L(xr, yb), L(meta.ox, yb)] }; }).catch(e => { wcPic = null; throw e; });
+    return wcPic;
+  }
+  // tree cover for an area: the live Copernicus density when it answers within TCD_WAIT, else the WorldCover class (grid.wc = true, grid.liveErr = why)
+  function canopyGrid(ring, padM) {
+    const fall = (e) => { canopyDown((e && e.message) || String(e)); return wcGrid(ring, padM).then(g => Object.assign(g, { liveErr: (e && e.message) || String(e) })); };
+    if (canopyState.live === false) return fall(new Error(canopyState.err || t('err.network')));
+    return new Promise((res, rej) => { let done = false; const tm = setTimeout(() => { if (done) return; done = true; canopyState.err = t('err.timeout'); fall(new Error(t('err.timeout'))).then(res, rej); }, TCD_WAIT);
+      tcdGrid(ring, padM).then(g => { if (done) return; done = true; clearTimeout(tm); canopyReport(true); res(g); }, e => { if (done) return; done = true; clearTimeout(tm); canopyState.err = (e && e.message) || String(e); fall(e).then(res, rej); }); });
   }
   function tcdStats(g, ring) {
     const v = root.GA.data.gridValuesInRing(g, ring); if (!v.length) return null;
@@ -216,6 +247,6 @@
     { id: 'noise', file: 'Granada_Noise_Maps_English.pdf', kind: 'noise', title: 'Strategic noise map 2022 (Phase 4) — Lden, Ld, Le, Ln; overview + 13 sheets each', publisher: 'Ayuntamiento de Granada, Servicio de Protección Ambiental — Phase 4 strategic noise map (titles translated)', dataYear: '2022', reportYear: '2022', type: 'modelled noise levels (strategic noise mapping), dB(A)', unit: 'dB(A); Lden = day-evening-night, Ln = night', coverage: 'Granada municipality, 1:40,000 overview, EPSG:25830', data: 'the 2022 maps are a PDF; the national SICA service shows the Granada agglomeration from an earlier phase (3rd), connected live for orientation only', url: 'https://sicaweb.cedex.es/' },
   ];
 
-  const api = { noiseLayers, wcGrid, SVC, FLOOD, LST_DATE, HIST, DOCS, wmsTiles, wmsURL, loadImage, warp3857, merc, imerc, floodExposure, floodWFS, tcdGrid, tcdStats, TCD_CLASSES, tcdColour, tcdHatch, trees, treeFeatures, treeTs, histInfo };
+  const api = { noiseLayers, wcGrid, wcImage, canopyGrid, canopyState, canopyReport, onCanopyDown, TCD_WAIT, SVC, FLOOD, LST_DATE, HIST, DOCS, wmsTiles, wmsURL, loadImage, warp3857, merc, imerc, floodExposure, floodWFS, tcdGrid, tcdStats, TCD_CLASSES, tcdColour, tcdHatch, trees, treeFeatures, treeTs, histInfo };
   root.GA = root.GA || {}; root.GA.ext = api;
 })(window);

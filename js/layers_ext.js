@@ -89,18 +89,32 @@
       legend() {
         const o = S.bus_service.opts; const mx = (this._max && this._max[o.metric]) || 909; const vals = o.metric === 'trips_day' ? [10, 100, 400, mx] : [2, 20, 60, mx];
         const r = (v) => 3 + Math.sqrt(v / mx) * 22 * Math.pow(2, Math.min(0, map.getZoom() - 16)) ;
-        return `<h4>${t(o.metric === 'trips_day' ? 'ly3.tripsDay' : 'ly3.trips79')}</h4><div class="prop-lg">${vals.map(v => `<span><i style="width:${(2 * Math.max(3, r(v))).toFixed(1)}px;height:${(2 * Math.max(3, r(v))).toFixed(1)}px"></i><b class="num">${nf(v)}</b></span>`).join('')}</div><ul class="lg">${BUS_ORDER.map(l => `<li><i class="sw dot" style="background:${BUS_LV[l]};border:1px solid ${P.grey}"></i><span>${t('bl.' + l)}</span></li>`).join('')}</ul><p class="lyr-src">${t('ly3.busNote')}</p>`;
+        return `<h4>${t(o.metric === 'trips_day' ? 'ly3.tripsDay' : 'ly3.trips79')}</h4><div class="prop-lg">${vals.map(v => `<span><i style="width:${(2 * Math.max(3, r(v))).toFixed(1)}px;height:${(2 * Math.max(3, r(v))).toFixed(1)}px"></i><b class="num">${nf(v)}</b></span>`).join('')}</div><ul class="lg">${BUS_ORDER.map(l => `<li><i class="sw dot" style="background:${BUS_LV[l]};border:1px solid ${P.grey}"></i><span>${t('bl.' + l)}</span></li>`).join('')}</ul><p class="lyr-src">${t('ly3.busNote')} ${t('v37.busLgCtan')}</p>`;
       },
-      src: () => t('ly3.busSrc'),
-      popup: { layers: () => [lid('bussvc')], html: (p) => `<b dir="auto">${esc(p.stop_name)}</b> <small dir="ltr">(${esc(p.stop_code)})</small>${kv([[t('ly3.date'), `<span dir="ltr">${t('ly3.busDate')}</span>`], [t('ly3.tripsDay'), `<span class="num">${nf(p.trips_day)}</span>`], [t('ly3.trips79'), `<span class="num">${nf(p.trips_7_9)}</span>`], [t('ly3.routes'), `<span dir="ltr">${esc(p.routes || '—')}</span> <small>(${nf(p.routes_count)})</small>`], [t('ly3.level'), t('bl.' + p.service_level)]])}<small>${t(p.trips_day ? 'ly3.busPopNote' : 'ly3.busZeroNote')}</small>` },
+      src: () => t('ly3.busSrc') + ' — ' + t('v37.busSrcMap'), // 5.51: the metropolitan stops outside the city have their own source
+      popup: { layers: () => [lid('bussvc')], html: (p) => `<b dir="auto">${esc(p.stop_name)}</b> <small dir="ltr">(${esc(p.stop_code)})</small>${kv([[t('ly3.date'), `<span dir="ltr">${t('ly3.busDate')}</span>`], [t('ly3.tripsDay'), `<span class="num">${nf(p.trips_day)}</span>`], [t('ly3.trips79'), `<span class="num">${nf(p.trips_7_9)}</span>`], [t('ly3.routes'), `<span dir="ltr">${esc(p.routes || '—')}</span> <small>(${nf(p.routes_count)})</small>`], [t('ly3.level'), t('bl.' + p.service_level)], [t('v37.srcRow'), t(p.src === 'ctan' ? 'v37.busPopCtan' : 'v37.busPopCity')], p.src === 'ctan' ? [t('v37.town'), `<span dir="auto">${esc(p.nucleo || p.municipio || '—')}</span>`] : ['', null]])}<small>${t(p.trips_day ? 'ly3.busPopNote' : 'ly3.busZeroNote')}${p.approx ? ' ' + t('v37.busPopApprox') : ''}</small>` },
     });
 
     // ---------- Trees: Copernicus tree-cover density (citywide) + OSM mapped trees (zoomed in) ----------
+    // 5.51: when the live Copernicus service does not answer (failed tiles, or a failed request from the analysis page) the
+    // layer shows the static ESA WorldCover 2021 tree-cover class instead (X.wcImage), with its own legend and source line.
+    const BLANK = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
     defs.push({ id: 'canopy', group: 'env', title: () => t('ly3.canopy'), def: { on: false, opacity: 0.8 },
-      build() { raster('canopy', RC.tiles('canopy', `${X.SVC.tcdRest}/exportImage?f=image&format=tiff&pixelType=U8&noDataInterpretation=esriNoDataMatchAny&interpolation=RSP_NearestNeighbor&bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256`), 0.8, '© EEA / Copernicus Land Monitoring Service'); },
-      layers: () => [lid('canopy')], opacityProp: { [lid('canopy')]: 'raster-opacity' },
-      legend: () => `${rcLegend('canopy')}<p class="lyr-src">${t('ly3.canopyNote')} ${t('rc.classified')}</p>`,
-      src: () => 'Copernicus HRL Tree Cover Density 2018 · 10 m · EEA (free, full and open)' });
+      build() { raster('canopy', RC.tiles('canopy', `${X.SVC.tcdRest}/exportImage?f=image&format=tiff&pixelType=U8&noDataInterpretation=esriNoDataMatchAny&interpolation=RSP_NearestNeighbor&bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256`), 0.8, '© EEA / Copernicus Land Monitoring Service');
+        const r4 = (D.manifest && D.manifest.region4326) || [-3.75, 37.06, -3.46, 37.27];
+        addSrc(lid('canopy', 'wc'), { type: 'image', url: BLANK, coordinates: [[r4[0], r4[3]], [r4[2], r4[3]], [r4[2], r4[1]], [r4[0], r4[1]]] });
+        addLyr({ id: lid('canopy', 'wc'), type: 'raster', source: lid('canopy', 'wc'), paint: { 'raster-opacity': 0.8, 'raster-fade-duration': 0, 'raster-resampling': 'nearest' } });
+        const me = this; X.onCanopyDown(() => { if (S.canopy.on) me.fallback(); }); },
+      async fallback() {
+        if (this._wc) return; this._wc = 'loading';
+        try { const im = await X.wcImage(); const src = map.getSource(lid('canopy', 'wc')); if (src && src.updateImage) src.updateImage({ url: im.url, coordinates: im.coordinates }); this._wc = 'on'; H.applyVis(this); status('canopy', 'ok'); }
+        catch (e) { this._wc = null; status('canopy', 'failed', (e && e.message) || String(e)); }
+      },
+      async load() { if (X.canopyState.live === false) await this.fallback(); return 1; },
+      layers: () => [lid('canopy'), lid('canopy', 'wc')], visLayers() { return [this._wc === 'on' ? lid('canopy', 'wc') : lid('canopy')]; },
+      applyOpacity(o) { [lid('canopy'), lid('canopy', 'wc')].forEach(l => map.getLayer(l) && map.setPaintProperty(l, 'raster-opacity', o)); },
+      legend() { return this._wc === 'on' ? `<ul class="lg">${sw(`rgb(${X.TCD_CLASSES[4].col.slice(0, 3).join(',')})`, t('v36.wcTree'))}</ul><p class="lyr-src">${t('v37.canopyWcNote')}</p>` : `${rcLegend('canopy')}<p class="lyr-src">${t('ly3.canopyNote')} ${t('rc.classified')}</p>`; },
+      src() { return this._wc === 'on' ? 'ESA WorldCover 2021 v200 · 10 m · CC BY 4.0 — ' + t('v37.canopyWcSrc') : 'Copernicus HRL Tree Cover Density 2018 · 10 m · EEA (free, full and open)'; } });
     // 5.11: one tree model (js/trees.js) for the popup, the 2D crowns, 3D and sections. Below zoom 13 the layer becomes a
     // labelled overview (mapped trees per 250 m cell); from 13 points; from 15.5 crowns at TRUE SCALE (recorded crown, or the
     // editable illustrative size drawn lighter). Colours: recorded size / species known / leaf type only / unknown.

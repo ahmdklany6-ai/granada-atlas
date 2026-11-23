@@ -54,5 +54,18 @@ for ft in L['features']:
     else: p['period'] = 'no_data'; p.pop('pc', None)
 json.dump(L, open(lp, 'w'), separators=(',', ':'))
 print('lite: features', len(L['features']), 'with a Catastro period', lh)
+# 5.51: the period layer's legend reads this block — both sources counted (OSM start_date wins where it exists)
+import re
+osm = both = 0
+for f in sorted(g for g in glob.glob(os.path.join(ROOT, 'data/vec/buildings/*.json')) if not g.endswith('index.json')):
+    for ft in json.load(open(f))['features']:
+        p = ft['properties']; o = bool(re.search(r'(1[0-9]{3}|20[0-9]{2})', str(p.get('sd') or '')))
+        osm += o; both += (o or bool(p.get('cy')))
+MP = os.path.join(ROOT, 'data/manifest.json'); M = json.load(open(MP))
+M['layers']['buildings']['periodCoverage'] = {'dated': both, 'total': tot, 'osm': osm, 'catastro': both - osm,
+    'note': 'buildings with a construction year: the OSM start_date where it parses to a year, else the Catastro year of construction (cy); computed from data/vec/buildings/*.json by tools/build_catastro_years.py'}
+M['layers']['buildings']['catastro_year'].update({'with_year': hit, 'of': tot, 'municipalities': [m[0] for m in munis]}) if 'catastro_year' in M['layers']['buildings'] else None
+open(MP, 'w').write(json.dumps(M, ensure_ascii=False, separators=(',', ':')))
+print('manifest periodCoverage', M['layers']['buildings']['periodCoverage'])
 json.dump({'municipalities': munis, 'points': len(P), 'tiles_buildings': tot, 'tiles_with_year': hit, 'lite_with_period': lh},
           open(os.path.join(ROOT, 'tools/catastro_years_summary.json'), 'w'), ensure_ascii=False, indent=1)

@@ -67,8 +67,13 @@
     const src = q.get('u'); const bb = q.get('bbox');
     const url = src.replace('{bbox}', bb);
     if (scheme === 'canopy') { // raw tree-cover values (0–100) from the EEA ImageServer, coloured with ext.js TCD classes
-      const X = root.GA.ext; const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status);
-      const tif = await root.GA.tiffread.read(await r.arrayBuffer()); const c = mkCanvas(tif.width, tif.height); const g = c.getContext('2d'); const d = g.createImageData(tif.width, tif.height);
+      const X = root.GA.ext; let tif;
+      try { // 5.51: a tile that fails or hangs is reported; after two failures the layer switches to the static WorldCover class (js/layers_ext.js)
+        const ac = typeof AbortController !== 'undefined' ? new AbortController() : null; const tm = setTimeout(() => ac && ac.abort(), X.TCD_WAIT);
+        let r; try { r = await fetch(url, ac ? { signal: ac.signal } : undefined); } finally { clearTimeout(tm); }
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        tif = await root.GA.tiffread.read(await r.arrayBuffer()); X.canopyReport(true);
+      } catch (e) { X.canopyReport(false, (e && e.name === 'AbortError') ? 'timeout' : ((e && e.message) || String(e))); throw e; } const c = mkCanvas(tif.width, tif.height); const g = c.getContext('2d'); const d = g.createImageData(tif.width, tif.height);
       for (let i = 0; i < tif.data.length; i++) { const v = tif.data[i]; const col = v > 100 ? X.tcdHatch(i % tif.width, Math.floor(i / tif.width)) : X.tcdColour(v); if (!col) continue; d.data.set(col, i * 4); } // > 100 = no data: hatched
       g.putImageData(d, 0, 0); return { data: await toBuf(c) };
     }

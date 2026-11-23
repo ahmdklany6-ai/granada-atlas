@@ -173,6 +173,32 @@ def worldcover():
     buf = io.BytesIO(); np.savez_compressed(buf, cls=a); save('worldcover_2021.npz', buf.getvalue())
     save('worldcover_2021_meta.json', {'transform': list(tr)[:6], 'shape': list(a.shape), 'crs': 'EPSG:4326', 'classes': {str(k): int((a == k).sum()) for k in np.unique(a)}, 'url': u})
 
+# ---------- 7. (5.51) the facility and bus-stop snapshots re-read today, to check the cards 5.50 did not change ----------
+def facilities():
+    q = f"""[out:json][timeout:300];(
+      nwr["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"]({S},{W},{N},{E});nwr["healthcare"~"^(hospital|clinic|centre|doctor)$"]({S},{W},{N},{E});
+      nwr["amenity"~"^(university|college|school|kindergarten|childcare)$"]({S},{W},{N},{E});
+      node["highway"="bus_stop"]({S},{W},{N},{E});nwr["public_transport"="platform"]({S},{W},{N},{E}););out tags center;"""
+    for host in ('https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'):
+        r = get(host, 400, urllib.parse.urlencode({'data': q}).encode(), tries=2)
+        if r and r[:1] == b'{': save('osm_facilities_today.json', r); return
+    raise RuntimeError('all Overpass hosts failed')
+
+# ---------- 8. (5.51) is the Copernicus tree-cover service answering? ----------
+def probe():
+    out = {}
+    for name, u in (('tcd_info', 'https://image.discomap.eea.europa.eu/arcgis/rest/services/GioLandPublic/HRL_TreeCoverDensity_2018/ImageServer?f=pjson'),
+                    ('tcd_export', 'https://image.discomap.eea.europa.eu/arcgis/rest/services/GioLandPublic/HRL_TreeCoverDensity_2018/ImageServer/exportImage?f=image&format=tiff&pixelType=U8&bbox=445000,4112000,446000,4113000&bboxSR=25830&imageSR=25830&size=100,100'),
+                    ('eea_root', 'https://image.discomap.eea.europa.eu/arcgis/rest/services?f=pjson'),
+                    ('eea_home', 'https://image.discomap.eea.europa.eu/'),
+                    ('worldcover_wms', 'https://services.terrascope.be/wms/v2?service=WMS&request=GetCapabilities')):
+        t0 = time.time()
+        try:
+            r = urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=40); body = r.read(); out[name] = {'status': r.status, 'bytes': len(body), 'seconds': round(time.time() - t0, 1), 'head': body[:160].decode('utf-8', 'replace'), 'cors': r.headers.get('Access-Control-Allow-Origin')}
+        except Exception as e: out[name] = {'error': repr(e)[:300], 'seconds': round(time.time() - t0, 1)}
+        print('probe', name, out[name], flush=True)
+    out['when'] = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()); save('probe.json', out)
+
 # ---------- 6. SICA noise capabilities ----------
 def sica():
     for ws in ('evaluacionambiental',):
@@ -194,7 +220,7 @@ def sica():
 ONLY = os.environ.get('ONLY') or (open('tools/verify/basefill_only').read().strip() if os.path.exists('tools/verify/basefill_only') else '')
 for line in (open('tools/verify/basefill_env').read().splitlines() if os.path.exists('tools/verify/basefill_env') else []):
     if '=' in line: k, v = line.split('=', 1); os.environ.setdefault(k.strip(), v.strip())
-for nm, fn in (('sica', sica), ('overpass', overpass), ('tcd', tcd), ('gtfs', gtfs), ('ctan', ctan), ('worldcover', worldcover), ('overture', overture), ('catastro', catastro)):
+for nm, fn in (('sica', sica), ('overpass', overpass), ('tcd', tcd), ('gtfs', gtfs), ('ctan', ctan), ('worldcover', worldcover), ('overture', overture), ('catastro', catastro), ('facilities', facilities), ('probe', probe)):
     if ONLY and nm not in ONLY.split(','): continue
     print('=====', nm, flush=True); part(nm, fn)
 print(json.dumps(log, indent=1))
