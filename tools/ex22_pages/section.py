@@ -207,15 +207,16 @@ svg.text(DX0 + L * K, PY0 - 3.2, 'north ←    → south', TY['small'], fill=G[5
 # ---- 2/3 the sections ------------------------------------------------------------------------------------------------------
 _TREES = {}
 def tree_images(col):
-    """the owner's own tree cut-outs (PNG, transparent; the folder in TREE_IMAGES, as for the 2.1 sections), recoloured to one
-    drawing colour (dark parts → col, light parts → white, alpha kept) and embedded. Not committed: the owner supplies them."""
+    """the owner's own tree cut-outs (PNG, transparent; the folder in TREE_IMAGES, as for the 2.1 sections), embedded as supplied
+    (olive) when col is None, else recoloured to col (dark parts → col, light parts → white, alpha kept). Not committed: the owner supplies them."""
     if col not in _TREES:
         import base64, glob, io
         from PIL import Image
         d = os.environ.get('TREE_IMAGES'); out = []
-        c = tuple(int(col[i:i + 2], 16) for i in (1, 3, 5))
+        c = tuple(int(col[i:i + 2], 16) for i in (1, 3, 5)) if col else None
         for f in sorted(glob.glob(os.path.join(d, '*.png'))) if d else []:
             im = Image.open(f).convert('RGBA'); a = im.getchannel('A')
+            if col is None: out.append((base64.b64encode(open(f, 'rb').read()).decode(), im.width, im.height)); continue   # as supplied (olive)
             L = im.convert('L').point(lambda v: min(255, max(0, int((v - 150) * 2.5))))   # 0 = darkest ink, 255 = paper
             rgb = [Image.eval(L, lambda v, k=k: int(k + (255 - k) * v / 255 * 0.7)) for k in c]
             t = Image.merge('RGBA', rgb + [a]); b = io.BytesIO(); t.save(b, 'PNG', optimize=True)
@@ -226,7 +227,7 @@ def tree_images(col):
 
 def tree_svg(x, yg, col, sw, seed=0, op=1.0, h=None, r=None):
     """a tree in the section: the owner's tree images when TREE_IMAGES is set (8–11 m, true 1:500), otherwise the drawn pen trees"""
-    imgs = tree_images(col)
+    imgs = tree_images(None)   # owner request (23 Nov): the trees keep their own olive colour
     if imgs:
         b64, pw, ph = imgs[seed % len(imgs)]; hh = (h or (8.0 + (seed * 37 % 7) * 0.5)) * K; ww = hh * pw / ph
         return (f'<image x="{x - ww / 2:.2f}" y="{yg - hh:.2f}" width="{ww:.2f}" height="{hh:.2f}" opacity="{op}" '
