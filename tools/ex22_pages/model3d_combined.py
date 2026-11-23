@@ -115,7 +115,7 @@ def colour(g):
 Mx = Mesh(); context(Mx); alternatives(Mx)
 os.makedirs(OUT, exist_ok=True)
 base = os.path.join(OUT, 'ex22_three_alternatives')
-Mx.write(base, M3.NOTES + '\nLayers: 0_CONTEXT_* (existing, measured or estimated), 0_GREEN_* (OSM land use and water; trees SCHEMATIC, not surveyed), 1_RESIDENTS_*, 2_DEVELOPER_*, 3_DEFENCE_* (the three alternatives, schematic), 9_CHECK_* (flight ceiling, approximate).')
+Mx.write(base, 'Exercise 2.2 · the whole Armilla Air Base and the five towns around it (4.6 x 4.45 km), the three alternatives on their own layers.\n' + M3.NOTES.split('\n', 1)[1] + '\nLayers: 0_CONTEXT_* (existing, measured or estimated), 0_GREEN_* (OSM land use and water; trees SCHEMATIC, not surveyed), 1_RESIDENTS_*, 2_DEVELOPER_*, 3_DEFENCE_* (the three alternatives, schematic), 9_CHECK_* (flight ceiling, approximate).')
 # materials: one per layer, and usemtl lines put into the OBJ
 hexf = lambda h: ' '.join(f'{int(h[i:i + 2], 16) / 255:.3f}' for i in (1, 3, 5))
 with open(base + '.mtl', 'w') as f:
