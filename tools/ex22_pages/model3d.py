@@ -19,7 +19,9 @@ from _ex22 import load_frame, poly, allowed_at
 import groups
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else 'exports/ex22_3d'
-F = load_frame(); gd = groups.ground(F)
+MODEL = os.environ.get('MODEL', 'N')        # N: the shared north frame; ALL: the whole base and the towns around it (FRAME_JSON)
+F = load_frame() if MODEL == 'N' else json.load(open(os.environ['FRAME_JSON'])); gd = groups.ground(F)
+STEP = 10.0 if MODEL == 'N' else 20.0       # terrain mesh step (m)
 OX, OY, OZ = F['frame'][0], F['frame'][1], 660.0
 FR = box(*F['frame'])
 GRID = F['grid']; GZ = np.array(GRID['ground'], float)
@@ -87,11 +89,16 @@ class Mesh:
         with open(base_name + '.obj', 'w') as f:
             f.write('# ' + '\n# '.join(notes.split('\n')) + '\n# units: metres; x = E - %.0f, y = N - %.0f (EPSG:25830), z = height above %.0f m a.s.l.\n' % (OX, OY, OZ))
             vi = 1
-            for g, tris in self.groups.items():
-                f.write(f'o {g}\ng {g}\n')
+            for g, tris in self.groups.items():   # vertices shared within a group (smaller files, welded meshes in Rhino)
+                f.write(f'o {g}\ng {g}\n'); idx = {}; fl = []
                 for tri_ in tris:
-                    for p in tri_: f.write('v %.3f %.3f %.3f\n' % L(p))
-                    f.write(f'f {vi} {vi + 1} {vi + 2}\n'); vi += 3
+                    ids = []
+                    for p in tri_:
+                        k = L(p)
+                        if k not in idx: idx[k] = vi + len(idx); f.write('v %.2f %.2f %.2f\n' % k)
+                        ids.append(idx[k])
+                    if len(set(ids)) == 3: fl.append('f %d %d %d\n' % tuple(ids))
+                f.writelines(fl); vi += len(idx)
         json.dump({g: [[c for p in tri_ for c in L(p)] for tri_ in tris] for g, tris in self.groups.items()}, open(base_name + '.json', 'w'), separators=(',', ':'))
 
 
@@ -107,7 +114,7 @@ def street_area():
 def base_model(M):
     """what every scenario shares: the terrain block, streets, the base land, buildings, the fence, the metro, the flight ceiling"""
     z0 = min(GZ.ravel()) - 6
-    xs = np.arange(F['frame'][0], F['frame'][2] + 0.1, 10.0); ys = np.arange(F['frame'][1], F['frame'][3] + 0.1, 10.0)
+    xs = np.arange(F['frame'][0], F['frame'][2] + 0.1, STEP); ys = np.arange(F['frame'][1], F['frame'][3] + 0.1, STEP)
     for i in range(len(xs) - 1):
         for j in range(len(ys) - 1):
             a, b, c, d = (xs[i], ys[j]), (xs[i + 1], ys[j]), (xs[i + 1], ys[j + 1]), (xs[i], ys[j + 1])
@@ -115,7 +122,7 @@ def base_model(M):
     # the block's sides and bottom (a model base, as in the example)
     ring = list(FR.exterior.coords)
     for (x1, y1), (x2, y2) in zip(ring[:-1], ring[1:]):
-        n = max(1, int(math.hypot(x2 - x1, y2 - y1) // 10))
+        n = max(1, int(math.hypot(x2 - x1, y2 - y1) // STEP))
         for k in range(n):
             ax, ay = x1 + (x2 - x1) * k / n, y1 + (y2 - y1) * k / n; bx, by = x1 + (x2 - x1) * (k + 1) / n, y1 + (y2 - y1) * (k + 1) / n
             M.quad('terrain_sides', (ax, ay, z0), (bx, by, z0), (bx, by, zg(bx, by) - 0.05), (ax, ay, zg(ax, ay) - 0.05))
@@ -138,9 +145,14 @@ def base_model(M):
     for i in range(GRID['nx'] - 1):
         for j in range(GRID['ny'] - 1):
             v = [LIM[j, i], LIM[j, i + 1], LIM[j + 1, i + 1], LIM[j + 1, i]]
-            if not all(np.isfinite(v)) or max(v) > OZ + 80: continue
+            if not all(np.isfinite(v)) or max(v) > OZ + 80 or (MODEL != 'N' and (i % 2 or j % 2)): continue
             x0, y0 = GRID['x0'] + i * 10, GRID['y0'] + j * 10
-            M.quad('flight_ceiling_approx', (x0, y0, v[0]), (x0 + 10, y0, v[1]), (x0 + 10, y0 + 10, v[2]), (x0, y0 + 10, v[3]))
+            d = 10 if MODEL == 'N' else 20
+            if MODEL != 'N':
+                if i + 2 >= GRID['nx'] or j + 2 >= GRID['ny']: continue
+                v = [LIM[j, i], LIM[j, i + 2], LIM[j + 2, i + 2], LIM[j + 2, i]]
+                if not all(np.isfinite(v)) or max(v) > OZ + 80: continue
+            M.quad('flight_ceiling_approx', (x0, y0, v[0]), (x0 + d, y0, v[1]), (x0 + d, y0 + d, v[2]), (x0, y0 + d, v[3]))
 
 
 def residents(M):
@@ -172,10 +184,66 @@ def defence(M):
     for x, y in Df.masts: M.extrude('P_mast_8m', Point(x, y).buffer(0.7, quad_segs=2), zg, 8.0)
 
 
+def _area(a):
+    """the frame and ground of one of the four studied areas (N, W, E, S)"""
+    import edges
+    edges.AREA = a
+    Fa = load_frame() if a == 'N' else json.load(open(edges.frame_file())); return edges, Fa, groups.ground(Fa)
+
+
+def all_residents(M):
+    residents(M)                                   # the north edge (the shared frame)
+    lift = lambda d: (lambda x, y: zg(x, y) + d)
+    for a in 'WES':
+        edges, Fa, ga = _area(a); E = edges.build(Fa, ga)
+        for k, gs in E.polys.items():
+            for g in gs: M.flat({'park': 'P_park', 'riparian': 'P_river_banks', 'meadow': 'P_meadow', 'allot': 'P_allotments', 'plaza': 'P_river_square'}.get(k, 'P_park'), g, lift(0.1 if k == 'park' else 0.18))
+        for g in E.lines.get('walk', []):
+            if g is not None and not g.is_empty: M.flat('P_paths', g.buffer(1.5), lift(0.22))
+        for b in E.bridges: M.extrude('P_footbridge', b.buffer(1.5, cap_style=2), zg, 1.2)
+        if E.pavilion: M.extrude('P_pavilion_1_floor', E.pavilion[0], zg, E.pavilion[2])
+        for x, y in E.trees: M.tree('P_tree', x, y, h=8.0 + (int(x * 7) % 5) * 0.6)
+
+
+def all_developer(M):
+    lift = lambda d: (lambda x, y: zg(x, y) + d)
+    D = groups.developer(_area('N')[1], _area('N')[2])
+    M.flat('P_garden_courts', D.court, lift(0.1)); M.flat('P_station_square', D.sq, lift(0.12))
+    for b in D.B: M.extrude(f'P_block_{b.floors}_floors', b.g, zg, b.floors * 3.0 + 0.6)
+    for a in 'WES':
+        edges, Fa, ga = _area(a); Da = edges.developer(Fa, ga)
+        M.flat('P_garden_courts', Da.court, lift(0.1))
+        for b in Da.B: M.extrude(f'P_block_{b.floors}_floors', b.g, zg, b.floors * 3.0 + 0.6)
+    # phase 2 on the WHOLE base land, only if the base leaves and its easements are lifted: perimeter blocks of 5 floors on a
+    # 74 x 54 m grid (Sde Dov's density), kept 12 m in from the fence; the existing base buildings would go
+    base = gd.base; U, N = gd.U, gd.N; c0 = base.centroid; n2 = 0
+    for i in range(-40, 41):
+        for j in range(-60, 61):
+            c = (c0.x + U[0] * i * 74 + N[0] * j * 54, c0.y + U[1] * i * 74 + N[1] * j * 54)
+            if not base.buffer(-40).contains(Point(c)): continue
+            r = gd.rect(c[0], c[1], 60, 40); rc = r.buffer(-12, join_style=2)
+            M.extrude('P_phase2_if_base_leaves_5_floors', r.difference(rc), zg, 15.0); n2 += 1
+    print('phase 2 plots', n2)
+
+
+def all_defence(M):
+    lift = lambda d: (lambda x, y: zg(x, y) + d)
+    Df = groups.defence(F, gd)                     # the security band along the WHOLE fence (this frame holds all of it)
+    M.flat('P_clear_zone', Df.clear, lift(0.06)); M.flat('P_patrol_road', Df.road, lift(0.12))
+    ln = Df.inner_fence
+    for seg in ([ln] if ln.geom_type == 'LineString' else [q for q in getattr(ln, 'geoms', []) if q.geom_type == 'LineString']):
+        M.extrude('P_inner_fence', seg.buffer(0.1, cap_style=2), zg, 2.5)
+    for x, y in Df.masts: M.extrude('P_mast_8m', Point(x, y).buffer(0.7, quad_segs=2), zg, 8.0)
+    M.flat('P_open_land_crops', groups.defence(*_area('N')[1:]).strip, lift(0.1))
+    for a in 'WES':
+        edges, Fa, ga = _area(a); M.flat('P_open_land_crops', edges.defence(Fa, ga).strip, lift(0.1))
+
+
 NOTES = __doc__.split('\n')[0] + '\nGround IGN MDT25; buildings Catastro, height = floors x 3 m (estimate); halls/sheds 6 m (assumed); fence 2.5 m (not mapped); flight ceiling: our interpolation of RD 118/2019. Proposals (layers P_*) are schematic. Sources: D. G. del Catastro; IGN; OpenStreetMap contributors (ODbL); Ministerio de Defensa.'
-B = Mesh(); base_model(B); B.write(os.path.join(OUT, 'ex22_N_00_base'), NOTES)
-for nm, fn in (('residents', residents), ('developer', developer), ('defence', defence)):
-    M = Mesh(); fn(M); M.write(os.path.join(OUT, f'ex22_N_{nm}_proposal'), NOTES)
-    A = Mesh(); A.groups = {**B.groups, **M.groups}; A.write(os.path.join(OUT, f'ex22_N_{nm}_full'), NOTES)
+B = Mesh(); base_model(B); B.write(os.path.join(OUT, f'ex22_{MODEL}_00_base'), NOTES)
+FNS = (('residents', residents), ('developer', developer), ('defence', defence)) if MODEL == 'N' else (('residents', all_residents), ('developer', all_developer), ('defence', all_defence))
+for nm, fn in FNS:
+    M = Mesh(); fn(M); M.write(os.path.join(OUT, f'ex22_{MODEL}_{nm}_proposal'), NOTES)
+    A = Mesh(); A.groups = {**B.groups, **M.groups}; A.write(os.path.join(OUT, f'ex22_{MODEL}_{nm}_full'), NOTES)
     print(nm, {g: len(t) for g, t in M.groups.items()})
 print('base', {g: len(t) for g, t in B.groups.items()})

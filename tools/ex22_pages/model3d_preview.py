@@ -54,18 +54,20 @@ def render(groups, out, cam=(355, -520, 400), tgt=(355, 330, 0), W=1800, H=1100,
         for k in np.nonzero(vis)[0]:
             rgb = np.clip(base * lam[k], 0, 255).astype(int)
             polys.append(((GROUND.index(g) if g in GROUND else 99), depth[k], f'{sx[k,0]:.1f},{sy[k,0]:.1f} {sx[k,1]:.1f},{sy[k,1]:.1f} {sx[k,2]:.1f},{sy[k,2]:.1f}', '#%02x%02x%02x' % tuple(rgb), g.startswith(EDGE) and abs(n[k, 2]) < 0.2, g.startswith('P_')))
-    polys.sort(key=lambda q: (q[0], -q[1] if q[0] == 99 else -q[1]))
-    body = []
+    polys.sort(key=lambda q: (q[0], -q[1]))
+    from PIL import Image, ImageDraw
+    SS = 2; im = Image.new('RGB', (W * SS, H * SS), (22, 24, 29)); dr = ImageDraw.Draw(im)
     for _, d, pts, fill, edge, prop in polys:
-        st = (f' stroke="{"#5a1d22" if prop else "#a79c92"}" stroke-width="0.5" stroke-opacity="0.6"' if edge else f' stroke="{fill}" stroke-width="0.4"')
-        body.append(f'<polygon points="{pts}" fill="{fill}"{st}/>')
-    svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}"><rect width="{W}" height="{H}" fill="#16181d"/>{"".join(body)}</svg>'
-    from playwright.sync_api import sync_playwright
-    with sync_playwright() as p:
-        b = p.chromium.launch(); pg = b.new_page(viewport={'width': W, 'height': H}); pg.set_content(f'<body style="margin:0">{svg}</body>'); pg.screenshot(path=out); b.close()
+        xy = [tuple(float(v) * SS for v in p_.split(',')) for p_ in pts.split()]
+        dr.polygon(xy, fill=fill, outline=(('#7a3a38' if prop else '#b9afa5') if edge else fill))
+    im.resize((W, H), Image.LANCZOS).save(out)
 
 
+import os as _os
+MODEL = _os.environ.get('MODEL', 'N')
+VIEW = {'N': dict(cam=(355, -520, 400), tgt=(355, 330, 0)), 'ALL': dict(cam=(2300, -1900, 1500), tgt=(2300, 2300, 0), fov=38.0)}[MODEL]
+CLOSE = {'N': dict(cam=(170, 120, 150), tgt=(400, 420, 0), fov=40.0), 'ALL': dict(cam=(1900, 1400, 700), tgt=(2500, 3300, 0), fov=40.0)}[MODEL]
 for nm in ('00_base', 'residents_full', 'developer_full', 'defence_full'):
-    G_ = json.load(open(os.path.join(D, f'ex22_N_{nm}.json')))
-    render(G_, os.path.join(D, f'preview_{nm}.png'))
-    render(G_, os.path.join(D, f'preview_{nm}_close.png'), cam=(170, 120, 150), tgt=(400, 420, 0), fov=40.0); print('ok', nm)
+    G_ = json.load(open(os.path.join(D, f'ex22_{MODEL}_{nm}.json')))
+    render(G_, os.path.join(D, f'preview_{MODEL}_{nm}.png'), **VIEW)
+    render(G_, os.path.join(D, f'preview_{MODEL}_{nm}_close.png'), **CLOSE); print('ok', nm)
