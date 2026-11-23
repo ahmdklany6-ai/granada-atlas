@@ -55,7 +55,7 @@ try:
         st = pg.evaluate('GA.atlas.state'); check(st['area'] == 'city' and st['topic'] is None, 'opens on the whole city, no study area, no topic', st)
         bb = pg.evaluate('(() => { const b = GA.app.map.getBounds(); return [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]; })()')
         check(bb[0] < -3.762 and bb[1] < 37.081 and bb[2] > -3.59 and bb[3] > 37.20, 'the first view holds the whole city and both study areas', bb)
-        check(pg.evaluate('document.querySelectorAll(".atl-mk").length') == 2, 'two clickable study-area markers (factory, metro)')
+        check(pg.evaluate('document.querySelectorAll(".atl-mk").length') == 3, 'three clickable study-area markers (base, factory, metro; 5.48 added the base)')
         # 5.28 (owner request): the city growth extents are a normal layer, OFF by default — the site opens on the clean map
         gv = pg.evaluate('["ly-growth-fill", "ly-growth"].map(id => GA.app.map.getLayer(id) ? GA.app.map.getLayoutProperty(id, "visibility") : "none")')
         check(not st['growing'] and not st['growthOn'] and gv == ['none', 'none'] and not pg.evaluate('!!GA.app.map.getSource("atl-growth")'), 'no city growth overlay at start (layer OFF, nothing drawn, no timer)', (st, gv))

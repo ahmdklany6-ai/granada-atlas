@@ -1,0 +1,44 @@
+# Runner-only data downloads (hosts the build sandbox cannot reach). The script writes files to out/<dir>; this workflow
+# pushes them to a separate data branch (never to main) so they can be fetched and built offline. Nothing is published.
+name: data-fetch
+on:
+  push:
+    branches: ['claude/fetch-**']   # a push to such a branch runs the default script below (no need for the workflow on main)
+  workflow_dispatch:
+    inputs:
+      script:
+        description: 'script in tools/verify/ that writes to out/<dir>'
+        required: true
+        default: 'ex13b_fetch.py'
+      dir:
+        description: 'output folder under out/'
+        required: true
+        default: 'ex13b'
+      branch:
+        description: 'data branch to push to'
+        required: true
+        default: 'claude/data-ex13b'
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install numpy rasterio pyproj shapely pillow
+      - name: fetch
+        env: { PART: a }
+        run: python -u tools/verify/${{ github.event.inputs.script || 'ex13b_fetch.py' }}
+      - name: push the files to the data branch
+        run: |
+          set -e
+          D="out/${{ github.event.inputs.dir || 'ex13b' }}"; ls -la "$D"
+          mkdir -p /tmp/data && cp -r "$D" /tmp/data/
+          git config user.name "data-fetch"; git config user.email "data-fetch@users.noreply.github.com"
+          git checkout --orphan data-tmp && git rm -rq --cached . && git clean -fdq -e out
+          rm -rf ./* && mkdir -p out && cp -r /tmp/data/* out/
+          git add out && git commit -qm "data: ${{ github.event.inputs.dir || 'ex13b' }} (runner fetch)"
+          git push -f origin HEAD:${{ github.event.inputs.branch || 'claude/data-ex13b' }}
