@@ -166,5 +166,15 @@ with sync_playwright() as p:
               and pg.evaluate('document.querySelectorAll(".h-mlabel").length') == 3, f'{lang}: 5.46 — measuring: 3 points, line on top, total in km and m, lengths on the map', [st, top, box[:120]])
         emit(f'x46_measure_{lang}', pg.screenshot())
         check(not [e for e in errs if 'rtl-text' not in e], f'{lang}: no page errors (5.46 measure)', errs[:3]); ctx.close()
+    # ---- 5.48: the air base is a study area with its own analysis frame (data/ex13b) ----
+    for lang in ('ar', 'en'):
+        ctx, pg, errs = boot({'width': 1440, 'height': 900}, lang=lang); time.sleep(3)
+        pg.wait_for_function('GA.atlas && GA.atlas.state.ready', timeout=120000)
+        pg.evaluate('GA.atlas.setArea("base")'); time.sleep(3); pg.evaluate('GA.atlas.setTopic("climate")'); time.sleep(6)
+        ids = pg.evaluate('GA.atlas.topicLayers("climate")'); ind = pg.evaluate('GA.atlas.indicators("climate")')
+        check(pg.evaluate('GA.atlas.coverage("base").frame') == 'base' and ids and all(i.endswith('~b') for i in ids) and len(ind) >= 3 and any('51.3' in v for _, v in ind),
+              f'{lang}: 5.48 — the base: climate drawn from its own frame, 51.3 °C inside the base', [ids[:3], ind[:2]])
+        emit(f'x48_base_{lang}', pg.screenshot())
+        check(not [e for e in errs if 'rtl-text' not in e], f'{lang}: no page errors (5.48 base)', errs[:3]); ctx.close()
     b.close()
 n = sum(1 for c, _ in res if not c); print(f'\nLIVE RESULT atlas: {len(res) - n}/{len(res)} checks passed' + ('' if not n else ' — FAILED: ' + '; '.join(m for c, m in res if not c)), flush=True)

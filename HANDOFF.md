@@ -1127,3 +1127,29 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
 - Result: export 3.4 s, longest task 1.6 s (was 162 s); the page opens with no task over 0.5 s.
 - Test `tests/ui_test_v36.py` (regular CPU canvas — a software GPU's read-back would measure the test machine).
 - Not changed: areas over 12 km² still cannot be analysed (`ANALYSIS_MAX_AREA`, tiled data); they can be saved and opened.
+
+## 44. Build 5.48 — the layers are no longer empty at the air base (owner request of 23 Nov 2026)
+- Request: "some of the layers we made are empty at the base — bring everything at the base and around it into the site".
+- Found: the five Exercise 1.3 analyses (density, morphology, centre, climate, human) used ONE frame over the city,
+  EPSG:25830 y 4,110,000–4,120,000; its south edge runs through the base (4,107,650–4,111,300), so the southern half of
+  the base and the five towns south of it had nothing. The 10 m contours were cut to the urban study mask (they covered
+  the base but stopped just around it). OSM tiles (buildings, streets, land use, parks), water, 20 m contours, flow paths,
+  bus stops and facilities already covered it.
+- Added: a fourth study area `base` (sidebar, card, map marker; strings `v35.*` in `js/i18n_v35.js`) with its own
+  12 × 10 km frame `data/ex13b` (x 437,500–449,500, y 4,103,500–4,113,500): same sources, method, classes and colours as
+  the factory frame. Data fetched on the GitHub runner (`.github/workflows/data-fetch.yml`, triggered by pushing a
+  `claude/fetch-*` branch; it pushes the raw files to the orphan branch `claude/data-ex13b`, never merged) with
+  `tools/verify/ex13b_fetch.py`, built by `tools/build_ex13b.py` (= `build_ex13f.py` with `EX13_ZONE=base`; the zone is
+  the base outline from `data/vec/base_edge.json`). Topic layer ids of this frame end in `~b`. The panel figures are for
+  inside the base and within 1 km of the fence (`factoryIndicators`, labels swapped to `v35.i.*`).
+- Contours: `tools/build_contours_base.py` adds 10 m lines inside the base frame but outside the urban study mask (GHSL
+  urban centre + 500 m), drawn from the site's own MDT25 (`data/terrain/dem_mdt25.bin`) by marching squares; marked
+  `ext: 1`; the existing lines are unchanged.
+- Fixed on the way: the panel figures for the factory/metro were cached without the language (switching language kept
+  the old language's labels); the cache key now includes it.
+- Not extended (need the owner's full files): places (Overture, the supplied file stops at 37.137° N) and bus service
+  (the supplied GTFS summary stops at 37.147° N).
+- Figures (base frame): 179,350 modelled residents in the frame, 33,750 within 1 km of the fence; building coverage 1.2 %
+  inside the base (frame 8.5 %); 0 shops inside, 193 within 1 km; summer surface temperature 51.3 °C inside the base
+  (frame 46.3 °C; 30 Landsat scenes 2024–2026).
+- Test `tests/ui_test_v37.py`; `tests/ui_test_v23.py` now expects three study-area markers.

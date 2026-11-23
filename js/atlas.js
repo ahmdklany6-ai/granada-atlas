@@ -353,7 +353,7 @@
     }
     if ((S.area === 'factory' && XF) || (S.area === 'base' && XB)) return factoryIndicators(k);
     if (S.area !== 'metro') return out;
-    const key = 'mi_' + k; if (cache[key]) return cache[key];
+    const key = 'mi_' + k + '_' + I.lang; if (cache[key]) return cache[key];
     const den = d.density, cx = den.corners.x, cy = den.corners.y; const cells = [];
     den.pop.forEach((row, r) => row.forEach((p, q) => { if (p == null) return; const x = (cx[r][q] + cx[r + 1][q + 1]) / 2, y = (cy[r][q] + cy[r + 1][q + 1]) / 2; if (distToTrack(x, y) <= CORRIDOR_M) cells.push({ r, q, p, v: p * 100, x, y }); }));
     if (k === 'density') { const pop = cells.reduce((s, c) => s + c.p, 0); const dense = cells.filter(c => c.v > 10000).reduce((s, c) => s + c.p, 0);
@@ -378,7 +378,7 @@
     const inside = ZU.some(r => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [xi, yi] = r[i], [xj, yj] = r[j]; if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) c = !c; } return c; });
     if (inside) return 0; let d = Infinity; ZU.forEach(r => { for (let i = 1; i < r.length; i++) d = Math.min(d, segD(x, y, r[i - 1], r[i])); }); return d; }
   function factoryIndicators(k) {
-    const key = 'fi_' + S.area + '_' + k; if (cache[key]) return cache[key]; const d = DS(), out = []; const t = (q, v) => I.t(S.area === 'base' ? q.replace(/^v24\.i\./, 'v35.i.') : q, v); // base: the same rows, named for the base
+    const key = 'fi_' + S.area + '_' + k + '_' + I.lang; if (cache[key]) return cache[key]; const d = DS(), out = []; const t = (q, v) => I.t(S.area === 'base' ? q.replace(/^v24\.i\./, 'v35.i.') : q, v); // base: the same rows, named for the base
     const den = d.density, cx = den.corners.x, cy = den.corners.y; const cells = [];
     den.pop.forEach((row, r) => row.forEach((p, q) => { if (p == null) return; const x = (cx[r][q] + cx[r + 1][q + 1]) / 2, y = (cy[r][q] + cy[r + 1][q + 1]) / 2; const dd = estDist(x, y); if (dd <= 1000) cells.push({ r, q, p, v: p * 100, dd }); }));
     const popIn = cells.filter(c => c.dd === 0).reduce((s, c) => s + c.p, 0), pop1 = cells.reduce((s, c) => s + c.p, 0);
@@ -405,7 +405,7 @@
     const i0 = Math.floor((Math.min(...xs) - g.ox) / g.px_m), i1 = Math.ceil((Math.max(...xs) - g.ox) / g.px_m), j0 = Math.floor((g.oy - Math.max(...ys)) / g.px_m), j1 = Math.ceil((g.oy - Math.min(...ys)) / g.px_m);
     setTimeout(() => { const w = i1 - i0, h = j1 - j0; const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const ctx = cv.getContext('2d'); ctx.drawImage(img, i0, j0, w, h, 0, 0, w, h); const px = ctx.getImageData(0, 0, w, h).data; let n = 0, b = 0;
       for (let j = 0; j < h; j += 2) for (let i = 0; i < w; i += 2) { const x = g.ox + (i0 + i + 0.5) * g.px_m, y = g.oy - (j0 + j + 0.5) * g.px_m; if (distToTrack(x, y) > CORRIDOR_M) continue; n++; if (px[(j * w + i) * 4 + 3] > 128) b++; }
-      cache.corrCov = n ? b / n * 100 : 0; delete cache.mi_morphology; covPending = false; renderPanel(); }, 30);
+      cache.corrCov = n ? b / n * 100 : 0; Object.keys(cache).filter(q => q.startsWith('mi_morphology')).forEach(q => delete cache[q]); covPending = false; renderPanel(); }, 30);
     return null;
   }
 
