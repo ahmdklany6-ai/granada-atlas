@@ -102,6 +102,11 @@ class Mesh:
         json.dump({g: [[c for p in tri_ for c in L(p)] for tri_ in tris] for g, tris in self.groups.items()}, open(base_name + '.json', 'w'), separators=(',', ':'))
 
 
+def pieces(line, step):
+    from shapely.ops import substring
+    return [substring(line, d, min(line.length, d + step)) for d in np.arange(0, line.length, step) if min(line.length, d + step) - d > 0.2]
+
+
 def street_area():
     W = {'primary': 12, 'secondary': 12, 'tertiary': 9, 'residential': 7, 'unclassified': 6, 'service': 4, 'living_street': 6, 'pedestrian': 5, 'cycleway': 2.5, 'footway': 2.0, 'path': 2.0, 'track': 3.0}
     out = []
@@ -135,7 +140,7 @@ def base_model(M):
     # the fence: a thin wall, 2.5 m (its height is not mapped)
     fl = gd.fence_line.intersection(FR)
     for seg in ([fl] if fl.geom_type == 'LineString' else [q for q in getattr(fl, 'geoms', []) if q.geom_type == 'LineString']):
-        M.extrude('fence_height_not_mapped', seg.buffer(0.15, cap_style=2), zg, 2.5)
+        for piece in pieces(seg, 10.0): M.extrude('fence_height_not_mapped', piece.buffer(0.15, cap_style=2), zg, 2.5)   # 10 m panels follow the ground
     # the metro extension: a raised track band
     for m in F['metro_ext']:
         for r in m['r']:
@@ -180,7 +185,7 @@ def defence(M):
     M.flat('P_patrol_road', Df.road, lift(0.12))
     ln = Df.inner_fence
     for seg in ([ln] if ln.geom_type == 'LineString' else [q for q in getattr(ln, 'geoms', []) if q.geom_type == 'LineString']):
-        M.extrude('P_inner_fence', seg.buffer(0.1, cap_style=2), zg, 2.5)
+        for piece in pieces(seg, 10.0): M.extrude('P_inner_fence', piece.buffer(0.1, cap_style=2), zg, 2.5)
     for x, y in Df.masts: M.extrude('P_mast_8m', Point(x, y).buffer(0.7, quad_segs=2), zg, 8.0)
 
 
@@ -243,7 +248,7 @@ def all_defence(M):
     M.flat('P_clear_zone', Df.clear, lift(0.06)); M.flat('P_patrol_road', Df.road, lift(0.12))
     ln = Df.inner_fence
     for seg in ([ln] if ln.geom_type == 'LineString' else [q for q in getattr(ln, 'geoms', []) if q.geom_type == 'LineString']):
-        M.extrude('P_inner_fence', seg.buffer(0.1, cap_style=2), zg, 2.5)
+        for piece in pieces(seg, 10.0): M.extrude('P_inner_fence', piece.buffer(0.1, cap_style=2), zg, 2.5)
     for x, y in Df.masts: M.extrude('P_mast_8m', Point(x, y).buffer(0.7, quad_segs=2), zg, 8.0)
     M.flat('P_open_land_crops', groups.defence(*_area('N')[1:]).strip, lift(0.1))
     for a in 'WES':
@@ -251,10 +256,11 @@ def all_defence(M):
 
 
 NOTES = __doc__.split('\n')[0] + '\nGround IGN MDT25; buildings Catastro, height = floors x 3 m (estimate); halls/sheds 6 m (assumed); fence 2.5 m (not mapped); flight ceiling: our interpolation of RD 118/2019. Proposals (layers P_*) are schematic. Sources: D. G. del Catastro; IGN; OpenStreetMap contributors (ODbL); Ministerio de Defensa.'
-B = Mesh(); base_model(B); B.write(os.path.join(OUT, f'ex22_{MODEL}_00_base'), NOTES)
-FNS = (('residents', residents), ('developer', developer), ('defence', defence)) if MODEL == 'N' else (('residents', all_residents), ('developer', all_developer), ('defence', all_defence))
-for nm, fn in FNS:
-    M = Mesh(); fn(M); M.write(os.path.join(OUT, f'ex22_{MODEL}_{nm}_proposal'), NOTES)
-    A = Mesh(); A.groups = {**B.groups, **M.groups}; A.write(os.path.join(OUT, f'ex22_{MODEL}_{nm}_full'), NOTES)
-    print(nm, {g: len(t) for g, t in M.groups.items()})
-print('base', {g: len(t) for g, t in B.groups.items()})
+if __name__ == '__main__':
+    B = Mesh(); base_model(B); B.write(os.path.join(OUT, f'ex22_{MODEL}_00_base'), NOTES)
+    FNS = (('residents', residents), ('developer', developer), ('defence', defence)) if MODEL == 'N' else (('residents', all_residents), ('developer', all_developer), ('defence', all_defence))
+    for nm, fn in FNS:
+        M = Mesh(); fn(M); M.write(os.path.join(OUT, f'ex22_{MODEL}_{nm}_proposal'), NOTES)
+        A = Mesh(); A.groups = {**B.groups, **M.groups}; A.write(os.path.join(OUT, f'ex22_{MODEL}_{nm}_full'), NOTES)
+        print(nm, {g: len(t) for g, t in M.groups.items()})
+    print('base', {g: len(t) for g, t in B.groups.items()})

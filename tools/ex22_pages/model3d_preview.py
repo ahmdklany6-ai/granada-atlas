@@ -39,7 +39,7 @@ def render(groups, out, cam=(355, -520, 400), tgt=(355, 330, 0), W=1800, H=1100,
         c = col(g)
         if not c: continue
         T = np.array(flat, float).reshape(-1, 3, 3)
-        if g == 'terrain_sides': T = T[~(np.ptp(T[:, :, 2], axis=1) < 1e-6)]   # (the block's bottom is never seen)
+        if g.endswith('terrain_sides'): T = T[~(np.ptp(T[:, :, 2], axis=1) < 1e-6)]   # (the block's bottom is never seen)
         if len(T) == 0: continue
         n = np.cross(T[:, 1] - T[:, 0], T[:, 2] - T[:, 0]); nl = np.linalg.norm(n, axis=1); ok = nl > 1e-9; T, n = T[ok], n[ok] / nl[ok][:, None]
         n[n[:, 2] < 0] *= -1 if g.startswith(('terrain', 'streets', 'base', 'P_park', 'P_paths', 'P_garden', 'P_station', 'P_open', 'P_clear', 'P_patrol', 'P_allot', 'P_play')) else 1
