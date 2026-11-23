@@ -67,7 +67,8 @@ SCRIPT = '''# Exercise 2.2 - change the colours of ex22_three_alternatives in Rh
 # layer change together (they are listed on the same line).
 #
 # REMOVE_VERTEX_COLOURS = True instead removes the stored colours from every mesh; after that the usual Rhino ways work
-# (Layers panel: click the colour swatch; or Properties > Object > Display Color), but every object starts with its layer colour.
+# (Layers panel: click the colour swatch; or Properties > Object > Display Color > Custom, then click the colour box).
+# Each mesh keeps its present main colour as its display colour, so nothing turns black.
 import Rhino
 import scriptcontext as sc
 import System
@@ -102,14 +103,21 @@ def _target(layer, rgb):
 
 
 def main():
-    meshes = sc.doc.Objects.GetObjectList(Rhino.DocObjects.ObjectType.Mesh)
-    n_obj = n_changed = 0
+    meshes = list(sc.doc.Objects.GetObjectList(Rhino.DocObjects.ObjectType.Mesh))   # a copy: Replace changes the table
+    n_obj = n_changed = n_vc = 0
     for obj in meshes:
         n_obj += 1
         mesh = obj.Geometry
         vc = mesh.VertexColors
+        if vc.Count: n_vc += 1
         if REMOVE_VERTEX_COLOURS:
             if vc.Count:
+                # keep today's look: the mesh's main colour becomes its display colour (the layers are black after import)
+                argb = list(vc.ToARGBArray()); main = max(set(argb), key=argb.count)
+                att = obj.Attributes.Duplicate()
+                att.ColorSource = Rhino.DocObjects.ObjectColorSource.ColorFromObject
+                att.ObjectColor = SD.Color.FromArgb(main)
+                sc.doc.Objects.ModifyAttributes(obj.Id, att, True)
                 m = mesh.DuplicateMesh(); m.VertexColors.Clear()
                 if sc.doc.Objects.Replace(obj.Id, m): n_changed += 1
             continue
@@ -128,7 +136,7 @@ def main():
             att = obj.Attributes.Duplicate()   # the same colour as display colour, for wireframe views
             att.ColorSource = Rhino.DocObjects.ObjectColorSource.ColorFromObject
             att.ObjectColor = list(cache.values())[0]
-            sc.doc.Objects.ModifyAttributes(obj, att, True)
+            sc.doc.Objects.ModifyAttributes(obj.Id, att, True)
         else:
             cols = [cache[a] if cache[a] else SD.Color.FromArgb(a) for a in argb]
             try:
@@ -137,7 +145,11 @@ def main():
                 for i, c in enumerate(cols): m.VertexColors.SetColor(i, c)
         if sc.doc.Objects.Replace(obj.Id, m): n_changed += 1
     sc.doc.Views.Redraw()
-    print('ex22 colours: %%d of %%d meshes changed.' %% (n_changed, n_obj))
+    print('ex22 colours: %%d meshes in the file, %%d with stored (vertex) colours, %%d changed.' %% (n_obj, n_vc, n_changed))
+    if n_obj and not n_vc:
+        print('No stored colours were found on these meshes: change colours the usual way (Layers panel swatch, or Properties > Display Color > Custom, then click the colour box).')
+    elif n_vc and not n_changed and not REMOVE_VERTEX_COLOURS:
+        print('Nothing matched: check that you wrote a NEW colour in the table, and that the layer names were not changed.')
 
 
 main()
