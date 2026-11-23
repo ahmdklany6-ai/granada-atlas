@@ -26,7 +26,7 @@ def mark(x, y, kind, r=1.5):
     if kind == 'c': svg.add(f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{r}" fill="{RED}"/>')
     elif kind == 'p': svg.add(f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{r}" fill="{WHITE}" stroke="{RED}" stroke-width="0.35"/><path d="M{x:.2f},{y - r:.2f} A{r},{r} 0 0 0 {x:.2f},{y + r:.2f} Z" fill="{RED}"/>')
     else: svg.add(f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{r}" fill="{WHITE}" stroke="{RED}" stroke-width="0.35"/>')
-dw1 = sum(b.area for b in DV.blocks) * DV.P['floors'] / DV.P['m2_per_dw']
+dw1 = DV.P['dw1']   # blocks × their floors (as high as the ceiling allows) ÷ 100 m² per home, shops left out
 strip_ha = F['strip']['m2'] / 1e4
 
 # ---- head ---------------------------------------------------------------------------------------------------------------
@@ -46,10 +46,10 @@ RES_POS = '\u201cThe base can stay, but its fence must stop being the back of ou
 COLS = [
     {'n': 1, 'name': 'Private developer', 'max': 'profit, building rights, speed', 'q': 'Where is it worth building, and how much?',
      'pos': '“The metro reaches an empty strip beside a base the regional plan wants dismantled: build here, now on the strip and later on the base.”',
-     'prog': [('Phase 1: 4-floor blocks on the strip', f'≈ {dw1:,.0f} homes'),
+     'prog': [(f'Phase 1: {DV.P["fl_min"]}–{DV.P["fl_max"]}-floor blocks on the strip', f'≈ {dw1:,.0f} homes'),
               ('Phase 2: a district on the base, if it leaves', f'≈ {DV.P["dw2"]:,.0f} homes')],
      'why': ['Regional plan (2000, art. 4.27): dismantle the base.', '14,177 more homes needed by 2045 (our scenario).'],
-     'note': 'Estimates: blocks × 4 floors ÷ 100 m² per home; base land × Sde Dov’s density.'},
+     'note': 'Estimates: blocks × floors ÷ 100 m² per home; base land × Sde Dov’s density.'},
     {'n': 2, 'name': 'Residents of the five towns', 'max': 'quality of life, stability, cost of living', 'q': 'What will change in my daily life?',
      'pos': RES_POS,
      'prog': [('Edge park with a hall, allotments and a playground', f'{strip_ha / 100:.3f} km²'),
@@ -156,7 +156,7 @@ svg.text(x0, ty, 'WHERE THEY MEET AND CLASH', EB + 0.4, fill=RED, weight=700, sp
 for i_, (k_, t_) in enumerate((('c', 'clash'), ('p', 'partly'), ('a', 'agreement'))):
     xx = x0 + W - 80 + i_ * 27; mark(xx, ty - 1.1, k_); svg.text(xx + 3.4, ty, t_, BS)
 ty += 7.5
-ISS = [('The empty strip', f'{strip_ha / 100:.3f} km²', f'\u2248 {dw1:,.0f} homes in 4-floor blocks', 'a public park and a hall; no homes', 'low, open, no gatherings', 'c'),
+ISS = [('The empty strip', f'{strip_ha / 100:.3f} km²', f'\u2248 {dw1:,.0f} homes in {DV.P["fl_min"]}\u2013{DV.P["fl_max"]}-floor blocks', 'a public park and a hall; no homes', 'low, open, no gatherings', 'c'),
        ('Height under the ceiling', '12\u201318 m', 'up to the ceiling now, above it once the base leaves', 'low: a 7 m hall and trees', 'the 2019 easements stay', 'p'),
        ('The base land', '3.71 km\u00b2', 'dismantle and build (POTAUG art. 4.27)', 'the base stays; only its edge opens', 'the base stays, closed', 'p'),
        ('The fence', '8.7 km', 'it goes with the base', 'stays; a walk and trees along it', 'stays; a patrol road inside', 'p'),

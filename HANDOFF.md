@@ -1339,3 +1339,15 @@ Flight ceiling over the strip 13–17 m above the ground (RD 118/2019 surfaces m
   metro extension's stops have no published positions ("M?" = a stop the residents ask for); Defence's "no gatherings under
   the approach" is our reading on the model of US air-base land-use zones, not a published rule for Armilla; the developer's
   homes are estimates (drawn blocks × 4 floors ÷ 100 m²; base land × 64 homes/ha, Sde Dov's planned density).
+
+### 42.1 The developer's and Defence's plan 1:1000 and section 1:500 (23 Nov 2026)
+- `python3 tools/ex22_pages/plan.py <out> developer|defence` and `section.py <out> developer|defence` (residents is the default).
+  Geometry in `groups.developer()` / `groups.defence()`; the positions sheet reads the same numbers.
+- Developer (2.2-D): bars parallel to the fence plus a row on Avenida de Poniente; each block as high as the ceiling allows,
+  1 m under it (floors of 3 m + 0.6 m parapet) → 3–5 floors, ≈ 135 homes; shops on the avenue row; station square at San
+  Cayetano; private garden court over one parking level; phase 2 on the base (dashed, 5 floors drawn — it pierces today's
+  ceiling, so only if the base leaves and the easements are lifted), ≈ 1,409 homes at Sde Dov's density. All schematic.
+- Defence (2.2-M): easements kept (ceiling redrawn red); the strip open (crops or meadow, no buildings, no gatherings —
+  our reading); inside the fence a 6 m clear zone, an inner fence, a 4 m patrol road, masts every ~60 m (schematic).
+- Section people/cars/metro are flat-colour figures from the palette (`_bw.figure`, `car_flat`, `tram_flat`); façades behind
+  the cut are opaque in a warm-grey line; proposed trees use the owner's tree PNGs from `TREE_IMAGES` (never committed).

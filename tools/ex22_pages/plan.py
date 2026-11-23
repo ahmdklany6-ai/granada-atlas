@@ -108,6 +108,113 @@ def residents():
     return out, callouts, rows, legend, P
 
 
+ROMAN = {1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI'}
+
+
+def developer():
+    """The private developer: housing on the strip now, under today's ceiling; a district on the base later, only if it leaves.
+    Everything here is a PROPOSAL, drawn schematically."""
+    D_ = groups.developer(F, gd); P = D_.P
+    under, over = [], []
+    # phase 2 on the base: plots in a hatch, their courts white, a dashed outline (not built: a reserve)
+    under.append('<path d="' + ' '.join(V.dgeom(r) for r in D_.grid2) + f'" fill="url(#redHatch)" stroke="{RED}" stroke-width="{LW["thin"]}" stroke-dasharray="1.2 0.8" fill-rule="evenodd"/>')
+    under.append('<path d="' + ' '.join(V.dgeom(r) for r in D_.grid2c if not r.is_empty) + f'" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["hair"]}" stroke-dasharray="0.8 0.6"/>')
+    # phase 1: the courts (private gardens), the square, the parking under the courts
+    under.append(f'<path d="{V.dgeom(D_.court)}" fill="{R[0]}" stroke="none" fill-rule="evenodd"/>')
+    under.append(f'<path d="{V.dgeom(D_.sq)}" fill="url(#redDots)" stroke="{RED}" stroke-width="{LW["thin"]}"/>')
+    under.append(f'<path d="{V.dgeom(D_.park)}" fill="none" stroke="{RED}" stroke-width="{LW["thin"]}" stroke-dasharray="0.5 0.6"/>')
+    under.append(f'<path d="{V.dgeom(D_.strip)}" fill="none" stroke="{RED}" stroke-width="{LW["propBold"]}"/>')
+    # the blocks, with their floors; the avenue row's shops as a white line along the avenue side
+    for b in D_.B:
+        over.append(f'<path d="{V.dgeom(b.g)}" fill="{RED}" stroke="{RED}" stroke-width="{LW["thin"]}"/>')
+        c = b.g.centroid
+        over.append(f'<text x="{X(c.x):.2f}" y="{Y(c.y) + 0.7:.2f}" font-family="{FONT}" font-size="{TY["label"]}" font-weight="700" fill="{WHITE}" text-anchor="middle">{ROMAN[b.floors]}</text>')
+        if b.shop:
+            pts = list(b.g.exterior.coords)
+            # the long side nearest the avenue: the edge whose midpoint is farthest from the strip's south side
+            best = max(((pts[i], pts[i + 1]) for i in range(len(pts) - 1) if LineString([pts[i], pts[i + 1]]).length > 20),
+                       key=lambda ab: ((ab[0][0] + ab[1][0]) / 2 - D_.strip.centroid.x) * N[0] + ((ab[0][1] + ab[1][1]) / 2 - D_.strip.centroid.y) * N[1])
+            a_, b_ = best; ux_, uy_ = b_[0] - a_[0], b_[1] - a_[1]; n_ = math.hypot(ux_, uy_); ox, oy = -uy_ / n_ * 1.6, ux_ / n_ * 1.6
+            mid = Point((a_[0] + b_[0]) / 2 + ox, (a_[1] + b_[1]) / 2 + oy)
+            if b.g.contains(mid): ox, oy = -ox, -oy
+            over.append(f'<line x1="{X(a_[0] - ox):.2f}" y1="{Y(a_[1] - oy):.2f}" x2="{X(b_[0] - ox):.2f}" y2="{Y(b_[1] - oy):.2f}" stroke="{WHITE}" stroke-width="0.35" stroke-dasharray="1.2 0.6"/>')
+    # the stop, the reason to build here
+    over.append(f'<path d="{V.dgeom(groups.residents(F, gd).platform, close=False)}" fill="none" stroke="{INK}" stroke-width="2.2" opacity="0.55"/>')
+    mx_, my_ = X(D_.stop[0]), Y(D_.stop[1]) + 7.5
+    over.append(f'<circle cx="{mx_:.2f}" cy="{my_:.2f}" r="2.3" fill="{WHITE}" stroke="{INK}" stroke-width="{LW["mid"]}"/><text x="{mx_:.2f}" y="{my_ + 0.85:.2f}" font-family="{FONT}" font-size="2.4" font-weight="700" fill="{INK}" text-anchor="middle">M</text>')
+    over.append(f'<text x="{mx_ + 3.2:.2f}" y="{my_ + 0.7:.2f}" font-family="{FONT}" font-size="{TY["map"]}" font-weight="600" fill="{INK}" stroke="{WHITE}" stroke-width="0.6" paint-order="stroke">San Cayetano (Junta project, approx.)</text>')
+    bN = [b for b in D_.B if b.shop]; bS = [b for b in D_.B if b.row == 'S']; bM = [b for b in D_.B if b.row == 'M']
+    g2 = max(D_.grid2, key=lambda r: r.area)
+    callouts = [(1, (bM[0].g.centroid.x, bM[0].g.centroid.y + 11) if bM else None), (2, (bN[-1].g.centroid.x + 2, bN[-1].g.centroid.y + 12)),
+                (3, (D_.sq.centroid.x, D_.sq.centroid.y)), (4, (D_.court.representative_point().x, D_.court.representative_point().y)),
+                (5, (D_.park.representative_point().x + 14, D_.park.representative_point().y - 3) if not D_.park.is_empty else None),
+                (6, (g2.centroid.x, g2.centroid.y)), (7, (D_.stop[0] - 6, D_.stop[1] - 9))]
+    rows = [(1, f'Housing blocks on the strip, {P["fl_min"]}–{P["fl_max"]} floors: as high as today’s flight ceiling allows, 1 m under it (floors of 3 m)', f'≈ {P["dw1"]:,.0f} homes'),
+            (2, 'Shops on the ground floor of the avenue row, facing the metro', f'{P["shop_m2"]:,.0f} m²'),
+            (3, 'Station square at the San Cayetano stop', f'{P["sq_m2"]:,.0f} m²'),
+            (4, 'Garden courts between the blocks, for the residents (private)', f'{P["court_m2"] / 1e6:.3f} km²'),
+            (5, 'One level of parking under the courts (about 28 m² per space)', f'≈ {P["spaces"]:,.0f} spaces'),
+            (6, 'Phase 2, only if the base leaves and its easements are lifted: a district on the base land in this frame, at the density planned for Sde Dov (Tel Aviv)', f'≈ {P["dw2"]:,.0f} homes'),
+            (7, 'The San Cayetano metro stop (Junta project, not yet in service): the reason to build here', '1 stop'),
+            (0, 'Public park on the strip', '0')]
+    legend = [('fill', RED, RED, 'Housing block, proposed (IV = floors)'), ('shop', None, None, 'Shops on the ground floor'), ('fill', R[0], R[0], 'Garden court (private)'),
+              ('pat', 'url(#redDots)', RED, 'Station square'), ('fill', 'none', RED, 'Parking under the court', '0.5 0.6'), ('pat', 'url(#redHatch)', RED, 'Phase 2 plots on the base (if it leaves)', '1.2 0.8'),
+              ('stopk', None, None, 'Metro stop San Cayetano (approx.)')]
+    P['_under'] = len(under)
+    return under + over, callouts, rows, legend, P
+
+
+def defence():
+    """The Ministry of Defence: the base stays closed, its easements stay, the strip under the approach stays open, the fence
+    gets a security band inside. Everything here is a PROPOSAL, drawn schematically."""
+    M_ = groups.defence(F, gd); P = M_.P
+    under, over = [], []
+    # the strip: open land, crops or meadow — furrows along the fence
+    svg.defs_add(f'<clipPath id="stripclipD"><path d="{V.dgeom(M_.strip)}"/></clipPath>')
+    fur = []
+    o_ = M_.strip.centroid
+    for j in range(-40, 41):
+        a = (o_.x + N[0] * j * 2.4 - U[0] * 200, o_.y + N[1] * j * 2.4 - U[1] * 200); b = (a[0] + U[0] * 400, a[1] + U[1] * 400)
+        fur.append(f'M{X(a[0]):.2f},{Y(a[1]):.2f} L{X(b[0]):.2f},{Y(b[1]):.2f}')
+    under.append(f'<g clip-path="url(#stripclipD)"><path d="{" ".join(fur)}" stroke="{RED}" stroke-width="{LW["hair"] * 1.6}" fill="none"/></g>')
+    under.append(f'<path d="{V.dgeom(M_.strip)}" fill="none" stroke="{RED}" stroke-width="{LW["propBold"]}"/>')
+    # inside the fence: the clear zone, the road
+    under.append(f'<path d="{V.dgeom(M_.clear)}" fill="{R[0]}" stroke="none" fill-rule="evenodd"/>')
+    under.append(f'<path d="{V.dgeom(M_.road)}" fill="{R[1]}" stroke="{RED}" stroke-width="{LW["thin"]}" fill-rule="evenodd"/>')
+    # the easements, kept: the ceiling lines redrawn in red over the shared ones
+    for lv in (10, 15, 20, 30, 50):
+        for ln in contour_lines(F, lv):
+            if ln.length > 40: over.append(f'<path d="{V.dgeom(ln, close=False)}" fill="none" stroke="{RED}" stroke-width="{LW["thin"]}" stroke-dasharray="1.4 0.9"/>')
+    # the inner fence: a red line with crosses
+    over.append(f'<path d="{V.dgeom(M_.inner_fence, close=False)}" fill="none" stroke="{RED}" stroke-width="{LW["prop"]}"/>')
+    xs = []
+    for seg in ([M_.inner_fence] if M_.inner_fence.geom_type == 'LineString' else list(getattr(M_.inner_fence, 'geoms', []))):
+        for t in range(2, int(seg.length), 6):
+            p_ = seg.interpolate(t); xs.append(f'M{X(p_.x) - 0.5:.2f},{Y(p_.y) - 0.5:.2f} l1,1 M{X(p_.x) - 0.5:.2f},{Y(p_.y) + 0.5:.2f} l1,-1')
+    over.append(f'<path d="{" ".join(xs)}" stroke="{RED}" stroke-width="{LW["thin"]}"/>')
+    for (x, y) in M_.masts:
+        over.append(f'<circle cx="{X(x):.2f}" cy="{Y(y):.2f}" r="1.1" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["prop"]}"/><circle cx="{X(x):.2f}" cy="{Y(y):.2f}" r="0.35" fill="{RED}"/>')
+    pr = M_.patrol if M_.patrol.geom_type == 'LineString' else max(M_.patrol.geoms, key=lambda g: g.length)
+    q1 = pr.interpolate(pr.project(Point(443985, 4110640))); q2 = pr.interpolate(pr.project(Point(443520, 4110800)))
+    fq = fence_line.interpolate(fence_line.project(Point(443700, 4110770)))
+    c15 = max([l for l in contour_lines(F, 15) if l.length > 60], key=lambda l: l.length); q15 = c15.interpolate(0.42, normalized=True)
+    m0 = M_.masts[len(M_.masts) // 2]
+    callouts = [(1, (q15.x + 7, q15.y + 3)), (2, (M_.strip.centroid.x + 30, M_.strip.centroid.y - 8)), (3, (q2.x - 3, q2.y + 9)), (4, (q2.x + 16, q2.y + 2)),
+                (5, (q1.x - 8, q1.y - 6)), (6, (m0[0] + 5, m0[1] - 5)), (7, (fq.x - 22, fq.y + 6))]
+    rows = [(1, 'The easements of 2019 stay: nothing may rise above the flight ceiling — about 12–18 m over the strip, under 10 m at the end of our line in the base', 'RD 118/2019'),
+            (2, 'The strip under the approach stays open: crops or meadow, no buildings, no gatherings (our reading)', f'{P["strip_m2"] / 1e6:.3f} km²'),
+            (3, 'A clear zone 6 m wide inside the fence: no planting, no storage', f'{P["clear_m2"] / 1e6:.4f} km²'),
+            (4, 'An inner fence 6 m behind the outer one', f'{P["road_m"]:,.0f} m'),
+            (5, 'A patrol road 4 m wide behind the inner fence', f'{P["road_m"]:,.0f} m'),
+            (6, 'Masts for lights and cameras, about every 60 m (schematic)', f'{P["masts"]}'),
+            (7, 'The outer fence stays where it is', f'{P["fence_m"]:,.0f} m'),
+            (0, 'New public access to the base, new homes on the strip', '0')]
+    legend = [('furrow', None, None, 'Open land: crops or meadow (the strip)'), ('ceilr', None, None, 'Flight ceiling kept: allowed height above the ground (m)'), ('fill', R[0], R[0], 'Clear zone inside the fence'),
+              ('innerf', None, None, 'Inner fence'), ('fill', R[1], RED, 'Patrol road, 4 m'), ('mast', None, None, 'Mast: lights and cameras')]
+    P['_under'] = len(under)
+    return under + over, callouts, rows, legend, P
+
+
 TEXT = {
     'residents': {
         'name': 'Residents', 'of': 'of the five towns',
@@ -123,7 +230,35 @@ TEXT = {
                             'Today: two parcels with no building on them (Catastro) between the metro avenue and the fence road. Tomorrow: a public garden one crossing from home.',
                             'The fence walk links the two cycle paths that already run along the fence (Armilla\u2013Churriana\u2013Gabias, Armilla\u2013Og\u00edjares).',
                             'No new homes and no new traffic: the neighbourhood stays as it is; Calle Santa Luc\u00eda slows to 20 km/h.'],
-        'fn': residents},
+        'fn': residents, 'code': 'R'},
+    'developer': {
+        'name': 'Developer', 'of': 'a private housing developer',
+        'position': '“The metro reaches an empty strip beside a base the regional plan wants dismantled: build here, now on the strip and later on the base.”',
+        'max': 'profit, building rights, speed', 'q': 'Where is it worth building, and how much?',
+        'why': ['The regional plan (POTAUG, 2000, art. 4.27) proposes dismantling the base and turning its land into a city site.',
+                'The five towns need about 14,177 more homes by 2045 (our scenario, 2.1).',
+                'The San Cayetano metro stop is on the strip’s north edge (Junta project, not yet in service, Nov 2026).',
+                'Over the strip the flight ceiling is about 12–18 m above the ground (RD 118/2019, our calculation): 3–5 floors fit under it today.'],
+        'daily_head': 'WHAT IT DELIVERS — AND WHAT IT COSTS',
+        'daily': lambda F: ['Homes beside a metro stop, in the towns’ own scale: no block higher than the ceiling lets it be.',
+                            'Shops and a small square where the stop opens, for the 2,298 homes within 400 m (Catastro).',
+                            'The cost: the strip the metro project calls “the future park” is built on; the only public space left is the station square.',
+                            'Phase 2 depends on two decisions the developer cannot take: the base leaving, and the easements being lifted.'],
+        'fn': developer, 'code': 'D'},
+    'defence': {
+        'name': 'Defence', 'of': 'the Ministry of Defence',
+        'position': '“Armilla trains the Air Force’s helicopter pilots and stays: the towns may grow, but the edge under the approach stays low, open and quiet.”',
+        'max': 'security, operations, a safe approach', 'q': 'What must stay clear for the base to keep flying?',
+        'why': ['The easements were renewed in 2019 (RD 118/2019): the base is meant to stay.',
+                'Ala 78, the Air Force’s helicopter-pilot school, trains here.',
+                'The approach to runway 18 passes over this edge: on our line the ceiling falls from 24 m at the houses to 8 m inside the fence.',
+                '42 % of the fence (3.6 km) backs onto housing and 13 dead ends stop at it (2.1, map 01): the edge is long and close.'],
+        'daily_head': 'WHAT STAYS CLEAR',
+        'daily': lambda F: ['The air over the edge: the easement surfaces, as published, with nothing above them.',
+                            'The ground under the approach: the strip open, in crops or meadow, with no crowds under the helicopters.',
+                            'The fence line: a clear zone, an inner fence and a road to patrol it, all on the base’s own land.',
+                            'No change outside the base except the strip: the houses, streets and the metro stay as they are.'],
+        'fn': defence, 'code': 'M'},
 }
 
 
@@ -149,14 +284,15 @@ for q in F['places']:
     if q['kind'] in ('pitch', 'sports_centre', 'school', 'playground', 'park'):
         for r in q['r']: g.append(f'<path d="{V.d([r[0]])}" fill="none" stroke="{G[4]}" stroke-width="{LW["thin"]}"/>')
 # the proposal's fills and lines
-g += prop_svg[:8]
+NU = PQ.get('_under', 8)
+g += prop_svg[:NU]
 # buildings by floors
 for gg, b in blds:
     fill = floors_fill(b)
     if fill: g.append(f'<path d="{V.dgeom(gg)}" fill="{fill}" stroke="{G[5]}" stroke-width="{LW["hair"]}" fill-rule="evenodd"/>')
     else: g.append(f'<path d="{V.dgeom(gg)}" fill="{WHITE}" stroke="{G[4]}" stroke-width="{LW["bld"]}" fill-rule="evenodd"/>')
 # the rest of the proposal (symbols)
-g += prop_svg[8:]
+g += prop_svg[NU:]
 # the metro extension (under construction): a rail line
 for m in F['metro_ext']:
     for r in m['r']:
@@ -251,7 +387,7 @@ x0 = COL; y = MY + 2.4; LH = lambda sz: sz * 1.27
 def rule(yy): svg.add(f'<line x1="{x0}" y1="{yy:.2f}" x2="{x0 + CW}" y2="{yy:.2f}" stroke="{INK}" stroke-width="{LW["thin"]}"/>')
 def head(yy, s, col=INK): svg.text(x0, yy, s, TY['eyebrow'], fill=col, weight=700, spacing=0.35)
 svg.text(x0, y, '+ EXERCISE 2.2 · INTEREST GROUPS · STAGE 1', TY['eyebrow'], fill=G[5], weight=600, spacing=0.3)
-svg.text(x0 + CW, y, '2.2-R · 01', TY['eyebrow'], fill=G[5], weight=600, anchor='end')
+svg.text(x0 + CW, y, f'2.2-{T["code"]} · 01', TY['eyebrow'], fill=G[5], weight=600, anchor='end')
 y += 15.5; svg.text(x0, y, T['name'], TY['title'], weight=700)
 y += 7.0; svg.text(x0, y, T['of'], TY['sub'], weight=500)
 y += 6.4; svg.text(x0, y, 'Urban plan 1:1000', TY['sub'], weight=500, fill=RED)
@@ -300,7 +436,7 @@ ky = y; cw2 = CW / 2
 def swatch(kind, xx, yy, a=None, b=None, dash=None):
     w, h = 6.0, 3.0; y0 = yy - 2.4
     if kind == 'fill': svg.add(f'<rect x="{xx}" y="{y0:.2f}" width="{w}" height="{h}" fill="{a}" stroke="{b}" stroke-width="{LW["prop"]}"' + (f' stroke-dasharray="{dash}"' if dash else '') + '/>')
-    elif kind == 'pat': svg.add(f'<rect x="{xx}" y="{y0:.2f}" width="{w}" height="{h}" fill="{a}" stroke="{b}" stroke-width="{LW["thin"]}"/>')
+    elif kind == 'pat': svg.add(f'<rect x="{xx}" y="{y0:.2f}" width="{w}" height="{h}" fill="{a}" stroke="{b}" stroke-width="{LW["thin"]}"' + (f' stroke-dasharray="{dash}"' if dash else '') + '/>')
     elif kind == 'tree': svg.add(f'<circle cx="{xx + 3:.2f}" cy="{y0 + 1.5:.2f}" r="1.35" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["thin"]}"/><circle cx="{xx + 3:.2f}" cy="{y0 + 1.5:.2f}" r="0.25" fill="{RED}"/>')
     elif kind == 'path': svg.add(f'<line x1="{xx}" y1="{y0 + 1.5:.2f}" x2="{xx + w}" y2="{y0 + 1.5:.2f}" stroke="{RED}" stroke-width="3.1"/><line x1="{xx}" y1="{y0 + 1.5:.2f}" x2="{xx + w}" y2="{y0 + 1.5:.2f}" stroke="{WHITE}" stroke-width="2.9"/>')
     elif kind == 'zebra': svg.add(''.join(f'<line x1="{xx + 0.6 + i * 0.9:.2f}" y1="{y0:.2f}" x2="{xx + 0.6 + i * 0.9:.2f}" y2="{y0 + h:.2f}" stroke="{RED}" stroke-width="0.45"/>' for i in range(6)))
@@ -308,6 +444,12 @@ def swatch(kind, xx, yy, a=None, b=None, dash=None):
     elif kind == 'dead': svg.add(f'<circle cx="{xx + 3:.2f}" cy="{y0 + 1.5:.2f}" r="1.35" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["propBold"]}"/><path d="M{xx + 2.3:.2f},{y0 + 1.5:.2f} H{xx + 3.7:.2f} M{xx + 3:.2f},{y0 + 0.8:.2f} V{y0 + 2.2:.2f}" stroke="{RED}" stroke-width="{LW["prop"]}"/>')
     elif kind == 'stop': svg.add(f'<circle cx="{xx + 3:.2f}" cy="{y0 + 1.5:.2f}" r="1.6" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["prop"]}"/><text x="{xx + 3:.2f}" y="{y0 + 2.1:.2f}" font-family="{FONT}" font-size="1.6" font-weight="700" fill="{RED}" text-anchor="middle">M</text>')
     elif kind == 'gate': svg.add(f'<path d="M{xx + 2:.2f},{y0 + 0.2:.2f} L{xx + 4:.2f},{y0 + 1.5:.2f} L{xx + 2:.2f},{y0 + 2.8:.2f}" fill="none" stroke="{RED}" stroke-width="{LW["propBold"]}" stroke-linecap="round" stroke-linejoin="round"/>')
+    elif kind == 'shop': svg.add(f'<rect x="{xx}" y="{y0:.2f}" width="{w}" height="{h}" fill="{RED}"/><line x1="{xx + 0.3}" y1="{y0 + 0.6:.2f}" x2="{xx + w - 0.3}" y2="{y0 + 0.6:.2f}" stroke="{WHITE}" stroke-width="0.35" stroke-dasharray="1.2 0.6"/>')
+    elif kind == 'stopk': svg.add(f'<circle cx="{xx + 3:.2f}" cy="{y0 + 1.5:.2f}" r="1.6" fill="{WHITE}" stroke="{INK}" stroke-width="{LW["thin"]}"/><text x="{xx + 3:.2f}" y="{y0 + 2.1:.2f}" font-family="{FONT}" font-size="1.6" font-weight="700" fill="{INK}" text-anchor="middle">M</text>')
+    elif kind == 'furrow': svg.add(f'<rect x="{xx}" y="{y0:.2f}" width="{w}" height="{h}" fill="none" stroke="{RED}" stroke-width="{LW["prop"]}"/>' + ''.join(f'<line x1="{xx}" y1="{y0 + 0.6 * i:.2f}" x2="{xx + w}" y2="{y0 + 0.6 * i:.2f}" stroke="{RED}" stroke-width="{LW["hair"] * 1.6}"/>' for i in range(1, 5)))
+    elif kind == 'ceilr': svg.add(f'<line x1="{xx}" y1="{y0 + 1.5:.2f}" x2="{xx + w}" y2="{y0 + 1.5:.2f}" stroke="{RED}" stroke-width="{LW["thin"] * 1.6}" stroke-dasharray="1.4 0.9"/>')
+    elif kind == 'innerf': svg.add(f'<line x1="{xx}" y1="{y0 + 1.5:.2f}" x2="{xx + w}" y2="{y0 + 1.5:.2f}" stroke="{RED}" stroke-width="{LW["prop"]}"/>' + ''.join(f'<path d="M{xx + 0.8 + i * 1.5:.2f},{y0 + 1:.2f} l1,1 M{xx + 0.8 + i * 1.5:.2f},{y0 + 2:.2f} l1,-1" stroke="{RED}" stroke-width="{LW["thin"]}"/>' for i in range(4)))
+    elif kind == 'mast': svg.add(f'<circle cx="{xx + 3:.2f}" cy="{y0 + 1.5:.2f}" r="1.1" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["prop"]}"/><circle cx="{xx + 3:.2f}" cy="{y0 + 1.5:.2f}" r="0.35" fill="{RED}"/>')
     elif kind == 'line': svg.add(f'<line x1="{xx}" y1="{y0 + 1.5:.2f}" x2="{xx + w}" y2="{y0 + 1.5:.2f}" stroke="{a}" stroke-width="{b}"' + (f' stroke-dasharray="{dash}"' if dash else '') + '/>')
     elif kind == 'fence': svg.add(f'<line x1="{xx}" y1="{y0 + 1.5:.2f}" x2="{xx + w}" y2="{y0 + 1.5:.2f}" stroke="{INK}" stroke-width="{LW["fence"] + 0.3}"/><line x1="{xx}" y1="{y0 + 1.5:.2f}" x2="{xx + w}" y2="{y0 + 1.5:.2f}" stroke="{WHITE}" stroke-width="0.32" stroke-dasharray="1.6 1.3"/>')
     elif kind == 'metro': svg.add(f'<line x1="{xx}" y1="{y0 + 1.5:.2f}" x2="{xx + w}" y2="{y0 + 1.5:.2f}" stroke="{INK}" stroke-width="{LW["metro"]}"/>' + ''.join(f'<line x1="{xx + 0.5 + i * 1.25:.2f}" y1="{y0 + 0.2:.2f}" x2="{xx + 0.5 + i * 1.25:.2f}" y2="{y0 + 2.8:.2f}" stroke="{INK}" stroke-width="{LW["thin"]}"/>' for i in range(5)))

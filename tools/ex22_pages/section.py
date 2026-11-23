@@ -18,7 +18,9 @@ from shapely.ops import unary_union, transform as stf
 OUT = sys.argv[1] if len(sys.argv) > 1 else 'exports/ex22'
 GROUP = sys.argv[2] if len(sys.argv) > 2 else 'residents'
 SW, SH = 841, 594
-F = load_frame(); gd = groups.ground(F); RG = groups.residents(F, gd)
+F = load_frame(); gd = groups.ground(F); RG = groups.residents(F, gd); DV = groups.developer(F, gd); DF = groups.defence(F, gd)
+GNAME = {'residents': ('Residents', 'of the five towns', 'R', 'THE RESIDENTS’ PROPOSAL'), 'developer': ('Developer', 'a private housing developer', 'D', 'THE DEVELOPER’S PROPOSAL'),
+         'defence': ('Defence', 'the Ministry of Defence', 'M', 'THE MINISTRY OF DEFENCE’S PROPOSAL')}[GROUP]
 S = F['section']; A_, B_ = np.array(S['a']), np.array(S['b']); L = float(np.hypot(*(B_ - A_)))
 D = (B_ - A_) / L; NL = np.array([-D[1], D[0]])          # along the line (north → south) and its left normal (east)
 K = 2.0                                                   # 1:500 → 2 mm per metre
@@ -142,6 +144,21 @@ if GROUP == 'residents':
     pth = R_.paths.intersection(band.buffer(2))
     pg.append(f'<path d="{dp(pth, False)}" fill="none" stroke="{RED}" stroke-width="{3 * K + 0.12:.2f}" stroke-linecap="round" stroke-linejoin="round"/>')
     pg.append(f'<path d="{dp(pth, False)}" fill="none" stroke="{WHITE}" stroke-width="{3 * K - 0.12:.2f}" stroke-linecap="round" stroke-linejoin="round"/>')
+if GROUP == 'developer':
+    pg.append('<path d="' + ' '.join(dp(r.intersection(band.buffer(2))) for r in DV.grid2) + f'" fill="url(#redHatch)" stroke="{RED}" stroke-width="{LW["thin"]}" stroke-dasharray="2 1.2"/>')
+    pg.append('<path d="' + ' '.join(dp(r.intersection(band.buffer(2))) for r in DV.grid2c if not r.is_empty) + f'" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["hair"]}" stroke-dasharray="1.2 0.8"/>')
+    pg.append(f'<path d="{dp(DV.court.intersection(band.buffer(2)))}" fill="{R[0]}" stroke="none"/>')
+    pg.append(f'<path d="{dp(DV.sq.intersection(band.buffer(2)))}" fill="url(#redDots)" stroke="{RED}" stroke-width="{LW["thin"]}"/>')
+    pg.append(f'<path d="{dp(DV.park.intersection(band.buffer(2)))}" fill="none" stroke="{RED}" stroke-width="{LW["thin"]}" stroke-dasharray="0.8 0.8"/>')
+    pg.append(f'<path d="{dp(DV.strip.intersection(band.buffer(2)))}" fill="none" stroke="{RED}" stroke-width="{LW["propBold"]}"/>')
+if GROUP == 'defence':
+    svg.defs_add(f'<clipPath id="dfstrip"><path d="{dp(DF.strip)}"/></clipPath>')
+    o_ = DF.strip.centroid; fur = []
+    for j in range(-40, 41):
+        a = (o_.x + gd.N[0] * j * 2.4 - gd.U[0] * 200, o_.y + gd.N[1] * j * 2.4 - gd.U[1] * 200); b = (a[0] + gd.U[0] * 400, a[1] + gd.U[1] * 400)
+        p1, p2 = tp(*a), tp(*b); fur.append(f'M{p1[0]:.2f},{p1[1]:.2f} L{p2[0]:.2f},{p2[1]:.2f}')
+    pg.append(f'<g clip-path="url(#dfstrip)"><path d="{" ".join(fur)}" stroke="{RED}" stroke-width="0.1" fill="none"/></g><path d="{dp(DF.strip.intersection(band.buffer(2)))}" fill="none" stroke="{RED}" stroke-width="{LW["propBold"]}"/>')
+    pg.append(f'<path d="{dp(DF.clear.intersection(band.buffer(2)))}" fill="{R[0]}" stroke="none"/><path d="{dp(DF.road.intersection(band.buffer(2)))}" fill="{R[1]}" stroke="{RED}" stroke-width="{LW["thin"]}"/>')
 for g, b in gd.blds:
     if not g.intersects(band): continue
     f = floors_fill(b)
@@ -159,6 +176,17 @@ if GROUP == 'residents':
         for s_ in range(-3, 4):
             bx, by = x + ux * s_ * 0.9, y + uy * s_ * 0.9; p1 = tp(bx - uy * 13, by + ux * 13); p2 = tp(bx + uy * 13, by - ux * 13)
             pg.append(f'<line x1="{p1[0]:.2f}" y1="{p1[1]:.2f}" x2="{p2[0]:.2f}" y2="{p2[1]:.2f}" stroke="{RED}" stroke-width="0.8"/>')
+if GROUP == 'developer':
+    ROM = {1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI'}
+    for b in DV.B:
+        if not b.g.intersects(band.buffer(3)): continue
+        pg.append(f'<path d="{dp(b.g)}" fill="{RED}" stroke="none"/>'); cx_, cy_ = tp(b.g.centroid.x, b.g.centroid.y)
+        pg.append(f'<text x="{cx_:.2f}" y="{cy_ + 1.1:.2f}" font-family="{FONT}" font-size="3" font-weight="700" fill="{WHITE}" text-anchor="middle">{ROM[b.floors]}</text>')
+if GROUP == 'defence':
+    pg.append(f'<path d="{dp(DF.inner_fence.intersection(band.buffer(5)), False)}" fill="none" stroke="{RED}" stroke-width="{LW["propBold"]}"/>')
+    for (x, y) in DF.masts:
+        if band.buffer(3).contains(Point(x, y)):
+            px, py = tp(x, y); pg.append(f'<circle cx="{px:.2f}" cy="{py:.2f}" r="1.6" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["prop"]}"/><circle cx="{px:.2f}" cy="{py:.2f}" r="0.5" fill="{RED}"/>')
 # the metro extension, the fence
 for m in F['metro_ext']:
     for r in m['r']:
@@ -242,6 +270,7 @@ def tree_svg(x, yg, col, sw, seed=0, op=1.0, h=None, r=None):
 
 
 FADE = _bw._P['grey']                                     # the line of the façades behind the cut
+PROPOS = {}
 Z0, Z1 = 659.0, 696.0                                      # the drawn height range (m a.s.l.)
 def section(top, proposal, title):
     yb = top + (Z1 - Z0) * K                                 # y of Z0
@@ -294,6 +323,20 @@ def section(top, proposal, title):
             s0, t0 = st((x, y))
             if 4.5 < t0 <= 30 and 0 <= s0 <= L:
                 z = grd(s0); g.append(tree_svg(XS(s0), YZ(z), R[2], LW['thin'], int(s0 * 7), op=0.6))
+    if proposal and GROUP == 'developer':   # the proposed blocks beyond the line, up to 60 m east: in elevation, a thin red line
+        sec_ = LineString([tuple(A_), tuple(B_)]); bys = []
+        for b in DV.B:
+            it = b.g.intersection(sec_)
+            if not it.is_empty and it.length >= 6: continue          # cut: drawn below
+            ss = [st(p_) for p_ in b.g.exterior.coords]; ts = [t_ for _, t_ in ss]
+            if max(ts) < 0 or min(ts) > 60: continue
+            bys.append((max(0.0, min(ts)), min(s_ for s_, _ in ss), max(s_ for s_, _ in ss), b.floors))
+        for tmin, s0, s1, fl in sorted(bys, key=lambda q: -q[0]):
+            z = grd((s0 + s1) / 2); g.append(_r(XS(s0), YZ(z + fl * 3 + 0.6), (s1 - s0) * K, (fl * 3 + 0.6) * K, WHITE, R[3], 0.12))
+            g.append(''.join(_l(XS(s0), YZ(z + f_ * 3), XS(s1), YZ(z + f_ * 3), 0.06, R[3]) for f_ in range(1, fl + 1)))
+            for f_ in range(fl):
+                for k_ in range(int((s1 - s0) // 3.6)):
+                    xw = s0 + 1.2 + k_ * 3.6; g.append(_r(XS(xw), YZ(z + f_ * 3 + 2.2), 1.3 * K, 1.3 * K, WHITE, R[3], 0.05))
     # the ground: earth below the line
     pts = [(XS(s), YZ(grd(s))) for s in range(0, int(L) + 1)]
     import random as _rd
@@ -345,7 +388,7 @@ def section(top, proposal, title):
     g.append(f'<g clip-path="url(#{cid})">' + ''.join(f'<line x1="{x:.2f}" y1="{yb_:.2f}" x2="{x + (yb_ - yt_):.2f}" y2="{yt_:.2f}" stroke="{INK}" stroke-width="0.07"/>' for x in np.arange(XS(0) - (yb_ - yt_), XS(L), 1.1)) + '</g>')
     g.append('<path d="M' + ' L'.join(f'{x:.2f},{y:.2f}' for x, y in cp) + f'" fill="none" stroke="{G[5]}" stroke-width="{LW["section"]}" stroke-dasharray="2.2 1.2"/>')
     # allowed height above the ground, measured at three places
-    for s0 in (95.5, 172, 330):   # measured in open spaces: the avenue's pavement, the strip, the base
+    for s0 in (95.5, 188 if (proposal and GROUP == 'developer') else 172, 330):   # measured in open spaces: the avenue's pavement, the strip, the base
         z0, z1 = grd(s0), lim(s0); x = XS(s0)
         g.append(f'<line x1="{x:.2f}" y1="{YZ(z0) - 0.6:.2f}" x2="{x:.2f}" y2="{YZ(z1) + 0.6:.2f}" stroke="{G[5]}" stroke-width="{LW["thin"]}"/>'
                  f'<path d="M{x - 0.7:.2f},{YZ(z1) + 1.6:.2f} L{x:.2f},{YZ(z1) + 0.3:.2f} L{x + 0.7:.2f},{YZ(z1) + 1.6:.2f}" fill="none" stroke="{G[5]}" stroke-width="{LW["thin"]}"/>')
@@ -375,6 +418,69 @@ def section(top, proposal, title):
         # the crossing on the avenue and the stop asked for
         sm_ = S['metro'][0]['d'] if S['metro'] else 111.5; zz = grd(sm_)
         for i in range(-4, 5): g.append(f'<line x1="{XS(sm_ + i * 1.6 - 0.4):.2f}" y1="{YZ(zz) + 0.1:.2f}" x2="{XS(sm_ + i * 1.6 + 0.4):.2f}" y2="{YZ(zz) + 0.1:.2f}" stroke="{RED}" stroke-width="0.9"/>')
+    if proposal and GROUP == 'developer':
+        sec_ = LineString([tuple(A_), tuple(B_)]); cuts_ = []
+        for b in DV.B:
+            it = b.g.intersection(sec_)
+            if it.is_empty or it.length < 6: continue
+            s0, _ = st(it.coords[0]); s1, _ = st(it.coords[-1]); s0, s1 = sorted((s0, s1)); z = grd((s0 + s1) / 2); cuts_.append((s0, s1, z, b.floors))
+            g.append(bw_cut(XS, YZ, s0, s1, z, b.floors, 'retail' if b.shop else 'house', 'facade', 'facade', col=RED, fl=3.0, inner=R[0], ex=False))
+            xm = XS((s0 + s1) / 2); zc = lim((s0 + s1) / 2); h = b.floors * 3 + 0.6
+            g.append(f'<line x1="{xm:.2f}" y1="{YZ(z + h) - 0.6:.2f}" x2="{xm:.2f}" y2="{YZ(zc) + 0.6:.2f}" stroke="{RED}" stroke-width="{LW["thin"]}" stroke-dasharray="0.6 0.5"/>')
+            g.append(f'<text x="{xm + 1.2:.2f}" y="{(YZ(z + h) + YZ(zc)) / 2 + 0.8:.2f}" font-family="{FONT}" font-size="{TY["small"]}" font-weight="700" fill="{RED}" stroke="{WHITE}" stroke-width="0.6" paint-order="stroke">{zc - z - h:.1f} m to spare</text>')
+        PROPOS['cuts'] = cuts_
+        # the court: a red ground, the parking under it (one level, dashed)
+        it = DV.court.intersection(sec_)
+        for seg in ([it] if it.geom_type == 'LineString' else [q for q in getattr(it, 'geoms', []) if q.geom_type == 'LineString']):
+            s0, _ = st(seg.coords[0]); s1, _ = st(seg.coords[-1]); s0, s1 = sorted((s0, s1))
+            pp = [(XS(s_), YZ(grd(s_))) for s_ in np.arange(s0, s1 + 0.01, 1.0)]
+            g.append('<path d="M' + ' L'.join(f'{x:.2f},{y:.2f}' for x, y in pp) + f'" fill="none" stroke="{RED}" stroke-width="{LW["propBold"] + 0.4}"/>')
+        it = DV.park.intersection(sec_)
+        for seg in ([it] if it.geom_type == 'LineString' else [q for q in getattr(it, 'geoms', []) if q.geom_type == 'LineString']):
+            s0, _ = st(seg.coords[0]); s1, _ = st(seg.coords[-1]); s0, s1 = sorted((s0, s1)); z = grd((s0 + s1) / 2)
+            g.append(f'<rect x="{XS(s0):.2f}" y="{YZ(z - 1.4):.2f}" width="{(s1 - s0) * K:.2f}" height="{3.0 * K:.2f}" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["prop"]}" stroke-dasharray="1.2 0.7"/>')
+            for c_ in np.arange(s0 + 1.5, s1 - 4, 5.0): g.append(_bw.car_flat(XS(c_ + 1.2), YZ(z - 4.4), K * 0.9, seed=int(c_)))
+            g.append(f'<text x="{XS((s0 + s1) / 2):.2f}" y="{YZ(z - 3.3):.2f}" font-family="{FONT}" font-size="{TY["tiny"] + 0.2}" font-weight="600" fill="{RED}" text-anchor="middle" stroke="{WHITE}" stroke-width="0.5" paint-order="stroke">parking, one level (schematic)</text>')
+        # phase 2 on the base: perimeter blocks, dashed — only if the base leaves and its easements are lifted
+        for r, rc in zip(DV.grid2, DV.grid2c):
+            it = r.intersection(sec_)
+            if it.is_empty: continue
+            a0, _ = st(it.coords[0]); a1, _ = st(it.coords[-1]); a0, a1 = sorted((a0, a1)); parts = [(a0, a1)]
+            ic = rc.intersection(sec_) if not rc.is_empty else rc
+            if not ic.is_empty and ic.geom_type == 'LineString':
+                c0, _ = st(ic.coords[0]); c1, _ = st(ic.coords[-1]); c0, c1 = sorted((c0, c1)); parts = [(a0, c0), (c1, a1)]
+            for p0, p1 in parts:
+                if p1 - p0 < 2: continue
+                z = grd((p0 + p1) / 2); h = 5 * 3
+                g.append(f'<rect x="{XS(p0):.2f}" y="{YZ(z + h):.2f}" width="{(p1 - p0) * K:.2f}" height="{h * K:.2f}" fill="none" stroke="{RED}" stroke-width="{LW["prop"]}" stroke-dasharray="1.6 1"/>')
+                g.append(''.join(_l(XS(p0), YZ(z + f_ * 3), XS(p1), YZ(z + f_ * 3), 0.06, R[3]) for f_ in range(1, 5)))
+        label(XS(295), YZ(grd(295) + 17.6), 'phase 2: only if the base leaves and its easements are lifted', size=TY['small'], fill=RED, weight=600)
+    if proposal and GROUP == 'defence':
+        # the strip in crops or meadow: low growth, red
+        sec_ = LineString([tuple(A_), tuple(B_)]); it = DF.strip.intersection(sec_)
+        s0, _ = st(it.coords[0]); s1, _ = st(it.coords[-1]); s0, s1 = sorted((s0, s1))
+        crop_ = []
+        for s_ in np.arange(s0 + 0.5, s1, 0.8): z = grd(s_); crop_.append(f'M{XS(s_):.2f},{YZ(z):.2f} l-0.25,{-0.5 * K:.2f} M{XS(s_):.2f},{YZ(z):.2f} l0,{-0.7 * K:.2f} M{XS(s_):.2f},{YZ(z):.2f} l0.25,{-0.5 * K:.2f}')
+        g.append(f'<path d="{" ".join(crop_)}" stroke="{RED}" stroke-width="0.07" fill="none"/>')
+        pp = [(XS(s_), YZ(grd(s_))) for s_ in np.arange(s0, s1 + 0.01, 1.0)]
+        g.append('<path d="M' + ' L'.join(f'{x:.2f},{y:.2f}' for x, y in pp) + f'" fill="none" stroke="{RED}" stroke-width="{LW["propBold"] + 0.4}"/>')
+        label(XS((s0 + s1) / 2), YZ(grd((s0 + s1) / 2) + 2.4), 'open land: crops or meadow, no buildings, no gatherings', size=TY['small'], fill=RED, weight=600)
+        # inside the fence: clear zone, inner fence, patrol road, a mast
+        for nm_, a_ in (('clear', DF.clear), ('road', DF.road)):
+            it = a_.intersection(sec_); q0, _ = st(it.coords[0]); q1, _ = st(it.coords[-1]); q0, q1 = sorted((q0, q1))
+            if nm_ == 'road': g.append(_r(XS(q0), YZ(grd(q0)) - 0.6, (q1 - q0) * K, 0.9, RED)); RD_ = (q0, q1)
+            else: CL_ = (q0, q1)
+        sf = CL_[1]; zf = grd(sf)
+        g.append(f'<line x1="{XS(sf):.2f}" y1="{YZ(zf):.2f}" x2="{XS(sf):.2f}" y2="{YZ(zf + 2.5):.2f}" stroke="{RED}" stroke-width="{LW["prop"]}"/>'
+                 + ''.join(f'<path d="M{XS(sf) - 0.6:.2f},{YZ(zf + h_) - 0.6:.2f} l1.2,1.2 M{XS(sf) - 0.6:.2f},{YZ(zf + h_) + 0.6:.2f} l1.2,-1.2" stroke="{RED}" stroke-width="0.08"/>' for h_ in (0.8, 1.6, 2.4)))
+        sm_ = RD_[1] + 1.2; zm = grd(sm_)
+        g.append(f'<line x1="{XS(sm_):.2f}" y1="{YZ(zm):.2f}" x2="{XS(sm_):.2f}" y2="{YZ(zm + 8):.2f}" stroke="{RED}" stroke-width="0.25"/>'
+                 f'<rect x="{XS(sm_) - 0.2:.2f}" y="{YZ(zm + 8.2):.2f}" width="{0.7 * K:.2f}" height="{0.5 * K:.2f}" fill="{RED}"/><rect x="{XS(sm_) - 1.2:.2f}" y="{YZ(zm + 7):.2f}" width="{0.5 * K:.2f}" height="{0.4 * K:.2f}" fill="{RED}"/>')
+        g.append(f'<text x="{XS(sm_) + 1.4:.2f}" y="{YZ(zm + 8.6):.2f}" font-family="{FONT}" font-size="{TY["tiny"] + 0.2}" font-weight="600" fill="{RED}" stroke="{WHITE}" stroke-width="0.5" paint-order="stroke">mast, lights and cameras (about 8 m, schematic)</text>')
+        PROPOS['df'] = (CL_, sf, RD_, sm_)
+        # the ceiling, kept: drawn over in red
+        cp_ = [(XS(s_), YZ(lim(s_))) for s_ in range(0, int(L) + 1)]
+        g.append('<path d="M' + ' L'.join(f'{x:.2f},{y:.2f}' for x, y in cp_) + f'" fill="none" stroke="{RED}" stroke-width="{LW["section"] + 0.1}" stroke-dasharray="2.2 1.2"/>')
     # street life for scale, schematic: people, cars on the streets the line crosses, street lights on the avenue
     for k_, s0 in enumerate((40, 47, 118, 132, 176, 186, 223) if proposal else (40, 118, 132, 223)):
         z = grd(s0); g.append(_bw.figure(XS(s0), YZ(z), K, kind=(0, 3, 5, 2, 4, 1, 0)[k_ % 7], seed=k_))
@@ -422,7 +528,7 @@ def section(top, proposal, title):
 top1 = PY0 + 2 * BW * K + 24
 YZ1 = section(top1, False, 'SECTION S–S · TODAY · 1:500')
 top2 = top1 + (Z1 - Z0) * K + 40
-YZ2 = section(top2, True, 'SECTION S–S · THE RESIDENTS’ PROPOSAL · 1:500')
+YZ2 = section(top2, True, f'SECTION S–S · {GNAME[3]} · 1:500')
 # callouts on the proposed section (the plan's numbers)
 if GROUP == 'residents':
     def co(n, s0, dz):
@@ -432,6 +538,16 @@ if GROUP == 'residents':
     it = RG.hall.intersection(LineString([tuple(A_), tuple(B_)])); hs = sorted(st(p)[0] for p in it.coords)
     co(5, (hs[0] + hs[1]) / 2, 9.8); co(1, 170, 3.2); co(2, 165.6, 10.5); co(6, 224, 9.5); co(7, S['metro'][0]['d'] - 5, 2.0)
     label(XS(170), YZ2(grd(170) + 1.2), 'open lawn', size=TY['small'], fill=RED, weight=600)
+def co2(n, s0, dz):
+    x = XS(s0); y = YZ2(grd(s0) + dz)
+    svg.add(f'<circle cx="{x:.2f}" cy="{y:.2f}" r="2.3" fill="{RED}" stroke="{WHITE}" stroke-width="0.35"/>')
+    svg.text(x, y + 0.8, str(n), 2.2, fill=WHITE, weight=700, anchor='middle')
+if GROUP == 'developer':
+    for s0, s1, z, fl in PROPOS.get('cuts', []): co2(1, s0 - 3.5, fl * 3 + 1.5)
+    co2(4, 165, 2.6); co2(5, 182, -1.0); co2(6, 255, 18.5)
+if GROUP == 'defence':
+    CL_, sf, RD_, sm_ = PROPOS['df']
+    co2(1, 60, lim(60) - grd(60) + 2.8); co2(2, 150, 4.6); co2(3, (CL_[0] + CL_[1]) / 2 - 1.5, 4.5); co2(4, sf + 1, 6.5); co2(5, (RD_[0] + RD_[1]) / 2 + 2, 3.2); co2(7, FENCE - 3.5, 4.5)
 yEnd = YZ2(Z0) + 22
 
 # ---- the column (same structure as the plan sheet) ----------------------------------------------------------------------
@@ -439,9 +555,9 @@ x0 = COL; y = 12.4; LH = lambda sz: sz * 1.27
 def rule(yy): svg.add(f'<line x1="{x0}" y1="{yy:.2f}" x2="{x0 + CW}" y2="{yy:.2f}" stroke="{INK}" stroke-width="{LW["thin"]}"/>')
 def head(yy, s, col=INK): svg.text(x0, yy, s, TY['eyebrow'], fill=col, weight=700, spacing=0.35)
 svg.text(x0, y, '+ EXERCISE 2.2 · INTEREST GROUPS · STAGE 1', TY['eyebrow'], fill=G[5], weight=600, spacing=0.3)
-svg.text(x0 + CW, y, '2.2-R · 02', TY['eyebrow'], fill=G[5], weight=600, anchor='end')
-y += 15.5; svg.text(x0, y, 'Residents', TY['title'], weight=700)
-y += 7.0; svg.text(x0, y, 'of the five towns', TY['sub'], weight=500)
+svg.text(x0 + CW, y, f'2.2-{GNAME[2]} · 02', TY['eyebrow'], fill=G[5], weight=600, anchor='end')
+y += 15.5; svg.text(x0, y, GNAME[0], TY['title'], weight=700)
+y += 7.0; svg.text(x0, y, GNAME[1], TY['sub'], weight=500)
 y += 6.4; svg.text(x0, y, 'Urban section 1:500', TY['sub'], weight=500, fill=RED)
 y += 5.2
 for ln in wrap(f'The shared line S–S: {L:.0f} m, square to the north fence — from the houses of Churriana across Avenida de Poniente and the metro, the empty strip and the fence, {L - FENCE:.0f} m into the base. Looking east. The same line for all three groups.', TY['small'], CW):
@@ -449,11 +565,25 @@ for ln in wrap(f'The shared line S–S: {L:.0f} m, square to the north fence —
 y += 2.6; rule(y)
 it = RG.hall.intersection(LineString([tuple(A_), tuple(B_)])); hs = sorted(st(p)[0] for p in it.coords); hm = (hs[0] + hs[1]) / 2
 y += 6.0; head(y, 'WHAT THE SECTION SHOWS', RED); y += 5.0
-pts_ = [f'The flight ceiling is a slope: {lim(0) - grd(0):.0f} m above the ground at the houses, {lim(FENCE) - grd(FENCE):.0f} m at the fence, {lim(L) - grd(L):.0f} m at the end of the line inside the base (approach surface of runway 18).',
+COMMON_ = [f'The flight ceiling is a slope: {lim(0) - grd(0):.0f} m above the ground at the houses, {lim(FENCE) - grd(FENCE):.0f} m at the fence, {lim(L) - grd(L):.0f} m at the end of the line inside the base (approach surface of runway 18).',
         f'The houses the line cuts have {min(c["lv"] for c in S["cuts"])}–{max(c["lv"] for c in S["cuts"])} floors (Catastro): about {min(c["lv"] for c in S["cuts"]) * 3}–{max(c["lv"] for c in S["cuts"]) * 3} m, an estimate (floors × 3 m). One 4-floor sliver (0.5 m) is left out. Row houses of 1991–2006: the fronts behind the line are drawn from the Catastro’s façade photos, and so are the roofs of the cut houses.',
-        f'The hall (2 floors, about 7 m) keeps {lim(hm) - grd(hm) - 7:.0f} m under the ceiling: low public uses fit, towers would not.',
+        ]
+if GROUP == 'residents':
+    pts_ = COMMON_ + [f'The hall (2 floors, about 7 m) keeps {lim(hm) - grd(hm) - 7:.0f} m under the ceiling: low public uses fit, towers would not.',
         f'Today the strip between the avenue and the fence road is empty ({F["strip"]["m2"] / 1e6:.3f} km², two parcels; the metro project calls it “the future park”). In the proposal it is the park: the hall on the avenue, the lawn in the middle, trees to the fence walk.',
         'The fence stays where it is: the base is not touched. Its height is not mapped, so it is drawn as unknown.']
+elif GROUP == 'developer':
+    c_ = PROPOS.get('cuts', [])
+    pts_ = COMMON_ + [f'Each block is as high as the ceiling allows, 1 m under it: {DV.P["fl_min"]}–{DV.P["fl_max"]} floors of 3 m on the strip (a parapet of 0.6 m). The block the line cuts has {c_[0][3] if c_ else "–"} floors.',
+        'Behind the line (thin red): the other blocks of phase 1, the taller ones on the avenue where the ceiling is higher.',
+        'Between the blocks: a private garden court over one level of parking.',
+        'On the base (dashed): phase 2, 5 floors drawn — it pierces today’s ceiling, so it can only come if the base leaves and its easements are lifted.']
+else:
+    CL_, sf, RD_, sm_ = PROPOS['df']
+    pts_ = COMMON_ + ['The ceiling is kept as published (red): it is what the base needs to keep flying, and nothing may rise above it.',
+        f'The strip stays open: crops or meadow, no buildings and no gatherings under the approach (our reading of “low, open and quiet”).',
+        f'Inside the fence, on the base’s own land: a clear zone ({CL_[0]:.0f}–{CL_[1]:.0f} m), an inner fence at {sf:.0f} m, a patrol road ({RD_[0]:.0f}–{RD_[1]:.0f} m) and masts for lights and cameras.',
+        'The outer fence stays where it is; its height is not mapped, so it is drawn as unknown.']
 for w in pts_:
     lines = wrap(w, TY['small'], CW - 3.2)
     svg.add(f'<circle cx="{x0 + 0.8:.2f}" cy="{y - 0.85:.2f}" r="0.5" fill="{RED}"/>')
@@ -463,11 +593,14 @@ y += 2.2; rule(y)
 y += 6.0; head(y, 'ALONG THE LINE, NORTH \u2192 SOUTH'); y += 5.0
 cuts = S['cuts']; nm_at = lambda key: next((c['d'] for c in S['streets'] if (c.get('nm') or '').startswith(key)), None)
 park_it = RG.park.intersection(LineString([tuple(A_), tuple(B_)])); ps = sorted(st(p)[0] for p in park_it.coords)
+MID_ = {'residents': f'the empty strip \u2192 the park; hall at {hs[0]:.0f}\u2013{hs[1]:.0f} m', 'developer': 'the empty strip \u2192 housing blocks, a garden court over parking',
+        'defence': 'the empty strip, kept open: crops or meadow'}[GROUP]
+END_ = {'residents': 'the base, under the approach of runway 18', 'developer': 'the base: phase 2 plots, if it leaves', 'defence': 'the base: clear zone, inner fence, patrol road; the approach of runway 18'}[GROUP]
 rows_ = [(f'0\u2013{cuts[-1]["s1"]:.0f} m', f'houses of Churriana, 1\u20133 floors; C. Rafael Alberti at {nm_at("Calle Rafael"):.0f} m'),
          (f'{nm_at("Avenida de Poniente"):.0f} m', f'Avenida de Poniente; the metro extension at {S["metro"][0]["d"]:.0f} m'),
-         (f'{ps[0]:.0f}\u2013{ps[-1]:.0f} m', f'the empty strip \u2192 the park; hall at {hs[0]:.0f}\u2013{hs[1]:.0f} m'),
+         (f'{ps[0]:.0f}\u2013{ps[-1]:.0f} m', MID_),
          (f'{nm_at("Calle Santa"):.0f}\u2013{FENCE:.0f} m', 'C. Santa Luc\u00eda, the cycle path, the fence'),
-         (f'{FENCE:.0f}\u2013{L:.0f} m', 'the base, under the approach of runway 18')]
+         (f'{FENCE:.0f}\u2013{L:.0f} m', END_)]
 for a_, b_ in rows_:
     svg.text(x0, y, a_, TY['small'], weight=600)
     lines = wrap(b_, TY['small'], CW - 24)
@@ -489,13 +622,23 @@ def sw(kind, yy, a=None):
     elif kind == 'tree': svg.add(tree_svg(x + 3, y0 + 3.4, RED, LW['prop'], 0, h=1.9))   # the same image as in the section (small)
     elif kind == 'treefar': svg.add(tree_svg(x + 3, y0 + 3.4, R[2], LW['thin'], 3, op=0.6, h=1.9))
     elif kind == 'person': svg.add(_bw.figure(x + 1.6, y0 + 3.0, K, kind=0, seed=3) + _bw.car_flat(x + 4.6, y0 + 3.0, K, seed=2))   # the same drawings as in the sections
+    elif kind == 'blockfar': svg.add(_r(x, y0, 6, 3.2, WHITE, R[3], 0.12) + _l(x, y0 + 1.6, x + 6, y0 + 1.6, 0.06, R[3]))
+    elif kind == 'parkd': svg.add(f'<rect x="{x}" y="{y0 + 0.4:.2f}" width="6" height="2.4" fill="none" stroke="{RED}" stroke-width="{LW["prop"]}" stroke-dasharray="1.2 0.7"/>')
+    elif kind == 'phase2': svg.add(f'<rect x="{x}" y="{y0:.2f}" width="6" height="3.2" fill="none" stroke="{RED}" stroke-width="{LW["prop"]}" stroke-dasharray="1.6 1"/>')
+    elif kind == 'ceilred': svg.add(f'<line x1="{x}" y1="{y0 + 1.5:.2f}" x2="{x + 6}" y2="{y0 + 1.5:.2f}" stroke="{RED}" stroke-width="{LW["section"] + 0.1}" stroke-dasharray="2.2 1.2"/>')
+    elif kind == 'crops': svg.add(f'<line x1="{x}" y1="{y0 + 3:.2f}" x2="{x + 6}" y2="{y0 + 3:.2f}" stroke="{RED}" stroke-width="{LW["propBold"] + 0.4}"/>' + ''.join(f'<path d="M{x + 0.6 + i * 0.9:.2f},{y0 + 3:.2f} l-0.25,-1 M{x + 0.6 + i * 0.9:.2f},{y0 + 3:.2f} l0,-1.4 M{x + 0.6 + i * 0.9:.2f},{y0 + 3:.2f} l0.25,-1" stroke="{RED}" stroke-width="0.07"/>' for i in range(6)))
+    elif kind == 'innerf': svg.add(f'<line x1="{x + 3:.2f}" y1="{y0 - 0.2:.2f}" x2="{x + 3:.2f}" y2="{y0 + 3:.2f}" stroke="{RED}" stroke-width="{LW["prop"]}"/>' + ''.join(f'<path d="M{x + 2.4:.2f},{y0 + h_ - 0.6:.2f} l1.2,1.2 M{x + 2.4:.2f},{y0 + h_ + 0.6:.2f} l1.2,-1.2" stroke="{RED}" stroke-width="0.08"/>' for h_ in (0.6, 2.0)))
+    elif kind == 'road': svg.add(_r(x, y0 + 2.1, 6, 0.9, RED))
+    elif kind == 'mastk': svg.add(f'<line x1="{x + 3:.2f}" y1="{y0 - 0.4:.2f}" x2="{x + 3:.2f}" y2="{y0 + 3:.2f}" stroke="{RED}" stroke-width="0.25"/><rect x="{x + 2.8:.2f}" y="{y0 - 0.6:.2f}" width="1.2" height="0.8" fill="{RED}"/>')
     elif kind == 'fence': svg.add(f'<line x1="{x + 3:.2f}" y1="{y0 - 0.2:.2f}" x2="{x + 3:.2f}" y2="{y0 + 3:.2f}" stroke="{INK}" stroke-width="{LW["mid"]}" stroke-dasharray="0.8 0.5"/>')
 SAMPLE = {'wall': 'sand', 'balcony': 'iron', 'shutters': 'roller', 'hoods': True, 'roof': 'tile', 'door': 'wood', 'garage': 'white', 'bars': True}   # the row on C. Rafael Alberti, as read from its photos
 items = [('cut', 'Building cut by the line: walls, floors and roof cut (Catastro floors × 3 m, estimate); what shows inside is schematic'),
          ('far', 'Building beyond the line, up to 40 m east, drawn from the façade photograph the Catastro publishes for its parcel: wall, base, roof, balconies, shutters, doors, garden wall and gate. Number and place of the openings: schematic.'),
          ('tex', ''), ('sky', 'Buildings 40–100 m beyond the line: outline only; low houses drawn as the block terrace-house type seen in the area (schematic)'), ('ground', 'Ground, cut (IGN MDT25)'), ('baseground', 'Ground of the base (closed; nothing inside is surveyed)'),
          ('ceil', 'Flight ceiling: the easement surface over the line (RD 118/2019, our interpolation, approximate); hatched = the air it keeps free'), ('fence', 'Fence: height not mapped'), ('person', 'People, cars, street lights: schematic, for scale'),
-         ('hall', 'Neighbourhood hall, proposed (2 floors, cut)'), ('redground', 'Park and fence walk, proposed'), ('tree', 'Tree, proposed, on the line (drawn 8–11 m; species not chosen)'), ('treefar', 'Tree, proposed, beyond the line')]
+         ] + {'residents': [('hall', 'Neighbourhood hall, proposed (2 floors, cut)'), ('redground', 'Park and fence walk, proposed'), ('tree', 'Tree, proposed, on the line (drawn 8–11 m; species not chosen)'), ('treefar', 'Tree, proposed, beyond the line')],
+              'developer': [('hall', 'Housing block, proposed, cut (floors of 3 m; shops on the avenue’s ground floor)'), ('blockfar', 'Housing block, proposed, beyond the line'), ('redground', 'Garden court (private)'), ('parkd', 'Parking under the court, one level'), ('phase2', 'Phase 2 on the base (only if it leaves and the easements are lifted)')],
+              'defence': [('ceilred', 'Flight ceiling, kept as published'), ('crops', 'Open land: crops or meadow'), ('innerf', 'Inner fence'), ('road', 'Patrol road'), ('mastk', 'Mast: lights and cameras (schematic)')]}[GROUP]
 for kind, txt in items:
     if kind == 'far':     # a sample front, larger than the other swatches
         y += 2.2; svg.add(_bw.elev_obs(x0, x0 + 12, y + 5.4, 2, SAMPLE, seed=3, K=1.0)); lines = wrap(txt, TY['small'], CW - 15.5)
@@ -539,6 +682,8 @@ def ld(g):
 svg.defs_add(f'<clipPath id="locclip"><rect x="{lx0}" y="{ly0:.2f}" width="{CW:.2f}" height="{lh:.2f}"/></clipPath>')
 lg = [f'<path d="{ld(gd.base)}" fill="url(#baseHatch)" stroke="none" fill-rule="evenodd"/>']
 lg.append('<path d="' + ' '.join(ld(g) for g, b in gd.blds) + f'" fill="{G[3]}" stroke="none"/>')
+if GROUP == 'developer': lg.append(''.join(f'<path d="{ld(r)}" fill="url(#redHatch)" stroke="none"/>' for r in DV.grid2) + f'<path d="{ld(DV.strip)}" fill="{R[1]}" stroke="{RED}" stroke-width="{LW["prop"]}"/>' + ''.join(f'<path d="{ld(b)}" fill="{RED}"/>' for b in DV.blocks))
+if GROUP == 'defence': lg.append(f'<path d="{ld(DF.strip)}" fill="{R[1]}" stroke="{RED}" stroke-width="{LW["prop"]}"/><path d="{ld(DF.road)}" fill="{RED}" stroke="none"/>')
 if GROUP == 'residents': lg.append(f'<path d="{ld(RG.park)}" fill="{R[1]}" stroke="{RED}" stroke-width="{LW["prop"]}"/><path d="{ld(RG.prom)}" fill="{R[1]}" stroke="none"/><path d="{ld(RG.hall)}" fill="{RED}"/>')
 lg.append(f'<path d="{ld(gd.fence_line)}" fill="none" stroke="{INK}" stroke-width="{LW["mid"]}"/>')
 lg.append(f'<line x1="{LX(A_[0]):.2f}" y1="{LY(A_[1]):.2f}" x2="{LX(B_[0]):.2f}" y2="{LY(B_[1]):.2f}" stroke="{INK}" stroke-width="{LW["section"] + 0.15}" stroke-dasharray="3 0.7 0.5 0.7"/>')

@@ -119,21 +119,70 @@ def residents(F, gd):
 
 
 def developer(F, gd):
-    """The private developer — stage 1: the INTENT drawn schematically (the 1:1000 plan follows for the final hand-in).
-    Phase 1, with the base still there: apartment blocks on the empty strip, 4 floors, under today's ceiling.
-    Phase 2, if the base leaves (POTAUG art. 4.27): a district on the base land, at Sde Dov's planned density."""
-    U, N, rect = gd.U, gd.N, gd.rect
+    """The private developer. Phase 1, with the base still there: housing blocks on the empty strip, as high as today's flight
+    ceiling allows (floors of 3 m, 1 m kept free under the ceiling, a 0.6 m parapet; 4–5 floors), a row on Avenida de
+    Poniente with shops on the ground floor facing the metro, a row on Calle Santa Lucía, a private garden court between them
+    over one level of parking, and a station square at the San Cayetano stop.
+    Phase 2, only if the base leaves and its easements are lifted (POTAUG art. 4.27): a district on the base land, at the
+    density planned for Sde Dov (Tel Aviv). All shapes, sizes and counts are ours: schematic."""
+    U, N, rect, TH = gd.U, gd.N, gd.rect, gd.TH
     strip = unary_union([p for p in gd.parcels if p.contains(Point(443700, 4110820)) or p.contains(Point(443822, 4110818))])
-    inner = strip.buffer(-6)
+    inner = strip.buffer(-4, join_style=2)                    # a 4 m setback from the parcel line (pavements widened)
+    o = (443604.1, 4110823.0)                                  # the strip's west tip: the origin of the block grid
+    at = lambda u, v: (o[0] + U[0] * u + N[0] * v, o[1] + U[1] * u + N[1] * v)
+    def span(u):
+        """the strip's extent across (v, towards the avenue) at u along the fence"""
+        q = LineString([at(u, -150), at(u, 150)]).intersection(inner)
+        if q.is_empty: return None
+        q = q if q.geom_type == 'LineString' else max(q.geoms, key=lambda g: g.length)
+        vs = [((x - o[0]) * N[0] + (y - o[1]) * N[1]) for x, y in q.coords]; return min(vs), max(vs)
+    def quad(u0, u1, v0, v1):
+        return Polygon([at(u0, v0), at(u1, v0), at(u1, v1), at(u0, v1)])
+    # the station square: opposite the stop, the avenue row opens for 30 m
+    stop = (443725.5, 4110866.7); us = (stop[0] - o[0]) * U[0] + (stop[1] - o[1]) * U[1]
+    DEP, LEN, GAP = 12.0, 40.0, 8.0                          # block depth and length, the gap between blocks
+    # the strip is a triangle: a straight south side along Calle Santa Lucía (parallel to the fence) and a slanting north side
+    # on Avenida de Poniente. Bars parallel to the fence, 30 m apart (12 m deep, 18 m courts), and one row along the avenue.
+    ne = (443860.0, 4110881.0); d2 = (ne[0] - o[0], ne[1] - o[1]); n2l = math.hypot(*d2); d2 = (d2[0] / n2l, d2[1] / n2l); n2 = (d2[1], -d2[0])   # n2: into the strip
+    at2 = lambda u, v: (o[0] + d2[0] * u + n2[0] * v, o[1] + d2[1] * u + n2[1] * v)
+    us2 = (stop[0] - o[0]) * d2[0] + (stop[1] - o[1]) * d2[1]
     blocks = []
-    o = strip.centroid
-    for i in range(-8, 9):
-        for j in range(-4, 5):
-            c = (o.x + U[0] * i * 52 + N[0] * j * 30, o.y + U[1] * i * 52 + N[1] * j * 30)
-            r = rect(c[0], c[1], 42, 14).intersection(inner)
-            if r.area > 120: blocks.append(r)
-    P = {'strip_m2': strip.area, 'built_share': 0.40, 'floors': 4, 'm2_per_dw': 100}
-    P['dw1'] = strip.area * P['built_share'] * P['floors'] / P['m2_per_dw']
+    u = 22.0
+    while u < n2l:
+        if not (u - 15 < us2 < u + LEN + 15):
+            g = Polygon([at2(u, 4), at2(u + LEN, 4), at2(u + LEN, 4 + DEP), at2(u, 4 + DEP)]).intersection(inner)
+            if g.area > 250: blocks.append(('N', g))
+        u += LEN + GAP
+    avenue_row = unary_union([g for _, g in blocks])
+    room = inner.difference(avenue_row.buffer(18, join_style=2))
+    for vc, row in ((4.0, 'S'), (34.0, 'M'), (64.0, 'M'), (94.0, 'M')):
+        u = 22.0
+        while u < 300:
+            g = quad(u, u + LEN, vc, vc + DEP).intersection(room)
+            g = max(g.geoms, key=lambda q: q.area) if hasattr(g, 'geoms') else g
+            if not g.is_empty and g.area > 250 and g.minimum_rotated_rectangle.area < g.area * 1.08: blocks.append((row, g))
+            u += LEN + GAP
+    FLH, FREE, PAR = 3.0, 1.0, 0.6
+    B = []
+    for row, g in blocks:
+        pts = list(g.exterior.coords) + [(g.centroid.x, g.centroid.y)]
+        ceil = min(allowed_at(F, x, y) for x, y in pts)
+        fl = int(min(5, (ceil - FREE - PAR) // FLH))
+        if fl >= 2: B.append(SimpleNamespace(row=row, g=g, floors=fl, ceil=ceil, shop=row == 'N'))
+    # the station square: the strip's corner opposite the stop, between the avenue row's two halves
+    court = inner.difference(unary_union([b.g for b in B]).buffer(6)).buffer(-1)
+    court = unary_union([q for q in (court.geoms if hasattr(court, 'geoms') else [court]) if q.area > 300]) if not court.is_empty else court
+    sq = Polygon([at2(us2 - 15, -2), at2(us2 + 15, -2), at2(us2 + 15, 4 + DEP), at2(us2 - 15, 4 + DEP)]).intersection(strip)
+    court = court.difference(sq.buffer(3))
+    # one level of parking under the court (schematic): about 28 m² of floor per space
+    park = court.buffer(-3) if not court.is_empty else court
+    P = {'strip_m2': strip.area, 'm2_per_dw': 100, 'shop_depth': 12}
+    P['gfa'] = sum(b.g.area * b.floors for b in B)
+    P['shop_m2'] = sum(b.g.area for b in B if b.shop)
+    P['dw1'] = (P['gfa'] - P['shop_m2']) / P['m2_per_dw']
+    P['blocks'] = len(B); P['fl_min'] = min(b.floors for b in B); P['fl_max'] = max(b.floors for b in B)
+    P['court_m2'] = court.area; P['sq_m2'] = sq.area; P['spaces'] = park.area / 28
+    P['cover'] = sum(b.g.area for b in B) / strip.area
     base_in = gd.base.intersection(gd.FR)
     P['base_in_ha'] = base_in.area / 1e4; P['dens_sde_dov'] = 16000 / 250; P['dw2'] = P['base_in_ha'] * P['dens_sde_dov']
     grid2 = []
@@ -142,15 +191,31 @@ def developer(F, gd):
             c = (base_in.centroid.x + U[0] * i * 74 + N[0] * j * 54, base_in.centroid.y + U[1] * i * 74 + N[1] * j * 54)
             r = rect(c[0], c[1], 60, 40).intersection(base_in.buffer(-12))
             if r.area > 400: grid2.append(r)
-    return SimpleNamespace(strip=strip, blocks=blocks, base_in=base_in, grid2=grid2, P=P)
+    # phase 2's courts: perimeter blocks 12 m deep around each plot
+    grid2c = [r.buffer(-12, join_style=2) for r in grid2]
+    return SimpleNamespace(strip=strip, inner=inner, B=B, blocks=[b.g for b in B], court=court, sq=sq, park=park, stop=stop,
+                           base_in=base_in, grid2=grid2, grid2c=grid2c, P=dict(P, floors=P['fl_max']))
 
 
 def defence(F, gd):
-    """The Ministry of Defence — stage 1: the INTENT drawn schematically. The base stays and stays closed; the easements of
-    2019 stay; outside the fence only low uses without gatherings under the approach; a patrol road inside the fence."""
+    """The Ministry of Defence. The base stays and stays closed; the easements of 2019 stay. Outside the fence the strip under
+    the approach stays open (crops or meadow; no buildings, no gatherings — our reading); inside it, a security band: the fence
+    kept, a clear zone, an inner fence, a patrol road and masts for lights and cameras. All shapes and sizes are ours: schematic."""
     strip = unary_union([p for p in gd.parcels if p.contains(Point(443700, 4110820)) or p.contains(Point(443822, 4110818))])
-    patrol = gd.fence_line.parallel_offset(6, 'left') if False else None
-    inside = gd.base.buffer(-6)
-    ring = inside.exterior if inside.geom_type == 'Polygon' else max(inside.geoms, key=lambda g: g.area).exterior
-    patrol = ring.intersection(gd.FR.buffer(-2))
-    return SimpleNamespace(strip=strip, patrol=patrol, P={'strip_m2': strip.area})
+    base = gd.base; FR = gd.FR
+    def ring_at(d):
+        g = base.buffer(-d)
+        r = g.exterior if g.geom_type == 'Polygon' else max(g.geoms, key=lambda q: q.area).exterior
+        return r.intersection(FR.buffer(-2))
+    clear = base.difference(base.buffer(-6)).intersection(FR)               # 6 m clear zone inside the fence
+    inner_fence = ring_at(6)
+    road = base.buffer(-7).difference(base.buffer(-11)).intersection(FR)     # the patrol road, 4 m wide
+    patrol = ring_at(9)
+    masts = []
+    for seg in ([patrol] if patrol.geom_type == 'LineString' else list(getattr(patrol, 'geoms', []))):
+        for t in range(20, int(seg.length), 60):
+            p = seg.interpolate(t); masts.append((p.x, p.y))
+    # the open land outside the fence: the strip, in crops or meadow (no structures)
+    P = {'strip_m2': strip.area, 'clear_m2': clear.area, 'road_m': patrol.length, 'road_m2': road.area, 'masts': len(masts),
+         'fence_m': gd.fence_line.intersection(FR).length}
+    return SimpleNamespace(strip=strip, clear=clear, inner_fence=inner_fence, road=road, patrol=patrol, masts=masts, P=P)
