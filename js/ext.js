@@ -28,6 +28,9 @@
     { k: 'q100', layer: 'agua:Zi_laminas_q100', T: 100, p: '1%', color: root.GA.palette.flood.q100 },
     { k: 'q500', layer: 'agua:Zi_laminas_q500', T: 500, p: '0.2%', color: root.GA.palette.flood.q500 },
   ];
+  // 5.50: SICA strategic noise maps drawn together — the agglomeration (city), the main roads and the railways. The
+  // agglomeration map stops at the city; around the air base only the road and rail maps exist (checked 23 Nov 2026).
+  const noiseLayers = (k) => ['aglomeracion', 'carretera', 'ferrocarril'].map(s => `evaluacionambiental:mer_${s}_${k}`).join(',');
   const LST_DATE = '2025-07-28'; // an 8-day MODIS composite in high summer (day-of-year 209)
 
   function wmsTiles(url, layers, extra) {
@@ -199,6 +202,6 @@
     { id: 'noise', file: 'Granada_Noise_Maps_English.pdf', kind: 'noise', title: 'Strategic noise map 2022 (Phase 4) — Lden, Ld, Le, Ln; overview + 13 sheets each', publisher: 'Ayuntamiento de Granada, Servicio de Protección Ambiental — Phase 4 strategic noise map (titles translated)', dataYear: '2022', reportYear: '2022', type: 'modelled noise levels (strategic noise mapping), dB(A)', unit: 'dB(A); Lden = day-evening-night, Ln = night', coverage: 'Granada municipality, 1:40,000 overview, EPSG:25830', data: 'the 2022 maps are a PDF; the national SICA service shows the Granada agglomeration from an earlier phase (3rd), connected live for orientation only', url: 'https://sicaweb.cedex.es/' },
   ];
 
-  const api = { SVC, FLOOD, LST_DATE, HIST, DOCS, wmsTiles, wmsURL, loadImage, warp3857, merc, imerc, floodExposure, floodWFS, tcdGrid, tcdStats, TCD_CLASSES, tcdColour, tcdHatch, trees, treeFeatures, treeTs, histInfo };
+  const api = { noiseLayers, SVC, FLOOD, LST_DATE, HIST, DOCS, wmsTiles, wmsURL, loadImage, warp3857, merc, imerc, floodExposure, floodWFS, tcdGrid, tcdStats, TCD_CLASSES, tcdColour, tcdHatch, trees, treeFeatures, treeTs, histInfo };
   root.GA = root.GA || {}; root.GA.ext = api;
 })(window);

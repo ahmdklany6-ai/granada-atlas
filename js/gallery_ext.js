@@ -28,7 +28,7 @@
       flood: () => X.floodExposure(ring),
       // service images are re-drawn in the atlas classes (js/rasterclass.js) so the card legend matches them
       floodImg: () => img(X.wmsURL(X.SVC.miteco, 'agua:Zi_laminas_q500,agua:Zi_laminas_q100,agua:Zi_laminas_q10', [x0, y0, x1, y1], w, h, 25830)).then(o => root.GA.rasterClass.recolourImage('flood', o.img).then(c => Object.assign(o, { img: c }))),
-      noiseImg: () => img(X.wmsURL(X.SVC.noise, 'evaluacionambiental:mer_aglomeracion_lden', [x0, y0, x1, y1], w, h, 25830)).then(o => root.GA.rasterClass.recolourImage('noise', o.img).then(c => Object.assign(o, { img: c }))),
+      noiseImg: () => img(X.wmsURL(X.SVC.noise, X.noiseLayers('lden'), [x0, y0, x1, y1], w, h, 25830)).then(o => root.GA.rasterClass.recolourImage('noise', o.img).then(c => Object.assign(o, { img: c }))),
     };
     const run = (k) => { out.status[k] = { state: 'loading' }; return withTimeout(makers[k](), LIMIT).then(v => { out[k] = v; out.status[k] = { state: 'ok' }; }, e => { out[k] = null; out.status[k] = { state: 'failed', error: (e && e.message) || String(e) }; }).then(() => { try { onJob && onJob(k); } catch (e) { console.warn(e); } }); };
     const done = Promise.all(Object.keys(makers).map(run)).then(() => out);
@@ -152,7 +152,7 @@
     insertAfter('flood', ext.noiseImg ? { id: 'noise', title: t('g3.noise'), mainLayer: 'noise', src: { name: 'MITECO — SICA', detail: t('g3.noiseDetail'), license: t('g3.noiseLic') },
       spec: { images: [Object.assign({ alpha: 0.95 }, ext.noiseImg)], context: { buildings: ctxB, buildingColor: 'rgba(34,36,40,.12)' } },
       legend: root.GA.rasterClass.legendItems('noise', { ind: 'lden' }).map(i => Object.assign(i, { alpha: 0.95 })),
-      ind: [], find: [t('g3.fNoise'), t('g3.noiseCaveat')], method: t('g3.mNoise') } : gap('noise', t('g3.noise'), 'noiseImg'));
+      ind: [], find: [t('g3.fNoise'), t('v36.noiseBlank'), t('g3.noiseCaveat')], method: t('g3.mNoise') } : gap('noise', t('g3.noise'), 'noiseImg'));
     return list;
   };
 
