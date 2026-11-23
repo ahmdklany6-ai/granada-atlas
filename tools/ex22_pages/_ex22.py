@@ -185,3 +185,38 @@ def export(svg, out_base, w_mm, h_mm, dpi=200):
         b.close()
     subprocess.run(['pdftoppm', '-r', str(dpi), '-png', '-singlefile', out_base + '.pdf', out_base], check=True)
     return ok
+
+
+# ---- the Vega around the edge areas, in black and white (owner, 23 Nov 2026: "no green — our style: black, white and red;
+# textures for farmland"): farmland as furrows along the field's long side, orchards as a grid of dots, meadow and grass as
+# small tufts. One definition for the plans, the plan strips and their keys.
+_VEGA_DONE = set()
+
+
+def vega_pat(svg, kind, ang=0.0):
+    """the url of the texture for a land-use kind (farmland furrows are turned to `ang` degrees, in 15° steps)"""
+    if kind == 'farmland':
+        a = int(round(ang / 15.0) * 15) % 180; pid = f'vegaFarm{a}'
+        if pid not in _VEGA_DONE:
+            svg.defs_add(f'<pattern id="{pid}" patternUnits="userSpaceOnUse" width="1.5" height="1.5" patternTransform="rotate({a})"><line x1="0" y1="0.75" x2="1.5" y2="0.75" stroke="{G[3]}" stroke-width="0.11"/></pattern>')
+            _VEGA_DONE.add(pid)
+        return f'url(#{pid})'
+    if kind == 'orchard':
+        if 'vegaOrch' not in _VEGA_DONE:
+            svg.defs_add(f'<pattern id="vegaOrch" patternUnits="userSpaceOnUse" width="3" height="3"><circle cx="1.5" cy="1.5" r="0.55" fill="none" stroke="{G[4]}" stroke-width="0.1"/><circle cx="1.5" cy="1.5" r="0.1" fill="{G[4]}"/></pattern>')
+            _VEGA_DONE.add('vegaOrch')
+        return 'url(#vegaOrch)'
+    if 'vegaMead' not in _VEGA_DONE:
+        svg.defs_add(f'<pattern id="vegaMead" patternUnits="userSpaceOnUse" width="2.6" height="2.2"><path d="M0.5,1.4 l0.25,-0.5 l0.25,0.5 M1.8,0.6 l0.25,-0.5 l0.25,0.5" fill="none" stroke="{G[3]}" stroke-width="0.09"/></pattern>')
+        _VEGA_DONE.add('vegaMead')
+    return 'url(#vegaMead)'
+
+
+def long_angle(g, screen_flip=True):
+    """the direction of a polygon's long side, in degrees on the sheet (y down)"""
+    r = g.minimum_rotated_rectangle
+    if r.geom_type != 'Polygon': return 0.0
+    c = list(r.exterior.coords)
+    e = max(((c[i], c[i + 1]) for i in range(4)), key=lambda ab: math.hypot(ab[1][0] - ab[0][0], ab[1][1] - ab[0][1]))
+    a = math.degrees(math.atan2(e[1][1] - e[0][1], e[1][0] - e[0][0]))
+    return -a if screen_flip else a

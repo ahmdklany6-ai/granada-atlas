@@ -23,7 +23,7 @@ AREA = edges.AREA; EDGE = AREA != 'N'
 F = load_frame() if not EDGE else json.load(open(edges.frame_file())); gd = groups.ground(F)
 if EDGE: RG = None; EE = edges.build(F, gd); DV = edges.developer(F, gd, EE) if GROUP == 'developer' else None; DF = edges.defence(F, gd, EE) if GROUP == 'defence' else None
 else: RG = groups.residents(F, gd); DV = groups.developer(F, gd); DF = groups.defence(F, gd); EE = None
-WATER, WATERF = _bw._P['blue'], _bw._P['basemap']['water']   # palette: water lines and water fill
+WATER, WATERF = G[5], G[1]   # water in black and white: a dark grey edge, a pale grey fill (owner, 23 Nov: black, white and red only)
 def COMPASS(v):
     a = (math.degrees(math.atan2(v[0], v[1])) + 360) % 360
     return ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][int((a + 22.5) // 45) % 8]
@@ -156,7 +156,10 @@ if GROUP == 'residents' and not EDGE:
     pg.append(f'<path d="{dp(pth, False)}" fill="none" stroke="{WHITE}" stroke-width="{3 * K - 0.12:.2f}" stroke-linecap="round" stroke-linejoin="round"/>')
 if EDGE:
     for l in F['landuse']:
-        if l['lu'] in ('farmland', 'orchard', 'meadow', 'grass') and l['r']: pg.append(f'<path d="{dp(poly(l["r"][0]).intersection(band.buffer(2)))}" fill="{_bw._P["basemap"]["agri"] if l["lu"] == "farmland" else _bw._P["basemap"]["green"]}" stroke="none"/>')
+        if l['lu'] in ('farmland', 'orchard', 'meadow', 'grass') and l['r']:
+            g0_ = poly(l['r'][0]); kd_ = 'farmland' if l['lu'] == 'farmland' else 'orchard' if l['lu'] == 'orchard' else 'meadow'
+            a_ = long_angle(stf(tp, g0_), screen_flip=False)
+            pg.append(f'<path d="{dp(g0_.intersection(band.buffer(2)))}" fill="{vega_pat(svg, kd_, a_)}" stroke="{G[2]}" stroke-width="{LW["hair"]}"/>')
     for s_ in F['streets']:
         w_ = {'primary': 7.0, 'secondary': 6.0, 'tertiary': 6.0, 'residential': 5.0, 'service': 3.0, 'track': 3.0, 'cycleway': 2.5, 'path': 2.5}.get(s_['hw'], 2.0)
         for r in s_['r']:
@@ -267,7 +270,7 @@ for ln, s_ in gd.streets:
     label(ox, oy + 0.8, nm.replace('Calle ', 'C. ').replace('Avenida ', 'Av. '), size=2.3, fill=G[5], italic=True, rot=ang, halo=0.8)
 _bl = (XS(290), PYM - 30)
 if EDGE:
-    _bq = gd.base.intersection(band.buffer(-10)).representative_point(); _bl = tp(_bq.x, _bq.y)
+    _bq = gd.base.intersection(band.buffer(-10)).representative_point(); _bl = tp(_bq.x, _bq.y); _bl = (_bl[0], _bl[1] - 18 if abs(_bl[1] - PYM) < 8 else _bl[1])
 label(_bl[0], _bl[1], 'BASE AÉREA DE ARMILLA — closed', size=2.6, fill=G[5], weight=600, spacing=0.6)
 for s0, lt in ((0, 'S'), (L, 'S')):
     x = XS(s0); svg.add(f'<circle cx="{x:.2f}" cy="{PYM:.2f}" r="2.6" fill="{WHITE}" stroke="{INK}" stroke-width="{LW["mid"]}"/>')

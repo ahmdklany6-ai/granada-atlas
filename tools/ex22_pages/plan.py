@@ -20,7 +20,7 @@ MX, MY = 10, 10                  # map window origin (mm)
 import json as _j0, edges
 AREA = edges.AREA
 F = load_frame() if AREA == 'N' else _j0.load(open(edges.frame_file()))
-WATER = '#4F6E80'   # palette: blue (water lines)
+WATER = G[5]   # water in the sheets' black and white: a dark grey line (owner, 23 Nov: black, white and red only)
 V = MapView(F['frame'], MX, MY, 1000)
 COL = MX + V.w + 10              # the column beside the map
 CW = SW - 10 - COL
@@ -362,7 +362,9 @@ if AREA != 'N':   # the Vega around the edge areas: farmland and orchards in a p
     import _bw as _bwp
     VEGA = _bwp._P['basemap']['green']
     for l in F['landuse']:
-        if l['lu'] in ('farmland', 'orchard', 'meadow', 'grass', 'vineyard', 'allotments') and l['r']: g.append(f'<path d="{V.d([r for rr in l["r"] for r in rr])}" fill="{_bwp._P['basemap']['agri'] if l['lu'] == 'farmland' else VEGA}" stroke="none" fill-rule="evenodd"/>')
+        if l['lu'] in ('farmland', 'orchard', 'meadow', 'grass', 'vineyard', 'allotments') and l['r']:
+            kd_ = 'farmland' if l['lu'] in ('farmland', 'vineyard', 'allotments') else 'orchard' if l['lu'] == 'orchard' else 'meadow'
+            g.append(f'<path d="{V.d([r for rr in l["r"] for r in rr])}" fill="{vega_pat(svg, kd_, long_angle(poly(l["r"][0])))}" stroke="{G[2]}" stroke-width="{LW["hair"]}" fill-rule="evenodd"/>')
     for s_ in F['streets']:
         w_ = {'primary': 1.6, 'secondary': 1.3, 'tertiary': 1.1, 'residential': 0.8, 'unclassified': 0.8, 'service': 0.4, 'track': 0.35}.get(s_['hw'], 0.3)
         for r in s_['r']:
@@ -556,7 +558,7 @@ def swatch(kind, xx, yy, a=None, b=None, dash=None):
     elif kind == 'dead': svg.add(f'<circle cx="{xx + 3:.2f}" cy="{y0 + 1.5:.2f}" r="1.35" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["propBold"]}"/><path d="M{xx + 2.3:.2f},{y0 + 1.5:.2f} H{xx + 3.7:.2f} M{xx + 3:.2f},{y0 + 0.8:.2f} V{y0 + 2.2:.2f}" stroke="{RED}" stroke-width="{LW["prop"]}"/>')
     elif kind == 'stop': svg.add(f'<circle cx="{xx + 3:.2f}" cy="{y0 + 1.5:.2f}" r="1.6" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["prop"]}"/><text x="{xx + 3:.2f}" y="{y0 + 2.1:.2f}" font-family="{FONT}" font-size="1.6" font-weight="700" fill="{RED}" text-anchor="middle">M</text>')
     elif kind == 'gate': svg.add(f'<path d="M{xx + 2:.2f},{y0 + 0.2:.2f} L{xx + 4:.2f},{y0 + 1.5:.2f} L{xx + 2:.2f},{y0 + 2.8:.2f}" fill="none" stroke="{RED}" stroke-width="{LW["propBold"]}" stroke-linecap="round" stroke-linejoin="round"/>')
-    elif kind == 'bridge': svg.add(f'<line x1="{xx}" y1="{y0 + 1.5:.2f}" x2="{xx + w}" y2="{y0 + 1.5:.2f}" stroke="{RED}" stroke-width="3.5"/><line x1="{xx}" y1="{y0 + 1.5:.2f}" x2="{xx + w}" y2="{y0 + 1.5:.2f}" stroke="{WHITE}" stroke-width="2.7"/><line x1="{xx + 3}" y1="{y0 - 0.4:.2f}" x2="{xx + 3}" y2="{y0 + 3.4:.2f}" stroke="{WATER}" stroke-width="1.4" opacity="0.5"/>')
+    elif kind == 'bridge': svg.add(f'<line x1="{xx}" y1="{y0 + 1.5:.2f}" x2="{xx + w}" y2="{y0 + 1.5:.2f}" stroke="{RED}" stroke-width="3.5"/><line x1="{xx}" y1="{y0 + 1.5:.2f}" x2="{xx + w}" y2="{y0 + 1.5:.2f}" stroke="{WHITE}" stroke-width="2.7"/><line x1="{xx + 3}" y1="{y0 - 0.4:.2f}" x2="{xx + 3}" y2="{y0 + 3.4:.2f}" stroke="{WATER}" stroke-width="1.4"/>')
     elif kind == 'shop': svg.add(f'<rect x="{xx}" y="{y0:.2f}" width="{w}" height="{h}" fill="{RED}"/><line x1="{xx + 0.3}" y1="{y0 + 0.6:.2f}" x2="{xx + w - 0.3}" y2="{y0 + 0.6:.2f}" stroke="{WHITE}" stroke-width="0.35" stroke-dasharray="1.2 0.6"/>')
     elif kind == 'stopk': svg.add(f'<circle cx="{xx + 3:.2f}" cy="{y0 + 1.5:.2f}" r="1.6" fill="{WHITE}" stroke="{INK}" stroke-width="{LW["thin"]}"/><text x="{xx + 3:.2f}" y="{y0 + 2.1:.2f}" font-family="{FONT}" font-size="1.6" font-weight="700" fill="{INK}" text-anchor="middle">M</text>')
     elif kind == 'furrow': svg.add(f'<rect x="{xx}" y="{y0:.2f}" width="{w}" height="{h}" fill="none" stroke="{RED}" stroke-width="{LW["prop"]}"/>' + ''.join(f'<line x1="{xx}" y1="{y0 + 0.6 * i:.2f}" x2="{xx + w}" y2="{y0 + 0.6 * i:.2f}" stroke="{RED}" stroke-width="{LW["hair"] * 1.6}"/>' for i in range(1, 5)))
@@ -578,7 +580,7 @@ def keycol(items, xx, yy):
     return yy
 ctx = [('bld', G[2], G[5], '1–2 floors (Catastro)'), ('bld', G[3], G[5], '3 floors'), ('bld', G[4], G[5], '4 floors or more'), ('bld', WHITE, G[4], 'Hall or shed: height not derived from floors'),
        ('line', G[3], LW['parcel'] * 3, 'Parcel (Catastro)'), ('basek', None, None, 'The base, closed'), ('fence', None, None, 'The fence'), ('metro', None, None, 'Metro extension, under construction'),
-       ('line', G[5], LW['mid'] + 0.05, 'Municipal line', MUNI_DASH), ('line', G[4], LW['thin'] * 1.6, 'Flight ceiling: allowed height above the ground (m)', '1.4 0.9'), ('sec', None, None, 'Shared section line S–S (sheet 02)' if AREA == 'N' else 'Section line S–S (sheet 02)')] + ([('line', WATER, 1.2, 'River, stream, irrigation ditch (OSM)')] if F.get('water') else [])
+       ('line', G[5], LW['mid'] + 0.05, 'Municipal line', MUNI_DASH), ('line', G[4], LW['thin'] * 1.6, 'Flight ceiling: allowed height above the ground (m)', '1.4 0.9'), ('sec', None, None, 'Shared section line S–S (sheet 02)' if AREA == 'N' else 'Section line S–S (sheet 02)')] + ([('line', WATER, 1.2, 'River, stream, irrigation ditch (OSM)')] if F.get('water') else []) + ([('pat', vega_pat(svg, 'farmland', 0), G[2], 'Farmland (OSM land use)'), ('pat', vega_pat(svg, 'orchard'), G[2], 'Orchard (OSM)'), ('pat', vega_pat(svg, 'meadow'), G[2], 'Meadow, grass (OSM)')] if AREA != 'N' else [])
 y = max(keycol(legend, x0, ky), keycol(ctx, x0 + cw2 + 1, ky)) + 0.6
 y += 1.0; rule(y)
 
