@@ -51,7 +51,8 @@ def context(M):
     use = {'house': 'houses', 'apartments': 'apartments', 'industrial': 'industrial', 'warehouse': 'industrial', 'public': 'public', 'retail': 'shops_offices', 'commercial': 'shops_offices'}
     for g, tris in T.groups.items():
         if g == 'buildings': continue
-        nm = {'flight_ceiling_approx': '9_CHECK_flight_ceiling_approx', 'buildings_height_unknown_6m': '0_CONTEXT_buildings_height_unknown_6m'}.get(g, '0_CONTEXT_' + g)
+        if g == 'flight_ceiling_approx': continue   # (owner, 23 Nov 2026: no flight-ceiling surface in the 3D model)
+        nm = {'buildings_height_unknown_6m': '0_CONTEXT_buildings_height_unknown_6m'}.get(g, '0_CONTEXT_' + g)
         M.groups[nm] = tris
     for g, b in gd.blds:   # the buildings again, by use (same heights)
         if b.get('hu') or not b.get('lv'): continue
@@ -138,6 +139,7 @@ def write_obj(Mx, base, notes):
             lay = layer_of(g)
             if lay != cur: f.write(f'o {lay}\ng {lay}\n'); cur = lay
             f.write(f'usemtl {g}\n'); idx = {}; out = []
+            rgb = tuple(int(colour2(g)[i:i + 2], 16) / 255 for i in (1, 3, 5))   # vertex colours: Rhino shows them in every display mode
             for t in Mx.groups[g]:
                 a, b, c = (np.array(L(p), float) for p in t); n = np.cross(b - a, c - a); nl = np.linalg.norm(n)
                 if nl < 1e-9: continue
@@ -146,7 +148,7 @@ def write_obj(Mx, base, notes):
                 ids = []
                 for p in t:
                     k = L(p)
-                    if k not in idx: idx[k] = vi + len(idx); f.write('v %.2f %.2f %.2f\n' % k)
+                    if k not in idx: idx[k] = vi + len(idx); f.write('v %.2f %.2f %.2f %.3f %.3f %.3f\n' % (k + rgb))
                     ids.append(idx[k])
                 nk = (round(n[0], 3), round(n[1], 3), round(n[2], 3))
                 if nk not in NRM: NRM[nk] = ni; ni += 1; f.write('vn %.3f %.3f %.3f\n' % nk)   # normals shared across the file
@@ -161,7 +163,7 @@ Mx = Mesh(); context(Mx); alternatives(Mx)
 os.makedirs(OUT, exist_ok=True)
 base = os.path.join(OUT, 'ex22_three_alternatives')
 NOTE2 = ('Exercise 2.2 · the whole Armilla Air Base and the five towns around it (4.6 x 4.45 km), the three alternatives on their own layers.\n' + M3.NOTES.split('\n', 1)[1] +
-         '\nLayers: 0_CONTEXT_* (existing), 0_GREEN_* (OSM land use and water; trees SCHEMATIC, not surveyed), 1_RESIDENTS, 2_DEVELOPER, 3_DEFENCE (schematic), 9_CHECK (flight ceiling, approximate).')
+         '\nLayers: 0_CONTEXT_* (existing), 0_GREEN_* (OSM land use and water; trees SCHEMATIC, not surveyed), 1_RESIDENTS, 2_DEVELOPER, 3_DEFENCE (schematic).')
 write_obj(Mx, base, NOTE2)
 if os.environ.get('KEEP_JSON') == '1':
     L = lambda p: (round(p[0] - M3.OX, 3), round(p[1] - M3.OY, 3), round(p[2] - M3.OZ, 3))
