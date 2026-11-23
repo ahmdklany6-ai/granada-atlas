@@ -1156,3 +1156,30 @@ Strings `js/i18n_v29.js`. Test `tests/ui_test_v29.py`.
 - 5.49 (follow-up): with three analysis frames to load, the atlas's opening "fit to the city" (`atlas.js` init `go()`)
   ran only after loading, and pulled back a visitor (or a test) that had already moved the map. The fit now runs at
   once, before the frames load. Found by `tests/ui_test_v33.py` (pictograms at zoom 13), which passes again.
+
+## 45. Build 5.50 — the empty cards of the "Base" analysis (owner report of 23 Nov 2026, "analysis_Base_1.pdf")
+- Report: the owner's saved 4.5 km square around the air base exported with empty cards: places 0, scheduled buses 0,
+  construction periods 0 of 14,076, mapped trees 0, canopy "Failed to fetch", noise map blank; hotels 1.
+- Causes: places (Overture) and bus service files supplied by the owner cover the Granada municipality / city lines
+  only; the tree snapshot was municipality-only; OSM has almost no construction dates (39 of 101,674); the Copernicus
+  TCD service (image.discomap.eea.europa.eu) did not answer on 23 Nov (neither from the browser nor from the runner);
+  the noise card asked for the agglomeration map only (the city). Hotels: correct — OSM has one hostel there (re-checked).
+- Data (runner fetch `tools/verify/basefill_fetch.py`, dispatch data-fetch.yml with script=basefill_fetch.py; raw files
+  on the data branches `claude/data-basefill*`, never merged; `tools/verify/basefill_only` / `basefill_env` select parts):
+  - Places: `tools/build_places_region.py` adds Overture release 2026-11-18.0 OUTSIDE the municipality (13,260, `r: 1`);
+    the supplied file stays inside it. Manifest `layers.places.coverage` = region.
+  - Buses: `tools/build_bus_ctan.py` — Consorcio de Transporte Metropolitano del Área de Granada via the open CTAN API
+    (api.ctan.es, consortium 3): 542 stops outside the municipality (`src: 'ctan'`), departures for Monday 26 Oct 2026 (same
+    date as the supplied file). Timetables are per town (blocks), not per stop: a trip counts at a stop with a time at the
+    stop's town; 75 stops whose town is not named count every trip of that direction (`approx: 1`, stated on the card).
+  - Construction years: `tools/build_catastro_years.py` — Catastro INSPIRE Buildings (ATOM province 18, 21
+    municipalities, 90,095 dated cadastral buildings): `cy` / `cyn` on building tiles, period in buildings_lite (`pc: 1`).
+    70,926 of 101,674 buildings now have a year. NOTE: re-running `tools/build_buildings_lite.js` would drop the Catastro
+    periods — run build_catastro_years.py after it.
+  - Trees: `tools/build_trees_overpass.py` now builds the whole region (11,778 trees, 322 rows).
+  - Canopy fallback: `tools/build_worldcover_trees.py` → `data/canopy/worldcover_trees_2021.png` (ESA WorldCover 2021,
+    class 10, EPSG:25830 10 m); `GA.ext.wcGrid` is used when `tcdGrid` fails; the card names it (a class, not a density).
+  - Noise: `GA.ext.noiseLayers(k)` = agglomeration + main roads (`mer_carretera_*`) + railways (`mer_ferrocarril_*`).
+- Coverage rule (new): `layers[id].coverage` in the manifest; `GA.galleryExt.coverOf(id, bbox)`; an area outside a
+  dataset shows "outside the data" (cards, key indicators via `compare.whyOf` 'outside'), never 0; partial cover is starred.
+- Strings `js/i18n_v36.js`; test `tests/ui_test_v38.py` (base square, canopy service down).

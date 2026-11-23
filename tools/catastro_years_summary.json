@@ -55,10 +55,38 @@
   [
    "18168-PULIANAS buildings",
    1796
+  ],
+  [
+   "18048-CENES DE LA VEGA buildings",
+   1307
+  ],
+  [
+   "18064-CHURRIANA DE LA VEGA buildings",
+   4780
+  ],
+  [
+   "18058-CULLAR VEGA buildings",
+   2727
+  ],
+  [
+   "18103-HUETOR VEGA buildings",
+   4021
+  ],
+  [
+   "18127-LA MALAHA buildings",
+   1065
+  ],
+  [
+   "18197-LA ZUBIA buildings",
+   5613
+  ],
+  [
+   "18083-LAS GABIAS buildings",
+   6450
   ]
  ],
- "points": 64185,
+ "points": 90095,
  "tiles_buildings": 101674,
- "tiles_with_year": 51532,
- "lite_with_period": 51497
+ "tiles_with_year": 70926,
+ "lite_with_period": 70835
 }

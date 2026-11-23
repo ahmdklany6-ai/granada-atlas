@@ -124,6 +124,20 @@
     })();
     tcdCache.set(key, p); p.catch(() => tcdCache.delete(key)); return p;
   }
+  // 5.50: when the Copernicus service does not answer, the ESA WorldCover 2021 tree-cover class (static, 10 m, the atlas
+  // region; tools/build_worldcover_trees.py) — 100 = tree cover, 0 = other land cover, -1 = no data. A class, not a density.
+  let wcImg = null;
+  async function wcGrid(ring, padM) {
+    const meta = root.GA.data.manifest && root.GA.data.manifest.canopy && root.GA.data.manifest.canopy.worldcover; if (!meta) throw new Error('WorldCover layer missing');
+    const U = ring.map(p => PJ.EPSG25830.forward(p)); const pad = padM == null ? 60 : padM;
+    const x0 = Math.floor((Math.min(...U.map(p => p[0])) - pad) / 10) * 10, x1 = Math.ceil((Math.max(...U.map(p => p[0])) + pad) / 10) * 10;
+    const y0 = Math.floor((Math.min(...U.map(p => p[1])) - pad) / 10) * 10, y1 = Math.ceil((Math.max(...U.map(p => p[1])) + pad) / 10) * 10;
+    if (!wcImg) wcImg = loadImage('data/' + meta.file + '?v=' + (root.GA_BUILD || ''), 45000).catch(e => { wcImg = null; throw e; });
+    const im = await wcImg; const w = Math.round((x1 - x0) / 10), h = Math.round((y1 - y0) / 10); const c0 = Math.round((x0 - meta.ox) / 10), r0 = Math.round((meta.oy - y1) / 10);
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d', { willReadFrequently: true }); g.imageSmoothingEnabled = false; g.drawImage(im, -c0, -r0);
+    const px = g.getImageData(0, 0, w, h).data; const arr = new Int16Array(w * h); for (let i = 0; i < arr.length; i++) { const v = px[i * 4], a = px[i * 4 + 3]; arr[i] = !a || v === 0 ? -1 : v > 128 ? 100 : 0; }
+    return { width: w, height: h, ox: x0, oy: y1, px: 10, py: 10, arr, nodata: -1, scale: 1, wc: true, src: 'ESA WorldCover 2021 v200 (10 m), tree-cover class' };
+  }
   function tcdStats(g, ring) {
     const v = root.GA.data.gridValuesInRing(g, ring); if (!v.length) return null;
     const mean = v.reduce((a, b) => a + b, 0) / v.length; const any = v.filter(x => x > 0).length / v.length; const dense = v.filter(x => x >= 30).length / v.length;
@@ -202,6 +216,6 @@
     { id: 'noise', file: 'Granada_Noise_Maps_English.pdf', kind: 'noise', title: 'Strategic noise map 2022 (Phase 4) — Lden, Ld, Le, Ln; overview + 13 sheets each', publisher: 'Ayuntamiento de Granada, Servicio de Protección Ambiental — Phase 4 strategic noise map (titles translated)', dataYear: '2022', reportYear: '2022', type: 'modelled noise levels (strategic noise mapping), dB(A)', unit: 'dB(A); Lden = day-evening-night, Ln = night', coverage: 'Granada municipality, 1:40,000 overview, EPSG:25830', data: 'the 2022 maps are a PDF; the national SICA service shows the Granada agglomeration from an earlier phase (3rd), connected live for orientation only', url: 'https://sicaweb.cedex.es/' },
   ];
 
-  const api = { noiseLayers, SVC, FLOOD, LST_DATE, HIST, DOCS, wmsTiles, wmsURL, loadImage, warp3857, merc, imerc, floodExposure, floodWFS, tcdGrid, tcdStats, TCD_CLASSES, tcdColour, tcdHatch, trees, treeFeatures, treeTs, histInfo };
+  const api = { noiseLayers, wcGrid, SVC, FLOOD, LST_DATE, HIST, DOCS, wmsTiles, wmsURL, loadImage, warp3857, merc, imerc, floodExposure, floodWFS, tcdGrid, tcdStats, TCD_CLASSES, tcdColour, tcdHatch, trees, treeFeatures, treeTs, histInfo };
   root.GA = root.GA || {}; root.GA.ext = api;
 })(window);
