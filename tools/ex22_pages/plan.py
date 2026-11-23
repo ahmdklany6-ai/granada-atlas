@@ -73,8 +73,11 @@ def residents():
         out.append(f'<line x1="{X(x):.2f}" y1="{Y(y):.2f}" x2="{X(tgt.x):.2f}" y2="{Y(tgt.y):.2f}" stroke="{RED}" stroke-width="{LW["propBold"]}"/>')
         out.append(f'<circle cx="{X(x):.2f}" cy="{Y(y):.2f}" r="1.5" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["propBold"]}"/><path d="M{X(x) - 0.8:.2f},{Y(y):.2f} H{X(x) + 0.8:.2f} M{X(x):.2f},{Y(y) - 0.8:.2f} V{Y(y) + 0.8:.2f}" stroke="{RED}" stroke-width="{LW["prop"]}"/>')
     # the stop asked for
-    out.append(f'<circle cx="{X(stop[0]):.2f}" cy="{Y(stop[1]):.2f}" r="2.3" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["propBold"]}"/>')
-    out.append(f'<text x="{X(stop[0]):.2f}" y="{Y(stop[1]) + 0.85:.2f}" font-family="{FONT}" font-size="2.4" font-weight="700" fill="{RED}" text-anchor="middle">M?</text>')
+    out.append(f'<path d="{V.dgeom(R_.platform, close=False)}" fill="none" stroke="{RED}" stroke-width="2.2" stroke-linecap="butt" opacity="0.9"/>')   # the stop's platforms
+    mx_, my_ = X(stop[0]), Y(stop[1]) + 7.5
+    out.append(f'<circle cx="{mx_:.2f}" cy="{my_:.2f}" r="2.3" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["propBold"]}"/>')
+    out.append(f'<text x="{mx_:.2f}" y="{my_ + 0.85:.2f}" font-family="{FONT}" font-size="2.4" font-weight="700" fill="{RED}" text-anchor="middle">M</text>')
+    out.append(f'<text x="{mx_ + 3.2:.2f}" y="{my_ + 0.7:.2f}" font-family="{FONT}" font-size="{TY["map"]}" font-weight="600" fill="{RED}" stroke="{WHITE}" stroke-width="0.6" paint-order="stroke">San Cayetano (approx.)</text>')
     # the gate into the sports complex
     gx, gy = X(gate[0]), Y(gate[1])
     out.append(f'<path d="M{gx - 2.2:.2f},{gy - 1.4:.2f} L{gx:.2f},{gy:.2f} L{gx - 2.2:.2f},{gy + 1.4:.2f}" fill="none" stroke="{RED}" stroke-width="{LW["propBold"]}" stroke-linecap="round" stroke-linejoin="round"/>')
@@ -86,34 +89,34 @@ def residents():
     sl_mid = sl.interpolate(0.55, normalized=True) if not sl.is_empty else Point(443700, 4110800)
     callouts = [(1, at(95, 30)), (2, (tree_c[0] + 3.5, tree_c[1] + 3.5)), (3, (allot.centroid.x, allot.centroid.y) if plots else None),
                 (4, (play.centroid.x, play.centroid.y)), (5, (hc[0] - U[0] * 18.5, hc[1] - U[1] * 18.5)), (6, prom_c), (7, (crossings[0][0] - 5, crossings[0][1] + 15)),
-                (8, (dead[0][0] - 7, dead[0][1] + 6) if dead else None), (9, (stop[0] + 6, stop[1] + 4)), (10, (sl_mid.x, sl_mid.y - 4.5)), (11, (gate[0] + 6, gate[1] + 1))]
-    rows = [(1, 'Edge park on the empty strip (two Catastro parcels)', f'{P["park_m2"] / 1e4:.2f} ha'.replace('.', '.')),
+                (8, (dead[0][0] - 7, dead[0][1] + 6) if dead else None), (9, (stop[0] - 6, stop[1] - 9)), (10, (sl_mid.x, sl_mid.y - 4.5)), (11, (gate[0] + 6, gate[1] + 1))]
+    rows = [(1, 'Edge park on the empty strip (two Catastro parcels)', f'{P["park_m2"] / 1e6:.3f} km²'),
             (2, 'Orchard rows and a tree row on the fence walk (proposed trees)', f'{P["trees"]} trees'),
             (3, f'Neighbours’ allotments, {P["allot_n"]} plots of 45 m²', f'{P["allot_m2"]:,.0f} m²'),
             (4, 'Playground by the new crossing', f'{P["play_m2"]:,.0f} m²'),
             (5, f'Neighbourhood hall, 2 floors (about 7 m) under a ceiling of {P["hall_ceiling"]:.0f} m', f'{P["hall_m2"] * 2:,.0f} m² floor'),
-            (6, 'Fence walk: the cycle path along the fence widened, with a tree row (schematic width 8 m)', f'{P["prom_m"]:,.0f} m'),
+            (6, 'Fence walk: the cycle path along the fence widened, with a tree row (schematic width 9 m)', f'{P["prom_m"]:,.0f} m'),
             (7, 'New crossings over Avenida de Poniente and the metro', f'{len(crossings)}'),
             (8, 'The dead end joined to the fence walk (1 of the 13 around the base)', '1'),
-            (9, 'A metro stop asked for at the park (no stop position is published)', 'asked'),
-            (10, 'Calle Santa Lucía: a 20 km/h street along the park', f'{P["slow_m"]:,.0f} m'),
+            (9, 'The park opens onto the San Cayetano metro stop (Junta project, not yet in service)', '1 stop'),
+            (10, 'Calle Santa Lucía: a shared 20 km/h street; the fence walk runs beside it', f'{P["slow_m"]:,.0f} m'),
             (11, 'A gate from the park into the sports complex', '1'),
             (0, 'New dwellings or building rights', '0')]
     legend = [('fill', R[0], RED, 'Edge park and fence walk, public (proposed)'), ('tree', None, None, 'Tree, proposed (crown about 5 m)'), ('pat', 'url(#redHatch)', RED, 'Allotments'),
               ('pat', 'url(#redDots)', RED, 'Playground'), ('fill', WHITE, RED, 'Open lawn (meadow)', '0.9 0.6'), ('fill', RED, RED, 'Neighbourhood hall (II = floors)'),
-              ('path', None, None, 'Path, 3 m'), ('zebra', None, None, 'Crossing'), ('dots', None, None, '20 km/h street'), ('dead', None, None, 'Dead end joined'), ('stop', None, None, 'Metro stop asked for'), ('gate', None, None, 'Gate opened')]
+              ('path', None, None, 'Path, 3 m'), ('zebra', None, None, 'Crossing'), ('dots', None, None, '20 km/h street'), ('dead', None, None, 'Dead end joined'), ('stop', None, None, 'Metro stop San Cayetano (approx.)'), ('gate', None, None, 'Gate opened')]
     return out, callouts, rows, legend, P
 
 
 TEXT = {
     'residents': {
         'name': 'Residents', 'of': 'of the five towns',
-        'position': '“We do not ask the base to leave. We ask that its 8.7 km fence stop being the back of our towns: give us its edge — green, walkable and quiet — with no towers and no new building rights.”',
+        'position': '“We do not ask the base to leave — we ask that its 8.7 km fence stop being the back of our towns and that its edge be ours: green, walkable and quiet, with no towers and no new homes.”',
         'max': 'quality of life, stability, cost of living', 'q': 'What will change in my daily life?',
         'why': ['42 % of the fence (3.6 km) backs onto housing; 13 dead ends stop at it (2.1, map 01).',
                 'The five towns grew 15 % in ten years: 91,476 residents in 2025 (INE).',
-                'Here the flight ceiling is 12–17 m above the ground (RD 118/2019, our calculation): low public uses fit under it, towers do not.',
-                'The metro extension runs along Avenida de Poniente (under construction, OSM); none of its stops has a published position.',
+                'Over the strip the flight ceiling is about 12–18 m above the ground (RD 118/2019, our calculation): low public uses fit under it, towers do not.',
+                'The metro extension runs along Avenida de Poniente (Carretera de Alhama, A-338); its first new stop, San Cayetano, is on the strip’s north edge, and the Junta’s metro project calls this land “the future park” (not yet in service, Nov 2026).',
                 'Noise: the Ombudsman’s suggestion to Defence is “without follow-up”; no noise map newer than 2006–2011.'],
         'daily_head': 'WHAT CHANGES IN DAILY LIFE',
         'daily': lambda F: [f"{F['strip']['dwellings_400m']:,} homes lie within 400 m \u2014 about five minutes on foot \u2014 of the empty strip, {F['strip']['dwellings_200m']:,} within 200 m (Catastro).",
@@ -241,7 +244,7 @@ for e in range(int(math.ceil(f0 / 100) * 100), int(f1) + 1, 100):
 for nn in range(int(math.ceil(F['frame'][1] / 100) * 100), int(F['frame'][3]) + 1, 100):
     y = Y(nn); svg.add(f'<line x1="{MX}" y1="{y:.2f}" x2="{MX + 1.8}" y2="{y:.2f}" stroke="{INK}" stroke-width="{LW["thin"]}"/><line x1="{MX + V.w - 1.8:.2f}" y1="{y:.2f}" x2="{MX + V.w:.2f}" y2="{y:.2f}" stroke="{INK}" stroke-width="{LW["thin"]}"/>')
     svg.text(MX - 1.2, y + 0.5, f'{nn:,}'.replace(',', ' '), TY['tiny'], fill=G[5], anchor='end', rotate=-90)
-svg.text(MX + V.w, MY + V.h + 3.2, 'ETRS89 / UTM 30N (EPSG:25830), metres', TY['tiny'], fill=G[5], anchor='end')
+svg.text(MX + V.w, MY + V.h + 6.6, 'ETRS89 / UTM 30N (EPSG:25830), metres', TY['tiny'], fill=G[5], anchor='end')
 
 # ---- the column ---------------------------------------------------------------------------------------------------------
 x0 = COL; y = MY + 2.4; LH = lambda sz: sz * 1.27
@@ -303,7 +306,7 @@ def swatch(kind, xx, yy, a=None, b=None, dash=None):
     elif kind == 'zebra': svg.add(''.join(f'<line x1="{xx + 0.6 + i * 0.9:.2f}" y1="{y0:.2f}" x2="{xx + 0.6 + i * 0.9:.2f}" y2="{y0 + h:.2f}" stroke="{RED}" stroke-width="0.45"/>' for i in range(6)))
     elif kind == 'dots': svg.add(f'<line x1="{xx}" y1="{y0 + 1.5:.2f}" x2="{xx + w}" y2="{y0 + 1.5:.2f}" stroke="{RED}" stroke-width="{LW["prop"]}" stroke-dasharray="0.25 0.9" stroke-linecap="round"/>')
     elif kind == 'dead': svg.add(f'<circle cx="{xx + 3:.2f}" cy="{y0 + 1.5:.2f}" r="1.35" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["propBold"]}"/><path d="M{xx + 2.3:.2f},{y0 + 1.5:.2f} H{xx + 3.7:.2f} M{xx + 3:.2f},{y0 + 0.8:.2f} V{y0 + 2.2:.2f}" stroke="{RED}" stroke-width="{LW["prop"]}"/>')
-    elif kind == 'stop': svg.add(f'<circle cx="{xx + 3:.2f}" cy="{y0 + 1.5:.2f}" r="1.6" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["prop"]}"/><text x="{xx + 3:.2f}" y="{y0 + 2.1:.2f}" font-family="{FONT}" font-size="1.6" font-weight="700" fill="{RED}" text-anchor="middle">M?</text>')
+    elif kind == 'stop': svg.add(f'<circle cx="{xx + 3:.2f}" cy="{y0 + 1.5:.2f}" r="1.6" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["prop"]}"/><text x="{xx + 3:.2f}" y="{y0 + 2.1:.2f}" font-family="{FONT}" font-size="1.6" font-weight="700" fill="{RED}" text-anchor="middle">M</text>')
     elif kind == 'gate': svg.add(f'<path d="M{xx + 2:.2f},{y0 + 0.2:.2f} L{xx + 4:.2f},{y0 + 1.5:.2f} L{xx + 2:.2f},{y0 + 2.8:.2f}" fill="none" stroke="{RED}" stroke-width="{LW["propBold"]}" stroke-linecap="round" stroke-linejoin="round"/>')
     elif kind == 'line': svg.add(f'<line x1="{xx}" y1="{y0 + 1.5:.2f}" x2="{xx + w}" y2="{y0 + 1.5:.2f}" stroke="{a}" stroke-width="{b}"' + (f' stroke-dasharray="{dash}"' if dash else '') + '/>')
     elif kind == 'fence': svg.add(f'<line x1="{xx}" y1="{y0 + 1.5:.2f}" x2="{xx + w}" y2="{y0 + 1.5:.2f}" stroke="{INK}" stroke-width="{LW["fence"] + 0.3}"/><line x1="{xx}" y1="{y0 + 1.5:.2f}" x2="{xx + w}" y2="{y0 + 1.5:.2f}" stroke="{WHITE}" stroke-width="0.32" stroke-dasharray="1.6 1.3"/>')

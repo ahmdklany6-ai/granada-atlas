@@ -90,22 +90,31 @@ def residents(F, gd):
             x = o[0] + U[0] * i * 8 + N[0] * j * 8; y = o[1] + U[1] * i * 8 + N[1] * j * 8; p = Point(x, y)
             if park.buffer(-4).contains(p) and not keep_out.contains(p): trees.append((x, y))
     row = []
+    roads = unary_union([g for g, s in streets if s.get('hw') not in ('footway', 'cycleway', 'path', 'pedestrian', 'service', 'steps')]).buffer(4.5)   # no tree on a carriageway
     L = fence_in
     for seg in ([L] if L.geom_type == 'LineString' else list(L.geoms)):
         for t in range(5, int(seg.length), 10):
             p = seg.interpolate(t); q = seg.interpolate(min(seg.length, t + 1)); dx, dy = q.x - p.x, q.y - p.y; n = math.hypot(dx, dy) or 1
             cand = [(p.x - dy / n * 6, p.y + dx / n * 6), (p.x + dy / n * 6, p.y - dx / n * 6)]
             for c in cand:
-                if not base.buffer(1).contains(Point(c)) and prom.contains(Point(c)) and not built.buffer(2).contains(Point(c)) and all(math.hypot(c[0] - r0[0], c[1] - r0[1]) >= 7 for r0 in row): row.append(c); break
+                if not base.buffer(1).contains(Point(c)) and prom.contains(Point(c)) and not built.buffer(2).contains(Point(c)) and not roads.contains(Point(c)) and all(math.hypot(c[0] - r0[0], c[1] - r0[1]) >= 7 for r0 in row): row.append(c); break
     P['trees'] = len(trees) + len(row)
     # the dead end joined to the promenade
     dead = F['dead']
     # Calle Santa Lucía: a 20 km/h street along the park
     sl = unary_union([g for g, s in streets if s.get('nm') == 'Calle Santa Lucía']).intersection(box(443590, 4110700, 443860, 4110860))
     P['slow_m'] = sl.length
-    stop = on_sec(111.5)   # the metro on the section line: the stop asked for (no stop position is published)
+    # the metro's San Cayetano stop (Junta de Andalucía, Proyecto Constructivo Tramo Armilla-Churriana, PK 0+538 to 0+606, side platforms
+    # of 68 m; not yet in service, Nov 2026): placed by its chainage on the OSM track, about ±20 m
+    import json as _j, os as _o
+    from pyproj import Transformer as _T
+    _t = _T.from_crs(4326, 25830, always_xy=True)
+    _tr = [f for f in _j.load(open(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), '..', '..', 'data/vec/south_metro.json')))['features'] if f['properties']['k'] == 'track'][0]
+    _ln = LineString([_t.transform(*c) for c in _tr['geometry']['coordinates']])
+    from shapely.ops import substring as _sub
+    platform = _sub(_ln, 538, 606); _pc = _ln.interpolate(572); stop = (_pc.x, _pc.y)
     # where the park meets the sports complex: a gate
-    gate = (443861, 4110806)
+    _g = park.exterior.interpolate(park.exterior.project(Point(443861, 4110806))); gate = (_g.x, _g.y)   # on the park's edge, facing the sports complex
     return SimpleNamespace(**{k: v for k, v in locals().items() if k not in ('F', 'gd')})
 
 

@@ -178,7 +178,9 @@ pg.append(f'<path d="{dp(fz, False)}" fill="none" stroke="{INK}" stroke-width="{
 pg.append(f'<line x1="{DX0:.2f}" y1="{PYM:.2f}" x2="{DX0 + L * K:.2f}" y2="{PYM:.2f}" stroke="{INK}" stroke-width="{LW["section"]}" stroke-dasharray="6 1.2 0.8 1.2"/>')
 if GROUP == 'residents':
     sx, sy = tp(*R_.stop)
-    pg.append(f'<circle cx="{sx:.2f}" cy="{sy:.2f}" r="3.0" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["propBold"]}"/><text x="{sx:.2f}" y="{sy + 1.1:.2f}" font-family="{FONT}" font-size="3" font-weight="700" fill="{RED}" text-anchor="middle">M?</text>')
+    pg.append(f'<path d="{dp(R_.platform.intersection(band.buffer(5)), False)}" fill="none" stroke="{RED}" stroke-width="4.4" opacity="0.9"/>')
+    pg.append(f'<circle cx="{sx:.2f}" cy="{sy + 12:.2f}" r="3.0" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["propBold"]}"/><text x="{sx:.2f}" y="{sy + 13.1:.2f}" font-family="{FONT}" font-size="3" font-weight="700" fill="{RED}" text-anchor="middle">M</text>'
+              f'<text x="{sx + 4:.2f}" y="{sy + 13:.2f}" font-family="{FONT}" font-size="2.4" font-weight="600" fill="{RED}" stroke="{WHITE}" stroke-width="0.7" paint-order="stroke">San Cayetano stop (Junta project, approx.)</text>')
 svg.add(f'<g clip-path="url(#stripclip)">{"".join(pg)}</g>')
 svg.add(f'<rect x="{DX0}" y="{PY0}" width="{L * K:.2f}" height="{2 * BW * K:.2f}" fill="none" stroke="{INK}" stroke-width="{LW["frame"]}"/>')
 # street names in the strip, where they cross it
@@ -307,6 +309,7 @@ def section(top, proposal, title):
     # the fence: its height is not mapped — a thin dashed post and a question mark
     zf = grd(FENCE)
     g.append(f'<line x1="{XS(FENCE):.2f}" y1="{YZ(zf):.2f}" x2="{XS(FENCE):.2f}" y2="{YZ(zf + 2.2):.2f}" stroke="{INK}" stroke-width="{LW["mid"]}" stroke-dasharray="0.8 0.5"/>')
+    g.append(f'<text x="{XS(FENCE):.2f}" y="{YZ(zf + 2.6):.2f}" font-family="{FONT}" font-size="2.6" font-weight="700" fill="{INK}" text-anchor="middle" stroke="{WHITE}" stroke-width="0.6" paint-order="stroke">?</text>')
     # the flight ceiling
     cp = [(XS(s), YZ(lim(s))) for s in range(0, int(L) + 1)]
     # the air above the ceiling, hatched (explicit lines in a clip: light in the PDF)
@@ -400,7 +403,7 @@ if GROUP == 'residents':
         svg.add(f'<circle cx="{x:.2f}" cy="{y:.2f}" r="2.3" fill="{RED}" stroke="{WHITE}" stroke-width="0.35"/>')
         svg.text(x, y + 0.8, str(n), 2.2, fill=WHITE, weight=700, anchor='middle')
     it = RG.hall.intersection(LineString([tuple(A_), tuple(B_)])); hs = sorted(st(p)[0] for p in it.coords)
-    co(5, (hs[0] + hs[1]) / 2, 9.8); co(1, 170, 3.2); co(2, 196, 10.5); co(6, 224, 9.5); co(7, S['metro'][0]['d'] - 5, 2.0); co(9, S['metro'][0]['d'] + 4.5, 6.5)
+    co(5, (hs[0] + hs[1]) / 2, 9.8); co(1, 170, 3.2); co(2, 165.6, 10.5); co(6, 224, 9.5); co(7, S['metro'][0]['d'] - 5, 2.0)
     label(XS(170), YZ2(grd(170) + 1.2), 'open lawn', size=TY['small'], fill=RED, weight=600)
 yEnd = YZ2(Z0) + 22
 
@@ -420,9 +423,9 @@ y += 2.6; rule(y)
 it = RG.hall.intersection(LineString([tuple(A_), tuple(B_)])); hs = sorted(st(p)[0] for p in it.coords); hm = (hs[0] + hs[1]) / 2
 y += 6.0; head(y, 'WHAT THE SECTION SHOWS', RED); y += 5.0
 pts_ = [f'The flight ceiling is a slope: {lim(0) - grd(0):.0f} m above the ground at the houses, {lim(FENCE) - grd(FENCE):.0f} m at the fence, {lim(L) - grd(L):.0f} m at the end of the line inside the base (approach surface of runway 18).',
-        f'The houses the line cuts have {min(c["lv"] for c in S["cuts"])}–{max(c["lv"] for c in S["cuts"])} floors (Catastro): about {min(c["lv"] for c in S["cuts"]) * 3}–{max(c["lv"] for c in S["cuts"]) * 3} m, an estimate (floors × 3 m). Row houses of 1991–2003; their fronts are drawn from the Catastro’s façade photos.',
+        f'The houses the line cuts have {min(c["lv"] for c in S["cuts"])}–{max(c["lv"] for c in S["cuts"])} floors (Catastro): about {min(c["lv"] for c in S["cuts"]) * 3}–{max(c["lv"] for c in S["cuts"]) * 3} m, an estimate (floors × 3 m). One 4-floor sliver (0.5 m) is left out. Row houses of 1991–2006: the fronts behind the line are drawn from the Catastro’s façade photos, and so are the roofs of the cut houses.',
         f'The hall (2 floors, about 7 m) keeps {lim(hm) - grd(hm) - 7:.0f} m under the ceiling: low public uses fit, towers would not.',
-        f'Today the strip between the avenue and the fence road is empty ({F["strip"]["m2"] / 1e4:.2f} ha, two parcels). In the proposal it is the park: the hall on the avenue, the lawn in the middle, trees to the fence walk.',
+        f'Today the strip between the avenue and the fence road is empty ({F["strip"]["m2"] / 1e6:.3f} km², two parcels; the metro project calls it “the future park”). In the proposal it is the park: the hall on the avenue, the lawn in the middle, trees to the fence walk.',
         'The fence stays where it is: the base is not touched. Its height is not mapped, so it is drawn as unknown.']
 for w in pts_:
     lines = wrap(w, TY['small'], CW - 3.2)
@@ -473,7 +476,7 @@ for kind, txt in items:
         y += max(LH(TY['small']) * len(lines), 8.0) + 1.6; continue
     if kind == 'tex':     # the textures, from the same definitions as the drawing (_bw.tex)
         y += 0.6
-        for j, (nm, lb) in enumerate((('bwDots1', 'light render'), ('bwDots3', 'dark render'), ('bwBrick', 'brick'), ('bwRubble', 'stone base'), ('bwTile', 'clay tiles'), ('bwShutter', 'shutter'), ('bwHatchH', 'surround'), ('bwGlass', 'glass'))):
+        for j, (nm, lb) in enumerate((('bwDots1', 'light render'), ('bwDots3', 'dark render'), ('bwBrick', 'brick'), ('bwRubble', 'stone base'), ('bwTile', 'clay tiles'), ('bwShutter', 'shutter'), ('bwHatchH', 'surround'), ('bwDots2', 'mid render'))):
             xx = x0 + j * 12.6; svg.add(_r(xx, y - 2.6, 9.6, 4.2, WHITE) + _bw.tex(nm, xx, y - 2.6, 9.6, 4.2) + _r(xx, y - 2.6, 9.6, 4.2, 'none', INK, 0.08)); svg.text(xx + 4.8, y + 4.0, lb, TY['tiny'], fill=G[5], anchor='middle')
         y += 8.2; continue
     sw(kind, y); lines = wrap(txt, TY['small'], CW - 9)

@@ -45,27 +45,27 @@ crop = (443480, 4110490, 444040, 4110990); ks = CWd / (crop[2] - crop[0]); mh = 
 COLS = [
     {'n': 1, 'name': 'Private developer', 'max': 'profit, building rights, speed', 'q': 'Where is it worth building, and how much?',
      'pos': '“The metro is arriving at an empty strip and a 3.7 km² base that the regional plan already wants dismantled: build here — now on the strip, later on the base — as densely as the ceiling allows.”',
-     'prog': [('Phase 1 — apartment blocks on the empty strip, 4 floors (about 12 m, under today’s 13–17 m ceiling), shops on the avenue', f'≈ {dw1:,.0f} homes'),
-              ('Phase 2 — if the base leaves: a district on its land in this frame, at Sde Dov’s planned density (64 homes/ha)', f'≈ {DV.P["dw2"]:,.0f} homes'),
+     'prog': [('Phase 1 — apartment blocks on the empty strip, 4 floors (about 12 m, just under today’s 12–18 m ceiling), shops on the avenue', f'≈ {dw1:,.0f} homes'),
+              ('Phase 2 — if the base leaves: a district on its land in this frame, at Sde Dov’s planned density (6,400 homes per km²)', f'≈ {DV.P["dw2"]:,.0f} homes'),
               ('The whole base at the same density (for comparison)', f'≈ {371 * 64:,.0f} homes')],
      'why': ['POTAUG (2000), art. 4.27: the aim is the base’s “dismantling” and a residential, facilities and services area.',
              'If the five towns grow as in 2015–2025, they need 14,177 more homes by 2045 (our scenario, INE).',
-             'The metro extension runs along the strip (under construction; test runs to Las Gabias, June 2026).'],
-     'note': f'Estimates: phase 1 = the drawn blocks × 4 floors ÷ 100 m² per home; phase 2 = {DV.P["base_in_ha"]:.0f} ha × 64 homes/ha (Sde Dov: 16,000 units on about 250 ha, Globes).'},
+             'The metro extension runs along the strip (first test run to Las Gabias 31 July 2026; opening expected in the coming months).'],
+     'note': f'Estimates: phase 1 = the drawn blocks × 4 floors ÷ 100 m² per home; phase 2 = {DV.P["base_in_ha"] / 100:.2f} km² × 6,400 homes per km² (Sde Dov: 16,000 units on about 2.5 km², Globes).'},
     {'n': 2, 'name': 'Residents of the five towns', 'max': 'quality of life, stability, cost of living', 'q': 'What will change in my daily life?',
-     'pos': '“We do not ask the base to leave. We ask that its 8.7 km fence stop being the back of our towns: give us its edge — green, walkable and quiet — with no towers and no new building rights.”',
-     'prog': [('An edge park on the empty strip, with allotments, a playground and a 2-floor neighbourhood hall', f'{strip_ha:.2f} ha'),
-              ('A fence walk with a tree row along the whole fence of the frame (schematic width 8 m)', f'{RS.P["prom_m"]:,.0f} m'),
-              ('Crossings over the metro avenue; the dead end joined; a metro stop asked for', f'{len(RS.crossings)} + 1 + 1'),
+     'pos': '“We do not ask the base to leave — we ask that its 8.7 km fence stop being the back of our towns and that its edge be ours: green, walkable and quiet, with no towers and no new homes.”',
+     'prog': [('An edge park on the empty strip, with allotments, a playground and a 2-floor neighbourhood hall', f'{strip_ha / 100:.3f} km²'),
+              ('A fence walk with a tree row along the whole fence of the frame (schematic width 9 m)', f'{RS.P["prom_m"]:,.0f} m'),
+              ('Crossings over the metro avenue; the dead end joined; the park opens onto the San Cayetano stop', f'{len(RS.crossings)} + 1'),
               ('New homes or building rights', '0')],
      'why': ['42 % of the fence backs onto housing; 13 dead ends stop at it (2.1).',
              f'{F["strip"]["dwellings_400m"]:,} homes lie within 400 m of the strip (Catastro).',
-             'Noise: the Ombudsman’s suggestion to Defence has had no follow-up; no noise map newer than 2006–2011.'],
+             'The Junta’s metro project (2022) calls this land “the future park”; its San Cayetano stop is at the strip’s north edge.'],
      'note': 'The demonstration plan of stage 1: sheets 01 (plan 1:1000) and 02 (section 1:500).'},
     {'n': 3, 'name': 'Ministry of Defence', 'max': 'security, operations, a safe approach', 'q': 'What must stay clear for the base to keep flying?',
-     'pos': '“Armilla is the Air Force’s helicopter-pilot school and it stays. The towns may grow, but not into its approach: keep the edge low, open and quiet, and the fence closed.”',
-     'prog': [('The aeronautical easements of 2019 stay: nothing above the ceiling (13–17 m over the strip)', 'RD 118/2019'),
-              ('Outside the fence, under the approach: low uses without gatherings — fields, open land, parking; no schools, no crowds', f'{strip_ha:.2f} ha'),
+     'pos': '“Armilla is the Air Force’s helicopter-pilot school and it stays, so the towns may grow but not into its approach: the edge stays low, open and quiet, and the fence stays closed.”',
+     'prog': [('The aeronautical easements of 2019 stay: nothing above the ceiling (about 12–18 m over the strip)', 'RD 118/2019'),
+              ('Outside the fence, under the approach: low uses without gatherings — fields, open land, parking; no schools, no crowds', f'{strip_ha / 100:.3f} km²'),
               ('A patrol road inside the fence, 6 m in', f'{DF.patrol.length:,.0f} m'),
               ('The base keeps its land and its fence', '3.71 km²')],
      'why': ['The State renewed the base’s easements in 2019: it plans to stay (RD 118/2019).',
@@ -132,7 +132,8 @@ for ci, C in enumerate(COLS):
         tag(443500, 4110930, 'park, hall and fence walk', col=RED); tag(443500, 4110560, 'the base stays', col=G[5])
     else:
         tag(443500, 4110930, 'strip: low, open, no gatherings', col=RED); tag(443500, 4110560, 'the base stays closed', col=G[5])
-        tag(443640, 4110690, '15 m ceiling line', col=RED); tag(443760, 4110660, 'patrol road', col=RED)
+        c15 = max([l for l in contour_lines(F, 15) if l.length > 60], key=lambda l: l.length); q15 = c15.interpolate(0.42, normalized=True); tag(q15.x + 6, q15.y, '15 m ceiling line', col=RED)
+        pr = DF.patrol if DF.patrol.geom_type == 'LineString' else max(DF.patrol.geoms, key=lambda g: g.length); qp = pr.interpolate(pr.project(Point(443985, 4110600))); tag(qp.x - 6, qp.y, 'patrol road', anchor='end', col=RED)
     svg.text(cx + CWd - 1.5, ym + mh - 2.0, 'shared frame · schematic', TY['tiny'] + 0.2, fill=G[5], anchor='end', halo=0.6)
     y = ym + mh + 7
     # position
@@ -163,11 +164,11 @@ svg.text(x0, ty, 'WHERE THEY MEET AND CLASH', EB + 0.4, fill=RED, weight=700, sp
 for i_, (k_, t_) in enumerate((('c', 'clash'), ('p', 'partly'), ('a', 'agreement'))):
     xx = x0 + W - 80 + i_ * 27; mark(xx, ty - 1.1, k_); svg.text(xx + 3.4, ty, t_, BS)
 ty += 7.5
-ISS = [('The empty strip', f'{strip_ha:.2f} ha', f'\u2248 {dw1:,.0f} homes in 4-floor blocks', 'a public park and a hall; no homes', 'low, open, no gatherings', 'c'),
-       ('Height under the ceiling', '13\u201317 m', 'up to the ceiling now, above it once the base leaves', 'low: a 7 m hall and trees', 'the 2019 easements stay', 'p'),
+ISS = [('The empty strip', f'{strip_ha / 100:.3f} km²', f'\u2248 {dw1:,.0f} homes in 4-floor blocks', 'a public park and a hall; no homes', 'low, open, no gatherings', 'c'),
+       ('Height under the ceiling', '12\u201318 m', 'up to the ceiling now, above it once the base leaves', 'low: a 7 m hall and trees', 'the 2019 easements stay', 'p'),
        ('The base land', '3.71 km\u00b2', 'dismantle and build (POTAUG art. 4.27)', 'the base stays; only its edge opens', 'the base stays, closed', 'p'),
        ('The fence', '8.7 km', 'it goes with the base', 'stays; a walk and trees along it', 'stays; a patrol road inside', 'p'),
-       ('Who decides', '5 towns + State', 'one special plan for the zone (art. 4.28)', 'the five towns together, with us', 'the State; a joint body is acceptable', 'a')]
+       ('Who decides', '5 towns + State', 'one special plan for the zone (art. 4.28)', 'the five towns together, with us', 'the State; a joint body is acceptable', 'p')]
 cw = [62, 34, (W - 62 - 34 - 16) / 3, (W - 62 - 34 - 16) / 3, (W - 62 - 34 - 16) / 3, 16]
 hx = [x0]; [hx.append(hx[-1] + c) for c in cw[:-1]]
 for i, h in enumerate(['ISSUE', 'SIZE', 'DEVELOPER', 'RESIDENTS', 'DEFENCE', '']):
