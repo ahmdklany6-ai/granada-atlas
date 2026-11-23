@@ -208,7 +208,7 @@ svg.text(DX0 + L * K, PY0 - 3.2, 'north ←    → south', TY['small'], fill=G[5
 def tree_svg(x, yg, col, sw, seed=0, op=1.0, h=None, r=None):
     """a proposed tree, of the kinds in the owner's reference photo (cypress, rough conifer, round broadleaf, light tree), mixed by seed"""
     kind = ('round', 'cypress', 'light', 'round', 'conifer', 'round', 'cypress', 'light')[seed % 8]
-    return f'<g opacity="{op}">' + _bw.tree_kind(kind, x, yg, K, col, sw, seed) + '</g>'
+    return f'<g opacity="{op}">' + _bw.tree_real(kind, x, yg, K, col, 0.07, seed) + '</g>'
 
 
 Z0, Z1 = 659.0, 696.0                                      # the drawn height range (m a.s.l.)

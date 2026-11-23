@@ -402,7 +402,7 @@ def elev_obs(x0, x1, yg, lv, obs, seed=0, K=2.0, far=False):
         gx = x0 + w * 0.6; r_ = m(1.6); o.append(f'<path d="M{gx - r_:.2f},{yg:.2f} V{yg - m(2.4):.2f} A{r_:.2f},{r_:.2f} 0 0 1 {gx + r_:.2f},{yg - m(2.4):.2f} V{yg:.2f} Z" fill="{WHITE}" stroke="{INK}" stroke-width="0.1"/>'
                                                          + ''.join(_l(gx, yg - m(2.4), gx + r_ * __import__('math').cos(a), yg - m(2.4) - r_ * __import__('math').sin(a), 0.035) for a in [i * 3.1416 / 8 for i in range(1, 8)]) + ''.join(_l(gx - r_ + m(j * 0.2), yg - m(2.4), gx - r_ + m(j * 0.2), yg, 0.03) for j in range(1, 16)))
     if gd == 'pots': o += [f'<ellipse cx="{x0 + m(1 + j * 1.6):.2f}" cy="{yg - m(0.9):.2f}" rx="{m(0.5):.2f}" ry="{m(0.6):.2f}" fill="{WHITE}" stroke="{INK}" stroke-width="0.05"/>' + _r(x0 + m(0.75 + j * 1.6), yg - m(0.4), m(0.5), m(0.4), WHITE, INK, 0.05) for j in range(int(w / m(1.6)))]
-    if obs.get('tree') and not far: o.append(tree_kind('round', x0 + w * (0.2 + 0.5 * ((seed // 3) % 2)), yg, K, seed=seed, h=5.5))   # the street tree the photo shows
+    if obs.get('tree') and not far: o.append(tree_real('round', x0 + w * (0.2 + 0.5 * ((seed // 3) % 2)), yg, K, sw=0.06, seed=seed, h=5.5))   # the street tree the photo shows
     return ''.join(o)
 
 
@@ -452,3 +452,78 @@ def tree_kind(kind, x, yg, K=2.0, col=INK, sw=0.12, seed=0, h=None):
         h = h or 1.1; d = f'M{x - m(0.9):.2f},{yg:.2f} C{x - m(1.0):.2f},{yg - m(h):.2f} {x + m(1.0):.2f},{yg - m(h):.2f} {x + m(0.9):.2f},{yg:.2f} Z'
         return clip_tex('bwDots2', f'<path d="{d}"/>', (x - m(1.0), yg - m(h), m(2.0), m(h)), col, sw)
     return ''
+
+
+# ---- trees, drawn closer to life (owner, 23 Nov 2026: "more real, more detail"): a branching skeleton, many small leaf clumps
+# that overlap, shade on the side away from the light (left), a tapering trunk. Drawn types, not portraits of particular trees.
+def _clump_d(cx, cy, rx, ry, rr):
+    import math
+    n = 8; pts = []
+    for i in range(n):
+        a0 = 2 * math.pi * i / n + rr.random() * 0.3; a1 = 2 * math.pi * (i + 1) / n
+        q = 0.78 + 0.28 * rr.random(); pts.append(((cx + rx * q * math.cos(a0), cy + ry * q * math.sin(a0)), (cx + rx * 1.15 * math.cos((a0 + a1) / 2), cy + ry * 1.15 * math.sin((a0 + a1) / 2))))
+    return f'M{pts[0][0][0]:.2f},{pts[0][0][1]:.2f} ' + ' '.join(f'Q{c[0]:.2f},{c[1]:.2f} {pts[(i + 1) % n][0][0]:.2f},{pts[(i + 1) % n][0][1]:.2f}' for i, (p, c) in enumerate(pts)) + ' Z'
+
+
+def tree_real(kind, x, yg, K=2.0, col=INK, sw=0.1, seed=0, h=None):
+    import math
+    rr = random.Random(seed * 7919 + 13); m = lambda v: v * K; o = []; clumps = []
+    def branch(x0, y0, ang, ln, wd, depth, tips):
+        x1 = x0 + math.cos(ang) * ln; y1 = y0 - math.sin(ang) * ln
+        o.append(f'<path d="M{x0:.2f},{y0:.2f} L{x1:.2f},{y1:.2f}" stroke="{col}" stroke-width="{max(0.06, wd):.2f}" stroke-linecap="round"/>')
+        if depth == 0: tips.append((x1, y1)); return
+        for da in (-0.45 - 0.25 * rr.random(), 0.4 + 0.25 * rr.random()) + ((rr.uniform(-0.15, 0.15),) if depth > 1 and rr.random() < 0.5 else ()):
+            branch(x1, y1, ang + da, ln * (0.68 + 0.12 * rr.random()), wd * 0.62, depth - 1, tips)
+    skel = []
+    if kind in ('round', 'light'):
+        h = h or (7.5 if kind == 'round' else 6.0); cw = h * (0.42 if kind == 'round' else 0.36); tb = h * 0.38
+        o.append(f'<path d="M{x - m(0.16):.2f},{yg:.2f} Q{x - m(0.05):.2f},{yg - m(tb) * 0.6:.2f} {x - m(0.08):.2f},{yg - m(tb):.2f} L{x + m(0.08):.2f},{yg - m(tb):.2f} Q{x + m(0.07):.2f},{yg - m(tb) * 0.6:.2f} {x + m(0.16):.2f},{yg:.2f} Z" fill="{col}"/>')
+        tips = []; o_b = len(o); branch(x, yg - m(tb), math.pi / 2, m((h - tb) * 0.32), m(0.14), 4, tips); skel = o[o_b:]; del o[o_b:]
+        cy = yg - m(h - cw * 0.95); n = 70 if kind == 'round' else 45
+        for _ in range(n):   # leaf clumps inside an irregular ellipse, denser to the top
+            a = rr.random() * 2 * math.pi; rad = rr.random() ** 0.55
+            px = x + math.cos(a) * rad * m(cw) * (0.9 + 0.15 * rr.random()); py = cy - math.sin(a) * rad * m(cw) * 0.88
+            clumps.append((px, py, m(0.45 + 0.45 * rr.random()) * (0.85 if kind == 'light' else 1)))
+        for tx, ty in tips: clumps.append((tx, ty, m(0.55)))
+    elif kind == 'cypress':
+        h = h or 11.0; w = h * 0.085
+        o.append(f'<line x1="{x:.2f}" y1="{yg:.2f}" x2="{x:.2f}" y2="{yg - m(0.8):.2f}" stroke="{col}" stroke-width="{m(0.18):.2f}"/>')
+        for i in range(int(h * 7)):
+            t = rr.random(); wid = w * (min(1, t * 5 + 0.15) ** 0.6) * (1 - t) ** 0.85
+            rc = m(0.2 + 0.22 * (1 - t)) * (0.8 + 0.4 * rr.random()); clumps.append((x + rr.uniform(-1, 1) * m(wid) * 0.75, yg - m(0.6) - m(h - 0.8) * t, rc, rc * 0.75, rc * 1.5))
+    elif kind == 'conifer':
+        h = h or 9.0
+        o.append(f'<path d="M{x - m(0.2):.2f},{yg:.2f} L{x - m(0.05):.2f},{yg - m(h * 0.9):.2f} L{x + m(0.05):.2f},{yg - m(h * 0.9):.2f} L{x + m(0.2):.2f},{yg:.2f} Z" fill="{col}"/>')
+        tiers = 13
+        for i in range(tiers):   # drooping branch layers, wider below, uneven
+            t = (i + 0.5) / tiers; yy = yg - m(1.3) - m(h - 1.6) * t; half = m(h * 0.32) * (1 - t) ** 0.9 * (0.8 + 0.4 * rr.random())
+            for sgn in (-1, 1):
+                ex = x + sgn * half; o.append(f'<path d="M{x:.2f},{yy:.2f} Q{(x + ex) / 2:.2f},{yy - m(0.25):.2f} {ex:.2f},{yy + m(0.35):.2f}" fill="none" stroke="{col}" stroke-width="{m(0.06):.2f}"/>')
+                for j in range(int(3 + 6 * (1 - t))):
+                    q = rr.random(); rc = m(0.28 + 0.3 * (1 - t)) * (0.8 + 0.4 * rr.random()); clumps.append((x + sgn * half * (0.1 + 0.9 * q), yy + m(0.35) * (q - 0.5) + m(0.3) * rr.random(), rc, rc * 1.35, rc * 0.85))
+        clumps.append((x, yg - m(h - 0.3), m(0.25)))
+    elif kind == 'shrub':
+        h = h or 1.1
+        for _ in range(16): clumps.append((x + rr.uniform(-0.75, 0.75) * m(1), yg - m(h) * (0.25 + 0.55 * rr.random()), m(0.3 + 0.15 * rr.random())))
+    # pen rendering: (1) every clump filled with the line colour and stroked, (2) every clump filled white on top — only the
+    # outer silhouette stays drawn; (3) inside, only the lower edge of each clump as a short arc (the shadow under a leaf mass),
+    # (4) stipple on the shaded (right, lower) side; a few branches show through.
+    xs = [c[0] for c in clumps] or [x]; x_lo, x_hi = min(xs), max(xs); ys = [c[1] for c in clumps] or [yg]; y_lo, y_hi = min(ys), max(ys)
+    ds = []
+    for c in clumps:
+        px, py, r = c[:3]; rx, ry = (c[3], c[4]) if len(c) > 3 else (r, r * 0.9)
+        ds.append((px, py, rx, ry, _clump_d(px, py, rx, ry, rr)))
+    o.append(f'<path d="{" ".join(d for *_, d in ds)}" fill="{col}" stroke="{col}" stroke-width="{sw * 2.6:.3f}" stroke-linejoin="round"/>')
+    o.append(f'<path d="{" ".join(d for *_, d in ds)}" fill="{WHITE}" stroke="none"/>')
+    arcs = []; dots = []
+    for px, py, rx, ry, d in sorted(ds, key=lambda q: q[1]):
+        sh = max(0.0, min(1.0, 0.55 * (px - x_lo) / (x_hi - x_lo + 1e-6) + 0.45 * (py - y_lo) / (y_hi - y_lo + 1e-6)))
+        if rr.random() < 0.55 + 0.4 * sh:
+            a0 = math.radians(rr.uniform(10, 40)); a1 = math.radians(rr.uniform(120, 170))
+            arcs.append(f'M{px + rx * math.cos(a0):.2f},{py + ry * math.sin(a0):.2f} A{rx:.2f},{ry:.2f} 0 0 1 {px + rx * math.cos(a1):.2f},{py + ry * math.sin(a1):.2f}')
+        for _ in range(int(sh * sh * 9 * (rx * ry) / (0.6 * K) ** 2)):
+            dots.append(f'M{px + rr.uniform(-0.8, 0.8) * rx:.2f},{py + rr.uniform(0.0, 0.85) * ry:.2f}h0.01')
+    o.append(f'<path d="{"".join(arcs)}" fill="none" stroke="{col}" stroke-width="{sw:.3f}" stroke-linecap="round"/>')
+    o.append(f'<path d="{"".join(dots)}" fill="none" stroke="{col}" stroke-width="{0.11 * min(1, K / 2) + 0.03:.2f}" stroke-linecap="round"/>')
+    o += [b for i_, b in enumerate(skel) if i_ < 7]   # the trunk's first forks show below and through the crown
+    return ''.join(o)
