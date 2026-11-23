@@ -250,39 +250,58 @@ def long_angle(g, screen_flip=True):
     return -a if screen_flip else a
 
 
-def vega_geom(g_sheet, kind, ang=None, seed=1):
-    """the same textures as vega_pat, as explicit geometry in sheet millimetres (Chromium prints SVG patterns as low-resolution
-    images): farmland = rows 0.8 mm apart along the field's long side, each slightly offset; meadow = a gravel speckle (about
-    one dot per mm²); orchard = the speckle with dashed canopies on a 6 mm grid. g_sheet: a shapely polygon already on the sheet."""
+def vega_geom(g_sheet, kind, ang=None, seed=1, sc=1.0):
+    """the textures as explicit geometry in sheet millimetres (Chromium prints SVG patterns as low-resolution images), in black
+    and white after the owner's reference sheets (23 Nov 2026 — style only, drawn here): farmland = rows along the field's long
+    side, each with short sprouts along it; meadow and grass = short upright grass strokes; orchard = a dense speckle under dashed
+    canopies on a 6 mm grid. g_sheet: a shapely polygon already on the sheet."""
     import random as _r
     from shapely.prepared import prep
     if g_sheet.is_empty: return ''
     rr = _r.Random(seed); out = []
     x0, y0, x1, y1 = g_sheet.bounds; pg = prep(g_sheet)
+    f = sc ** 0.6; dens = 1.0 / (f * f)   # by scale (sc = 1 at 1:1000, 2 at 1:500): larger marks, fewer per mm², as the eye reads them
+    def pts(n):
+        got, tries = [], 0
+        while len(got) < n and tries < n * 6:
+            tries += 1; x, y = rr.uniform(x0, x1), rr.uniform(y0, y1)
+            if pg.contains(Point(x, y)): got.append((x, y))
+        return got
     if kind == 'farmland':
         a = math.radians(ang if ang is not None else long_angle(g_sheet, screen_flip=False))
         ux, uy = math.cos(a), math.sin(a); nx, ny = -uy, ux
         cx, cy = (x0 + x1) / 2, (y0 + y1) / 2; R_ = math.hypot(x1 - x0, y1 - y0) / 2 + 1
-        segs = []
-        t = -R_
+        rows, dark, sprouts = [], [], []
+        t = -R_; k_row = 0
         while t <= R_:
-            o = t + rr.uniform(-0.08, 0.08)
+            o = t + rr.uniform(-0.06, 0.06)
             ln = LineString([(cx + nx * o - ux * R_, cy + ny * o - uy * R_), (cx + nx * o + ux * R_, cy + ny * o + uy * R_)]).intersection(g_sheet)
             for q in ([ln] if ln.geom_type == 'LineString' else [q for q in getattr(ln, 'geoms', []) if q.geom_type == 'LineString']):
-                if not q.is_empty and q.length > 0.3: segs.append('M{:.2f},{:.2f} L{:.2f},{:.2f}'.format(*q.coords[0], *q.coords[-1]))
-            t += 0.8
-        return f'<path d="{" ".join(segs)}" fill="none" stroke="{G[3]}" stroke-width="0.08"/>' if segs else ''
-    n = int(g_sheet.area * 2.2); dots = []
-    tries = 0
-    while len(dots) < n and tries < n * 6:
-        tries += 1; x, y = rr.uniform(x0, x1), rr.uniform(y0, y1)
-        if pg.contains(Point(x, y)): dots.append(f'M{x:.2f},{y:.2f}h0.01')
-    out.append(f'<path d="{"".join(dots)}" stroke="{G[4]}" stroke-width="0.16" stroke-linecap="round" fill="none"/>' if dots else '')
+                if q.is_empty or q.length < 0.3: continue
+                (dark if k_row % 7 in (0, 3) else rows).append('M{:.2f},{:.2f} L{:.2f},{:.2f}'.format(*q.coords[0], *q.coords[-1]))
+                d = rr.uniform(0, 0.8 * f)
+                while d < q.length:   # sprouts: short strokes along the row, leaning a little, in loose groups
+                    p_ = q.interpolate(d); h = rr.uniform(0.15, 0.32) * f; k = rr.uniform(-0.6, 0.6)
+                    sprouts.append(f'M{p_.x - (nx * 0.6 + ux * k) * h / 2:.2f},{p_.y - (ny * 0.6 + uy * k) * h / 2:.2f}l{(nx * 0.6 + ux * k) * h:.2f},{(ny * 0.6 + uy * k) * h:.2f}')
+                    d += rr.uniform(0.3, 1.6) * f
+            t += 0.9 * f; k_row += 1
+        return ((f'<path d="{" ".join(rows)}" fill="none" stroke="{G[3]}" stroke-width="{0.05 * f:.3f}"/>' if rows else '') + (f'<path d="{" ".join(dark)}" fill="none" stroke="{G[4]}" stroke-width="{0.08 * f:.3f}"/>' if dark else '')
+                + (f'<path d="{"".join(sprouts)}" fill="none" stroke="{G[4]}" stroke-width="{0.06 * f:.3f}" stroke-linecap="round"/>' if sprouts else ''))
+    if kind == 'meadow':   # grass strokes, nearly upright, a few clumps denser
+        strokes = []
+        for (x, y) in pts(int(g_sheet.area * 3.2 * dens)):
+            h = rr.uniform(0.2, 0.5) * f; k = rr.uniform(-0.2, 0.2)
+            strokes.append(f'M{x:.2f},{y:.2f}l{k * h:.2f},{-h:.2f}')
+        return f'<path d="{"".join(strokes)}" fill="none" stroke="{G[4]}" stroke-width="{0.05 * f:.3f}" stroke-linecap="round"/>' if strokes else ''
+    dots = [f'M{x:.2f},{y:.2f}h0.01' for x, y in pts(int(g_sheet.area * 3.0 * dens))]
+    big = [f'M{x:.2f},{y:.2f}h0.01' for x, y in pts(int(g_sheet.area * 0.05 * dens))]
+    out.append((f'<path d="{"".join(dots)}" stroke="{G[4]}" stroke-width="{0.11 * f:.3f}" stroke-linecap="round" fill="none"/>' if dots else '') + (f'<path d="{"".join(big)}" stroke="{G[5]}" stroke-width="{0.26 * f:.3f}" stroke-linecap="round" fill="none"/>' if big else ''))
     if kind == 'orchard':
         cs = []
-        for i in range(int(x0 // 6), int(x1 // 6) + 1):
-            for j in range(int(y0 // 6), int(y1 // 6) + 1):
-                cx, cy = i * 6 + 3 + (1.5 if j % 2 else 0), j * 6 + 3
-                if pg.contains(Point(cx, cy).buffer(1.3)): cs.append(f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="1.3" fill="{WHITE}" stroke="{G[4]}" stroke-width="0.12" stroke-dasharray="0.3 0.15"/><circle cx="{cx:.2f}" cy="{cy:.2f}" r="0.12" fill="{G[4]}"/>')
+        st_ = 6 * f; rc = 1.3 * f
+        for i in range(int(x0 // st_), int(x1 // st_) + 1):
+            for j in range(int(y0 // st_), int(y1 // st_) + 1):
+                cx, cy = i * st_ + st_ / 2 + (st_ / 4 if j % 2 else 0), j * st_ + st_ / 2
+                if pg.contains(Point(cx, cy).buffer(rc)): cs.append(f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="{rc:.2f}" fill="{WHITE}" stroke="{G[4]}" stroke-width="{0.1 * f:.3f}" stroke-dasharray="{0.3 * f:.2f} {0.15 * f:.2f}"/><circle cx="{cx:.2f}" cy="{cy:.2f}" r="{0.12 * f:.2f}" fill="{G[4]}"/>')
         out.append(''.join(cs))
     return ''.join(out)

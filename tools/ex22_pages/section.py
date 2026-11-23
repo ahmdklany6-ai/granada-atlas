@@ -160,7 +160,7 @@ if EDGE:
             g0_ = poly(l['r'][0]); kd_ = 'farmland' if l['lu'] == 'farmland' else 'orchard' if l['lu'] == 'orchard' else 'meadow'
             gc_ = g0_.intersection(band.buffer(2))
             if gc_.is_empty: continue
-            pg.append(vega_geom(stf(tp, gc_).buffer(0), kd_, seed=len(pg)) + f'<path d="{dp(gc_)}" fill="none" stroke="{G[2]}" stroke-width="{LW["hair"]}"/>')
+            pg.append(vega_geom(stf(tp, gc_).buffer(0), kd_, seed=len(pg), sc=2.0) + f'<path d="{dp(gc_)}" fill="none" stroke="{G[2]}" stroke-width="{LW["hair"]}"/>')
     for s_ in F['streets']:
         w_ = {'primary': 7.0, 'secondary': 6.0, 'tertiary': 6.0, 'residential': 5.0, 'service': 3.0, 'track': 3.0, 'cycleway': 2.5, 'path': 2.5}.get(s_['hw'], 2.0)
         for r in s_['r']:
