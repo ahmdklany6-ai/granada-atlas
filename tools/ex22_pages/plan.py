@@ -17,7 +17,10 @@ OUT = sys.argv[1] if len(sys.argv) > 1 else 'exports/ex22'
 GROUP = sys.argv[2] if len(sys.argv) > 2 else 'residents'
 SW, SH = 841, 594               # A1 landscape
 MX, MY = 10, 10                  # map window origin (mm)
-F = load_frame()
+import json as _j0, edges
+AREA = edges.AREA
+F = load_frame() if AREA == 'N' else _j0.load(open(edges.frame_file()))
+WATER = '#4F6E80'   # palette: blue (water lines)
 V = MapView(F['frame'], MX, MY, 1000)
 COL = MX + V.w + 10              # the column beside the map
 CW = SW - 10 - COL
@@ -215,6 +218,65 @@ def defence():
     return under + over, callouts, rows, legend, P
 
 
+def edge_plan():
+    """the residents' proposal on one of the three more edge areas (edges.py): drawn from typed elements"""
+    E = edges.build(F, gd); P = dict(E.P); under, over = [], []
+    pk = E.polys
+    for g in pk.get('park', []): under.append(f'<path d="{V.dgeom(g)}" fill="{R[0]}" stroke="none" fill-rule="evenodd"/>')
+    for g in pk.get('orchard_area', []): under.append(f'<path d="{V.dgeom(g)}" fill="{R[0]}" stroke="{RED}" stroke-width="{LW["thin"]}"/>')
+    for g in pk.get('riparian', []): under.append(f'<path d="{V.dgeom(g)}" fill="{R[1]}" stroke="none" fill-rule="evenodd"/>')
+    for g in pk.get('meadow', []): under.append(f'<path d="{V.dgeom(g)}" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["thin"]}" stroke-dasharray="0.9 0.6"/>')
+    for g in pk.get('allot', []): under.append(f'<path d="{V.dgeom(g)}" fill="url(#redHatch)" stroke="{RED}" stroke-width="{LW["hair"] * 1.5}"/>')
+    for g in pk.get('plaza', []): under.append(f'<path d="{V.dgeom(g)}" fill="url(#redDots)" stroke="{RED}" stroke-width="{LW["prop"]}"/>')
+    for g in E.lines.get('walk', []):
+        if g is None or g.is_empty: continue
+        under.append(f'<path d="{V.dgeom(g, close=False)}" fill="none" stroke="{RED}" stroke-width="{3 * k + 2 * LW["hair"]:.2f}" stroke-linecap="round" stroke-linejoin="round"/>')
+        under.append(f'<path d="{V.dgeom(g, close=False)}" fill="none" stroke="{WHITE}" stroke-width="{3 * k - 2 * LW["hair"]:.2f}" stroke-linecap="round" stroke-linejoin="round"/>')
+    for g in pk.get('park', []): under.append(f'<path d="{V.dgeom(g)}" fill="none" stroke="{RED}" stroke-width="{LW["propBold"]}"/>')
+    for (x, y) in E.trees: over.append(f'<circle cx="{X(x):.2f}" cy="{Y(y):.2f}" r="{2.6 * k:.2f}" fill="{WHITE}" fill-opacity="0.9" stroke="{RED}" stroke-width="{LW["thin"]}"/><circle cx="{X(x):.2f}" cy="{Y(y):.2f}" r="0.25" fill="{RED}"/>')
+    for b in E.bridges: over.append(f'<path d="{V.dgeom(b, close=False)}" stroke="{RED}" stroke-width="{3 * k + 0.5:.2f}" fill="none"/><path d="{V.dgeom(b, close=False)}" stroke="{WHITE}" stroke-width="{3 * k - 0.3:.2f}" fill="none"/>')
+    roads_ = unary_union([LineString(r[0]) for s_ in F['streets'] if s_['hw'] in ('primary', 'secondary', 'tertiary', 'residential') for r in s_['r'] if len(r[0]) > 1])
+    for (x, y) in E.crossings:
+        d0 = roads_.project(Point(x, y)) if roads_.geom_type == 'LineString' else None
+        rl = roads_ if roads_.geom_type == 'LineString' else min(roads_.geoms, key=lambda g: g.distance(Point(x, y)))
+        q = rl.interpolate(rl.project(Point(x, y))); q2 = rl.interpolate(rl.project(Point(x, y)) + 1); dx, dy = q2.x - q.x, q2.y - q.y; n = math.hypot(dx, dy) or 1; ux, uy = dx / n, dy / n
+        for s_ in range(-3, 4):
+            bx, by = x + ux * s_ * 0.9, y + uy * s_ * 0.9
+            over.append(f'<line x1="{X(bx - uy * 7):.2f}" y1="{Y(by + ux * 7):.2f}" x2="{X(bx + uy * 7):.2f}" y2="{Y(by - ux * 7):.2f}" stroke="{RED}" stroke-width="0.45"/>')
+    if E.pavilion:
+        pg_, fl_, h_ = E.pavilion; over.append(f'<path d="{V.dgeom(pg_)}" fill="{RED}" stroke="{RED}" stroke-width="{LW["thin"]}"/>')
+        c = pg_.centroid; over.append(f'<text x="{X(c.x):.2f}" y="{Y(c.y) + 0.7:.2f}" font-family="{FONT}" font-size="{TY["label"]}" font-weight="700" fill="{WHITE}" text-anchor="middle">I</text>')
+    # callouts: one per programme row, placed on its element
+    def rp(g): q = g.representative_point(); return (q.x, q.y)
+    pos = {}
+    if AREA == 'W':
+        wk = max([g for g in E.lines['walk'] if g is not None and not g.is_empty], key=lambda g: g.length)
+        pos = {1: rp(pk['park'][0]), 2: (E.river.interpolate(0.62, normalized=True).x, E.river.interpolate(0.62, normalized=True).y), 3: (wk.interpolate(0.35, normalized=True).x, wk.interpolate(0.35, normalized=True).y),
+               4: (E.bridges[1].centroid.x + 6, E.bridges[1].centroid.y + 6) if len(E.bridges) > 1 else None, 5: (E.crossings[1][0] - 6, E.crossings[1][1] - 6) if len(E.crossings) > 1 else None,
+               6: rp(pk['meadow'][0]), 7: (E.trees[len(E.trees) // 3][0] + 5, E.trees[len(E.trees) // 3][1] + 5) if E.trees else None, 8: (E.pavilion[0].centroid.x + 10, E.pavilion[0].centroid.y + 8) if E.pavilion else None}
+    elif AREA == 'E':
+        pos = {1: (pk['park'][0].centroid.x + 25, pk['park'][0].centroid.y + 30), 2: rp(pk['allot'][0]), 3: (E.trees[-1][0] + 4, E.trees[-1][1] + 4) if E.trees else None, 4: rp(pk['meadow'][0]),
+               5: (E.trees[3][0] - 6, E.trees[3][1]) if E.trees else None, 6: (E.lines['walk'][0].interpolate(0.3, normalized=True).x + 4, E.lines['walk'][0].interpolate(0.3, normalized=True).y + 4),
+               7: (E.crossings[0][0] - 8, E.crossings[0][1] + 6) if E.crossings else None, 8: (E.pavilion[0].centroid.x, E.pavilion[0].centroid.y + 14)}
+    elif AREA == 'S':
+        wk = max(E.lines['walk'], key=lambda g: g.length)
+        pos = {1: rp(pk['plaza'][0]), 2: (E.river.interpolate(0.6, normalized=True).x - 8, E.river.interpolate(0.6, normalized=True).y), 3: (wk.interpolate(0.7, normalized=True).x + 5, wk.interpolate(0.7, normalized=True).y),
+               4: (E.bridges[-1].centroid.x + 8, E.bridges[-1].centroid.y) if E.bridges else None, 5: (E.crossings[0][0] + 8, E.crossings[0][1] + 6) if E.crossings else None,
+               6: (E.trees[5][0] + 5, E.trees[5][1] + 4) if len(E.trees) > 5 else None, 7: rp(pk['meadow'][0]) if pk.get('meadow') else None}
+    callouts = [(n_, pos.get(n_)) for n_, _, _ in E.rows if n_]
+    legend = [('fill', R[0], RED, 'Park, public (proposed)')]
+    if pk.get('riparian'): legend.append(('fill', R[1], R[1], 'River banks replanted (about 9 m each side)'))
+    if pk.get('meadow'): legend.append(('fill', WHITE, RED, 'Meadow', '0.9 0.6'))
+    if pk.get('allot'): legend.append(('pat', 'url(#redHatch)', RED, 'Allotments'))
+    if pk.get('plaza'): legend.append(('pat', 'url(#redDots)', RED, 'River square'))
+    legend += [('tree', None, None, 'Tree, proposed (crown about 5 m)'), ('path', None, None, 'Path, 3 m')]
+    if E.bridges: legend.append(('bridge', None, None, 'Footbridge over the river'))
+    if E.crossings: legend.append(('zebra', None, None, 'Crossing'))
+    if E.pavilion: legend.append(('fill', RED, RED, ('Rest stop' if AREA == 'W' else 'Farm hall and market') + ' (I = floors)'))
+    P['_under'] = len(under)
+    return under + over, callouts, E.rows, legend, P
+
+
 TEXT = {
     'residents': {
         'name': 'Residents', 'of': 'of the five towns',
@@ -264,9 +326,21 @@ TEXT = {
 
 # ---- draw the sheet -----------------------------------------------------------------------------------------------------
 T = TEXT[GROUP]
+if AREA != 'N':
+    _ET = edges.TEXT[AREA]
+    T = dict(TEXT['residents'], position=_ET['position'], why=_ET['why'], daily_head=_ET['daily_head'], daily=lambda F, _d=_ET['daily']: _d, fn=edge_plan, code=_ET['code'])
 prop_svg, callouts, rows, legend, PQ = T['fn']()
 
 g = []   # the map group (clipped)
+if AREA != 'N':   # the Vega around the edge areas: farmland and orchards in a pale green, the roads as grey lines (the north sheet reads its streets from the parcels)
+    import _bw as _bwp
+    VEGA = _bwp._P['basemap']['green']
+    for l in F['landuse']:
+        if l['lu'] in ('farmland', 'orchard', 'meadow', 'grass', 'vineyard', 'allotments') and l['r']: g.append(f'<path d="{V.d([r for rr in l["r"] for r in rr])}" fill="{_bwp._P['basemap']['agri'] if l['lu'] == 'farmland' else VEGA}" stroke="none" fill-rule="evenodd"/>')
+    for s_ in F['streets']:
+        w_ = {'primary': 1.6, 'secondary': 1.3, 'tertiary': 1.1, 'residential': 0.8, 'unclassified': 0.8, 'service': 0.4, 'track': 0.35}.get(s_['hw'], 0.3)
+        for r in s_['r']:
+            if len(r[0]) > 1: g.append(f'<path d="{V.d(r, close=False)}" fill="none" stroke="{G[3]}" stroke-width="{w_}" stroke-linecap="round"' + (' stroke-dasharray="1 0.8"' if s_['hw'] in ('track', 'path', 'footway', 'cycleway') else '') + '/>')
 # the base: a white void behind its fence, sparse grey hatch
 g.append(f'<path d="{V.dgeom(base)}" fill="url(#baseHatch)" stroke="none" fill-rule="evenodd"/>')
 # the aeronautical ceiling: allowed height above the ground, lines every few metres
@@ -286,6 +360,10 @@ for q in F['places']:
 # the proposal's fills and lines
 NU = PQ.get('_under', 8)
 g += prop_svg[:NU]
+# water: rivers, streams, irrigation ditches (OSM)
+for w in F.get('water', []):
+    for r in w['r']: g.append(f'<path d="{V.d(r, close=False)}" fill="none" stroke="{WATER}" stroke-width="{2.2 if w.get("ww") == "river" else 0.6 if w.get("ww") == "stream" else 0.4}" stroke-linecap="round" stroke-linejoin="round"/>')
+
 # buildings by floors
 for gg, b in blds:
     fill = floors_fill(b)
@@ -352,12 +430,20 @@ for lv, lns in ceil_lines.items():
         maptext(X(p.x), Y(p.y) + 0.5, f'{lv} m', size=TY['tiny'], fill=G[5], weight=600, rot=ang)
 # names: the base, the towns either side of the municipal line, the avenue and the metro
 bc = base.intersection(FR).representative_point()
-maptext(X(443560), Y(4110560), 'BASE AÉREA DE ARMILLA', size=3.2, fill=G[5], weight=600, spacing=1.2)
-maptext(X(443560), Y(4110560) + 4.4, 'closed military land · helicopter school (Ala 78)', size=TY['label'], fill=G[5], weight=400)
-maptext(X(443700), Y(4110962), 'CHURRIANA DE LA VEGA', size=2.6, fill=INK, weight=600, spacing=0.9)
-maptext(X(443985), Y(4110962), 'ARMILLA', size=2.6, fill=INK, weight=600, spacing=0.9)
-maptext(X(443520), Y(4110870) - 3.2, 'metro line 1 extension (under construction)', size=TY['map'], fill=INK, weight=500, italic=True, rot=-17)
-maptext(X(443912), Y(4110820), 'sports complex (Armilla)', size=TY['map'], fill=G[5], weight=500)
+if AREA == 'N':
+    maptext(X(443560), Y(4110560), 'BASE AÉREA DE ARMILLA', size=3.2, fill=G[5], weight=600, spacing=1.2)
+    maptext(X(443560), Y(4110560) + 4.4, 'closed military land · helicopter school (Ala 78)', size=TY['label'], fill=G[5], weight=400)
+    maptext(X(443700), Y(4110962), 'CHURRIANA DE LA VEGA', size=2.6, fill=INK, weight=600, spacing=0.9)
+    maptext(X(443985), Y(4110962), 'ARMILLA', size=2.6, fill=INK, weight=600, spacing=0.9)
+    maptext(X(443520), Y(4110870) - 3.2, 'metro line 1 extension (under construction)', size=TY['map'], fill=INK, weight=500, italic=True, rot=-17)
+    maptext(X(443912), Y(4110820), 'sports complex (Armilla)', size=TY['map'], fill=G[5], weight=500)
+else:
+    _bp = base.intersection(FR.buffer(-40)).representative_point()
+    maptext(X(_bp.x), Y(_bp.y), 'BASE AÉREA DE ARMILLA', size=3.2, fill=G[5], weight=600, spacing=1.2)
+    maptext(X(_bp.x), Y(_bp.y) + 4.4, 'closed military land', size=TY['label'], fill=G[5], weight=400)
+    for _nm, _p, _k in edges.build(F, gd).names:
+        if _k == 'water': maptext(X(_p.x) + 6, Y(_p.y) - 4, _nm, size=2.6, fill=WATER, weight=600, italic=True, spacing=0.6)
+        else: maptext(X(_p.x), Y(_p.y), _nm, size=2.6, fill=INK, weight=600, spacing=0.9)
 # callouts
 for nmb, c in callouts:
     if not c: continue
@@ -392,7 +478,7 @@ y += 15.5; svg.text(x0, y, T['name'], TY['title'], weight=700)
 y += 7.0; svg.text(x0, y, T['of'], TY['sub'], weight=500)
 y += 6.4; svg.text(x0, y, 'Urban plan 1:1000', TY['sub'], weight=500, fill=RED)
 y += 5.2
-for ln in wrap('The north edge of the base, Churriana de la Vega | Armilla — the same frame and the same section line for all three groups.', TY['small'], CW):
+for ln in wrap('The north edge of the base, Churriana de la Vega | Armilla — the same frame and the same section line for all three groups.' if AREA == 'N' else edges.TEXT[AREA]['where'] + ' The residents’ position, on one more stretch of the edge.', TY['small'], CW):
     svg.text(x0, y, ln, TY['small'], fill=G[5]); y += LH(TY['small'])
 y += 2.6; rule(y)
 y += 6.0; head(y, 'POSITION', RED)
@@ -444,6 +530,7 @@ def swatch(kind, xx, yy, a=None, b=None, dash=None):
     elif kind == 'dead': svg.add(f'<circle cx="{xx + 3:.2f}" cy="{y0 + 1.5:.2f}" r="1.35" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["propBold"]}"/><path d="M{xx + 2.3:.2f},{y0 + 1.5:.2f} H{xx + 3.7:.2f} M{xx + 3:.2f},{y0 + 0.8:.2f} V{y0 + 2.2:.2f}" stroke="{RED}" stroke-width="{LW["prop"]}"/>')
     elif kind == 'stop': svg.add(f'<circle cx="{xx + 3:.2f}" cy="{y0 + 1.5:.2f}" r="1.6" fill="{WHITE}" stroke="{RED}" stroke-width="{LW["prop"]}"/><text x="{xx + 3:.2f}" y="{y0 + 2.1:.2f}" font-family="{FONT}" font-size="1.6" font-weight="700" fill="{RED}" text-anchor="middle">M</text>')
     elif kind == 'gate': svg.add(f'<path d="M{xx + 2:.2f},{y0 + 0.2:.2f} L{xx + 4:.2f},{y0 + 1.5:.2f} L{xx + 2:.2f},{y0 + 2.8:.2f}" fill="none" stroke="{RED}" stroke-width="{LW["propBold"]}" stroke-linecap="round" stroke-linejoin="round"/>')
+    elif kind == 'bridge': svg.add(f'<line x1="{xx}" y1="{y0 + 1.5:.2f}" x2="{xx + w}" y2="{y0 + 1.5:.2f}" stroke="{RED}" stroke-width="3.5"/><line x1="{xx}" y1="{y0 + 1.5:.2f}" x2="{xx + w}" y2="{y0 + 1.5:.2f}" stroke="{WHITE}" stroke-width="2.7"/><line x1="{xx + 3}" y1="{y0 - 0.4:.2f}" x2="{xx + 3}" y2="{y0 + 3.4:.2f}" stroke="{WATER}" stroke-width="1.4" opacity="0.5"/>')
     elif kind == 'shop': svg.add(f'<rect x="{xx}" y="{y0:.2f}" width="{w}" height="{h}" fill="{RED}"/><line x1="{xx + 0.3}" y1="{y0 + 0.6:.2f}" x2="{xx + w - 0.3}" y2="{y0 + 0.6:.2f}" stroke="{WHITE}" stroke-width="0.35" stroke-dasharray="1.2 0.6"/>')
     elif kind == 'stopk': svg.add(f'<circle cx="{xx + 3:.2f}" cy="{y0 + 1.5:.2f}" r="1.6" fill="{WHITE}" stroke="{INK}" stroke-width="{LW["thin"]}"/><text x="{xx + 3:.2f}" y="{y0 + 2.1:.2f}" font-family="{FONT}" font-size="1.6" font-weight="700" fill="{INK}" text-anchor="middle">M</text>')
     elif kind == 'furrow': svg.add(f'<rect x="{xx}" y="{y0:.2f}" width="{w}" height="{h}" fill="none" stroke="{RED}" stroke-width="{LW["prop"]}"/>' + ''.join(f'<line x1="{xx}" y1="{y0 + 0.6 * i:.2f}" x2="{xx + w}" y2="{y0 + 0.6 * i:.2f}" stroke="{RED}" stroke-width="{LW["hair"] * 1.6}"/>' for i in range(1, 5)))
@@ -465,12 +552,12 @@ def keycol(items, xx, yy):
     return yy
 ctx = [('bld', G[2], G[5], '1–2 floors (Catastro)'), ('bld', G[3], G[5], '3 floors'), ('bld', G[4], G[5], '4 floors or more'), ('bld', WHITE, G[4], 'Hall or shed: height not derived from floors'),
        ('line', G[3], LW['parcel'] * 3, 'Parcel (Catastro)'), ('basek', None, None, 'The base, closed'), ('fence', None, None, 'The fence'), ('metro', None, None, 'Metro extension, under construction'),
-       ('line', G[5], LW['mid'] + 0.05, 'Municipal line', MUNI_DASH), ('line', G[4], LW['thin'] * 1.6, 'Flight ceiling: allowed height above the ground (m)', '1.4 0.9'), ('sec', None, None, 'Shared section line S–S (sheet 02)')]
+       ('line', G[5], LW['mid'] + 0.05, 'Municipal line', MUNI_DASH), ('line', G[4], LW['thin'] * 1.6, 'Flight ceiling: allowed height above the ground (m)', '1.4 0.9'), ('sec', None, None, 'Shared section line S–S (sheet 02)' if AREA == 'N' else 'Section line S–S (sheet 02)')] + ([('line', WATER, 1.2, 'River, stream, irrigation ditch (OSM)')] if F.get('water') else [])
 y = max(keycol(legend, x0, ky), keycol(ctx, x0 + cw2 + 1, ky)) + 0.6
 y += 1.0; rule(y)
 
 # sources and notes, at the foot of the column
-SRC = ('Sources: D. G. del Catastro, INSPIRE buildings (floors) and parcels; OpenStreetMap contributors (streets, places, base outline, metro extension; ODbL); '
+SRC = ('Sources: D. G. del Catastro, INSPIRE buildings (floors) and parcels; OpenStreetMap contributors (streets, places, rivers and ditches, base outline, metro extension; ODbL); '
        'IGN MDT25 (CC BY 4.0); Origen de los datos: Ministerio de Defensa (aeronautical easements, RD 118/2019); INE padrón; key map: OSM built-up areas, Catastro municipal outlines. '
        'Notes: the proposal is drawn schematically — the shapes and sizes of its parts are ours. Ceiling lines: the easement surfaces minus the ground model, smoothed over about 30 m, '
        'our interpolation, approximate, not the legal values. Floors from the Catastro; heights are not measured.')
@@ -525,6 +612,6 @@ for v in (0, 10, 20, 50, 100): svg.text(x0 + v * V.k, y + 4.8, f'{v}' + (' m' if
 y += 9.0
 print('column ends at', round(y, 1), 'mm; sources start at', round(yS, 1), 'mm', '| programme', {k2: (round(v, 1) if isinstance(v, float) else v) for k2, v in PQ.items()})
 
-name = os.path.join(OUT, f'2.2_{GROUP}_01_plan_1-1000')
+name = os.path.join(OUT, f'2.2_{GROUP}_01_plan_1-1000' if AREA == 'N' else f'2.2_residents_{AREA}_01_plan_1-1000')
 ok = export(svg, name, SW, SH, dpi=int(os.environ.get('DPI', 150)))
 print('fonts loaded:', ok, '->', name + '.pdf')

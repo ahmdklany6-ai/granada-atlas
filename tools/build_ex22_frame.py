@@ -26,7 +26,12 @@ if os.environ.get('FRAME'): FRAME = tuple(float(v) for v in os.environ['FRAME'].
 # lines tried every 20 m along the strip)
 SEC_A = (443807.0, 4110985.0)
 SEC_LEN = 350.0
-CODES = ('18022', '18064')   # Armilla, Churriana de la Vega
+# other frames (23 Nov 2026, the three more edge areas): FRAME, SEC_A (the line's outer end), SEC_LEN, STRIP_PTS ('x,y;x,y': the
+# parcels of the open land the proposal works on) and OUT from the environment
+if os.environ.get('SEC_A'): SEC_A = tuple(float(v) for v in os.environ['SEC_A'].split(','))
+if os.environ.get('SEC_LEN'): SEC_LEN = float(os.environ['SEC_LEN'])
+STRIP_PTS = [tuple(float(v) for v in q.split(',')) for q in os.environ['STRIP_PTS'].split(';')] if os.environ.get('STRIP_PTS') else [(443700, 4110820), (443822, 4110818)]
+CODES = ('18022', '18064', '18083', '18148', '18015')   # Armilla, Churriana de la Vega, Las Gabias, Ogíjares, Alhendín (the edge frames reach them)
 FLOOR_M = 3.0
 rnd = lambda c: [[round(x, 1), round(y, 1)] for x, y in c]
 
@@ -121,13 +126,13 @@ def main():
         if g.intersects(W) and g.intersection(have).area < 0.3 * g.area: blds.append({'g': g, 'lv': None, 'b': 'public', 'hu': True, 'y': None, 'src': 'osm'})
     parcels = catastro_parcels(bb)
     # the empty strip between Avenida de Poniente and Calle Santa Lucía (two Catastro parcels, no building on them): who lives near it
-    strip = unary_union([g for g in parcels if g.contains(Point(443700, 4110820)) or g.contains(Point(443822, 4110818))])
+    strip = unary_union([g for g in parcels if any(g.contains(Point(*q)) for q in STRIP_PTS)])
     near = {}
     for q in CP:
         if q.get('dw') and not base.contains(q['g'].centroid):
             dd = q['g'].distance(strip)
             if q['ref'] not in near or dd < near[q['ref']][1]: near[q['ref']] = (q['dw'], dd)
-    strip_info = {'r': rings(strip), 'm2': round(strip.area), 'parcels': 2,
+    strip_info = {'r': rings(strip), 'm2': round(strip.area), 'parcels': len([g for g in parcels if any(g.contains(Point(*q)) for q in STRIP_PTS)]),
                   'dwellings_200m': sum(dw for dw, dd in near.values() if dd <= 200), 'dwellings_400m': sum(dw for dw, dd in near.values() if dd <= 400),
                   'note': 'Catastro dwellings (numberOfDwellings) of the buildings whose footprint lies within 200 / 400 m (straight line) of the two parcels'}
     streets = []
@@ -144,6 +149,10 @@ def main():
     for f in A.chunks('parks', bb):
         g = A.F(shape(f['geometry'])).buffer(0)
         if g.intersects(W) and f['properties'].get('le') == 'park': parks.append({'r': rings(g.intersection(W)), 'nm': f['properties'].get('nm')})
+    water = []   # rivers, streams and irrigation ditches (OSM), for the edge areas by the Río Dílar and the acequias
+    for f in json.load(open(os.path.join(ROOT, 'data/vec/water.json')))['features']:
+        g = A.F(shape(f['geometry']))
+        if g.intersects(W.buffer(50)): water.append({'ww': f['properties'].get('ww'), 'nm': f['properties'].get('nm'), 'r': rings(g.intersection(W.buffer(50)))})
     metro = []
     for f in json.load(open(os.path.join(ROOT, 'data/vec/south_metro.json')))['features']:
         g = A.F(shape(f['geometry']))
@@ -183,6 +192,11 @@ def main():
         for q in ([it] if it.geom_type == 'Point' else [q for q in getattr(it, 'geoms', []) if q.geom_type == 'Point']):
             if not q.is_empty: st_x.append({'d': round(sl.project(q), 1), 'hw': f['properties'].get('hw'), 'nm': f['properties'].get('nm')})
     met_x = xings([A.F(shape(f['geometry'])) for f in json.load(open(os.path.join(ROOT, 'data/vec/south_metro.json')))['features'] if f['properties']['k'] == 'track'], 'metro')
+    wat_x = []
+    for f in json.load(open(os.path.join(ROOT, 'data/vec/water.json')))['features']:
+        g = A.F(shape(f['geometry'])); it = g.intersection(sl)
+        for q in ([it] if it.geom_type == 'Point' else [q for q in getattr(it, 'geoms', []) if q.geom_type == 'Point']):
+            if not q.is_empty: wat_x.append({'d': round(sl.project(q), 1), 'ww': f['properties'].get('ww'), 'nm': f['properties'].get('nm')})
     fence_d = round(sl.project(Point(p0.x, p0.y)), 1)
     par_x = xings([g.boundary for g in parcels], 'parcel')
     # ground and limit on a 10 m grid over the frame (for the plan's "how high may one build here" lines)
@@ -194,10 +208,10 @@ def main():
            'streets': streets, 'landuse': lus, 'parks': parks,
            'places': [{'kind': q['kind'], 'nm': q['nm'], 'r': rings(q['g'].intersection(W))} for q in pl if q['g'].intersects(W)],
            'base': rings(base.intersection(W.buffer(60))), 'fence': [{'c': c, 'r': rings(g.intersection(W))} for c, g in fence if g.intersects(W)],
-           'dead': [[round(g.x, 1), round(g.y, 1)] for g in dead if W.contains(g)], 'strip': strip_info, 'metro_ext': metro, 'l1': l1, 'muni_line': mlines,
+           'dead': [[round(g.x, 1), round(g.y, 1)] for g in dead if W.contains(g)], 'strip': strip_info, 'metro_ext': metro, 'water': water, 'l1': l1, 'muni_line': mlines,
            'grid': {'x0': bb[0], 'y0': bb[1], 'cell': 10.0, 'nx': len(gx), 'ny': len(gy), 'ground': G, 'limit': LIM},
            'section': {'a': [round(a[0], 1), round(a[1], 1)], 'b': [round(b[0], 1), round(b[1], 1)], 'fence_at_m': fence_d, 'samples': samples,
-                       'cuts': sorted(cuts, key=lambda c: c['s0']), 'streets': sorted(st_x, key=lambda q: q['d']), 'metro': sorted(met_x, key=lambda q: q['d']), 'parcels': sorted(par_x, key=lambda q: q['d'])},
+                       'cuts': sorted(cuts, key=lambda c: c['s0']), 'streets': sorted(st_x, key=lambda q: q['d']), 'metro': sorted(met_x, key=lambda q: q['d']), 'water': sorted(wat_x, key=lambda q: q['d']), 'parcels': sorted(par_x, key=lambda q: q['d'])},
            'sources': 'D. G. del Catastro, INSPIRE buildings and cadastral parcels (floors, use, year); OpenStreetMap contributors (streets, land use, parks, places, base outline, metro extension; ODbL 1.0); IGN MDT25 (CC BY 4.0); Origen de los datos: Ministerio de Defensa (aeronautical easements, RD 118/2019)',
            'caveats': 'Heights = floors x 3 m (an estimate). Sheds and big halls: height not derived from floors. The 25 m terrain model smooths street level. The limit surface is interpolated between the drawn lines of the official surfaces (an approximation, not the legal value). The fence height is not mapped. OSM buildings missing from the Catastro: height unknown.'}
     os.makedirs(os.path.join(ROOT, 'data/ex22'), exist_ok=True)

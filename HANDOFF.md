@@ -1351,3 +1351,17 @@ Flight ceiling over the strip 13–17 m above the ground (RD 118/2019 surfaces m
   our reading); inside the fence a 6 m clear zone, an inner fence, a 4 m patrol road, masts every ~60 m (schematic).
 - Section people/cars/metro are flat-colour figures from the palette (`_bw.figure`, `car_flat`, `tram_flat`); façades behind
   the cut are opaque in a warm-grey line; proposed trees use the owner's tree PNGs from `TREE_IMAGES` (never committed).
+
+### 42.2 Three more edge areas for the residents (23 Nov 2026, owner's circles on 2.1 map 02)
+- Frames: `data/ex22/frame_W|E|S.json`, built by `tools/build_ex22_frame.py` with env `FRAME`, `SEC_A` (outer end of the line),
+  `SEC_LEN`, `STRIP_PTS`, `OUT` (the builder now reads all five towns' Catastro and adds OSM water + water crossings):
+  W `FRAME=441616,4109365,442326,4109935 SEC_A=441922,4109529 STRIP_PTS=441990,4109700`;
+  E `FRAME=443799,4109484,444509,4110054 SEC_A=444283,4109751 STRIP_PTS=444120,4109780`;
+  S `FRAME=443432,4107739,444142,4108309 SEC_A=443794,4107894 STRIP_PTS=443790,4108080`.
+- Proposals in `tools/ex22_pages/edges.py` (typed elements shared by plan and section); sheets with
+  `AREA=W|E|S python3 tools/ex22_pages/plan.py <out> residents` and `section.py` (codes 2.2-RW / RE / RS).
+  W: river park on the Río Dílar between the ring road and the fence (banks replanted, walk, footbridges, rest stop).
+  E: farm park on the field by Carretera de Sierra Nevada (allotments, orchard, meadow, tree row, farm hall, crossings).
+  S: river square at the south tip's dead end, banks replanted, walks along the Dílar and the Acequia Nueva, footbridges.
+- River channels in the sections are schematic (width/depth not surveyed); on W and E the flight ceiling is 50–65 m up
+  and is noted above the drawing instead of drawn.
