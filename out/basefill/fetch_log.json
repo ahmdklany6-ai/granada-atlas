@@ -1,0 +1,1 @@
+{"sica":"ok","overpass":"ok","tcd":"RuntimeError('exportImage failed [433310, 4104930, 453310, 4124930]')","gtfs":"ok","overture":"BinderException('Binder Error: Column \"categories\" referenced that exists in the SELECT clause - but this column cannot be referenced before it is defined')","catastro":"ok"}
