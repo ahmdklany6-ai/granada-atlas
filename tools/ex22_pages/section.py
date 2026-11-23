@@ -265,9 +265,14 @@ def section(top, proposal, title):
         if min(ts) <= 40 or min(ts) > 100: continue
         s0, s1 = min(q_ for q_, _ in ss), max(q_ for q_, _ in ss)
         if s1 < 0 or s0 > L: continue
-        sky.append((min(ts), max(0, s0), min(L, s1), b['lv']))
-    for tmin, s0, s1, lv in sorted(sky, key=lambda q: -q[0]):
-        z = grd((s0 + s1) / 2); g.append(f'<rect x="{XS(s0):.2f}" y="{YZ(z + lv * FL):.2f}" width="{(s1 - s0) * K:.2f}" height="{lv * FL * K:.2f}" fill="{WHITE}" stroke="{G[3] if tmin > 70 else G[4]}" stroke-width="0.07"/>')
+        sky.append((min(ts), max(0, s0), min(L, s1), b['lv'], b.get('b')))
+    for tmin, s0, s1, lv, use in sorted(sky, key=lambda q: -q[0]):
+        z = grd((s0 + s1) / 2)
+        if lv <= 2 and use in (None, 'house', 'residential') and (s1 - s0) > 5.5:
+            # low houses back there: drawn as the split-face block terrace house the owner photographed in the area
+            # (23 Nov 2026) — a TYPE, not surveyed house by house; in the palest line
+            g.append(_bw.elev(XS(s0), XS(s1), YZ(z), lv, 'residential', 1980, seed=int(s0 * 2) * 2, K=K, far=True).replace(_bw.INK, _bw._P['line2'])); continue
+        g.append(f'<rect x="{XS(s0):.2f}" y="{YZ(z + lv * FL):.2f}" width="{(s1 - s0) * K:.2f}" height="{lv * FL * K:.2f}" fill="{WHITE}" stroke="{G[3] if tmin > 70 else G[4]}" stroke-width="0.07"/>')
     hi_floors = max([q[3] for q in far] + [c['lv'] for c in S['cuts']] + [1]); lo_floors = min([q[3] for q in far] + [c['lv'] for c in S['cuts']])
     widest = {}
     for q in far:
@@ -488,7 +493,7 @@ def sw(kind, yy, a=None):
 SAMPLE = {'wall': 'sand', 'balcony': 'iron', 'shutters': 'roller', 'hoods': True, 'roof': 'tile', 'door': 'wood', 'garage': 'white', 'bars': True}   # the row on C. Rafael Alberti, as read from its photos
 items = [('cut', 'Building cut by the line: walls, floors and roof cut (Catastro floors × 3 m, estimate); what shows inside is schematic'),
          ('far', 'Building beyond the line, up to 40 m east, drawn from the façade photograph the Catastro publishes for its parcel: wall, base, roof, balconies, shutters, doors, garden wall and gate. Number and place of the openings: schematic.'),
-         ('tex', ''), ('sky', 'Buildings 40–100 m beyond the line: outline only'), ('ground', 'Ground, cut (IGN MDT25)'), ('baseground', 'Ground of the base (closed; nothing inside is surveyed)'),
+         ('tex', ''), ('sky', 'Buildings 40–100 m beyond the line: outline only; low houses drawn as the block terrace-house type seen in the area (schematic)'), ('ground', 'Ground, cut (IGN MDT25)'), ('baseground', 'Ground of the base (closed; nothing inside is surveyed)'),
          ('ceil', 'Flight ceiling: the easement surface over the line (RD 118/2019, our interpolation, approximate); hatched = the air it keeps free'), ('fence', 'Fence: height not mapped'), ('person', 'People, cars, street lights: schematic, for scale'),
          ('hall', 'Neighbourhood hall, proposed (2 floors, cut)'), ('redground', 'Park and fence walk, proposed'), ('tree', 'Tree, proposed, on the line (drawn 8–11 m; species not chosen)'), ('treefar', 'Tree, proposed, beyond the line')]
 for kind, txt in items:
