@@ -533,6 +533,7 @@
 
   // ---------- labels on the map (HTML, placed by the engine) ----------
   function labels(sl) {
+    if (!X.R || !X.lp || !sl) return [];
     const out = []; const lp = (n) => X.lp[n]; const it = (n, html, cls, prio) => out.push({ id: sl.id + '-' + n, ll: lp(n), html, cls: cls || 'muni five', prio: prio == null ? 1 : prio });
     const v = (s) => `<span class="v" dir="ltr">${esc(s)}</span>`;
     if (sl.labels === 'names') SIX.forEach(n => it(n, `<b dir="auto">${esc(nmL(n))}</b>`, n === 'Granada' ? 'muni' : 'muni five', n === 'Granada' ? 0 : 1));

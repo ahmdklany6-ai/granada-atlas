@@ -46,7 +46,7 @@ try:
             ctx = b.new_context(reduced_motion=motion, **opts)
             ctx.add_init_script(f"try {{ localStorage.setItem('granada-atlas.lang', '{lang}'); }} catch (e) {{ }} window.__noPanelHook = true;")
             pg = ctx.new_page(); stub(pg); errs = []
-            pg.on('pageerror', lambda e: 'rtl-text' not in str(e) and errs.append(str(e)[:300]))
+            pg.on('pageerror', lambda e: 'rtl-text' not in str(e) and errs.append(str(e)[:300] + ' @ ' + (e.stack or '')[:500]))
             pg.goto(f'http://127.0.0.1:{PORT}/index.html{path}')
             pg.wait_for_function('window.GA && GA.tour && GA.app && GA.app.map' + (' && GA.tour.state.built && GA.tour.state.on' if path else ''), timeout=120000); time.sleep(1.5)
             return ctx, pg, errs
