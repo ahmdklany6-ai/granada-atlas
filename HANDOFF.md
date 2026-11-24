@@ -1294,3 +1294,48 @@ missing and say "unavailable" when nothing is found; keep every existing layer a
 - Open: the five towns' Catastro years for Santa Fe / Vegas del Genil / Villa de Otura are still missing; Las Gabias
   and Alhendín extend beyond the 12 × 10 km analysis frame (their raster figures are null); housing sale prices,
   origin–destination moves and SIGPAC crops were not collected.
+
+## 48. Build 5.53 — the owner's notes on the research tour (24 Nov 2026, 16 annotated screenshots)
+Each screenshot carried a one-line note (Arabic). What was done, note by note:
+- "No need to zoom out this far / zoom in" (1.2 region, 2.4 floors, 3.3 heat, 3.4 vegetation, 4.1 water): every analysis
+  slide that framed the whole 12 × 10 km frame now frames the base and the five town centres (`view: 'near'` =
+  `D.bb[2]`); the region slide frames Granada city and the towns (`view: 'city'`).
+- "Not in hectares" (1.4, 12.1): every area in the tour is in dunams (1 dunam = 1,000 m², `r.u.du`; charts, map labels,
+  texts, popups of the 5.33 slides, the 1981 band). The atlas cards outside the tour still use hectares (not asked).
+- "Add other years" (2.3): the photo slide steps through every national flight on the IGN historical WMS — AMS 1956–57,
+  Interministerial 1973–86, Nacional 1981–86, OLISTAT 1997–98, PNOA 2004 / 2010 / 2016 / 2022 / 2024 (`PH`), one at a
+  time (`RG.rPhoto` holds the flight on screen so the layer state test still matches the groups).
+- "Add something explanatory on the map" (3.1): the wind rose is drawn on the map around the base (sector length = share
+  of hours, the most frequent direction in red), with the reanalysis grid point the temperatures come from
+  (37.153 N 3.690 W, 685 m) and the base's climate figures as a map label.
+- "Make a heat map here too" (3.2): a MapLibre heatmap of the summer surface temperature (Landsat 90 m blocks, weight
+  = (LST − 44 °C) / 8, squared), colours `palette.research.heat` (blush → rose → red → oxblood).
+- "A polygon of the town's boundary with its growth" (6.2): `data/ref/research_growth.json` — each town's built-up
+  outline in 1996, 2000, 2005, 2010, 2015, 2020, 2025, rebuilt from today's buildings and their construction year
+  (OSM start_date, else Catastro): footprints +30 m, merged, −20 m, pieces < 1 ha dropped, simplified 8 m. Demolished
+  buildings are missing; 73–84 % of the buildings carry a year. The timeline shows the outline of the latest year ≤ the
+  population year, with the 1996 outline dashed. Earlier years left out: the old cores have few dated buildings.
+- "Zoom and mark the base" (6.3 rents; also 6.1 change and 7.4 income): the agglomeration maps frame Granada city and the
+  towns, with the base outline; labels of municipalities outside the view are not drawn (`place()` in js/tour.js).
+- "It says no data although there is data" (8.3): coverage is now judged by buildings, not area. Las Gabias and Alhendín
+  reach far beyond the 12 × 10 km frame (empty mountain), but the frame holds 99.6 % and 100 % of their mapped
+  buildings, so their surface heat, NDVI, GHS-POP, 500 m reach, shops, squares and parks are computed for the part inside
+  the frame and the charts say so (`sp.frame_part`, `sp.bld_frame_pct`, footnote `r.framePart`). Granada stays null.
+- "I did not understand where the data come from" (9.1): the jobs chart is now a table — eight sectors × the five towns
+  + Granada, in % of employed residents, the highest of the five in red — with the source under it (INE annual census
+  2024, table 69992, residents 16+ by the sector of their job, counted where they live) and the map explained.
+- "Complete the old line" (10.1): the 1931 tram trunk in `data/vec/tram_1931.json` was a 4-point stub ending inside the
+  base. Traced again on the IGN MTN50 1st edition (WMS, sheet 1026): the line labelled "Tranvía" runs from Armilla
+  south along the west side of the Motril road — today Calle Real de Motril → Carretera de Sierra Nevada → Carretera
+  Bailén-Motril (OSM) — to Alhendín, loops by the town's east edge and continues south. The road part uses today's
+  road shifted 15 m west; south of Alhendín the sheet trace is shifted by the offset measured at two stream crossings
+  (Río Dílar, Arroyo Marañón: −0.0009° lon, −0.0008° lat). The Gabia branch now leaves the trunk at the road junction
+  the sheet shows. The 5.20 boards (`data/boards/south_metro_tram_*.jpg`) still show the old stub.
+- "Not understood, and not in hectares" (12.1): the slide now says in plain words what greenfield / construction /
+  brownfield mean (OSM tags: land prepared for building, building sites, disused industrial land), that it is what is seen
+  on the ground and not the official plan; dunams.
+- "Make the analyses on the base and around it too" (top bar): a two-way switch "Granada | Air base & around" at the
+  start of the topic row (`js/atlas.js renderTopicRow`, `setArea`); with the base chosen, the five analyses use the base
+  frame (data/ex13b) and the map fits the base and the towns; "No topic" reads "(base overview)".
+- Tests: `tests/research.test.js` (frame coverage, growth outlines); `ui_test_v25` (dunams, the closer agglomeration
+  map), `ui_test_v33` (dunams in the 5.45 popups, labels of the municipalities in view), `ui_test_v40` unchanged.

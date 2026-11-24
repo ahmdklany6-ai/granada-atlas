@@ -32,13 +32,15 @@ deploys). From 9 to 10 Nov 2026 the GitHub account was suspended and the site ra
   design conclusion (remain / transform / relocate stay open); every slide = question, explanation, map, chart, finding,
   link to the base; a data-kind badge (official / historical / spatial / estimate / projection / scenario) beside each
   source; analysis maps black / white / grey, red only for what the slide explains; the 12 earlier slides are kept.
+  Since 5.53 (owner): areas in the tour are in dunams (1 dunam = 1,000 m²), never hectares; analysis slides frame the
+  base and the five towns closely; the top bar has a Granada / Air-base switch for the five analyses (HANDOFF §48).
   Browser suites written before 5.27 import `tests/_nointro.py` (sets `window.__noIntro`); new suites that need the map
   first do the same (or open `?nointro`).
 - City growth extents (since 5.28, owner request): a normal layer `city_growth` (Layers → History, `js/layers_growth.js`),
   OFF by default; nothing may start it by itself. Play / Pause / period / Hide everywhere go through `GA.growth` (one state).
 - Visual identity: red `#992B2A` with the owner's mood-board palette (cream, muted blues, olives, burgundies — see
   HANDOFF §3); IBM Plex Sans / Arabic / Hebrew. Colours come ONLY from `js/palette.js` (CSS reads its `--c-*`); legends must be generated from the same class definitions as the map (never hard-coded twice).
-- Every string in all three languages (`GA.i18n.add({ key: [ar, he, en] })`, newest file `js/i18n_v38.js`; add a new `i18n_vN.js` per build).
+- Every string in all three languages (`GA.i18n.add({ key: [ar, he, en] })`, newest file `js/i18n_v39.js`; add a new `i18n_vN.js` per build).
   Numbers, units and coordinates stay left-to-right inside RTL text.
 - Honesty about data: never invent heights, roofs, materials, widths, trees or any value and present it as fact.
   Estimates are labelled, schematic elements are named, missing data is shown as missing (never as zero).

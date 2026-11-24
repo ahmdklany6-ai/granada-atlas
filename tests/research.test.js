@@ -39,10 +39,15 @@ ok('research.json: five towns + Granada', FIVE.concat(['Granada']).every(n => D.
 ok('population series 1996–2025 for each', FIVE.every(n => D.munis[n].pop['1996'] > 0 && D.munis[n].pop['2025'] > 0));
 ok('pyramids 2012 and 2022 (21 groups × 2 sexes)', FIVE.every(n => ['2012', '2022'].every(y => D.munis[n].pyr[y].Hombres.length === 21 && D.munis[n].pyr[y].Mujeres.every(v => v >= 0))));
 ok('base area 371 ha split across municipalities', Math.abs(Object.values(D.base.by_muni).reduce((a, b) => a + b, 0) - D.base.area_ha) < 2, JSON.stringify(D.base.by_muni));
-ok('missing spatial values are null, never 0, for towns outside the frame', ['Las Gabias', 'Alhendín'].every(n => D.munis[n].sp.lst === null && D.munis[n].sp.ghs_pop === null));
+// 5.53: coverage by buildings, not by area — Las Gabias and Alhendín have ≥ 99 % of their buildings in the frame, so they get figures
+// (flagged frame_part); Granada (≈ 24 % in the frame) stays null — missing, never 0
+ok('Las Gabias and Alhendín: figures for the part inside the frame (≥ 95 % of their buildings), flagged', ['Las Gabias', 'Alhendín'].every(n => D.munis[n].sp.bld_frame_pct >= 95 && D.munis[n].sp.frame_part === true && D.munis[n].sp.lst > 0 && D.munis[n].sp.ghs_pop > 0 && D.munis[n].sp.n_square != null));
+ok('Granada (mostly outside the frame): frame figures stay null, never 0', D.munis.Granada.sp.lst === null && D.munis.Granada.sp.ghs_pop === null);
+const GR = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'ref', 'research_growth.json'), 'utf8'));
+ok('town outlines by year: 5 towns × 7 years (1996–2025), each growing or equal', FIVE.every(n => { const a = GR.features.filter(f => f.properties.name === n).sort((x, y) => x.properties.y - y.properties.y); return a.length === 7 && a.every((f, i) => !i || f.properties.ha >= a[i - 1].properties.ha - 0.5); }));
 ok('RD 511/1989 runway thresholds 676 m / 700 m', D.rd1989.thr18[2] === 676 && D.rd1989.thr36[2] === 700);
 // every source key of every slide resolves (research.json sources or the module's layer sources)
-const unknown = []; CH.forEach(c => c.slides.forEach(s => (s.src || []).forEach(k => { if (!D.sources[k] && !['base_edge', 'towns', 'history', 'ams', 'pnoa', 'noise', 'water', 'flow', 'landuse', 'fac', 'stay', 'centre', 'human', 'ghs', 'lstimg', 'ndvi', 'wcimg', 'tour_area', 'metro', 'band1981', 'routes', 'scen', 'proj'].includes(k)) unknown.push(s.id + ':' + k); })));
+const unknown = []; CH.forEach(c => c.slides.forEach(s => (s.src || []).forEach(k => { if (!D.sources[k] && !['base_edge', 'towns', 'history', 'ams', 'pnoa', 'noise', 'water', 'flow', 'landuse', 'fac', 'stay', 'centre', 'human', 'ghs', 'lstimg', 'ndvi', 'wcimg', 'tour_area', 'metro', 'band1981', 'routes', 'scen', 'proj', 'photos'].includes(k)) unknown.push(s.id + ':' + k); })));
 ok('every slide source resolves', !unknown.length, unknown.join(' '));
 Object.entries(D.sources).forEach(([k, s]) => ok('source ' + k + ' has kind, year and method', Object.keys(R.KIND).includes(s.kind) && s.year && s.method));
 // inventory rows: 8 columns, a known kind, reliability and status

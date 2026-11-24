@@ -1,6 +1,6 @@
-# Data inventory — research tour (build 5.52)
+# Data inventory — research tour (build 5.53)
 
-Generated from `js/tour_research.js` (INV, MISS) and `data/ref/research.json` (sources). The same table opens from the **Data inventory** button on every tour card. Kinds: official data · historical data · spatial analysis · estimate / model · projection · hypothetical scenario.
+Generated from `js/tour_research.js` (INV, MISS) and `data/ref/research.json` (sources). The same table opens from the **Data inventory** button on every tour card. Kinds: official data · historical data · spatial analysis · estimate / model · projection · hypothetical scenario. Areas in the tour are given in dunams (1 dunam = 1,000 m²).
 
 ## Datasets
 
@@ -22,7 +22,8 @@ Generated from `js/tour_research.js` (INV, MISS) and `data/ref/research.json` (s
 | Buildings + construction year | OSM + Catastro INSPIRE | 2026 | footprint → 100 m grid | Historical data | medium | 2 5 | used |
 | Floors | OSM building:levels | 2026 | footprint → 100 m grid | Spatial analysis | low | 2 11 | used |
 | City growth extents | IGN MTN50 · AMS · JRC GHSL | 1932–2020 | ≈ 30–100 m | Historical data | medium | 2 | used |
-| Aerial photographs | IGN PNOA histórico (WMS) | 1956–2024 | 0.5–1 m | Historical data | high | 2 5 | used |
+| Aerial photographs (9 flights) | IGN PNOA histórico (WMS) | 1956–2024 | 0.5–1 m | Historical data | high | 2 5 | used |
+| Town built-up outlines by year | OSM footprints + Catastro year (rebuilt) | 1996–2025 | footprint → outline | Estimate / model | medium | 6 | used |
 | Climate normals, hot days, wind, rain | ERA5 (Open-Meteo) | 1991–2024 | 0.25° (≈ 25 km) | Official data | medium | 3 | used |
 | Climate projection | CMIP6 HighResMIP (Open-Meteo) | 1950–2050 | ≈ 25–50 km | Projection | low | 3 14 | used |
 | Surface temperature, NDVI | USGS Landsat 8/9 | 2024–2026 | 90 m | Spatial analysis | medium | 3 13 | used |
@@ -63,11 +64,12 @@ Generated from `js/tour_research.js` (INV, MISS) and `data/ref/research.json` (s
 - **outline** — IGN — WFS unidades administrativas (au:AdministrativeUnit) · 2026 · Official data · official municipal limits, simplified to 5 m for display · <https://www.ign.es/wfs-inspire/unidades-administrativas> · CC BY 4.0 — © IGN
 - **sp_outline** — IGN outlines × repository layers · 2026 · Spatial analysis · areas measured in EPSG:25830 inside the official outline
 - **ghs** — JRC GHSL — GHS-POP R2023A, 2020, 100 m · 2020 · Estimate / model · modelled residents per 100 m cell, summed by cell centre inside the outline · <https://human-settlement.emergency.copernicus.eu/ghs_pop2023.php> · CC BY 4.0
-- **lst** — USGS Landsat 8/9 Collection 2 surface temperature (ST_B10), June–August 2024–2026, 30 clear scenes · 2024–2026 · Spatial analysis · median of the summer-median 90 m cells whose centre is inside the outline (≥ 60 % of the municipality inside the frame) · <https://www.usgs.gov/landsat-missions/landsat-collection-2-surface-temperature> · public domain
+- **lst** — USGS Landsat 8/9 Collection 2 surface temperature (ST_B10), June–August 2024–2026, 30 clear scenes · 2024–2026 · Spatial analysis · median of the summer-median 90 m cells whose centre is inside the outline; Las Gabias and Alhendín: the part inside the 12 × 10 km frame, which holds 99.6 % and 100 % of their mapped buildings · <https://www.usgs.gov/landsat-missions/landsat-collection-2-surface-temperature> · public domain
 - **wc** — ESA WorldCover 2021 v200, 10 m, class 10 tree cover · 2021 · Spatial analysis · tree cells ÷ cells with data inside the outline (sampled every 30 m) · <https://esa-worldcover.org> · CC BY 4.0
 - **lu** — OpenStreetMap landuse (supplied extract, 23 Oct 2026) · 2026 · Spatial analysis · mapped land-use polygons intersected with the outline; unmapped land is not counted · ODbL 1.0
 - **reach** — GHS-POP 2020 × OpenStreetMap schools / health facilities · 2020 / 2026 · Spatial analysis · share of modelled residents within 500 m straight-line distance of a mapped facility — a spatial measure of proximity, not observed behaviour · CC BY 4.0 / ODbL
 - **bus** — Bus stops and weekday trips (city file + CTAN consortium, Monday 26 Oct 2026) · 2026 · Official data · scheduled trips per day summed over the stops inside the outline (a trip is counted at every stop it serves) · see layer sources
+- **growth** — OSM footprints + construction year (OSM start_date, else Catastro INSPIRE 2026) · 1996–2025 · Estimate / model · built-up outline of the buildings standing in each year: footprints grown 30 m, merged, shrunk 20 m, pieces < 1 ha dropped; demolished buildings are missing and buildings without a year are left out · ODbL 1.0 / Catastro
 - **periods** — OSM footprints + Catastro year of construction (INSPIRE Buildings, 2026) · 2026 · Historical data · buildings counted per 100 m cell by construction period; buildings without a year are shown as unknown
 - **floors** — OpenStreetMap building:levels · 2026 · Spatial analysis · median floor count per 100 m cell; most footprints in the five towns have no floor count — those cells stay unknown
 - **rain** — ERA5 reanalysis via Open-Meteo, cell 37.25 N 3.5 W · 1991–2020 · Official data · mean monthly precipitation over 30 years (a 0.25° reanalysis cell, not a rain gauge) · <https://open-meteo.com> · CC BY 4.0
@@ -112,4 +114,4 @@ Generated from `js/tour_research.js` (INV, MISS) and `data/ref/research.json` (s
 13. The five towns compared — 2 slides (k1, k2)
 14. The next 50 years, 2026–2076 — 3 slides (n1, n2, n3)
 
-* a slide of builds 5.27–5.51, kept unchanged.
+* a slide of builds 5.27–5.51, kept.

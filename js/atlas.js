@@ -36,7 +36,7 @@
     const top = $('.topbar'); const btn = document.createElement('button'); btn.type = 'button'; btn.id = 'atl-burger'; btn.className = 'atl-burger'; btn.setAttribute('aria-controls', 'atl-side'); btn.setAttribute('aria-expanded', 'false');
     btn.innerHTML = '<span aria-hidden="true">☰</span>'; top.insertBefore(btn, top.firstChild);
     const row = document.createElement('nav'); row.id = 'atl-topics'; row.className = 'atl-topics'; top.appendChild(row);
-    row.addEventListener('click', (e) => { const b = e.target.closest('[data-topic]'); if (b) setTopic(b.dataset.topic || null); });
+    row.addEventListener('click', (e) => { const q = e.target.closest('[data-area-q]'); if (q) { setArea(q.dataset.areaQ); return; } const b = e.target.closest('[data-topic]'); if (b) setTopic(b.dataset.topic || null); });
     const lg = document.createElement('div'); lg.id = 'tb-lang'; lg.className = 'tb-lang'; lg.setAttribute('role', 'group');
     lg.innerHTML = [['ar', 'عربي'], ['he', 'עברית'], ['en', 'English']].map(([l, n]) => `<button type="button" data-lang="${l}" lang="${l}" dir="${l === 'en' ? 'ltr' : 'rtl'}">${n}</button>`).join('');
     top.appendChild(lg); lg.addEventListener('click', (e) => { const b = e.target.closest('[data-lang]'); if (b && b.dataset.lang !== I.lang) I.setLang(b.dataset.lang); });
@@ -70,9 +70,13 @@
     if (lift) g.style.bottom = lift + 'px'; }
   // 5.29: the five analyses are always on screen — a row in the top bar (a strip under it below 1200 px, scrollable on
   // phones), with "no topic"; the current one is marked. The ☰ menu keeps its own list (same state).
+  // 5.53 (owner: "make them on the base and around it too"): the five analyses run on the city frame or on the frame around
+  // the air base (data/ex13b, 12 × 10 km: the base and its five towns) — a two-way switch at the start of the row
   function renderTopicRow() { const row = $('#atl-topics'); if (!row) return;
-    row.innerHTML = TOPICS.map((k, i) => `<button type="button" class="atl-tp ${S.topic === k ? 'on' : ''}" data-topic="${k}" aria-pressed="${S.topic === k}"><span class="atl-num">${String(i + 1).padStart(2, '0')}</span> ${t('e13.t.' + k)}</button>`).join('')
-      + `<button type="button" class="atl-tp atl-tp-none ${!S.topic ? 'on' : ''}" data-topic="" aria-pressed="${!S.topic}">${t('v23.noTopic')}</button>`;
+    const ar = S.area === 'base' ? 'base' : 'city';
+    row.innerHTML = `<span class="atl-ar" role="group" aria-label="${esc(t('v39.areaQ'))}">${['city', 'base'].map(a => `<button type="button" class="atl-arb ${ar === a ? 'on' : ''}" data-area-q="${a}" aria-pressed="${ar === a}">${t('v39.areaQ.' + a)}</button>`).join('')}</span>`
+      + TOPICS.map((k, i) => `<button type="button" class="atl-tp ${S.topic === k ? 'on' : ''}" data-topic="${k}" aria-pressed="${S.topic === k}"><span class="atl-num">${String(i + 1).padStart(2, '0')}</span> ${t('e13.t.' + k)}</button>`).join('')
+      + `<button type="button" class="atl-tp atl-tp-none ${!S.topic ? 'on' : ''}" data-topic="" aria-pressed="${!S.topic}">${t(ar === 'base' ? 'v39.noTopicBase' : 'v23.noTopic')}</button>`;
     row.setAttribute('aria-label', t('v27.topicsRow'));
     // a sideways-scrolling row (phones): bring the current analysis into view — never scrolls the page itself
     const on = row.querySelector('.atl-tp.on'); if (on && row.scrollWidth > row.clientWidth + 1) { const r = row.getBoundingClientRect(), b = on.getBoundingClientRect();
@@ -315,6 +319,7 @@
     else { stopReveal(); allTopicIds().forEach(id => setVis(id, false)); setVis('atl-veil', false); setVis('atl-frame', false); }
     // a topic chosen at city scale frames the analysis extent; inside a study area the zoom is kept
     if (S.topic && S.area === 'city') map.fitBounds(frameBB(), { padding: pad(40), duration: REDUCED ? 0 : 1400, maxZoom: 13 });
+    if (S.topic && S.area === 'base' && baseF()) { const b = bboxOf(baseF().geometry.coordinates), d = 0.022; map.fitBounds([[b[0][0] - d, b[0][1] - d * 0.8], [b[1][0] + d, b[1][1] + d * 0.8]], { padding: pad(40), duration: REDUCED ? 0 : 1400, maxZoom: 14 }); } // the base and the towns around it
     applyMask(); renderSide(); renderPanel(); legendChanged();
   }
   // outside the selected study area the analysis is faded (metro corridor); the factory has no analysis data

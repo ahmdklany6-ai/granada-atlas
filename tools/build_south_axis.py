@@ -65,6 +65,8 @@ metro = {'type': 'FeatureCollection', 'features': [
 # Gabia la Grande, Armilla, Cúllar Vega; residuals 6–67 m). Positional uncertainty about ±100 m: a regional line, not a survey.
 TRAM = [[-3.63011, 37.13999], [-3.64676, 37.14439], [-3.657, 37.14711], [-3.66043, 37.14502], [-3.66403, 37.14266], [-3.66751, 37.14], [-3.66754, 37.13829], [-3.66713, 37.13657]]
 TRUNK = [[-3.62426, 37.14732], [-3.6256, 37.14563], [-3.63011, 37.13999], [-3.63199, 37.13446]]  # Granada–Armilla–Alhendín line, only the stretch on this sheet's crop
+# 5.53: data/vec/tram_1931.json now carries the trunk completed to Alhendín and south (owner: "complete the old line") — the
+# coordinates and their method are in that file and in manifest.layers.tram_1931; rerunning this script would restore the 5.20 stub.
 tram = {'type': 'FeatureCollection', 'features': [
     F({'type': 'LineString', 'coordinates': TRAM}, k='gabia', len_m=round(length_m(TRAM))),
     F({'type': 'LineString', 'coordinates': TRUNK}, k='trunk'),
