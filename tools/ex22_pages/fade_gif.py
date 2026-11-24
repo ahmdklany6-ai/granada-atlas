@@ -6,8 +6,8 @@ opacity on white, so the photo does not flicker between frames and the drawing s
 Writes step_0..N.jpg (stills), <name>.gif and <name>.mp4 (when ffmpeg is there). Each step appears at once (owner: no fade-in),
 held HOLD s (default 0.6), the last one LAST s (default 2.0); FADE=1 brings back cross-fades.
 Usage: python3 tools/ex22_pages/fade_gif.py <out folder> <name> <opacity 0-1> <photo|auto> <step1> <step2> ...
-<photo> = auto when the clean photo is missing: it is rebuilt from step 1 (its red lines lifted off, the solid ones filled in
-from around them with OpenCV inpainting), and saved as <name>_base_rebuilt.jpg. Steps shifted by a few pixels against
+<photo> = auto when the clean photo is missing: it is rebuilt from step 1 (auto:<img>,<img> adds the step-1 images of other
+alternatives drawn on the same scene, so their lines fill each other's gaps), saved as <name>_base_rebuilt.jpg. Steps shifted by a few pixels against
 the photo are moved back onto it (phase correlation).
 The images are the owner's and are not committed. Not part of the site or of the tests."""
 import os, sys, shutil, subprocess
@@ -28,16 +28,37 @@ def ink_alpha(a_):
     return a, ink, gb
 
 
-if PHOTO == 'auto':                                                   # rebuild the clean photo from step 1
+def rebuild_base(paths):
+    """the clean photo under several step-1 drawings of the same scene: each pixel from an image with no red on it (images
+    tone-matched to the first); where every image has a line, the image with the faintest one, held near the local level so
+    the lines leave no ghost (the image chat also lightens or darkens the photo under its lines)"""
     import cv2
-    s1 = np.asarray(Image.open(STEPS[0]).convert('RGB'), float); a, ink, gb = ink_alpha(s1)
-    v = np.where(a < 0.8, ((s1[..., 1] + s1[..., 2]) / 2 - a * gb) / np.maximum(1 - a, 0.2), 0)
-    hole = (a >= 0.8).astype(np.uint8)
-    hole = cv2.dilate(hole, np.ones((3, 3), np.uint8))
-    v = cv2.inpaint(np.clip(v, 0, 255).astype(np.uint8), hole, 5, cv2.INPAINT_TELEA).astype(float)
-    base = np.repeat(v[..., None], 3, 2)
-    PHOTO = os.path.join(OUT, f'{NAME}_base_rebuilt.jpg'); Image.fromarray(base.astype(np.uint8)).save(PHOTO, quality=93)
-    print('photo rebuilt from step 1:', PHOTO, 'filled %.1f%% of the pixels' % (100 * hole.mean()))
+    G, V, A, C = [], [], [], []
+    for pth in paths:
+        a_ = np.asarray(Image.open(pth).convert('RGB'), float)
+        a, ink, gb = ink_alpha(a_); a = np.clip((a_[..., 0] - (a_[..., 1] + a_[..., 2]) / 2) / max(ink[0] - gb, 30.0), 0, 1)
+        g = (a_[..., 1] + a_[..., 2]) / 2
+        G.append(g); V.append((g - a * gb) / np.maximum(1 - a, 0.2)); A.append(a)
+        C.append(cv2.erode(((a_[..., 0] - g) <= 6).astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool))
+    for i in range(1, len(G)):                                        # tone of each image matched to the first
+        both = C[0] & C[i]; M = np.vstack([G[i][both], np.ones(both.sum())]).T; al, be = np.linalg.lstsq(M, G[0][both], rcond=None)[0]
+        G[i], V[i] = al * G[i] + be, al * V[i] + be
+    Cs = np.array(C); Gs = np.array(G); n = Cs.sum(0)
+    v = np.where(n > 0, (Gs * Cs).sum(0) / np.maximum(n, 1), np.min(np.array(V), 0))
+    dirty = n == 0
+    known = np.where(dirty, 0, v).astype(np.float32); wk = (~dirty).astype(np.float32)
+    num = cv2.GaussianBlur(known, (0, 0), 9); den = cv2.GaussianBlur(wk, (0, 0), 9)
+    lvl = np.where(den > 0.02, num / np.maximum(den, 0.02), cv2.blur(np.clip(v, 0, 255).astype(np.float32), (41, 41)))
+    v = np.where(dirty, np.clip(v, lvl - 10, lvl + 10), v)
+    v = np.where(dirty, cv2.GaussianBlur(v.astype(np.float32), (0, 0), 0.6), v)
+    print('photo rebuilt from', len(paths), 'step-1 image(s); drawn in all of them: %.1f%% of the pixels' % (100 * dirty.mean()))
+    return np.repeat(np.clip(v, 0, 255)[..., None], 3, 2)
+
+
+if PHOTO == 'auto' or PHOTO.startswith('auto:'):                       # rebuild the clean photo from step 1 (and others)
+    src = [STEPS[0]] + ([q for q in PHOTO[5:].split(',') if q] if PHOTO.startswith('auto:') else [])
+    base = rebuild_base(src)
+    PHOTO = os.path.join(OUT, f'{NAME}_base_rebuilt.jpg'); Image.fromarray(base.astype(np.uint8)).save(PHOTO, quality=94)
 base = np.asarray(Image.open(PHOTO).convert('RGB'), float)
 
 
