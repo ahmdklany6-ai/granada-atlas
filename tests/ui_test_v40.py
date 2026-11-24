@@ -48,7 +48,7 @@ try:
             pg = ctx.new_page(); stub(pg); errs = []
             pg.on('pageerror', lambda e: 'rtl-text' not in str(e) and errs.append(str(e)[:300]))
             pg.goto(f'http://127.0.0.1:{PORT}/index.html{path}')
-            pg.wait_for_function('window.GA && GA.tour && GA.tour.state.built && GA.tour.state.on', timeout=120000); time.sleep(1.5)
+            pg.wait_for_function('window.GA && GA.tour && GA.app && GA.app.map' + (' && GA.tour.state.built && GA.tour.state.on' if path else ''), timeout=120000); time.sleep(1.5)
             return ctx, pg, errs
         def at(pg, c, s, t=60000):
             pg.wait_for_function(f'GA.tour.state.step === {c} && GA.tour.state.layer === {s} && document.querySelector("#tour-card").dataset.layer == "{s}" && document.querySelector("#tour-card").dataset.step == "{c}"', timeout=t); time.sleep(0.9)
