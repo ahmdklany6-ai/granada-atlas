@@ -4,7 +4,7 @@ over it in marker, step by step (the manner of a reference video he sent; nothin
 Marker look: zig-zag scribble fills with streaks and overshoot, wobbly double outlines, scribbled tree crowns, chalky paths,
 handwritten notes. Colours from js/palette.js only (studio red, olives, the water blues, white, the ink).
 What is drawn follows the 2.2 west-edge sheets (tools/ex22_pages/edges.py, AREA=W): residents = river park; developer = 6-floor
-blocks between the road and the river, 20 m from it (our assumption), phase 2 on the base only if it leaves; Defence = the
+bars between the river and the fence, 20 m from the river (our assumption), drawn in the photo's ground perspective, phase 2 on the base only if it leaves; Defence = the
 corridor kept open and a security band inside the fence. Everything is SCHEMATIC and placed by eye on the photo.
 The photo is the owner's and is NOT committed; pass its path.
 Usage: python3 tools/ex22_pages/sketch_w.py <photo> <out folder>   → W_0_today, W_1_residents, W_2_developer, W_3_defence
@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _bw
 
 PHOTO, OUT = sys.argv[1], sys.argv[2]
+GUIDE = os.environ.get('GUIDE') == '1'   # position guides for an image AI: the drawings without any text
 os.makedirs(OUT, exist_ok=True)
 P = _bw._P; B = P['base']
 RED, DARK, ROSE, TINT = B['red'], B['oxblood'], P['rose'], P['redTint']
@@ -182,12 +183,14 @@ class Sketch:
         self.line([(x - r, y - r), (x + r, y + r)], col, w, 240, 2, 0.8); self.line([(x - r, y + r), (x + r, y - r)], col, w, 240, 2, 0.8)
 
     def write(self, x, y, s, size=30, col=INK, halo=True, anchor='la'):
+        if GUIDE: return
         lay = self.layer(); d = ImageDraw.Draw(lay); f = ImageFont.truetype(HAND, int(size * SS))
         if halo: d.text((x * SS, y * SS), s, font=f, fill=rgba(col), anchor=anchor, stroke_width=int(4.5 * SS), stroke_fill=rgba(WHITE, 225))
         else: d.text((x * SS, y * SS), s, font=f, fill=rgba(col), anchor=anchor)
         self.put(lay, 0)
 
     def note(self, x, y, s, tx, ty, size=28, col=INK):
+        if GUIDE: return
         """a handwritten note at (tx, ty) with a loose curved leader ending in a dot at (x, y)"""
         mx, my = (x + tx) / 2 + (ty - y) * 0.18, (y + ty) / 2 - (tx - x) * 0.18
         pts = [((1 - t) ** 2 * tx + 2 * (1 - t) * t * mx + t * t * x, (1 - t) ** 2 * ty + 2 * (1 - t) * t * my + t * t * y) for t in [i / 14 for i in range(15)]]
@@ -196,6 +199,7 @@ class Sketch:
         self.write(tx, ty - size * 1.05, s, size, col)
 
     def title(self, head, sub, col=RED):
+        if GUIDE: return
         lay = self.layer(); d = ImageDraw.Draw(lay)
         top = [(0, 0), (self.W, 0)] + [(x, 74 + 4 * math.sin(x / 37) + self.rnd.uniform(-1.5, 1.5)) for x in range(self.W, -1, -12)]
         d.polygon(self.S(top), fill=rgba(WHITE, 235)); self.put(lay, 0)
@@ -203,10 +207,11 @@ class Sketch:
         self.write(24, 48, sub, 19, INK, halo=False)
 
     def foot(self, s):
+        if GUIDE: return
         self.write(12, self.H - 26, s, 16, WHITE, halo=False)
 
     def save(self, name):
-        out = self.im.convert('RGB'); out.save(os.path.join(OUT, name + '.jpg'), quality=92); return out
+        out = self.im.convert('RGB'); out.save(os.path.join(OUT, name + ('_guide' if GUIDE else '') + '.jpg'), quality=92); return out
 
 
 def corridor_poly():
@@ -292,54 +297,138 @@ def residents(steps=False):
 
 
 # ============================================ DEVELOPER ======================================================================
-def block(sk, cx, cy, Lm, floors, dashed=False, shop=False):
-    s = sc(cy); px = 15 * s
-    ux, uy = -0.53, -0.85; vx, vy = 1.0, 0.18
-    L, D, H = Lm * px * 0.2, 12 * px, floors * 3 * px * 0.6
-    c = [(cx - ux * L / 2 - vx * D / 2, cy - uy * L / 2 - vy * D / 2), (cx - ux * L / 2 + vx * D / 2, cy - uy * L / 2 + vy * D / 2),
-         (cx + ux * L / 2 + vx * D / 2, cy + uy * L / 2 + vy * D / 2), (cx + ux * L / 2 - vx * D / 2, cy + uy * L / 2 - vy * D / 2)]
-    t = [(x, y - H) for x, y in c]
+# --- the photo's ground in perspective (owner, 24 Nov: "draw the houses with correct perspective and terrain").
+# A pinhole camera fitted to the main road: the lane edge lines (two 3.5 m lanes, assumed) are 0.169 (y - 19) px apart all down
+# the photo, so the horizon is at y = 19 and the ground's scale across grows linearly below it; the road's centre line meets the
+# horizon at x = 363. Lens assumed f = 1279 px (a 24 mm-equivalent drone lens over the 1916 px width), principal point at the
+# frame's centre: the camera stands ~40 m up and looks down ~17 deg. Check: the farm shed by the road comes out 10.8 m wide with
+# ~5 m eaves. Ground taken flat: on MDT25 the bars' ground is 2-4 m above the river and the base 1-5 m higher.
+# Ground metres: X across (right +), Z ahead (horizontal), H up. By eye and approximate: for drawing, not for measuring.
+CAMF, CAMX, CAMY, HOR = 1279.0, 958.0, 410.5, 19.0
+PHI = math.atan((CAMY - HOR) / CAMF); CAMH = math.cos(PHI) / (0.169 / 7.0)
+_SP, _CP = math.sin(PHI), math.cos(PHI)
+
+
+def g2i(X, Z, H=0.0):
+    """ground metres -> photo px"""
+    d = (CAMH - H) * _SP + Z * _CP; v = (CAMH - H) * _CP - Z * _SP
+    return (CAMX + CAMF * X / d, CAMY + CAMF * v / d)
+
+
+def i2g(x, y):
+    """photo px (on the ground) -> ground metres"""
+    t = CAMH / (CAMF * _SP + (y - CAMY) * _CP); return (t * (x - CAMX), t * (CAMF * _CP - (y - CAMY) * _SP))
+
+
+def px_per_m(X, Z):
+    return g2i(X + 0.5, Z)[0] - g2i(X - 0.5, Z)[0]
+
+
+def ground_line(line):   # a photo polyline (on the ground) as a shapely line in ground metres
+    from shapely.geometry import LineString
+    return LineString([i2g(x, y) for x, y in line if y > HOR + 40])
+
+
+def block(sk, X, Z, L, D, floors, ang, dashed=False, proj=None):
+    """a bar L m long (along the direction ang, rad from straight ahead, + to the right), D m deep, floors x 3 m, standing on
+    the ground at (X, Z): drawn as a box — the faces turned to the camera, the roof, floor lines (owner, 24 Nov: like his cube)"""
+    H = floors * 3.0; proj = proj or g2i
+    ax, az = math.sin(ang), math.cos(ang); bx, bz = az, -ax          # along / across
+    G = [(X - ax * L / 2 - bx * D / 2, Z - az * L / 2 - bz * D / 2), (X + ax * L / 2 - bx * D / 2, Z + az * L / 2 - bz * D / 2),
+         (X + ax * L / 2 + bx * D / 2, Z + az * L / 2 + bz * D / 2), (X - ax * L / 2 + bx * D / 2, Z - az * L / 2 + bz * D / 2)]
+    bot = [proj(x, z) for x, z in G]; top = [proj(x, z, H) for x, z in G]
+    cw = (G[0][0] - G[1][0]) * (G[2][1] - G[1][1]) - (G[0][1] - G[1][1]) * (G[2][0] - G[1][0]) > 0
+    faces = []
+    for i in range(4):
+        j = (i + 1) % 4; (x0, z0), (x1, z1) = G[i], G[j]
+        nx, nz = z1 - z0, -(x1 - x0)
+        if cw: nx, nz = -nx, -nz                                          # outward
+        mx, mz = (x0 + x1) / 2, (z0 + z1) / 2
+        if nx * (0 - mx) + nz * (0 - mz) > 0: faces.append((i, j, abs(x1 - x0) > abs(z1 - z0)))
+    vis = sorted({k for f in faces for k in f[:2]})
+    edges = [(top[i], top[(i + 1) % 4]) for i in range(4)] + [(bot[i], top[i]) for i in vis] + [(bot[i], bot[j]) for i, j, _ in faces]
     if dashed:
-        for a, b in [(t[0], t[1]), (t[1], t[2]), (t[2], t[3]), (t[3], t[0]), (c[0], t[0]), (c[1], t[1]), (c[2], t[2]), (c[0], c[1]), (c[1], c[2])]:
-            sk.line([a, b], RED, 2.2, 230, 1, 0.6, dash=(8, 6), streak=0)
+        for e in edges: sk.line(list(e), RED, 2.0, 230, 1, 0.5, dash=(8, 6), streak=0)
         return
-    sk.fill([c[0], c[1], t[1], t[0]], RED, 225, 4.5, 90, 5, over=1)
-    sk.fill([c[1], c[2], t[2], t[1]], DARK, 225, 4.5, 60, 5, over=1)
-    sk.fill(t, ROSE, 210, 5, 20, 5, over=1)
-    for f in range(1, floors):
-        yy = f * 3 * px * 0.6
-        sk.line([(c[0][0] + 3, c[0][1] - yy), (c[1][0] - 3, c[1][1] - yy)], WHITE, 1.2, 170, 1, 0.4, dash=(7, 5), streak=0)
-    if shop: sk.line([(c[0][0], c[0][1] - 2.2 * px * 0.6), (c[1][0], c[1][1] - 2.2 * px * 0.6)], WHITE, 3 * s + 1, 235, 1, 0.4, streak=0.1)
-    for a, b in [(t[0], t[1]), (t[1], t[2]), (t[2], t[3]), (t[3], t[0]), (c[0], t[0]), (c[1], t[1]), (c[2], t[2]), (c[0], c[1]), (c[1], c[2])]:
-        sk.line([a, b], INK, 1.6, 225, 2, 0.6, streak=0)
+    for i, j, wide in faces:                                              # the lit long side red, the end in shade
+        sk.fill([bot[i], bot[j], top[j], top[i]], DARK if wide else RED, 228, 4.5, 60 if wide else 90, 5, over=1)
+        for f in range(1, floors):
+            sk.line([proj(*G[i], f * 3.0), proj(*G[j], f * 3.0)], WHITE, 1.2, 150, 1, 0.4, dash=(7, 5), streak=0)
+    sk.fill(top, ROSE, 220, 5, 20, 5, over=1)                              # the roof, seen from above
+    for e in edges: sk.line(list(e), INK, 1.8, 235, 2, 0.6, streak=0)
 
 
 def developer(steps=False):
+    """as on sheet 2.2-DW: bars of 6 floors (7 in the frame, ≈171 homes, no shops) between the river and the fence, 22 m or more
+    from the river, parallel to the fence; garden courts over parking around them; phase 2 on the base land (5 floors, on the
+    sheet's 74 x 54 m grid), only if the base leaves. Drawn in the photo's perspective (g2i)."""
+    from shapely.geometry import Polygon, Point
     sk = Sketch(3); fr = []
     sk.title('developer · build the corridor', '“The metro reaches an empty strip beside a base the regional plan wants dismantled: build here, now on the strip and later on the base.”')
     fence(sk, INK, 3.5)
     river_water(sk)
-    for (y0, y1) in ((800, 600), (560, 420), (390, 280)):
-        l0, l1 = lerp_poly(ROAD_R, y0) + 30 * sc(y0), lerp_poly(ROAD_R, y1) + 30 * sc(y1)
-        sk.fill([(l0, y0), (l0 + 230 * sc(y0), y0), (l1 + 230 * sc(y1), y1), (l1, y1)], TINT, 150, 7, 25, 5)
-    for x, y in along([(lerp_poly(ROAD_R, y) + 190 * sc(y), y) for y in range(800, 260, -20)], 12): sk.tree(x, y, 0.8)
+    RIV, TRK, FEN = ground_line(RIVER), ground_line(TRACK), ground_line(FENCE)
+    # the bars run parallel to the fence where they stand (Z 80-230 m)
+    p0, p1 = FEN.interpolate(FEN.project(Point(56, 89))), FEN.interpolate(FEN.project(Point(14, 226)))
+    ANG = math.atan2(p1.x - p0.x, p1.y - p0.y); ax, az = math.sin(ANG), math.cos(ANG); bx, bz = az, -ax
+    L, D, GAP = 40.0, 12.0, 8.0
+    def foot(cx, cz, l=L, d=D):
+        return Polygon([(cx - ax * l / 2 - bx * d / 2, cz - az * l / 2 - bz * d / 2), (cx + ax * l / 2 - bx * d / 2, cz + az * l / 2 - bz * d / 2),
+                        (cx + ax * l / 2 + bx * d / 2, cz + az * l / 2 + bz * d / 2), (cx - ax * l / 2 + bx * d / 2, cz - az * l / 2 + bz * d / 2)])
+    o = RIV.interpolate(RIV.project(Point(0, 95)))
+    bars = []
+    for k in range(-1, 6):
+        u = k * (L + GAP)
+        cx, cz = o.x + ax * u, o.y + az * u
+        for off in range(20, 70):                                    # push it off the river: 22 m clear at least
+            c = (cx + bx * off, cz + bz * off)
+            if foot(*c).distance(RIV) >= 22: break
+        g = foot(*c)
+        if g.distance(FEN) < 4 or g.intersects(FEN) or c[1] - az * L / 2 < 52: continue   # 4 m or more inside the fence (the sheet: 3-19 m); whole bars only
+        bars.append(c)
+    # garden courts over parking: the land around the bars, inside the 20 m off the river and short of the track
+    court = []
+    for i in range(len(bars) - 1):
+        (x0, z0), (x1, z1) = bars[i], bars[i + 1]
+        mx, mz = (x0 + x1) / 2, (z0 + z1) / 2
+        court.append(foot(mx, mz, GAP - 1.0, D))
+    for c in court: sk.fill([g2i(*q) for q in list(c.exterior.coords)[:4]], TINT, 150, 7, 25, 5)
     if steps: fr.append(sk.im.copy())
-    for x, y in [(1450, 340), (1700, 390), (1380, 240), (1620, 275), (1860, 310)]: block(sk, x, y, 60, 5, dashed=True)
+    # phase 2 on the base land: 36 x 16 m footprints on a 74 x 54 m grid parallel to the fence, 5 floors (dashed: only if the base leaves)
+    ph2 = []
+    for i in range(-6, 8):
+        for j in range(1, 7):
+            cx, cz = p0.x + ax * i * 74 + bx * (j * 54 - 10), p0.y + az * i * 74 + bz * (j * 54 - 10)
+            g = foot(cx, cz, 36, 16)
+            if g.distance(FEN) < 25 or cz < 70 or cz > 520: continue
+            if FEN.distance(Point(cx, cz)) < 25: continue
+            pts = [g2i(*q) for q in list(g.exterior.coords)[:4]]
+            if max(x for x, _ in pts) > 1905 or min(y for _, y in pts) < 165: continue
+            # beyond the fence: to its right, looking from the camera
+            q = FEN.interpolate(FEN.project(Point(cx, cz))); dx, dz = cx - q.x, cz - q.y
+            if dx * bx + dz * bz <= 0: continue
+            ph2.append((cx, cz))
+    for cx, cz in sorted(ph2, key=lambda c: -c[1]): block(sk, cx, cz, 36, 16, 5, ANG, dashed=True)
     if steps: fr.append(sk.im.copy())
-    for cy in (300, 390, 500, 640): block(sk, lerp_poly(ROAD_R, cy) + 70 * sc(cy), cy, 40, 6, shop=True)
-    for k, y in enumerate((690, 560, 430)): sk.person(lerp_poly(ROAD_R, y) + 12 * sc(y), y, k == 1)
+    for cx, cz in sorted(bars, key=lambda c: -c[1]): block(sk, cx, cz, L, D, 6, ANG)
+    for t, bike in ((0.10, False), (0.22, True), (0.36, False)):    # on the riverside, inside the 20 m kept clear
+        q = RIV.interpolate(t, normalized=True); x, y = g2i(q.x + bx * 9, q.y + bz * 9); sk.person(x, y, bike)
     if steps: fr.append(sk.im.copy())
-    sk.note(760, 560, '6 floors · shops on the road · ≈171 homes', 70, 560, 30, RED)
-    sk.note(980, 760, 'private garden courts over parking', 1130, 805, 28)
-    sk.note(1500, 260, 'phase 2 — only if the base leaves', 1290, 135, 28, RED)
-    sk.note(1050, 580, 'river kept at 20 m (our assumption)', 1250, 690, 28)
+    b0 = min(bars, key=lambda c: c[1]); x0, y0 = g2i(b0[0] - bx * 6, b0[1] - bz * 6, 14)
+    sk.note(x0, y0, '6 floors · bars between the river and the fence · ≈171 homes', 40, 560, 28, RED)
+    c1 = court[0].centroid; x1, y1 = g2i(c1.x - bx * 5, c1.y - bz * 5)
+    sk.note(x1, y1, 'private garden courts over parking', 1000, 800, 28)
+    pk = min(ph2, key=lambda c: abs(g2i(*c)[0] - 1500) + abs(g2i(*c)[1] - 260)); x2, y2 = g2i(pk[0], pk[1], 15)
+    sk.note(x2, y2, 'phase 2 — only if the base leaves', 1290, 135, 28, RED)
+    q = RIV.interpolate(RIV.project(Point(0, 110))); x3, y3 = g2i(q.x + bx * 11, q.y + bz * 11)
+    sk.note(x3, y3, 'river kept 20 m clear (our assumption)', 1140, 700, 28)
     sk.write(40, 722, 'public park here: 0', 36, RED)
-    sk.foot('owner’s photo · the developer’s proposal drawn by eye over it, schematic (sheets 2.2-DW 01 and 02)')
+    sk.foot('owner’s photo · the developer’s plan (sheet 2.2-DW) drawn over it in the photo’s perspective (camera fitted to the road) · schematic')
     if steps: fr.append(sk.im.copy())
+    print('developer bars', [tuple(round(v) for v in c) for c in bars], 'phase 2', len(ph2))
     return sk.save('W_2_developer'), fr
 
 
-# ============================================ DEFENCE ========================================================================
 def defence(steps=False):
     sk = Sketch(4); fr = []
     sk.title('defence · keep the edge open and watched', '“Armilla trains the Air Force’s helicopter pilots and stays: the towns may grow, but the edge under the approach stays low, open and quiet.”')
@@ -371,6 +460,9 @@ def defence(steps=False):
 
 if __name__ == '__main__':
     t = today()
+    if GUIDE:                                   # only the still drawings, no GIFs
+        for fn in (residents, developer, defence): fn(steps=False)
+        sys.exit(0)
     for name, fn in (('residents', residents), ('developer', developer), ('defence', defence)):
         final, frames = fn(steps=True)
         seq = [t] + [f.convert('RGB') for f in frames] + [final] * 3

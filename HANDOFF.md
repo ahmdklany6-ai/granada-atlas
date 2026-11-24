@@ -1369,3 +1369,12 @@ Flight ceiling over the strip 13–17 m above the ground (RD 118/2019 surfaces m
   (`edges.developer` / `edges.defence`; codes 2.2-DW…MS). Developer: bars parallel to the fence on the same open land, as high as
   the ceiling allows (1 m under it) and at most 6 floors (our cap), 20 m from the river (our assumption), courts over parking,
   phase 2 on the base. Defence: the north-edge security band and the open land kept open. All 25 stage-1 sheets in one PDF.
+
+### 42.3 West-edge sketches over the owner's drone photo (24 Nov 2026)
+- `tools/ex22_pages/sketch_w.py <photo> <out>`: hand-drawn marker sketches (today, residents, developer, Defence) and a
+  build-up GIF each; `GUIDE=1` writes the same drawings without any text (`*_guide.jpg`), as position guides for an image AI.
+  The photo (black and white) is the owner's and is never committed.
+- The developer's bars are drawn in the photo's perspective: a pinhole camera fitted to the road (lane edges 7 m apart, assumed;
+  horizon y = 19; lens f = 1279 px assumed; ~40 m up, ~17° down; check: the farm shed comes out 10.8 m wide, ~5 m eaves).
+  Bars placed as on sheet 2.2-DW (22 m or more from the river, 4 m or more inside the fence, parallel to it, 40 × 12 m, 6 floors);
+  phase 2 on the sheet's 74 × 54 m grid, dashed. Ground taken flat (MDT25: 2–4 m above the river, base 1–5 m higher).
