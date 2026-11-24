@@ -1378,3 +1378,7 @@ Flight ceiling over the strip 13–17 m above the ground (RD 118/2019 surfaces m
   horizon y = 19; lens f = 1279 px assumed; ~40 m up, ~17° down; check: the farm shed comes out 10.8 m wide, ~5 m eaves).
   Bars placed as on sheet 2.2-DW (22 m or more from the river, 4 m or more inside the fence, parallel to it, 40 × 12 m, 6 floors);
   phase 2 on the sheet's 74 × 54 m grid, dashed. Ground taken flat (MDT25: 2–4 m above the river, base 1–5 m higher).
+- Paused (owner switched to image-AI prompts, 24 Nov): `tools/ex22_pages/walk3d_export.py <ex22_N_residents_full.json> <scene.json>`
+  + `walk3d.html` (three.js r128 from cdnjs): a walkable 3D scene of the residents' north edge with a "market walk": 20 shop
+  pavilions (1–2 floors, each checked under the flight ceiling) and a covered market opposite the San Cayetano stop; walk / model
+  views and six viewpoints. Shops, uses, names and sizes are ours (examples). Not published, not on the site.
