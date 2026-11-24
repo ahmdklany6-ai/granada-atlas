@@ -712,9 +712,9 @@
       <p class="fine">${t('r.invNote')}</p><div class="tr-table-w"><table class="tr-table tr-invt"><tr>${['name', 'src', 'year', 'res', 'kind', 'rel', 'ch', 'st'].map(k => `<th>${t('r.invc.' + k)}</th>`).join('')}</tr>${INV.map(row).join('')}</table></div>
       <h3>${t('r.missH')}</h3><ul class="tr-gaps">${MISS.map(k => `<li><b>${t('r.miss.' + k)}</b> — <span class="fine">${t('r.missw.' + k)}</span></li>`).join('')}</ul></div>`;
     document.body.appendChild(el); const x = el.querySelector('[data-inv-x]'); x.focus();
-    const close = () => { el.remove(); document.removeEventListener('keydown', onK, true); };
+    const close = () => { el.remove(); root.removeEventListener('keydown', onK, true); };
     const onK = (e) => { if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); close(); } };
-    x.addEventListener('click', close); el.addEventListener('click', (e) => { if (e.target === el) close(); }); document.addEventListener('keydown', onK, true);
+    x.addEventListener('click', close); el.addEventListener('click', (e) => { if (e.target === el) close(); }); root.addEventListener('keydown', onK, true);
   }
 
   // ---------- card interaction (chart ↔ map; pickers; timeline) ----------

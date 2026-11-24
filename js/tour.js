@@ -484,7 +484,7 @@
 
   // ---------- keys and buttons ----------
   function onKey(e) {
-    if (!S.on && !introShown()) return; if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (!S.on && !introShown()) return; if (e.altKey || e.ctrlKey || e.metaKey) return; if ($('#tr-inv')) return; // the data inventory handles its own keys
     const tg = e.target; if (tg && tg.closest && tg.closest('input, textarea, select, [contenteditable="true"], .vw, .modal:not([hidden])')) return;
     const k = e.key; let used = true;
     if (introShown()) { if (k === 'Enter') go(1, 1); else used = false; }
