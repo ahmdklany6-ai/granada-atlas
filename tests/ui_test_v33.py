@@ -95,13 +95,17 @@ try:
             ctx.add_init_script(f"window.__noPanelHook = true; {init} try {{ localStorage.setItem('granada-atlas.lang', '{lang}'); }} catch (e) {{ }}")
             pg = ctx.new_page(); stub(pg); errs = []; pg.on('pageerror', lambda e: 'rtl-text' not in str(e) and errs.append(str(e)[:200]))
             pg.goto(f'http://127.0.0.1:{PORT}/index.html{path}'); return ctx, pg, errs
+        # 5.52: the 5.33 slides sit inside the 14-chapter research tour; old [step, layer] → new [chapter, slide]
+        NEW = {(1, 1): (1, 1), (2, 1): (1, 3), (2, 2): (10, 6), (2, 3): (10, 2), (2, 4): (10, 3), (2, 5): (10, 4), (2, 6): (11, 2), (2, 7): (10, 1), (3, 1): (6, 1), (3, 2): (7, 4), (3, 3): (6, 3), (3, 4): (7, 5)}
         def tour(w, lang, step, layer=1):
-            ctx, pg, errs = boot(w, lang, f'#/tour/{step}/{layer}' if step > 1 else '#/tour/1')
+            step, layer = NEW[(step, layer)]
+            ctx, pg, errs = boot(w, lang, f'#/tour/{step}/{layer}' if (step, layer) != (1, 1) else '#/tour/1')
             pg.wait_for_function(f'GA.tour && GA.tour.state.built && GA.tour.state.step === {step} && GA.tour.state.layer === {layer}', timeout=120000); time.sleep(2.2)
             return ctx, pg, errs
         def settle(pg):  # the map has stopped moving and drawn a frame
             pg.wait_for_function('!GA.app.map.isMoving()', timeout=30000); pg.evaluate('new Promise(r => { const m = GA.app.map; m.once("render", () => setTimeout(r, 300)); m.triggerRepaint(); })'); time.sleep(0.6)
-        def goto(pg, step, layer):
+        def goto(pg, step, layer, new=False):
+            if not new: step, layer = NEW[(step, layer)]
             pg.evaluate(f'GA.tour.go({step}, {layer}, true)'); pg.wait_for_function(f'GA.tour.state.step === {step} && GA.tour.state.layer === {layer} && GA.tour.state.built', timeout=60000); time.sleep(0.4); settle(pg)
         T = {}
 
@@ -314,18 +318,18 @@ try:
                 yr = {'chg': '2015–2025', 'inc': '2024', 'rent': '2024'}[key]; src = {'chg': '2871', 'inc': '31025', 'rent': '59060'}[key]
                 check(S['names'][0] and pg.evaluate('GA.i18n.t("x33.nm.granada")') in pop and yr in pop and src in pop, f'{tg}: popup with name, value, year {yr} and source {src}', pop[:200])
                 if lang == 'en' or (lang == 'ar' and key == 'chg'): pg.screenshot(path=f'{OUT}/D_{key}_{lang}.png')
-            # ---- E. four slides; the last one ----
-            goto(pg, 3, 4)
+            # ---- E. the last chapter (5.52: 14 chapters; the last has three slides) ----
+            goto(pg, 14, 3, True)
             E = pg.evaluate('''() => ({ dots: document.querySelectorAll('.tour-dots i').length, nextDis: document.querySelector('[data-tour=layer]').disabled, prevDis: document.querySelector('[data-tour=prev]').disabled, n: GA.tour.state.n,
-              finish: document.querySelector('[data-tour=next]').textContent.trim(), want: GA.i18n.t('tour.finish'), groups: JSON.stringify(GA.tour.VIS[3]), pole: !!GA.app.map.getLayer('tour-pole'),
+              finish: document.querySelector('[data-tour=next]').textContent.trim(), want: GA.i18n.t('tour.finish'), groups: JSON.stringify(GA.tour.VIS), pole: !!GA.app.map.getLayer('tour-pole'),
               strings: ['tour.s3.l5', 'tour.s3.l5t', 'tour.lgEstate'].filter(k => GA.i18n.t(k) !== k) })''')
-            check(E['dots'] == 4 and E['n'] == 4, f'{tag} E: step 3 has four slides (four dots)', E)
-            check(E['nextDis'] and not E['prevDis'] and E['finish'] == E['want'], f'{tag} E: last slide — "Next layer" disabled, "Previous layer" on, "{E["want"]}" button', E)
+            check(E['dots'] == 3 and E['n'] == 3, f'{tag} E: the last chapter has three slides (three dots)', E)
+            check(E['nextDis'] and not E['prevDis'] and E['finish'] == E['want'], f'{tag} E: last slide — "Next" disabled, "Previous" on, "{E["want"]}" button', E)
             check('pole' not in E['groups'] and not E['pole'] and not E['strings'], f'{tag} E: no layer or string left for the removed southern-axis slide', E)
             if lang in ('en', 'ar'): pg.screenshot(path=f'{OUT}/E_last_{lang}.png')
-            pg.keyboard.press('Space'); time.sleep(0.4); check(pg.evaluate('GA.tour.state.layer') == 4, f'{tag} E: Space on the last slide stays there')
-            goto(pg, 3, 1); check(pg.evaluate('document.querySelector("[data-tour=prev]").disabled'), f'{tag} E: "Previous layer" disabled on the first slide')
-            goto(pg, 3, 4); pg.click('[data-tour=next]'); time.sleep(1.2)
+            pg.keyboard.press('Space'); time.sleep(0.4); check(pg.evaluate('GA.tour.state.layer') == 3, f'{tag} E: Space on the last slide stays there')
+            goto(pg, 14, 1, True); check(pg.evaluate('document.querySelector("[data-tour=prev]").disabled'), f'{tag} E: "Previous" disabled on the first slide')
+            goto(pg, 14, 3, True); pg.click('[data-tour=next]'); time.sleep(1.2)
             check(not pg.evaluate('GA.tour.state.on') and pg.evaluate('location.hash') == '' and pg.evaluate('GA.app.map.getStyle().layers.filter(l => l.id.startsWith("tour-")).length') == 0, f'{tag} E: "Open the map" ends the tour on the normal map')
             check(not errs, f'{tag}: no page errors', errs[:3]); ctx.close()
 
@@ -340,7 +344,7 @@ try:
                     goto(pg, s_, l_); time.sleep(0.6); framed(pg.evaluate(JS_FREE), f'{tag} slide {s_}.{l_}')
                 if w == 1280:
                     # Back, a language switch (the card changes side) and a resize: the framing follows
-                    pg.evaluate('GA.tour.back()'); pg.wait_for_function('GA.tour.state.step === 2', timeout=30000); time.sleep(2.4); framed(pg.evaluate(JS_FREE), f'{tag} after Back')
+                    pg.evaluate('GA.tour.back()'); pg.wait_for_function('GA.tour.state.step === 5', timeout=30000); time.sleep(2.4); framed(pg.evaluate(JS_FREE), f'{tag} after Back')
                     other = 'en' if lang != 'en' else 'ar'; pg.evaluate(f'GA.i18n.setLang("{other}")'); time.sleep(2.6)
                     G = pg.evaluate(JS_FREE); framed(G, f'{tag} after switching to {other}')
                     pg.set_viewport_size({'width': 1024, 'height': 768}); time.sleep(1.5); settle(pg); framed(pg.evaluate(JS_FREE), f'{tag} after a resize to 1024 px')

@@ -128,17 +128,20 @@ try:
             check(sorted(pg.evaluate(VISIBLE)) == want(pg) == sorted(['tour-veil', 'tour-base-fill', 'tour-base-line']), 'step 1: only the base (and the veil) drawn', pg.evaluate(VISIBLE))
             check(pg.evaluate('getComputedStyle(document.querySelector("#atl-panel")).display') == 'none', 'step 1: the atlas panel steps aside during the tour')
             pg.screenshot(path=f'{OUT}/C_step1.png')
-            # Enter → step 2
-            pg.keyboard.press('Enter'); wait_step(pg, 2, 1); settle(pg)
+            # 5.52: the 5.33 slides live inside the 14-chapter research tour; they are reached at their new place (GA.tour.go)
+            # and checked exactly as before; the keys are checked on chapter 10 (six slides). tests/ui_test_v40.py covers the rest.
+            NEWPOS = pg.evaluate('(() => { const o = {}; GA.tourResearch.CH.forEach((c, i) => c.slides.forEach((s, j) => { if (s.old) o[s.old.join(",")] = [i + 1, j + 1]; })); return o; })()')
+            def go_old(s_, l_):
+                c_, k_ = NEWPOS[f'{s_},{l_}']; pg.evaluate(f'GA.tour.go({c_}, {k_}, true)'); wait_step(pg, c_, k_); settle(pg); return c_, k_
+            c2, k2 = go_old(2, 1)
             seen = [n for n, ll in D['towns'] if in_view(pg, ll)]
-            check(len(seen) == 5, f'step 2: all five town centres in view, none under the card ({", ".join(seen)})', seen)
-            check(pg.evaluate('location.hash') == '#/tour/2/1', 'step 2 in the URL')
-            titles, dots, legends = [], [], []
-            for i in range(1, 8):  # 5.33: seven layers (towns, fence, route A, route B, both, band, metro/tram)
-                st = pg.evaluate('GA.tour.state'); vis = sorted(pg.evaluate(VISIBLE))
-                check(st['layer'] == i and vis == want(pg), f'step 2 layer {i}: {"+".join(st["groups"])} drawn alone', vis)
+            check(len(seen) == 5, f'towns slide: all five town centres in view, none under the card ({", ".join(seen)})', seen)
+            check(pg.evaluate('location.hash') == f'#/tour/{c2}/{k2}', 'towns slide in the URL', pg.evaluate('location.hash'))
+            titles, legends = [], []
+            for i in range(1, 8):  # 5.33: seven slides (towns, fence, route A, route B, both, band, metro/tram)
+                go_old(2, i); st = pg.evaluate('GA.tour.state'); vis = sorted(pg.evaluate(VISIBLE))
+                check(vis == want(pg), f'old step 2 layer {i}: {"+".join(st["groups"])} drawn alone', vis)
                 titles.append(pg.evaluate('document.querySelector(".tour-c-t").textContent')); legends.append(pg.evaluate('document.querySelector(".tour-c-b .lg").innerHTML'))
-                dots.append(pg.evaluate('[...document.querySelectorAll(".tour-dots i")].findIndex(e => e.classList.contains("on"))'))
                 card = pg.evaluate('document.querySelector("#tour-card").innerText')
                 if i == 1: check('91,476' in card and '25,300' in card, 'layer 1: 91,476 residents (INE 2025); Armilla 25,300 in the card list', card[:300])
                 if i == 2: check('42 %' in card and '33 %' in card and '3.6 km' in card, 'layer 2: fence housing 42 % (3.6 km), open 33 %', card[:300])
@@ -148,34 +151,34 @@ try:
                 if i == 6: check('287 ha' in card and 'confirmed' in card, 'layer 6: 287 ha band; BOE limit "to be confirmed"', card[:300])
                 if i == 7: check('20 m' in card, 'layer 7: the metro about 20 m from the north fence', card[:300])
                 pg.screenshot(path=f'{OUT}/C_step2_{i}.png')
-                pg.keyboard.press('Space'); time.sleep(0.5)
-            check(len(set(titles)) == 7 and len(set(legends)) == 7, 'step 2: card title and legend change with every layer', titles)
-            check(dots == [0, 1, 2, 3, 4, 5, 6], 'step 2: the dot indicator advances', dots)
-            check(pg.evaluate('GA.tour.state.layer') == 7, 'Space on the last layer stays there')
-            pg.keyboard.press('Shift+Space'); time.sleep(0.4); check(pg.evaluate('GA.tour.state.layer') == 6 and pg.evaluate('location.hash') == '#/tour/2/6', 'Shift+Space goes back one layer (URL follows)')
-            pg.keyboard.press('ArrowLeft'); time.sleep(0.4); check(pg.evaluate('GA.tour.state.layer') == 5, '← goes back one layer')
+            check(len(set(titles)) == 7 and len(set(legends)) == 7, 'the seven 5.33 slides: card title and legend change with every slide', titles)
+            # keys on chapter 10 (mobility, six slides)
+            pg.evaluate('GA.tour.go(10, 6, true)'); wait_step(pg, 10, 6)
+            dots = pg.evaluate('[...document.querySelectorAll(".tour-dots i")].findIndex(e => e.classList.contains("on"))'); check(dots == 5, 'the dot indicator marks the sixth slide', dots)
+            pg.keyboard.press('Space'); time.sleep(0.5); check(pg.evaluate('GA.tour.state.layer') == 6, 'Space on the last slide stays there')
+            pg.keyboard.press('Shift+Space'); time.sleep(0.6); check(pg.evaluate('GA.tour.state.layer') == 5 and pg.evaluate('location.hash') == '#/tour/10/5', 'Shift+Space goes back one slide (URL follows)', pg.evaluate('location.hash'))
+            pg.keyboard.press('ArrowLeft'); time.sleep(0.6); check(pg.evaluate('GA.tour.state.layer') == 4, '← goes back one slide')
             check(pg.evaluate('scrollY') == 0 and pg.evaluate('document.scrollingElement.scrollTop') == 0, 'Space / arrows never scroll the page')
-            # a focused button: one press of Space counts once
-            pg.evaluate('document.querySelector("[data-tour=layer]").focus()'); pg.keyboard.press('Space'); time.sleep(0.5)
-            check(pg.evaluate('GA.tour.state.layer') == 6, 'Space on a focused button counts once (5 → 6)', pg.evaluate('GA.tour.state.layer'))
-            pg.evaluate('document.querySelector("[data-tour=next]").focus()'); pg.keyboard.press('Enter'); wait_step(pg, 3); time.sleep(0.8)
-            check(pg.evaluate('GA.tour.state.step') == 3, 'Enter on a focused button counts once (step 2 → 3, not 4)', pg.evaluate('GA.tour.state'))
+            pg.evaluate('document.querySelector("[data-tour=layer]").focus()'); pg.keyboard.press('Space'); time.sleep(0.6)
+            check(pg.evaluate('GA.tour.state.layer') == 5, 'Space on a focused button counts once (4 → 5)', pg.evaluate('GA.tour.state.layer'))
+            pg.evaluate('document.querySelector("[data-tour=next]").focus()'); pg.keyboard.press('Enter'); wait_step(pg, 11); time.sleep(0.8)
+            check(pg.evaluate('GA.tour.state.step') == 11, 'Enter on a focused button counts once (chapter 10 → 11, not 12)', pg.evaluate('GA.tour.state'))
             # typing is ignored
             pg.evaluate('''() => { const i = document.createElement('input'); i.id = 'tt-in'; i.style.cssText = 'position:fixed;top:60px;left:300px;z-index:3000'; document.body.appendChild(i); i.focus(); }''')
             pg.keyboard.type('a b'); pg.keyboard.press('Enter'); pg.keyboard.press('Backspace'); time.sleep(0.3)
-            check(pg.evaluate('GA.tour.state.step') == 3 and pg.evaluate('GA.tour.state.layer') == 1 and pg.evaluate('document.querySelector("#tt-in").value') == 'a ', 'keys typed into an input are ignored by the tour', pg.evaluate('GA.tour.state'))
+            check(pg.evaluate('GA.tour.state.step') == 11 and pg.evaluate('GA.tour.state.layer') == 1 and pg.evaluate('document.querySelector("#tt-in").value') == 'a ', 'keys typed into an input are ignored by the tour', pg.evaluate('GA.tour.state'))
             pg.evaluate('document.querySelector("#tt-in").remove()')
-            settle(pg)
-            # step 3: the agglomeration
+            # the 5.33 step-3 maps: the agglomeration
+            go_old(3, 1)
             bb3 = D['bb']['3']; b3 = pg.evaluate('GA.app.map.getBounds().toArray()')
             tol = 0.01
-            check(b3[0][0] <= bb3[0][0] + tol and b3[0][1] <= bb3[0][1] + tol and b3[1][0] >= bb3[1][0] - tol and b3[1][1] >= bb3[1][1] - tol, 'step 3: the whole agglomeration in view', (b3, bb3))
+            check(b3[0][0] <= bb3[0][0] + tol and b3[0][1] <= bb3[0][1] + tol and b3[1][0] >= bb3[1][0] - tol and b3[1][1] >= bb3[1][1] - tol, 'population-change map: the whole agglomeration in view', (b3, bb3))
             card = pg.evaluate('document.querySelector("#tour-card").innerText')
-            check('+15.3 %' in card and '−0.8 %' in card and '€16,893' in card and '€12,492' in card and '€13,167' in card, 'step 3 card: five towns +15.3 % vs Granada city −0.8 %; income €16,893 vs Las Gabias €12,492, Churriana €13,167', card[:400])
+            check('+15.3 %' in card and '−0.8 %' in card and '€16,893' in card and '€12,492' in card and '€13,167' in card, 'card: five towns +15.3 % vs Granada city −0.8 %; income €16,893 vs Las Gabias €12,492, Churriana €13,167', card[:400])
             titles = []
-            for i in range(1, 5):  # 5.33: four layers (the southern-axis slide was removed)
-                st = pg.evaluate('GA.tour.state'); vis = sorted(pg.evaluate(VISIBLE)); titles.append(pg.evaluate('document.querySelector(".tour-c-t").textContent'))
-                check(st['layer'] == i and vis == want(pg), f'step 3 layer {i}: {"+".join(st["groups"])} drawn alone', vis)
+            for i in range(1, 5):
+                go_old(3, i); st = pg.evaluate('GA.tour.state'); vis = sorted(pg.evaluate(VISIBLE)); titles.append(pg.evaluate('document.querySelector(".tour-c-t").textContent'))
+                check(vis == want(pg), f'old step 3 layer {i}: {"+".join(st["groups"])} drawn alone', vis)
                 card = pg.evaluate('document.querySelector("#tour-card").innerText')
                 if i == 3:
                     check('IPVA' in card and '59060' in card and 'Missing' in card and 'SERPAVI' in card and 'No index' in card, 'rent layer: INE IPVA index with its source; €/m² shown as missing with the reason; municipalities without an index marked', card[:600])
@@ -187,13 +190,12 @@ try:
                 if i in (1, 2, 3):  # map paint and legend come from the same classes
                     sw = pg.evaluate('[...document.querySelectorAll(".tour-c-b .lg .sw")].map(e => getComputedStyle(e).backgroundColor)')
                     key = ['chg', 'inc', 'rent'][i - 1]; cols = pg.evaluate(f'GA.palette.tour.{key}.map(h => "rgb(" + GA.palette.rgb(h).join(", ") + ")")')
-                    check(sw[:len(cols)] == cols, f'step 3 layer {i}: legend colours = map classes ({key})', (sw, cols))
+                    check(sw[:len(cols)] == cols, f'old step 3 layer {i}: legend colours = map classes ({key})', (sw, cols))
                 pg.screenshot(path=f'{OUT}/C_step3_{i}.png')
-                if i < 4: pg.keyboard.press('Space'); time.sleep(0.6)
-            check(len(set(titles)) == 4, 'step 3: titles change with every layer', titles)
-            # Backspace = previous step, then back again and to the end
-            pg.keyboard.press('Backspace'); wait_step(pg, 2); check(pg.evaluate('GA.tour.state.step') == 2, 'Backspace goes to the previous step')
-            pg.keyboard.press('Enter'); wait_step(pg, 3); pg.keyboard.press('Enter'); time.sleep(1.2)
+            check(len(set(titles)) == 4, 'the four 5.33 maps: titles change with every slide', titles)
+            # Backspace = previous chapter, then to the end
+            cur = pg.evaluate('GA.tour.state.step'); pg.keyboard.press('Backspace'); wait_step(pg, cur - 1); check(pg.evaluate('GA.tour.state.step') == cur - 1, 'Backspace goes to the previous chapter')
+            pg.evaluate('GA.tour.go(14, 3, true)'); wait_step(pg, 14, 3); pg.keyboard.press('Enter'); time.sleep(1.2)
             st = pg.evaluate('''() => ({ on: GA.tour.state.on, intro: !document.querySelector('#tour-intro').hidden, tour: GA.app.map.getStyle().layers.filter(l => l.id.startsWith('tour-')).length, srcs: Object.keys(GA.app.map.getStyle().sources).filter(s => s.startsWith('tour-')).length,
               hash: location.hash, panels: ['analysis', 'study'].map(k => GA.panels.isOpen(k)), card: !document.querySelector('#tour-card').hidden, ess: ['south_metro', 'tram_1931', 'escuzar_pole'].map(id => GA.app.L.S[id].on) })''')
             check(not st['on'] and not st['intro'] and not st['card'] and st['hash'] == '', 'the last Enter ends the tour on the normal map', st)
@@ -202,8 +204,8 @@ try:
             check(pg.evaluate('localStorage.getItem("granada-atlas.layers.v1")') == before, 'the saved layer state is unchanged by the tour')
             pg.screenshot(path=f'{OUT}/C_end.png')
             # deep link into a layer, Esc leaves
-            pg.goto(f'http://127.0.0.1:{PORT}/index.html#/tour/2/3'); wait_step(pg, 2, 3); time.sleep(1)
-            check(pg.evaluate('GA.tour.state.layer') == 3 and pg.evaluate('document.querySelector("#tour-intro").hidden'), '#/tour/2/3 reopens step 2, layer 3')
+            pg.goto(f'http://127.0.0.1:{PORT}/index.html#/tour/10/2'); wait_step(pg, 10, 2); time.sleep(1)
+            check(pg.evaluate('GA.tour.state.layer') == 2 and pg.evaluate('document.querySelector("#tour-intro").hidden'), '#/tour/10/2 reopens chapter 10, slide 2')
             pg.keyboard.press('Escape'); time.sleep(0.8)
             check(not pg.evaluate('GA.tour.state.on') and pg.evaluate('GA.app.map.getStyle().layers.filter(l => l.id.startsWith("tour-")).length') == 0, 'Esc leaves the tour to the normal map')
             check(not errs, 'no page errors (tour)', errs[:3]); ctx.close()
