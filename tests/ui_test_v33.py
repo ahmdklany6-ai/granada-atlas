@@ -84,7 +84,8 @@ JS_LABELS = r'''() => { const els = [...document.querySelectorAll('#tour-lbls .t
   const under = R.filter(a => obs.some(o => a.l < o.right && o.left < a.r && a.t < o.bottom && o.top < a.b)).map(a => a.id);
   const st = document.querySelector('.stage').getBoundingClientRect(); const out = R.filter(a => a.l < st.left - 0.5 || a.r > st.right + 0.5 || a.t < st.top - 0.5 || a.b > st.bottom + 0.5).map(a => a.id);
   const P = GA.tour.labels; const leaders = document.querySelectorAll('#tour-lbls svg line').length / 2;
-  const cv = GA.app.map.getCanvas(); const inView = GA.tour.state.step && GA.tour.data ? GA.tour.data.area.features.filter(f => { const q = GA.app.map.project(f.properties.lp); return q.x >= -2 && q.y >= -2 && q.x <= cv.clientWidth + 2 && q.y <= cv.clientHeight + 2; }).length : 0;
+  const cv = GA.app.map.getCanvas(), sr = document.querySelector('.stage').getBoundingClientRect(); const ob = ['#tour-card', '.maplibregl-ctrl-top-right', '.maplibregl-ctrl-bottom-right', '.maplibregl-ctrl-bottom-left', '#atl-topics'].flatMap(q => [...document.querySelectorAll(q)]).filter(e => e.offsetWidth && !e.hidden && getComputedStyle(e).display !== 'none').map(e => { const r = e.getBoundingClientRect(); return { l: r.left - sr.left - 4, t: r.top - sr.top - 4, r: r.right - sr.left + 4, b: r.bottom - sr.top + 4 }; }).filter(o => o.r - o.l > 10 && o.b - o.t > 10);
+  const inView = GA.tour.state.step && GA.tour.data ? GA.tour.data.area.features.filter(f => { const q = GA.app.map.project(f.properties.lp); return q.x >= -2 && q.y >= -2 && q.x <= cv.clientWidth + 2 && q.y <= cv.clientHeight + 2 && !ob.some(o => q.x >= o.l && q.x <= o.r && q.y >= o.t && q.y <= o.b); }).length : 0;
   return { inView, n: R.length, R, bad, under, out, forced: P.filter(p => p.forced).length, short: P.filter(p => p.short).length, needLeader: P.filter(p => p.leader).length, leaders }; }'''
 
 srv = subprocess.Popen([sys.executable, '-m', 'http.server', str(PORT), '--bind', '127.0.0.1'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
@@ -234,7 +235,7 @@ try:
                 pg.mouse.click(xy[0], xy[1]); time.sleep(0.8)
                 pop = pg.evaluate('(document.querySelector(".tour-pop") || {}).innerText || ""'); a_ha = AT[key][0][2] if AT[key] else -1
                 kind_txt = pg.evaluate('(k) => { const d = document.createElement("div"); const sc = GA.tour.data.scatter; d.innerHTML = GA.i18n.t("x45.kind." + k, { n: sc.houses_min, d: sc.within_m + "\u00A0m", o: sc.outline_m + "\u00A0m" }); return d.textContent; }', want_k)
-                check(kind_txt in pop.replace('\n', ' ') and f'{a_ha * 10:,.0f} dunams' in pop and pg.evaluate(f'GA.i18n.t("x45.area.{want_k}")') in pop, f'{tag} B 5.45: a click on a {want_k} area says what it is and gives its own area ({a_ha * 10:,.0f} dunams; 5.53: dunams, not hectares)', pop[:300])
+                check(kind_txt in pop.replace('\n', ' ') and (f'{a_ha * 10:,.0f} ' + pg.evaluate('GA.i18n.t("r.u.du")')) in pop and pg.evaluate(f'GA.i18n.t("x45.area.{want_k}")') in pop, f'{tag} B 5.45: a click on a {want_k} area says what it is and gives its own area ({a_ha * 10:,.0f} dunams in the visitor\'s language; 5.53: dunams, not hectares)', pop[:300])
                 if want_k == 'scatter': check(pg.evaluate('GA.i18n.t("x45.houses")') in pop and str(AT[key][0][3]) in pop and '100' in pop and '30' in pop, f'{tag} B 5.45: scattered houses: the rule (10 houses, 100 m, 30 m) and the OSM house count as a lower bound', pop[:300])
             pg.evaluate('document.querySelectorAll(".maplibregl-popup-close-button").forEach(b => b.click())')
             if lang in ('en', 'ar'): pg.screenshot(path=f'{OUT}/B_towns_{lang}.png')

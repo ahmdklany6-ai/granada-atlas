@@ -280,8 +280,9 @@
     const DIRS = []; for (let r = 1; r <= 9; r++) for (let k = 0; k < 12; k++) { const an = k * Math.PI / 6 + (r % 2 ? 0 : Math.PI / 12); DIRS.push([Math.cos(an) * r * 13, Math.sin(an) * r * 11]); }
     items.forEach(it => {
       const p = map.project(it.ll);
-      // 5.53: the agglomeration maps zoom in — a label whose point lies outside the map view is not drawn (its municipality is not on screen)
-      if (p.x < -2 || p.y < -2 || p.x > W + 2 || p.y > H + 2) { it.el.style.display = 'none'; return; } it.el.style.display = '';
+      // 5.53: the agglomeration maps zoom in — a label whose point lies outside the map view, or under the card or the map
+      // controls, is not drawn (its municipality is not on screen)
+      if (p.x < -2 || p.y < -2 || p.x > W + 2 || p.y > H + 2 || obs.some(q => p.x >= q.l && p.x <= q.r && p.y >= q.t && p.y <= q.b)) { it.el.style.display = 'none'; return; } it.el.style.display = ''; // …or behind the card / the map controls
       const tries = [[it.w, it.h, false]]; if (it.alt) tries.push([it.wAlt, it.hAlt, true]);
       const offs = (it.avoidAnchor ? [] : [[0, 0]]).concat(it.avoidAnchor ? DIRS.map(([dx, dy]) => [dx * 1.25, dy * 1.35]) : DIRS);
       let pick = null, best = null;
