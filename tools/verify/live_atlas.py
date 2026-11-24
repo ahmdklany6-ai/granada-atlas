@@ -184,5 +184,18 @@ with sync_playwright() as p:
         trees: tr.pts.filter(p => inB([p[1], p[2]])).length, cat: L.buildings.catastro_year && L.buildings.catastro_year.with_year, wc: !!(M.canopy && M.canopy.worldcover), noise: GA.ext.noiseLayers('lden') }; }''')
     check(r['places'] > 1000 and r['bus'] > 30 and r['trees'] > 100 and (r['cat'] or 0) > 50000 and r['wc'] and 'mer_carretera_lden' in r['noise'], 'en: 5.50 — base square: places, served consortium stops, trees; Catastro years; WorldCover; road noise', r)
     check(not [e for e in errs if 'rtl-text' not in e], 'en: no page errors (5.50 data)', errs[:3]); ctx.close()
+    # ---- 5.51: consortium stops from each line's own list; the period legend names the Catastro; canopy fallback wired ----
+    ctx, pg, errs = boot({'width': 1440, 'height': 900}, lang='en'); time.sleep(3)
+    r = pg.evaluate('''async () => { await GA.data.loadManifest(); const M = GA.data.manifest, L = M.layers; const bs = await GA.data.single('bus_service');
+      const inB = (c) => c[0] > -3.669 && c[0] < -3.618 && c[1] > 37.1098 && c[1] < 37.1502; const ct = bs.features.filter(f => f.properties.src === 'ctan');
+      const cb = ct.find(f => f.properties.stop_name === 'Cno. Bajo de Armilla');
+      return { ctan: ct.length, base: ct.filter(f => inB(f.geometry.coordinates) && f.properties.trips_day > 0).length, cb: cb && cb.properties.trips_day, later: ((L.bus_service.ctan || {}).later_timetable || []).length,
+        pc: L.buildings.periodCoverage, fall: typeof GA.ext.canopyGrid === 'function' && typeof GA.ext.wcImage === 'function', lab: typeof GA.compare.labelOf === 'function' }; }''')
+    check(r['ctan'] == 827 and r['base'] >= 110 and r['cb'] == 97 and r['later'] == 5 and (r['pc'] or {}).get('catastro', 0) > 60000 and r['fall'] and r['lab'], 'en: 5.51 — 827 consortium stops (119 in the base square), period coverage with the Catastro, canopy fallback present', r)
+    pg.evaluate('GA.app.map.jumpTo({ center: [-3.5985, 37.1765], zoom: 13.2 })'); time.sleep(1); pg.evaluate('GA.app.L.setOn("bld_period", true)'); time.sleep(4)
+    lg = pg.evaluate('GA.app.L.byId.bld_period.legend().replace(/<[^>]+>/g, " ")')
+    check('Catastro' in lg and 'Only 39' not in lg, 'en: 5.51 — the construction-period layer names the Catastro', lg[-200:])
+    emit('x51_period_en', pg.screenshot()); pg.evaluate('GA.app.L.setOn("bld_period", false)')
+    check(not [e for e in errs if 'rtl-text' not in e], 'en: no page errors (5.51)', errs[:3]); ctx.close()
     b.close()
 n = sum(1 for c, _ in res if not c); print(f'\nLIVE RESULT atlas: {len(res) - n}/{len(res)} checks passed' + ('' if not n else ' — FAILED: ' + '; '.join(m for c, m in res if not c)), flush=True)

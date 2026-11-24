@@ -160,7 +160,8 @@
     let b8 = taskState(T.osm, 'osm');
     if (o) {
       const bd = o.buildings;
-      b8 += row(t('h.start'), `<span class="num">${nf(bd.startTagged)} (${pct(bd.startCoverage)})</span>`, 'doc', osmSrc('start_date'));
+      b8 += bd.yearCat ? row(t('v36.withYear'), `<span class="num">${nf(bd.startTagged)} (${pct(bd.startCoverage)})</span> <small>${t('v36.yearSrcV', { o: nf(bd.yearOsm), c: nf(bd.yearCat) })}</small>`, 'doc', Object.assign(osmSrc('OSM start_date; else Catastro dateOfConstruction'), { name: 'OpenStreetMap · Overpass + Dirección General del Catastro (INSPIRE Buildings)', license: 'ODbL 1.0 · Catastro: reuse with attribution' })) // 5.51: both sources named
+        : row(t('h.start'), `<span class="num">${nf(bd.startTagged)} (${pct(bd.startCoverage)})</span>`, 'doc', osmSrc('start_date'));
       if (bd.startTagged) b8 += bars(Object.keys(bd.periods).map(k => [periodLabel(PAL.periodKey(k)), bd.periods[k], PAL.periodKey(k)]), v => nf(v), k => PAL.period[k] || PAL.ink2);
       const her = (o.pois.lists.heritage || []); b8 += row(t('h.heritage'), `<span class="num">${nf(her.length)}</span>`, 'doc', osmSrc('historic=*, heritage=*'));
       if (her.some(h => h.name)) b8 += `<ul class="names">${her.filter(h => h.name).slice(0, 14).map(h => `<li><bdi>${esc(h.name)}</bdi> <small dir="ltr">${esc(h.kind)}</small></li>`).join('')}</ul>`;

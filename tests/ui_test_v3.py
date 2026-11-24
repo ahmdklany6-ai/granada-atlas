@@ -108,7 +108,7 @@ def main():
             pg.evaluate('(() => { const q = document.createElement("input"); q.dataset.k = "q"; q.value = ""; GA.app.L.control("places", q); })()')
             nb = pg.evaluate('GA.app.L.byId.bus_service._shown')
             pg.evaluate('(() => { const el = document.createElement("input"); el.dataset.k = "sched"; el.checked = true; GA.app.L.control("bus_service", el); })()')
-            ns = pg.evaluate('GA.app.L.byId.bus_service._shown'); check('bus layer: 692 city stops (622 served on 26 Oct 2026) + 542 metropolitan stops outside the city (5.50, CTAN; 470 served)', nb == 692 + 542 and ns == 622 + 470, f'{nb} / {ns}')
+            ns = pg.evaluate('GA.app.L.byId.bus_service._shown'); check('bus layer: 692 city stops (622 served on 26 Oct 2026) + 827 metropolitan stops outside the city (5.51, from each line\'s own stop list; 825 served)', nb == 692 + 827 and ns == 622 + 825, f'{nb} / {ns}')
             pg.evaluate('(() => { const el = document.createElement("select"); el.dataset.k = "route"; const o = document.createElement("option"); o.value = "4"; el.appendChild(o); el.value = "4"; GA.app.L.control("bus_service", el); })()')
             nr = pg.evaluate('GA.app.L.byId.bus_service._shown'); check('bus route filter narrows the stops', 0 < nr < ns, nr)
             leg = pg.evaluate('GA.app.L.legendHTML()'); check('legends state the date and caveats', '26 October 2026' in leg and 'ridership' in leg and 'not a guarantee' in leg)

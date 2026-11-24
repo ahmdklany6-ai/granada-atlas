@@ -24,7 +24,7 @@
     const img = (url) => X.loadImage(url, LIMIT).then(im => Object.assign({ img: im }, box));
     const makers = {
       trees: () => X.trees([bb[0] - 0.0006, bb[1] - 0.0006, bb[2] + 0.0006, bb[3] + 0.0006]),
-      tcd: () => X.tcdGrid(ring, 80).catch(e => X.wcGrid(ring, 80).then(g => Object.assign(g, { liveErr: (e && e.message) || String(e) }))), // 5.50: the live Copernicus service, else WorldCover
+      tcd: () => X.canopyGrid(ring, 80), // 5.50: the live Copernicus service, else WorldCover; 5.51: given up after X.TCD_WAIT so a hanging service still reaches the fallback
       flood: () => X.floodExposure(ring),
       // service images are re-drawn in the atlas classes (js/rasterclass.js) so the card legend matches them
       floodImg: () => img(X.wmsURL(X.SVC.miteco, 'agua:Zi_laminas_q500,agua:Zi_laminas_q100,agua:Zi_laminas_q10', [x0, y0, x1, y1], w, h, 25830)).then(o => root.GA.rasterClass.recolourImage('flood', o.img).then(c => Object.assign(o, { img: c }))),
@@ -115,7 +115,7 @@
         legend: PL.BUS_ORDER.map(l => ({ dot: PL.BUS_LV[l], label: t('bl.' + l), key: l })),
         ind: B.cover < 0.02 ? [[t('g3.stopsMapped'), t('v36.outside')], [t('g3.stopsServed'), '—'], [t('g3.maxTrips'), '—']] : [[t('g3.stopsMapped'), nf(B.mapped) + (B.cover < 0.98 ? ' *' : '')], [t('g3.stopsServed'), nf(B.withService)], [t('g3.maxTrips'), B.mapped ? nf(B.maxTrips) : '—']],
         chart: B.withService ? { kind: 'hbars', unit: t('g3.depUnit'), items: B.pts.filter(f => f.properties.trips_day > 0).sort((a, b) => b.properties.trips_day - a.properties.trips_day).slice(0, 8).map(f => ({ label: f.properties.stop_name, v: f.properties.trips_day, col: PL.BUS_LV[f.properties.service_level] || P.red })) } : null,
-        find: [B.cover < 0.02 ? t('v36.outsideBus') : B.mapped ? t('g3.fBus', { m: nf(B.mapped), s: nf(B.withService), r: nf(B.routes.length), x: nf(B.maxTrips) }) : t('g3.fBusNone', { d: nf(B.nearestServed) })].concat(B.cover < 0.98 && B.cover >= 0.02 ? [t('v36.partial', { p: pct(B.cover) })] : [], CT.length ? [t('v36.busCtanNote', { n: nf(CT.length), a: nf(CT.filter(f => f.properties.approx).length) })] : [], [t('g3.busCaveat')]), method: CT.length ? t('g3.mBus') + ' ' + t('v36.busCtanMethod') : t('g3.mBus') };
+        find: [B.cover < 0.02 ? t('v36.outsideBus') : B.mapped ? t('g3.fBus', { m: nf(B.mapped), s: nf(B.withService), r: nf(B.routes.length), x: nf(B.maxTrips) }) : t('g3.fBusNone', { d: nf(B.nearestServed) })].concat(B.cover < 0.98 && B.cover >= 0.02 ? [t('v36.partial', { p: pct(B.cover) })] : [], CT.length ? [t('v37.busNote', { n: nf(CT.length), a: nf(CT.filter(f => f.properties.approx).length) })] : [], [t('g3.busCaveat')]), method: CT.length ? t('g3.mBus') + ' ' + t('v37.busMethod', { k: nf((((D.manifest.layers.bus_service || {}).ctan || {}).later_timetable || []).length) }) : t('g3.mBus') };
       insertAfter('transit', card);
     }
     // trees and canopy

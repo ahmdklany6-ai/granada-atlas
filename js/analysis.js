@@ -137,7 +137,9 @@
   // Stable period codes (also used as GIS attribute values)
   const PERIODS = [[0, 1899, 'pre_1900'], [1900, 1939, '1900_1939'], [1940, 1959, '1940_1959'], [1960, 1979, '1960_1979'], [1980, 1999, '1980_1999'], [2000, 9999, '2000_plus']];
   function periodOf(y) { const p = PERIODS.find(p => y >= p[0] && y <= p[1]); return p ? p[2] : null; }
-  function parseYear(s) { const m = String(s || '').match(/(1[0-9]{3}|20[0-9]{2})/); return m ? +m[1] : null; }
+  // 5.51: an OSM century date ("C16", "C11") counts from the first year of the century, as the method text says; before
+  // this it was ignored, so since 5.50 a Catastro year replaced it (El Bañuelo, 11th century, drawn as 1900–1939)
+  function parseYear(s) { const t = String(s || ''); const m = t.match(/(1[0-9]{3}|20[0-9]{2})/); if (m) return +m[1]; const c = t.match(/^\s*~?C(\d{1,2})\b/i); return c && +c[1] >= 1 && +c[1] <= 21 ? (+c[1] - 1) * 100 + 1 : null; }
 
   function inPoly(pt, ring, bb) { return G.inBBox(pt, bb) && G.pointInRing(pt, ring); }
   function inFeature(pt, f) { return f.outers.some(o => G.pointInRing(pt, o)) && !f.inners.some(i => G.pointInRing(pt, i)); }

@@ -164,8 +164,9 @@
         applyOpacity(o) { setOp(lid('bld_fg', 'lite'), 'fill-opacity', fadeIn(o)); setOp(lid('bld_fg'), 'fill-opacity', o); },
         legend: () => `<ul class="lg">${sw(P.ink, t('g.building'))}</ul>${bldScaleNote()}`, src: () => 'OSM building · ODbL', popup: { layers: () => [lid('bld_fg')], html: (p) => bldPopup(p) } },
       { id: 'bld_period', group: 'bld', title: () => t('ly.bldPeriod'), def: { on: false, opacity: 1 }, minZ: LITE_Z,
-        // 5.9: dated buildings in the period ramp; buildings without an OSM start_date are HATCHED (as unknown floors), never a
-        // pale class that could be read as a date. Coverage is a source gap (39 of 101,674 footprints carry a usable date).
+        // 5.9: dated buildings in the period ramp; buildings without a year are HATCHED (as unknown floors), never a pale class
+        // that could be read as a date. 5.50: the year is the OSM start_date (39 buildings) or, without one, the Catastro year
+        // of construction (cy, tools/build_catastro_years.py); 5.51: the legend, popup and source line say so.
         build() { addSrc(lid('bld'), { type: 'geojson', data: fc() });
           addLyr({ id: lid('bld_period', 'unk'), type: 'fill', source: lid('bld'), minzoom: DETAIL_Z, filter: ['==', ['coalesce', ['get', 'period'], 'no_data'], 'no_data'], paint: { 'fill-pattern': 'ga-hatch', 'fill-opacity': 0.55 } });
           addLyr({ id: lid('bld_period'), type: 'fill', source: lid('bld'), minzoom: DETAIL_Z, filter: ['!=', ['coalesce', ['get', 'period'], 'no_data'], 'no_data'], paint: { 'fill-color': periodColor(), 'fill-opacity': 1, 'fill-outline-color': P.ink } }); },
@@ -174,8 +175,8 @@
           addLyr({ id: lid('bld_period', 'lite'), type: 'fill', source: lid('bldlite'), minzoom: LITE_Z, filter: ['!=', ['get', 'period'], 'no_data'], paint: { 'fill-color': periodColor(), 'fill-opacity': 1, 'fill-outline-color': P.ink } }); },
         update: () => bldUpdate(), layers: () => [lid('bld_period', 'liteunk'), lid('bld_period', 'lite'), lid('bld_period', 'unk'), lid('bld_period')], visLayers() { return bldVis(this); },
         applyOpacity(o) { setOp(lid('bld_period', 'liteunk'), 'fill-opacity', fadeIn(o) * 0.55); setOp(lid('bld_period', 'lite'), 'fill-opacity', fadeIn(o)); setOp(lid('bld_period', 'unk'), 'fill-opacity', o * 0.55); setOp(lid('bld_period'), 'fill-opacity', o); },
-        legend: () => { const pc = (M().layers.buildings || {}).periodCoverage || {}; const n = pc.total, d = pc.dated; // recorded in the manifest from the published data
-          return `<ul class="lg">${A.PERIODS.map(k => sw(P.period[k], root.GA.report.periodLabel(k))).join('')}<li><i class="sw hatch"></i><span>${t('v9.periodUnknown')}</span></li></ul><p class="lyr-src">${n ? t('v9.periodCoverage', { d: nf(d), n: nf(n) }) + ' ' : ''}${t('v9.periodNote')}</p>${bldScaleNote()}`; }, src: () => 'OSM start_date · ODbL', popup: { layers: () => [lid('bld_period')], html: (p) => bldPopup(p) } },
+        legend: () => { const pc = (M().layers.buildings || {}).periodCoverage || {}; const n = pc.total, d = pc.dated, both = pc.catastro != null; // recorded in the manifest from the published data
+          return `<ul class="lg">${A.PERIODS.map(k => sw(P.period[k], root.GA.report.periodLabel(k))).join('')}<li><i class="sw hatch"></i><span>${t(both ? 'v37.periodUnknown' : 'v9.periodUnknown')}</span></li></ul><p class="lyr-src">${both ? t('v37.periodCoverage', { d: nf(d), n: nf(n), o: nf(pc.osm), c: nf(pc.catastro) }) + ' ' + t('v37.periodNote') : (n ? t('v9.periodCoverage', { d: nf(d), n: nf(n) }) + ' ' : '') + t('v9.periodNote')}</p>${bldScaleNote()}`; }, src: () => ((M().layers.buildings || {}).periodCoverage || {}).catastro != null ? 'OSM start_date · ODbL — Dirección General del Catastro (INSPIRE Buildings): year of construction' : 'OSM start_date · ODbL', popup: { layers: () => [lid('bld_period')], html: (p) => bldPopup(p) } },
       { id: 'streets', group: 'streets', title: () => t('ly.streets'), def: { on: false, opacity: 1 },
         build() { addSrc(lid('streets', 'maj'), { type: 'geojson', data: fc() }); addSrc(lid('streets'), { type: 'geojson', data: fc() });
           // widths grow with scale so local streets and paths stay legible up close (line-dasharray cannot be data-driven,
@@ -227,7 +228,7 @@
 
     function bldPopup(p) {
       const lv = p.lv != null ? nf(p.lv) : null;
-      return `<b dir="auto">${esc(p.nm || t('g.building'))}</b><table><tr><td>${t('ly.floorsF')}</td><td class="num">${lv != null ? lv : `<em>${t('g.unknownHeight')}</em>`}</td></tr>${p.h != null ? `<tr><td>${t('ly.heightF')}</td><td class="num">${nf(p.h, 1)} m</td></tr>` : ''}<tr><td>${t('ly.periodF')}</td><td>${p.sd ? `<span dir="ltr">${esc(p.sd)}</span>` : t('nodata')}</td></tr><tr><td>building</td><td dir="ltr">${esc(p.b)}</td></tr></table><small dir="ltr">${esc(p.id)}</small>`;
+      return `<b dir="auto">${esc(p.nm || t('g.building'))}</b><table><tr><td>${t('ly.floorsF')}</td><td class="num">${lv != null ? lv : `<em>${t('g.unknownHeight')}</em>`}</td></tr>${p.h != null ? `<tr><td>${t('ly.heightF')}</td><td class="num">${nf(p.h, 1)} m</td></tr>` : ''}<tr><td>${t('ly.periodF')}</td><td>${p.sd ? `<span dir="ltr">${esc(p.sd)}</span> <small>OSM</small>` : p.cy ? `<span dir="ltr">${esc(p.cy)}</span> <small>${t('v37.catYear')}</small>` : t('nodata')}</td></tr><tr><td>building</td><td dir="ltr">${esc(p.b)}</td></tr></table><small dir="ltr">${esc(p.id)}</small>`;
     }
     let bldBusy = null;
     async function bldUpdate() {

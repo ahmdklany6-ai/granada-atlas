@@ -58,7 +58,7 @@
           ${edit ? `<label class="name"><span>${t('fb.summary')}</span><textarea dir="auto" rows="2" data-fb-txt="summary" placeholder="${esc(t('fb.summaryPh'))}">${esc(b.summary || '')}</textarea></label>
             <label class="name"><span>${t('fb.rationale')}</span><textarea dir="auto" rows="3" data-fb-txt="rationale" placeholder="${esc(t('fb.rationalePh'))}">${esc(b.rationale || '')}</textarea></label>`
           : `${b.summary ? `<p class="ap-sum" dir="auto">${esc(b.summary)}</p>` : `<p class="ap-sum hint">${t('v5.summaryHint')}</p>`}${b.rationale ? `<p class="ap-rat" dir="auto"><b>${t('fb.rationale')}:</b> ${esc(b.rationale)}</p>` : ''}`}
-          <dl class="ap-kpis">${kp.map(([k, l]) => `<div><dt>${t(l)}</dt><dd>${kv(k)}</dd></div>`).join('')}</dl>
+          <dl class="ap-kpis">${kp.map(([k, l]) => `<div><dt>${CMP.labelOf(k, ind)}</dt><dd>${kv(k)}</dd></div>`).join('')}</dl>
           <p class="fine">${shapeLabel(a)} · <span dir="ltr">${(G.ringArea(X0.ring) / 1e4).toFixed(2)} ha</span>${X0.extPending ? ` · <span class="spin"></span> ${t('v4.extPending')}` : ''}</p>
         </div>
         <figure class="ap-loc"><button type="button" class="ap-map ap-locmap" data-ap-loc aria-label="${esc(t('v5.enlargeMap') + ': ' + t('v5.locTitle'))}"><canvas id="ap-loc"></canvas><span class="enl" aria-hidden="true">⤢ ${t('v5.enlargeMap')}</span></button>
@@ -131,7 +131,7 @@
   }
   function suggestions(ind) { // rule-based prompts, each with the evidence it rests on — suggestions only
     const out = []; const p = (v) => v == null ? null : Math.round(v * 100) + '%';
-    if (ind.canopy_mean != null && ind.gsi != null && ind.canopy_mean < 0.1 && ind.gsi > 0.35) out.push({ q: t('fb.s.heat'), ev: `${t('cmp3.canopy')} ${p(ind.canopy_mean)}, GSI ${p(ind.gsi)}` });
+    if (ind.canopy_mean != null && ind.gsi != null && ind.canopy_mean < 0.1 && ind.gsi > 0.35) out.push({ q: t('fb.s.heat'), ev: `${CMP.labelOf('canopy_mean', ind)} ${p(ind.canopy_mean)}, GSI ${p(ind.gsi)}` });
     if (ind.bus_sched != null && ind.places_per_km2 != null && ind.bus_sched === 0 && ind.places_per_km2 > 200) out.push({ q: t('fb.s.access'), ev: `${t('cmp3.busSched')} 0, ${t('cmp3.placesD')} ${Math.round(ind.places_per_km2)}` });
     if (ind.flood_t100_share != null && ind.flood_t100_share > 0.05) out.push({ q: t('fb.s.flood'), ev: `${t('cmp3.flood100')} ${p(ind.flood_t100_share)}` });
     if (ind.steep_share_15deg != null && ind.steep_share_15deg > 0.25) out.push({ q: t('fb.s.slope'), ev: `${t('g.steepShare')} ${p(ind.steep_share_15deg)}` });
@@ -371,7 +371,7 @@
     const ind = state.ind;
     yy = B.para(ctx, b.rationale || '—', tx, yy, tw, o(22, { lines: 8 }));
     yy = B.para(ctx, t('v12.keyInd'), tx, yy + 22, tw, o(26, { weight: 700 }));
-    ['buildings', 'gsi', 'median_floors', 'places_per_km2', 'canopy_mean', 'bus_sched', 'flood_t100_share', 'relief_m'].forEach(key => { const row = CMP.IND_ROWS.find(r => r[0] === key); if (!row) return; const v = CMP.fmtInd(row, ind[key]); yy = B.para(ctx, `${B.clean(t(row[1]))}: ${v == null ? CMP.whyLabel((ind._why || {})[key]) : B.clean(v)}`, tx, yy + 2, tw, o(22, { lines: 2 })); });
+    ['buildings', 'gsi', 'median_floors', 'places_per_km2', 'canopy_mean', 'bus_sched', 'flood_t100_share', 'relief_m'].forEach(key => { const row = CMP.IND_ROWS.find(r => r[0] === key); if (!row) return; const v = CMP.fmtInd(row, ind[key]); yy = B.para(ctx, `${B.clean(CMP.labelOf(key, ind))}: ${v == null ? CMP.whyLabel((ind._why || {})[key]) : B.clean(v)}`, tx, yy + 2, tw, o(22, { lines: 2 })); });
     yy = B.para(ctx, t('v12.contents'), tx, yy + 22, tw, o(26, { weight: 700 })); yy = B.para(ctx, plan.map(p => t('v5.th.' + p.k)).join(' · ') || '—', tx, yy + 2, tw, o(22, { lines: 4 }));
     if (omitted.length) { yy = B.para(ctx, t('v12.omitted'), tx, yy + 18, tw, o(24, { weight: 700, color: GA.palette.ink2 })); omitted.slice(0, 10).forEach(m => { yy = B.para(ctx, '• ' + m, tx, yy + 2, tw, o(19, { lines: 2, color: GA.palette.ink3 })); }); }
     return { canvas: endPage(S), k: 'identity', cards: S.cards };

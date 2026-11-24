@@ -164,11 +164,11 @@
       const B = [];
       parsed.buildings.forEach(b => {
         const c = G.centroidLL(b.outers[0]); if (!inside(c)) return;
-        const t = b.tags; const lv = num(t['building:levels']); const y = A.parseYear(t.start_date || t['building:start_date']);
+        const t = b.tags; const lv = num(t['building:levels']); const yO = A.parseYear(t.start_date || t['building:start_date']), yC = yO ? null : A.parseYear(t['catastro:year']); const y = yO || yC; // 5.51: the Catastro year where OSM has none
         const crosses = b.outers.some(o => o.some(p => !inside(p)));
         B.push({ geometry: { type: 'MultiPolygon', coordinates: assignHoles(b.outers, b.inners) }, properties: Object.assign(idParts(b.id), {
           name: t.name || null, building: t.building, levels: lv && lv > 0 ? lv : null, levels_tag: t['building:levels'] || null, level_band: lv && lv > 0 ? A.levelBand(lv) : 'no_data',
-          height_m: num(t.height), start_date: t.start_date || t['building:start_date'] || null, start_year: y, period: y ? A.periodOf(y) : 'no_data', roof_shape: t['roof:shape'] || null,
+          height_m: num(t.height), start_date: t.start_date || t['building:start_date'] || null, start_year: y, year_source: yO ? 'osm' : yC ? 'catastro' : null, period: y ? A.periodOf(y) : 'no_data', roof_shape: t['roof:shape'] || null,
           amenity: t.amenity || null, footprint_m2: +A.featArea(b).toFixed(2), crosses_boundary: crosses ? 1 : 0 }) });
       });
       out.push({ id: 'buildings', geomType: 'MULTIPOLYGON', status: B.length ? 'ready' : 'empty', note: 'N.buildings', features: B });
@@ -393,8 +393,10 @@
           { source: 'Copernicus DEM GLO-90 via Open-Meteo Elevation API', licence: 'CC BY 4.0 (Open-Meteo); © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the EU and ESA', data_date: 'DEM release 2021', retrieved: meta.analysis_run, layers: 'section_line, section_points' + (opts.dem ? ', elevation GeoTIFF' : '') },
           { source: 'ERA5 via Open-Meteo Historical Weather API', licence: 'CC BY 4.0', data_date: ctx.run && ctx.run.result && ctx.run.result.climate ? ctx.run.result.climate.year : null, retrieved: meta.analysis_run, layers: 'climate_cell' },
           { source: 'Wikimedia Commons API', licence: 'per file (see author, license fields)', data_date: null, retrieved: meta.analysis_run, layers: 'photos_commons' },
-          { source: 'Overture Maps Foundation — Places (file supplied by the user)', licence: 'CDLA-Permissive-2.0 — © Overture Maps Foundation', data_date: 'supplied 2026-10', retrieved: null, layers: 'places' },
+          { source: 'Overture Maps Foundation — Places (file supplied by the user inside the Granada municipality; Overture release 2026-11-18.0 outside it, field r = 1)', licence: 'CDLA-Permissive-2.0 — © Overture Maps Foundation', data_date: 'supplied 2026-10; release 2026-11-18.0', retrieved: null, layers: 'places' },
+          { source: 'Dirección General del Catastro — INSPIRE Buildings (year of construction, where OSM has no start_date; field year_source)', licence: 'Catastro: free reuse with attribution', data_date: 'downloaded 2026-11-23', retrieved: null, layers: 'buildings' },
           { source: 'Stop-level scheduled bus service (file supplied by the user, from a GTFS timetable)', licence: 'not stated in the supplied file', data_date: '2026-10-26 (service date)', retrieved: null, layers: 'bus_service' },
+          { source: 'Consorcio de Transporte Metropolitano del Área de Granada — open CTAN API (stops with src = ctan, outside the city; departures inferred from timing points, approx = 1 between them)', licence: 'open data of the Andalusian transport consortia (CTAN), reuse with attribution', data_date: '2026-10-26 (service date); read 2026-11-23', retrieved: null, layers: 'bus_service' },
           { source: 'OpenStreetMap trees via Overpass API (live)', licence: 'ODbL 1.0 — © OpenStreetMap contributors', data_date: null, retrieved: meta.analysis_run, layers: 'trees' },
           { source: 'MITECO — SNCZI flood zones (WFS, live)', licence: 'Ministerio para la Transición Ecológica y el Reto Demográfico — reuse with attribution', data_date: 'approval dates in field approved', retrieved: meta.analysis_run, layers: 'flood_zones' } ] },
       ];
