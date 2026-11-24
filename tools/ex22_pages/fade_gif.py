@@ -5,7 +5,10 @@ grey, so any colour is ink: a = (R - (G+B)/2) / (ink_R - ink_GB)), and laid agai
 opacity on white, so the photo does not flicker between frames and the drawing stays at full strength.
 Writes step_0..N.jpg (stills), <name>.gif and <name>.mp4 (when ffmpeg is there). Each step appears at once (owner: no fade-in),
 held HOLD s (default 0.6), the last one LAST s (default 2.0); FADE=1 brings back cross-fades.
-Usage: python3 tools/ex22_pages/fade_gif.py <out folder> <name> <opacity 0-1> <photo> <step1> <step2> ...
+Usage: python3 tools/ex22_pages/fade_gif.py <out folder> <name> <opacity 0-1> <photo|auto> <step1> <step2> ...
+<photo> = auto when the clean photo is missing: it is rebuilt from step 1 (its red lines lifted off, the solid ones filled in
+from around them with OpenCV inpainting), and saved as <name>_base_rebuilt.jpg. Steps shifted by a few pixels against
+the photo are moved back onto it (phase correlation).
 The images are the owner's and are not committed. Not part of the site or of the tests."""
 import os, sys, shutil, subprocess
 import numpy as np
@@ -16,18 +19,45 @@ HOLD, LAST = float(os.environ.get('HOLD', 0.6)), float(os.environ.get('LAST', 2.
 FADE = os.environ.get('FADE') == '1'
 PHOTO, STEPS = sys.argv[4], sys.argv[5:]
 os.makedirs(OUT, exist_ok=True)
+def ink_alpha(a_):
+    sat = a_.max(2) - a_.min(2)
+    m = sat > np.percentile(sat, 99.5); ink = np.median(a_[m], axis=0)  # the ink's own colour (its most saturated pixels)
+    gb = (ink[1] + ink[2]) / 2; den = max(ink[0] - gb, 30.0)
+    a = np.clip((a_[..., 0] - (a_[..., 1] + a_[..., 2]) / 2) / den, 0, 1)
+    a[a < 0.06] = 0                                                   # compression noise in the grey photo
+    return a, ink, gb
+
+
+if PHOTO == 'auto':                                                   # rebuild the clean photo from step 1
+    import cv2
+    s1 = np.asarray(Image.open(STEPS[0]).convert('RGB'), float); a, ink, gb = ink_alpha(s1)
+    v = np.where(a < 0.8, ((s1[..., 1] + s1[..., 2]) / 2 - a * gb) / np.maximum(1 - a, 0.2), 0)
+    hole = (a >= 0.8).astype(np.uint8)
+    hole = cv2.dilate(hole, np.ones((3, 3), np.uint8))
+    v = cv2.inpaint(np.clip(v, 0, 255).astype(np.uint8), hole, 5, cv2.INPAINT_TELEA).astype(float)
+    base = np.repeat(v[..., None], 3, 2)
+    PHOTO = os.path.join(OUT, f'{NAME}_base_rebuilt.jpg'); Image.fromarray(base.astype(np.uint8)).save(PHOTO, quality=93)
+    print('photo rebuilt from step 1:', PHOTO, 'filled %.1f%% of the pixels' % (100 * hole.mean()))
 base = np.asarray(Image.open(PHOTO).convert('RGB'), float)
+
+
+def onto_base(a_):
+    """move a step back onto the photo when it is shifted by a few pixels (integer phase correlation)"""
+    g0 = base.mean(2); g1 = a_.mean(2)
+    F = np.fft.fft2(g0 - g0.mean()); G = np.fft.fft2(g1 - g1.mean()); Rr = F * np.conj(G); Rr /= np.abs(Rr) + 1e-9
+    r = np.fft.ifft2(Rr).real; dy, dx = np.unravel_index(r.argmax(), r.shape)
+    dy = dy - r.shape[0] if dy > r.shape[0] // 2 else dy; dx = dx - r.shape[1] if dx > r.shape[1] // 2 else dx
+    if (dx or dy) and abs(dx) <= 6 and abs(dy) <= 6:
+        a_ = np.roll(a_, (dy, dx), axis=(0, 1)); print('  moved by', dx, dy, 'px onto the photo')
+    return a_
 v0 = base.mean(2, keepdims=True)                                    # the photo's grey
 faded = 255.0 * (1 - K) + K * v0                                      # the photo at opacity K on white
 frames = [faded.repeat(3, 2)]
 for p in STEPS:
     a_ = np.asarray(Image.open(p).convert('RGB'), float)
     assert a_.shape == base.shape, (p, a_.shape, base.shape)
-    sat = a_.max(2) - a_.min(2)
-    m = sat > np.percentile(sat, 99.5); ink = np.median(a_[m], axis=0)  # the ink's own colour (its most saturated pixels)
-    gb = (ink[1] + ink[2]) / 2; den = max(ink[0] - gb, 30.0)
-    a = np.clip((a_[..., 0] - (a_[..., 1] + a_[..., 2]) / 2) / den, 0, 1)
-    a[a < 0.06] = 0                                                   # compression noise in the grey photo
+    a_ = onto_base(a_)
+    a, ink, gb = ink_alpha(a_)
     a = a[..., None]
     ink_part = a_ - ((a_[..., 1:2] + a_[..., 2:3]) / 2 - a * gb)      # the pixel minus its own background share
     frames.append(np.clip(ink_part + (1 - a) * faded, 0, 255))
