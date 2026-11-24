@@ -33,7 +33,11 @@
   const pct = (v) => L(pctTxt(v)); const eur = (v) => L('€' + nf(v));
   const RM = () => root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const RI = () => GA.railIcons;
-  const LAYERS = { 1: 1, 2: 7, 3: 4 };
+  // 5.52: the tour is 14 research chapters (js/tour_research.js, loaded first); a chapter's slides are its "layers". Slides of
+  // 5.27–5.51 are kept whole (body, legend, labels, popups) and referenced by their old [step, layer] (OLDVIS / TITLE).
+  const RS = () => GA.tourResearch;
+  const CHS = () => RS().CH, NCH = () => CHS().length;
+  const LAYERS = {}, VIS = {};
   const STREETS = [3, 4, 5]; // step 2 layers: route A, route B, both
   const MARGIN = 48; // px between the framed feature and the nearest overlay
   const S = { on: false, step: 0, layer: 1, D: null, built: false, loading: null, items: [], placed: [] };
@@ -100,7 +104,8 @@
       const fiveBB = bboxOf([base.geometry].concat(cores.map(f => f.geometry)));
       S.D = { edge, area, metro, tram, barrios, base, towns: { type: 'FeatureCollection', features: towns }, scatter: (tt && tt.method && tt.method.scatter) || {}, townList, routes, routeFC: { type: 'FeatureCollection', features: rfs }, dead, rails, metroGap, byName,
         bb: { 1: bboxOf([base.geometry]), 2: grow(fiveBB, 0.002), streets: bboxOf([base.geometry].concat(routes.map(r => ({ coordinates: r.coords })))), rail: bboxOf([base.geometry].concat(track ? [track.geometry] : [], tram ? tram.features.filter(f => f.geometry.type === 'LineString').map(f => f.geometry) : [])), 3: bboxOf(area.features.map(f => f.geometry)), barrio: barrios && barrios.features.length ? bboxOf(barrios.features.map(f => f.geometry)) : null } };
-      return S.D;
+      RS().setArea(byName);
+      return RS().load().then(() => { RS().bbs(S.D); return S.D; });
     });
     S.loading = S.loading.catch(e => { console.error(e); S.loading = null; throw e; }); return S.loading;
   }
@@ -138,7 +143,7 @@
     band: ['band', 'bandlu', 'band-line'], metro: ['metro-case', 'metro'], tram: ['tram'], rail: ['rail'],
     chg: ['chg'], inc: ['inc'], rent: ['rent'], muniLine: ['muni-line'], five: ['five'], barrio: ['barrio', 'barrio-lbl'],
   };
-  const VIS = {
+  const OLDVIS = {
     0: [[]],
     1: [['veil', 'base']],
     2: [['veil', 'towns', 'base'], ['veil', 'base', 'fence'],
@@ -146,8 +151,15 @@
       ['veil', 'band', 'base'], ['veil', 'base', 'tram', 'metro', 'rail']],
     3: [['veil', 'chg', 'muniLine', 'five'], ['veil', 'inc', 'muniLine', 'five'], ['veil', 'rent', 'muniLine', 'five'], ['veil', 'barrio']],
   };
-  const ORDER = ['veil', 'chg', 'inc', 'rent', 'muni-line', 'five', 'barrio', 'band', 'bandlu', 'band-line', 'towns-fill', 'towns-line', 'towns-scatter', 'base-fill', 'base-line', 'fence', 'tram', 'metro-case', 'metro',
+  const ORDER0 = ['veil', 'chg', 'inc', 'rent', 'muni-line', 'five', 'barrio', 'band', 'bandlu', 'band-line', 'towns-fill', 'towns-line', 'towns-scatter', 'base-fill', 'base-line', 'fence', 'tram', 'metro-case', 'metro',
     'straightA', 'straightB', 'routeA-case', 'routeB-case', 'routeA', 'routeB', 'arrowA', 'arrowB', 'endsA', 'endsB', 'rail', 'barrio-lbl'];
+  const ORDER = RS().LOW.concat(['veil'], RS().MID, ORDER0.slice(1)); // research layers under the 5.33 layers, photographs under the veil
+  Object.assign(GROUPS, RS().RG);
+  CHS().forEach((c, i) => { LAYERS[i + 1] = c.slides.length; VIS[i + 1] = c.slides.map(sl => sl.old ? OLDVIS[sl.old[0]][sl.old[1] - 1] : sl.groups); });
+  VIS[0] = [[]];
+  const slideOf = (st, ly) => { const c = CHS()[st - 1]; return c ? c.slides[ly - 1] : null; };
+  const cur = () => slideOf(S.step, S.layer);
+  const old = () => { const sl = cur(); return sl && sl.old; };
   // opacity of the layers that fade to T.fade on the streets slides (paint property, full value: a number, or a function of the fade for an expression)
   const SCATTER = ['==', ['get', 'k'], 'scatter'];
   const townAlpha = (f) => ['case', SCATTER, T.townScatterAlpha * f, T.townFillAlpha * f];
@@ -195,18 +207,19 @@
       endsA: { type: 'circle', source: ID('routes'), filter: rk('A', 'end'), paint: { 'circle-radius': 6.5, 'circle-color': T.routeCase, 'circle-stroke-color': T.routeA, 'circle-stroke-width': 3 } },
       endsB: { type: 'circle', source: ID('routes'), filter: rk('B', 'end'), paint: { 'circle-radius': 6.5, 'circle-color': T.routeCase, 'circle-stroke-color': T.routeB, 'circle-stroke-width': 3 } },
     };
-    ORDER.forEach(n => lay(Object.assign({ id: ID(n) }, defs[n])));
+    ORDER0.forEach(n => lay(Object.assign({ id: ID(n) }, defs[n])));
+    RS().build(map, S.D);
     S.built = true;
   }
   function unbuild() {
-    clearLabels(); if (!map || !map.style) return; ORDER.forEach(n => { if (map.getLayer(ID(n))) map.removeLayer(ID(n)); });
-    ['world', 'edge', 'towns', 'area', 'routes', 'rails', 'metro', 'tram', 'barrio', 'barrio-l'].forEach(n => { if (map.getSource(ID(n))) map.removeSource(ID(n)); });
+    clearLabels(); if (!map || !map.style) return; map.getStyle().layers.filter(l => l.id.startsWith('tour-')).forEach(l => map.removeLayer(l.id));
+    Object.keys(map.getStyle().sources).filter(n => n.startsWith('tour-')).forEach(n => map.removeSource(n));
     S.built = false;
   }
   function raise() { // keep the tour layers on top of everything else, in ORDER (the atlas keeps its own below them)
     if (!S.built || !map || !map.style) return; const ids = map.getStyle().layers.map(l => l.id); const want = ORDER.map(ID).filter(id => ids.includes(id));
     if (JSON.stringify(ids.slice(ids.length - want.length)) !== JSON.stringify(want)) want.forEach(id => map.moveLayer(id)); }
-  const streets = () => S.step === 2 && STREETS.includes(S.layer);
+  const streets = () => { const o = old(); return !!o && o[0] === 2 && STREETS.includes(o[1]); };
   function showGroups(groups) {
     if (!S.built) return; const on = new Set(); groups.forEach(g => GROUPS[g].forEach(n => on.add(ID(n))));
     ORDER.forEach(n => { const id = ID(n); if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on.has(id) ? 'visible' : 'none'); });
@@ -237,7 +250,7 @@
   }
   function renderLabels() {
     const o = overlay(); if (!o) return; o.innerHTML = '<svg class="tour-lead-svg"></svg>'; S.placed = [];
-    S.items = S.on && S.D ? itemsFor(S.step, S.layer) : [];
+    const od = old(); S.items = S.on && S.D && cur() ? (od ? itemsFor(od[0], od[1]) : RS().labels(cur())) : [];
     S.items.forEach(it => { const el = document.createElement('div'); el.className = 'tour-lbl ' + it.cls; el.dataset.id = it.id; if (it.color) el.style.color = it.color; el.innerHTML = it.html; o.appendChild(el); it.el = el;
       it.w = el.offsetWidth; it.h = el.offsetHeight; if (it.alt) { el.innerHTML = it.alt; it.wAlt = el.offsetWidth; it.hAlt = el.offsetHeight; el.innerHTML = it.html; } });
     S.signs = S.on && S.D && streets() ? S.D.dead : [];
@@ -294,10 +307,11 @@
   function popupAt(e) {
     if (!S.on || !S.built || !map) return false; const L2 = (ids) => ids.map(ID).filter(id => map.getLayer(id) && map.getLayoutProperty(id, 'visibility') === 'visible');
     const one = (ids) => { const ls = L2(ids); return ls.length ? map.queryRenderedFeatures(e.point, { layers: ls })[0] : null; };
-    let html = null;
-    if (S.step === 3 && S.layer <= 3) { const f = one([METRIC[S.layer - 1]]); if (f) { const key = METRIC[S.layer - 1], p = f.properties, v = valTxt(key, p);
+    let html = null; const o = old();
+    if (!o) html = RS().popup(cur(), e, map);
+    else if (o[0] === 3 && o[1] <= 3) { const f = one([METRIC[o[1] - 1]]); if (f) { const key = METRIC[o[1] - 1], p = f.properties, v = valTxt(key, p);
       html = `<b dir="auto">${esc(nmL(p.name))}</b><table><tr><td>${t('x33.val.' + key)}</td><td>${v == null ? `<em>${esc(t('tour.missing'))} — ${esc(t('x33.miss.' + key))}</em>` : L(esc(v))}</td></tr><tr><td>${t('x33.year')}</td><td>${L(esc(yearOf(key, p) || '—'))}</td></tr><tr><td>${t('tour.src')}</td><td dir="ltr">${esc(srcOf(key))}</td></tr></table>`; } }
-    if (S.step === 2) { const f = one(['towns-fill']); if (f) { const p = f.properties, k = KIND[p.k] ? p.k : 'core';
+    if (o && o[0] === 2) { const f = one(['towns-fill']); if (f) { const p = f.properties, k = KIND[p.k] ? p.k : 'core';
       const sc = S.D.scatter || {};
       html = `<b dir="auto">${esc(nmL(p.nm))}</b><p class="tour-kind">${t('x45.kind.' + k, { n: L(nf(sc.houses_min)), d: L(nf(sc.within_m) + '\u00A0m'), o: L(nf(sc.outline_m) + '\u00A0m') })}</p><table><tr><td>${t('x45.area.' + k)}</td><td>${L(nf(p.ha, 1) + ' ha')}</td></tr>${k === 'scatter' ? `<tr><td>${t('x45.houses')}</td><td>${L(nf(p.houses))}</td></tr>` : ''}<tr><td>${t('x45.pop')}</td><td>${L(nf(p.pop))}</td></tr><tr><td>${t('x33.chg')}</td><td>${pct(p.chg)}</td></tr></table><small>${t('x45.popSrc')}</small>`; } }
     if (!html) return false;
@@ -354,19 +368,25 @@
   }
   function renderCard() {
     const c = $('#tour-card'); if (!c) return; const { step, layer } = S; c.hidden = !S.on || step === 0; if (c.hidden) return;
-    const n = LAYERS[step]; const titles = step === 1 ? t('tour.s1.title') : t(TITLE[step][layer - 1]);
-    const last = step === 3;
-    c.innerHTML = `<div class="tour-c-h"><span class="tour-plate">${esc(t('tour.step', { i: step }))} · ${esc(t(`tour.s${step}.plate`))}</span>${n > 1 ? `<span class="tour-dots" role="img" aria-label="${esc(t('tour.layerOf', { i: layer, n }))}">${Array.from({ length: n }, (_, i) => `<i class="${i + 1 === layer ? 'on' : ''}" aria-hidden="true">${i + 1 === layer ? '●' : '○'}</i>`).join('')}</span>` : ''}</div>
-      <h2 class="tour-c-t">${esc(titles)}</h2>
-      <div class="tour-c-b">${S.D ? bodyHTML(step, layer) + legendHTML(step, layer) + `<p class="tour-src"><b>${t('tour.src')}:</b> ${srcHTML(step, layer)}</p>` : '<p class="fine">…</p>'}</div>
-      <p class="tour-keys">${esc(t(step === 1 ? 'tour.k.s1' : last ? 'tour.k.last' : 'tour.k.layers'))}</p>
+    const sl = cur(); if (!sl) return; const n = LAYERS[step], N = NCH(), o = sl.old; const last = step === N && layer === n;
+    const title = o ? (o[0] === 1 ? t('tour.s1.title') : t(TITLE[o[0]][o[1] - 1])) : t('r.' + sl.id + '.t');
+    let inner = '<p class="fine">…</p>';
+    if (S.D && RS().X.R) { const legacy = o ? bodyHTML(o[0], o[1]) + legendHTML(o[0], o[1]) + `<p class="tour-src"><b>${t('tour.src')}:</b> ${srcHTML(o[0], o[1])}</p>` : ''; try { inner = RS().card(sl, S.D, legacy); } catch (e) { console.error(e); inner = `<p class="error">${esc(e.message)}</p>`; } }
+    c.innerHTML = `<div class="tour-c-h"><span class="tour-plate">${esc(t('r.chap', { i: step, n: N }))} · ${esc(t('r.c.' + CHS()[step - 1].k))}</span>${n > 1 ? `<span class="tour-dots" role="img" aria-label="${esc(t('r.slideOf', { i: layer, n }))}">${Array.from({ length: n }, (_, i) => `<i class="${i + 1 === layer ? 'on' : ''}" aria-hidden="true">${i + 1 === layer ? '●' : '○'}</i>`).join('')}</span>` : ''}</div>
+      <h2 class="tour-c-t">${esc(title)}</h2>
+      <div class="tour-c-b">${inner}</div>
+      <p class="tour-keys">${esc(t(last ? 'r.keysLast' : 'r.keys'))}</p>
+      ${RS().toc(step)}
       <div class="tour-btns">
-        <button type="button" class="btn btn-small" data-tour="back">${t('tour.back')}</button>
-        ${n > 1 ? `<button type="button" class="btn btn-small" data-tour="prev" ${layer <= 1 ? 'disabled' : ''}>${t('tour.prevLayer')}</button><button type="button" class="btn btn-small" data-tour="layer" ${layer >= n ? 'disabled' : ''}>${t('tour.nextLayer')}</button>` : ''}
-        <button type="button" class="btn btn-small btn-primary" data-tour="next">${t(last ? 'tour.finish' : 'tour.next')}</button>
+        <button type="button" class="btn btn-small" data-tour="back">${t('r.prevCh')}</button>
+        ${n > 1 ? `<button type="button" class="btn btn-small" data-tour="prev" ${layer <= 1 ? 'disabled' : ''}>${t('r.prevSl')}</button><button type="button" class="btn btn-small" data-tour="layer" ${layer >= n ? 'disabled' : ''}>${t('r.nextSl')}</button>` : ''}
+        <button type="button" class="btn btn-small btn-primary" data-tour="next">${t(step === N ? 'tour.finish' : 'r.nextCh')}</button>
+        <button type="button" class="btn btn-small" data-tour="toc" aria-expanded="false" aria-controls="tr-toc">${t('r.toc')}</button>
+        <button type="button" class="btn btn-small" data-tour="inv">${t('r.inv')}</button>
         <button type="button" class="btn btn-small" data-tour="exit">${t('tour.exit')}</button>
       </div>`;
-    c.dataset.step = step; c.dataset.layer = layer;
+    c.dataset.step = step; c.dataset.layer = layer; c.dataset.slide = sl.id;
+    if (RS().X.anim && sl.anim) RS().frame(map, sl, RS().X.anim.i);
     if (GA.ltrNumsDOM) GA.ltrNumsDOM(c);
   }
 
@@ -394,7 +414,8 @@
     return p;
   }
   // the feature each slide frames
-  const viewKey = () => { if (S.step === 3 && S.layer === 4 && S.D && S.D.bb.barrio) return 'barrio'; if (S.step === 2 && streets()) return 'streets'; if (S.step === 2 && S.layer === 7) return 'rail'; return String(S.step); };
+  const viewKey = () => { const o = old(); if (o) { if (o[0] === 3 && o[1] === 4 && S.D && S.D.bb.barrio) return 'barrio'; if (streets()) return 'streets'; if (o[0] === 2 && o[1] === 7) return 'rail'; return String(o[0]); }
+    const sl = cur(); return sl && S.D && S.D.bb[sl.view] ? sl.view : '2'; };
   let lastPad = null;
   // 5.39 (owner): slide 1 on wide screens — the base in the middle of the map, as large as fits; zoomed out a little only
   // where the card would cover part of the outline (the outline itself, not its box). Phones keep the free-area framing.
@@ -423,25 +444,31 @@
   // ---------- state ----------
   const intro = () => $('#tour-intro');
   const introShown = () => { const el = intro(); return !!el && !el.hidden; };
-  function setHash() { const h = S.step === 0 ? '#/tour' : S.step === 1 ? '#/tour/1' : `#/tour/${S.step}/${S.layer}`; if (location.hash !== h) history.replaceState(null, '', location.pathname + location.search + h); }
+  function setHash() { const h = S.step === 0 ? '#/tour' : S.step === 1 && S.layer === 1 ? '#/tour/1' : `#/tour/${S.step}/${S.layer}`; if (location.hash !== h) history.replaceState(null, '', location.pathname + location.search + h); }
   function showIntro() {
     S.on = false; S.step = 0; hideTourUI(); const el = intro(); if (!el) return; el.hidden = false; document.body.classList.add('tour-intro-on'); renderIntro();
     const b = $('#tour-start'); b && b.focus({ preventScroll: true });
   }
   function hideIntro() { const el = intro(); if (el) el.hidden = true; document.body.classList.remove('tour-intro-on'); }
   function renderIntro() { const el = intro(); if (!el) return; el.querySelectorAll('[data-tour-lang]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tourLang === I.lang))); }
-  function hideTourUI() { document.body.classList.remove('tour-on'); const c = $('#tour-card'); if (c) c.hidden = true; closePop(); clearLabels(); if (map) showGroups([]); }
+  function hideTourUI() { if (RS()) RS().leave(); const inv = $('#tr-inv'); if (inv) inv.remove(); document.body.classList.remove('tour-on'); const c = $('#tour-card'); if (c) c.hidden = true; closePop(); clearLabels(); if (map) showGroups([]); }
   function announce() { document.dispatchEvent(new CustomEvent('ga:tour', { detail: { step: S.step, layer: S.layer } })); }
   async function go(step, layer, instant) {
     hideIntro(); if (GA.panels) ['analysis', 'study'].forEach(k => GA.panels.isOpen(k) && GA.panels.set(k, false));
     const side = $('#atl-side'); if (side && !side.hidden) $('#atl-side-x') && $('#atl-side-x').click();
     S.on = true; closePop(); S.step = step; S.layer = Math.max(1, Math.min(LAYERS[step], layer || 1)); document.body.classList.add('tour-on'); setHash(); renderCard();
     try { await load(); } catch (e) { const c = $('#tour-card'); if (c) c.querySelector('.tour-c-b').innerHTML = `<p class="error">${esc(e.message || e)}</p>`; return; }
-    if (!S.on || S.step !== step) return; await mapReady(); build(); renderCard(); showGroups(VIS[S.step][S.layer - 1]); frame(instant); renderLabels();
-    announce();
+    if (!S.on || S.step !== step) return; await mapReady(); build(); await enterSlide(instant);
   }
-  function setLayer(d) { if (!S.on || LAYERS[S.step] < 2) return; const n = Math.max(1, Math.min(LAYERS[S.step], S.layer + d)); if (n === S.layer) return; S.layer = n; closePop(); setHash(); renderCard(); showGroups(VIS[S.step][S.layer - 1]); if (viewKey() !== S.view) frame(); else refitSoon(); renderLabels(); announce(); }
-  function next() { if (S.step >= 3) return exit(); go(S.step + 1, 1); }
+  let token = 0;
+  async function enterSlide(instant, refit) { // apply the slide's research state (data, paint, images), then card, layers, framing, labels, timeline
+    const my = ++token; const sl = cur(); RS().leave();
+    try { await RS().apply(map, sl, S.D); } catch (e) { console.error('tour slide', e); }
+    if (my !== token || !S.on) return;
+    renderCard(); showGroups(VIS[S.step][S.layer - 1]); if (refit && viewKey() === S.view) refitSoon(); else frame(instant); renderLabels(); RS().enter(map, sl); announce();
+  }
+  function setLayer(d) { if (!S.on || LAYERS[S.step] < 2) return; const n = Math.max(1, Math.min(LAYERS[S.step], S.layer + d)); if (n === S.layer) return; S.layer = n; closePop(); setHash(); renderCard(); enterSlide(false, true); }
+  function next() { if (S.step >= NCH()) return exit(); go(S.step + 1, 1); }
   function back() { if (S.step <= 1) return showIntroFromTour(); go(S.step - 1, 1); }
   function showIntroFromTour() { S.step = 0; setHash(); showIntro(); }
   function exit() { // the normal map at the current view: panels closed, tour layers removed, saved layer state untouched
@@ -451,13 +478,13 @@
   }
   function mapReady() { return new Promise(res => { map = map || (GA.app && GA.app.map); if (!map) return setTimeout(() => mapReady().then(res), 100); if (map._loaded || (map.style && map.style._loaded) || map.loaded()) res(); else map.once('load', res); }); } // the style is enough: tiles may still be loading (or failing)
   function fromHash() {
-    const m = /^#\/tour(?:\/(\d))?(?:\/(\d))?\/?$/.exec(location.hash || ''); if (!m) return false;
-    const step = +(m[1] || 0); if (!step) showIntro(); else go(Math.min(3, step), +(m[2] || 1), true); return true;
+    const m = /^#\/tour(?:\/(\d{1,2}))?(?:\/(\d{1,2}))?\/?$/.exec(location.hash || ''); if (!m) return false;
+    const step = +(m[1] || 0); if (!step) showIntro(); else go(Math.min(NCH(), step), +(m[2] || 1), true); return true;
   }
 
   // ---------- keys and buttons ----------
   function onKey(e) {
-    if (!S.on && !introShown()) return; if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (!S.on && !introShown()) return; if (e.altKey || e.ctrlKey || e.metaKey) return; if ($('#tr-inv')) return; // the data inventory handles its own keys
     const tg = e.target; if (tg && tg.closest && tg.closest('input, textarea, select, [contenteditable="true"], .vw, .modal:not([hidden])')) return;
     const k = e.key; let used = true;
     if (introShown()) { if (k === 'Enter') go(1, 1); else used = false; }
@@ -467,18 +494,19 @@
     else if (k === 'ArrowRight') setLayer(1);
     else if (k === 'Backspace') back();
     else if (k === 'Escape') exit();
+    else if ((k === 'p' || k === 'P') && cur() && cur().anim) { const b = $('[data-tour="play"]'); if (b) b.click(); }
     else used = false;
     if (used) { e.preventDefault(); e.stopPropagation(); }
   }
   // Space activates a focused button on key-up: swallow it so one press never counts twice
   function onKeyUp(e) { if ((S.on || introShown()) && (e.key === ' ' || e.key === 'Enter') && !(e.target && e.target.closest && e.target.closest('input, textarea, select'))) { e.preventDefault(); e.stopPropagation(); } }
-  function onCardClick(e) { const b = e.target.closest('[data-tour]'); if (!b) return; const a2 = b.dataset.tour; b.blur();
+  function onCardClick(e) { if (RS().onCard(e, map, cur(), () => { renderCard(); renderLabels(); })) return; const b = e.target.closest('[data-tour]'); if (!b) return; const a2 = b.dataset.tour; b.blur();
     if (a2 === 'next') next(); else if (a2 === 'layer') setLayer(1); else if (a2 === 'prev') setLayer(-1); else if (a2 === 'back') back(); else if (a2 === 'exit') exit(); }
 
   function init() {
     map = GA.app && GA.app.map;
     const st = $('.stage'); let c = $('#tour-card'); if (!c && st) { c = document.createElement('section'); c.id = 'tour-card'; c.className = 'tour-card'; c.hidden = true; c.setAttribute('aria-live', 'polite'); st.appendChild(c); }
-    c && c.addEventListener('click', onCardClick);
+    c && c.addEventListener('click', onCardClick); c && c.addEventListener('input', (e) => RS().onInput(e, map, cur())); c && c.addEventListener('mouseover', (e) => RS().onHover(e, map)); c && c.addEventListener('focusin', (e) => RS().onHover(e, map));
     if (c && root.ResizeObserver) new ResizeObserver(() => refitSoon()).observe(c);
     const el = intro();
     if (el) { el.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return;
@@ -492,8 +520,9 @@
     const nav = $('#tb-nav'); if (nav && !$('#tb-tour')) { const b = document.createElement('button'); b.type = 'button'; b.className = 'tb-btn'; b.id = 'tb-tour'; b.dataset.i18n = 'tour.nav'; b.textContent = t('tour.nav'); b.addEventListener('click', () => { location.hash = '#/tour'; }); nav.insertBefore(b, nav.firstChild); }
     if (!fromHash() && introShown()) { renderIntro(); load().catch(() => { }); }
   }
-  root.GA.tour = { init, go, exit, next, back, setLayer, showIntro, popupAt, freeRect, pad, polylabel,
-    get state() { return { centred: !!S.centred, on: S.on, step: S.step, layer: S.layer, n: LAYERS[S.step] || 0, intro: introShown(), built: S.built, groups: S.on ? VIS[S.step][S.layer - 1] : [], view: S.view, bbox: S.D && S.view ? S.D.bb[S.view] : null }; },
+  root.GA.tour = { init, go, exit, next, back, setLayer, showIntro, popupAt, freeRect, pad, polylabel, relabel: () => renderLabels(), slide: () => cur(),
+    util: { polylabel, ringsOf, bboxOf, nmL, distM, lenM },
+    get state() { return { centred: !!S.centred, on: S.on, step: S.step, layer: S.layer, n: LAYERS[S.step] || 0, intro: introShown(), built: S.built, groups: S.on ? VIS[S.step][S.layer - 1] : [], slide: S.on && cur() ? cur().id : null, chapters: NCH(), view: S.view, bbox: S.D && S.view ? S.D.bb[S.view] : null }; },
     get labels() { return S.placed.slice(); }, get data() { return S.D; }, VIS, GROUPS, ID, LAYERS };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(init, 0)); else setTimeout(init, 0);
 })(window);

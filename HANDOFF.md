@@ -1235,3 +1235,62 @@ change (seven reviewers, each finding checked by a skeptic) and my own re-readin
   Otura were never downloaded from the Catastro (their buildings have no year). Comparisons that mix a density and a
   WorldCover share are labelled as mixed, not converted.
 - Tests: `tests/ui_test_v39.py` (new); `tests/ui_test_v3.py` expects 692 + 827 stops.
+
+## 47. Build 5.52 — the research tour: 14 chapters around the air base (owner request of 24 Nov 2026)
+Owner brief (Arabic, "تطوير الـ Guided Tour"): develop the story tour into a full, objective research tour of the Base
+Aérea de Armilla and its five towns (Armilla, Churriana de la Vega, Las Gabias, Alhendín, Ogíjares) — 14 chapters,
+no design conclusion (remain / transform / relocate stay undecided), every step with a question, an explanation, the
+data on the map, analysis and comparison, an evidence-based finding and the link to the base where proven or testable;
+calm grey maps, red only for the phenomenon explained; a data inventory; official / historical / spatial analysis /
+estimate / projection / scenario told apart with a badge (source, year, method); search official sources for what is
+missing and say "unavailable" when nothing is found; keep every existing layer and function.
+- Structure: `js/tour_research.js` (new, loaded before `js/tour.js`) defines `CH` — 14 chapters, 50 slides. The engine
+  (`js/tour.js`) now treats a chapter as a "step" and its slides as "layers": same keys (Space / Shift+Space / ← → next
+  and previous slide, Enter / Backspace next and previous chapter, Esc leave, new: P play/pause), same URL form
+  (`#/tour/C/S`, `#/tour/1` = the base), same framing, label collision pass and popups. The 12 slides of 5.27–5.51 are
+  kept whole (body, legend, labels, popups) and referenced by `old: [step, layer]`; they sit at 1.1 (the base, still
+  the first slide), 1.3 (towns), 6.1 / 6.3 / 7.4 / 7.5 (agglomeration maps), 10.1–10.4 and 10.6 (rail, routes,
+  fence), 11.2 (300 m band). `GA.tour.state` adds `slide` (id) and `chapters`.
+- Chapters: 1 introduction (base, region with the IGN outlines, towns, base vs built-up area per municipality) ·
+  2 history (city growth 1932–2020 animated, construction periods per 100 m cell animated, AMS 1956 ↔ PNOA 2024 fade,
+  floors) · 3 climate (ERA5 monthly normals + rain + wind rose, hot days 1991–2024 + CMIP6 to 2050, Landsat surface
+  heat, NDVI + WorldCover, air (CAMS model) and noise (SICA)) · 4 water (flow paths + the decree's runway elevations,
+  SNCZI T10 → T100 → T500 animated, acequias + DPH, sealed land) · 5 agriculture (Vega farmland, tree cover, 2000+
+  building over the 1956 photo) · 6 tourism and suburbanisation (population change, 1996–2025 series animated by year,
+  rent index, INE tourist dwellings) · 7 population (GHS-POP vs register, interactive pyramids 2012/2022, ages and
+  households, income + income sources, barrios) · 8 everyday life (500 m to schools / health, shops, squares and parks)
+  · 9 economy (census sectors, census rate + SEPE registrations) · 10 mobility (metro/tram, routes A/B, bus trips per
+  1,000, the fence) · 11 the base (RD 511/1989 points, the 1981 band, floors within 2 km of the runway, aircraft noise
+  missing) · 12 planning (land in transformation vs the T500 line; PGOU missing) · 13 comparison (table of 14
+  indicators with kind badges; indicator picker recolouring the five) · 14 the next 50 years (two linear population
+  trends to 2076 labelled projection; scenarios A/B/C with assumptions and what to test — none recommended; the data
+  gaps). Each slide: question (title) · explanation · timeline (when animated) · chart · legend generated from the
+  same classes as the map · "What the data show" · "Link to the base" (measured / testable / context / data missing) ·
+  sources with a badge (tooltip = source · year · method). Chart rows and the map are tied: hovering a town's bar
+  outlines it on the map; the pyramid, scenario and indicator pickers restyle the map.
+- New data (`tools/build_research.py` → `data/ref/research.json`, `research_grid.json`, `research_flood.json`):
+  INE 2871 (population 1996–2025), 33570 (sex × 5-year age 2012/2022), 33571 (nationality 2022), ADRH 31033 (mean age,
+  < 18, ≥ 65, household size, one-person households 2024) and 31026 (income by source 2024), 39363/39366 (tourist
+  dwellings 2026), Census 69992 / 67078 (employed by sector, relation to activity, 2024); IGN official municipal
+  outlines; per-municipality spatial figures (base hectares inside each municipality — 371 ha: Las Gabias 153.6,
+  Churriana 110.8, Alhendín 91.6, Ogíjares 9.6, Armilla 5.3; built-up, land use, Landsat LST / NDVI and GHS-POP only
+  where ≥ 60 / 95 % of the municipality lies in the base frame — else null, shown "outside the data"; WorldCover share;
+  500 m reach; bus trips; shops, squares, parks). Runner (`tools/verify/research_fetch.py`, data branch
+  `claude/data-research`, never merged): ERA5 daily temperature 1991–2024, CMIP6 HighResMIP 1950–2050 (7 models),
+  CAMS PM / NO₂ 2023–2025 (a model), SEPE registered unemployment Jan–Jun 2026, the BOE PDF of RD 511/1989 (runway
+  18-36 1,303 × 30 m; thresholds 676 m N / 700 m S; reference point 688 m; helicopter area; tower), SNCZI WFS (T10,
+  T50, T100, T500, ZFP, ARPSI, estimated DPH) clipped to the frame.
+- Honesty: the easement surfaces are NOT drawn (the decree sends plans to the town halls; not published); no aircraft
+  noise map exists; no air-quality station in the five towns (CAMS is labelled a model); no historic-flood catalogue was
+  found in machine-readable form; PGOU plans are not open data; projections are arithmetic trends, not forecasts; the
+  scenarios are hypothetical; correlation is never presented as cause (tourism slide).
+- Data inventory: button on every card (and in chapter 14) — every dataset (43 rows: source, year, resolution, kind,
+  reliability, chapters, used / not used) and the 13 missing items with where they were searched. Also as
+  `docs/DATA_INVENTORY.md`.
+- Colours: `GA.palette.research` (grey ramp, red, unknown, water family for flood); no colour is written elsewhere.
+- Tests: `tests/research.test.js` (structure, strings in three languages, placeholders, sources, data file, no
+  hard-coded colours), `tests/ui_test_v40.py` (every slide in ar / he / en, timelines, pickers, contents, inventory,
+  keys, exit, deep link, phone); `tests/ui_test_v25.py` reaches the 5.33 slides at their new place.
+- Open: the five towns' Catastro years for Santa Fe / Vegas del Genil / Villa de Otura are still missing; Las Gabias
+  and Alhendín extend beyond the 12 × 10 km analysis frame (their raster figures are null); housing sale prices,
+  origin–destination moves and SIGPAC crops were not collected.

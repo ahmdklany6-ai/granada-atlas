@@ -45,14 +45,16 @@ with sync_playwright() as p:
             wait = lambda js: pg.wait_for_function(js, timeout=120000)
             pg.click('#tour-start'); wait('GA.tour.state.built && GA.tour.state.step === 1'); time.sleep(3.5)
             card = pg.evaluate('document.querySelector("#tour-card").innerText'); check('371 ha' in card and 'Ala 78' in card, 'tour step 1: the air base, 371 ha (measured), Ala 78', card[:120]); emit('tour_1', pg.screenshot())
-            pg.keyboard.press('Enter'); wait('GA.tour.state.step === 2'); time.sleep(3.5)
-            card = pg.evaluate('document.querySelector("#tour-card").innerText'); check('91,476' in card, 'tour step 2: five towns, 91,476 residents', card[:160]); emit('tour_2_1', pg.screenshot())
-            pg.keyboard.press(' '); time.sleep(1.5); card = pg.evaluate('document.querySelector("#tour-card").innerText'); check('42 %' in card, 'tour step 2 layer 2: fence 42 % housing', card[:200]); emit('tour_2_2', pg.screenshot())
-            pg.keyboard.press(' '); time.sleep(1.5); emit('tour_2_3', pg.screenshot())
-            pg.keyboard.press('Enter'); wait('GA.tour.state.step === 3'); time.sleep(3.5)
-            card = pg.evaluate('document.querySelector("#tour-card").innerText'); check('+15.3 %' in card and '−0.8 %' in card, 'tour step 3: five towns +15.3 % vs Granada city −0.8 %', card[:200]); emit('tour_3_1', pg.screenshot())
-            pg.keyboard.press(' '); pg.keyboard.press(' '); time.sleep(1.5); card = pg.evaluate('document.querySelector("#tour-card").innerText')
-            check('IPVA' in card and 'Missing' in card, 'tour step 3 rents: INE IPVA index, €/m² shown as missing', card[:200]); emit('tour_3_3', pg.screenshot())
+            # 5.52: the 14-chapter research tour; the 5.33 slides at their new place
+            def at(c, k): pg.evaluate(f'location.hash = "#/tour/{c}/{k}"'); wait(f'GA.tour.state.step === {c} && GA.tour.state.layer === {k}'); time.sleep(3.5); return pg.evaluate('document.querySelector("#tour-card").innerText')
+            card = at(1, 3); check('91,476' in card, 'tour 1.3: five towns, 91,476 residents', card[:160]); emit('tour_2_1', pg.screenshot())
+            card = at(10, 6); check('42 %' in card, 'tour 10.6: fence 42 % housing', card[:200]); emit('tour_2_2', pg.screenshot())
+            card = at(6, 1); check('+15.3 %' in card and '−0.8 %' in card, 'tour 6.1: five towns +15.3 % vs Granada city −0.8 %', card[:200]); emit('tour_3_1', pg.screenshot())
+            card = at(6, 3); check('IPVA' in card and 'Missing' in card, 'tour 6.3 rents: INE IPVA index, €/m² shown as missing', card[:200]); emit('tour_3_3', pg.screenshot())
+            card = at(3, 3); check('51.3' in card and 'What the data show' in card and 'Spatial analysis' in card, 'research tour 3.3: base surface 51.3 °C, finding and data-kind badge', card[:300]); emit('tour_r_3_3', pg.screenshot())
+            card = at(7, 2); check(pg.evaluate('!!document.querySelector(".tr-chart")') and 'Population pyramid' in card, 'research tour 7.2: population pyramid chart', card[:200])
+            pg.click('[data-tour="inv"]'); time.sleep(0.6); check(pg.evaluate('document.querySelectorAll("#tr-inv .tr-invt tr").length') > 40, 'research tour: data inventory opens (> 40 datasets)'); pg.keyboard.press('Escape'); time.sleep(0.4)
+            at(14, 3)
             pg.keyboard.press('Enter'); time.sleep(1.5)
             check(not pg.evaluate('GA.tour.state.on') and pg.evaluate('GA.app.map.getStyle().layers.filter(l => l.id.startsWith("tour-")).length') == 0, 'the last Enter returns to the map, tour layers removed')
         check(not errs, f'{lang}: no page errors (opening page / tour)', errs[:2]); ctx.close()
@@ -129,7 +131,8 @@ with sync_playwright() as p:
     for lang in ('en', 'ar'):
         ctx, pg, errs = boot({'width': 1440 if lang == 'en' else 1280, 'height': 900 if lang == 'en' else 800}, intro=True, lang=lang)
         def slide(st, ly, name, extra=None):
-            pg.evaluate(f'location.hash = "#/tour/{st}/{ly}"' if st > 1 else 'location.hash = "#/tour/1"'); pg.wait_for_function(f'GA.tour.state.built && GA.tour.state.step === {st} && GA.tour.state.layer === {ly}', timeout=120000); time.sleep(6)
+            st, ly = {(2, 1): (1, 3), (2, 3): (10, 2), (2, 4): (10, 3), (2, 5): (10, 4), (3, 1): (6, 1), (3, 2): (7, 4), (3, 3): (6, 3), (3, 4): (7, 5)}.get((st, ly), (st, ly))
+            pg.evaluate(f'location.hash = "#/tour/{st}/{ly}"' if (st, ly) != (1, 1) else 'location.hash = "#/tour/1"'); pg.wait_for_function(f'GA.tour.state.built && GA.tour.state.step === {st} && GA.tour.state.layer === {ly}', timeout=120000); time.sleep(6)
             if extra: extra()
             emit(f'x33_{name}_{lang}', pg.screenshot())
         slide(1, 1, 'slide1')
@@ -144,7 +147,7 @@ with sync_playwright() as p:
             if lang == 'en' or ly == 5: slide(2, ly, nm, (lambda: check(sum(int(x) for x in pg.evaluate('[...document.querySelectorAll(".tour-sign")].map(e => e.dataset.n)')) == 13, f'{lang}: 13 dead-end signs')) if ly == 5 else None)
         for ly, nm in ((1, 'chg'), (2, 'inc'), (3, 'rent')):
             if lang == 'en' or ly == 1: slide(3, ly, nm, lambda: check(len(pg.evaluate('GA.tour.labels')) == 34 and not [x for x in pg.evaluate('GA.tour.labels') if x['forced']], f'{lang}: 34 municipality labels, none forced'))
-        slide(3, 4, 'last', lambda: check(pg.evaluate('document.querySelectorAll(".tour-dots i").length') == 4, f'{lang}: step 3 has four slides'))
+        slide(3, 4, 'last', lambda: check(pg.evaluate('document.querySelectorAll(".tour-dots i").length') == 5, f'{lang}: chapter 7 has five slides (the barrio slide is its last)'))
         check(not [e for e in errs if 'rtl-text' not in e], f'{lang}: no page errors (5.33 tour)', errs[:3]); ctx.close()
     # ---- 5.46: the measuring tool (button top-right, line on top, total in km and m) ----
     for lang in ('ar', 'en'):

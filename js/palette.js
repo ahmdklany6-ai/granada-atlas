@@ -164,6 +164,17 @@
     fills: [BASE.wine, BASE.oxblood, BASE.burgundy, BASE.olive, BASE.khaki, BASE.chartreuse, D.khakiPale],
     fillAlpha: 0.32, current: RED, currentW: 2.6, lineW: 1,
   };
+  // 5.52 — research tour (14 chapters): analysis maps in black / white / grey; red only for the phenomenon the slide explains.
+  // grey ramp light → dark (5 classes) for any sequential measure; `hot` = the emphasised class / the current period;
+  // `unknown` = missing data (drawn hatched / pale, never as a class); charts reuse the same greys and red.
+  P.research = {
+    grey: ['#F1EFEA', D.stone, D.warmGrey2, D.ink3, '#3B302C'], hot: RED, hotSoft: D.redTint, unknown: D.paper2, unknownLine: D.line2,
+    ink: D.ink, ink3: D.ink3, line: D.line, white: '#FFFFFF', outline: D.ink, outlineSoft: D.warmGrey, ref: D.warmGrey,
+    water: D.blueDeep, // rivers and flood extents keep the atlas water family (analytical need: water is read as water)
+    flood: { q10: D.blueDark, q100: D.blueMid, q500: D.bluePale, zfp: D.blueDeep, dph: D.blueDeep },
+    scen: { A: D.ink, B: RED, C: D.warmGrey },
+    chart: { a: D.ink, b: D.warmGrey2, hi: RED, band: D.redTint, grid: D.line, axis: D.ink3, male: D.ink3, female: D.warmGrey2, old: D.ink },
+  };
   if (typeof module !== 'undefined' && module.exports) module.exports = P;
   else {
     root.GA = root.GA || {}; root.GA.palette = P;
