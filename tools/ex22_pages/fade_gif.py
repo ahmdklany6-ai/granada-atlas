@@ -3,7 +3,8 @@ and make the GIF"). The steps are a red drawing laid over the same black-and-whi
 size of the photo and aligned to it). For each step the red ink is lifted off its own background by its colour (the photo is
 grey, so any colour is ink: a = (R - (G+B)/2) / (ink_R - ink_GB)), and laid again over the ORIGINAL photo faded to the chosen
 opacity on white, so the photo does not flicker between frames and the drawing stays at full strength.
-Writes step_0..N.jpg (stills), <name>.gif (cross-fades between steps) and <name>.mp4 when ffmpeg is there.
+Writes step_0..N.jpg (stills), <name>.gif and <name>.mp4 (when ffmpeg is there). Each step appears at once (owner: no fade-in),
+held HOLD s (default 0.6), the last one LAST s (default 2.0); FADE=1 brings back cross-fades.
 Usage: python3 tools/ex22_pages/fade_gif.py <out folder> <name> <opacity 0-1> <photo> <step1> <step2> ...
 The images are the owner's and are not committed. Not part of the site or of the tests."""
 import os, sys, shutil, subprocess
@@ -11,6 +12,8 @@ import numpy as np
 from PIL import Image
 
 OUT, NAME, K = sys.argv[1], sys.argv[2], float(sys.argv[3])
+HOLD, LAST = float(os.environ.get('HOLD', 0.6)), float(os.environ.get('LAST', 2.0))
+FADE = os.environ.get('FADE') == '1'
 PHOTO, STEPS = sys.argv[4], sys.argv[5:]
 os.makedirs(OUT, exist_ok=True)
 base = np.asarray(Image.open(PHOTO).convert('RGB'), float)
@@ -32,13 +35,13 @@ for p in STEPS:
 stills = [Image.fromarray(f.astype(np.uint8)) for f in frames]
 for i, im in enumerate(stills): im.save(os.path.join(OUT, f'{NAME}_step_{i}.jpg'), quality=93)
 
-# GIF: hold each step, cross-fade to the next, hold the last longer; one palette for all frames (no flicker)
+# GIF: each step appears at once and is held; the last one longer; one palette for all frames (no flicker)
 W = 1400; H = round(stills[0].height * W / stills[0].width)
 small = [np.asarray(im.resize((W, H), Image.LANCZOS), float) for im in stills]
 seq, dur = [], []
 for i, f in enumerate(small):
-    seq.append(f); dur.append(3200 if i == len(small) - 1 else 1300)
-    if i < len(small) - 1:
+    seq.append(f); dur.append(int(1000 * (LAST if i == len(small) - 1 else HOLD)))
+    if FADE and i < len(small) - 1:
         for t in (0.2, 0.4, 0.6, 0.8):
             seq.append(f * (1 - t) + small[i + 1] * t); dur.append(90)
 pal = Image.fromarray(small[-1].astype(np.uint8)).quantize(colors=255, method=Image.Quantize.MEDIANCUT)
@@ -52,9 +55,9 @@ if shutil.which('ffmpeg'):   # the same build-up as a small video (smoother, lig
     fullW = stills[0].width - stills[0].width % 2; fullH = stills[0].height - stills[0].height % 2
     big = [np.asarray(im, float)[:fullH, :fullW] for im in stills]
     for i, f in enumerate(big):
-        for _ in range(int((3.2 if i == len(big) - 1 else 1.3) * 25)):
+        for _ in range(int((LAST if i == len(big) - 1 else HOLD) * 25)):
             Image.fromarray(f.astype(np.uint8)).save(os.path.join(tmp, f'{n:05d}.png')); n += 1
-        if i < len(big) - 1:
+        if FADE and i < len(big) - 1:
             for t in np.linspace(0, 1, 14)[1:-1]:
                 Image.fromarray((f * (1 - t) + big[i + 1] * t).astype(np.uint8)).save(os.path.join(tmp, f'{n:05d}.png')); n += 1
     mp = os.path.join(OUT, f'{NAME}.mp4')
