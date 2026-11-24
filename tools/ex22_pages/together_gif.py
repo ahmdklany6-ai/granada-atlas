@@ -1,13 +1,15 @@
 """Exercise 2.2 · the alternatives' build-ups together on one board, as one GIF (owner, 24 Nov 2026: "now put the three
 together", then "change the font": the project's IBM Plex Sans instead of the handwriting). Takes the step stills written by
 fade_gif.py (<prefix>_step_0.jpg, _step_1.jpg ...) of each alternative and lays each step of all of them on one board:
-  stack  one under the other, each at the board's width
-  row    side by side, all at the same height
-  grid   2 x 2, panels aligned at the top; the free cell holds the title and the note
-Above every panel its label: the group's name in the studio red, semi-bold, then its position in ink ("Residents · the river
-is ours": the part before " · " is the name). A caption says what the pictures are. All panels change step at the same moment:
-HOLD s per step (default 0.6), LAST s on the final one (default 2.0). A set with fewer steps holds its last.
-Writes <name>.gif, <name>.mp4 (when ffmpeg is there), <name>_final.jpg and <name>_step_k.jpg.
+  stack  one under the other, each at the board's width           (for a phone or a chat)
+  row    side by side, all at the same height                      (a wide strip)
+  grid   2 x 2, panels aligned at the top; the free cell holds the title and the note   (for a 16:9 screen, a Miro frame)
+Above every panel its label: the group's name in the studio red, semi-bold, then its position in ink, and at the right what
+the picture is drawn over, in grey ("Residents · the river is ours | drawn over an AI-generated view": the part before " · "
+is the name, the part after " | " the source). A caption says it once more for the whole board. All panels change step at the
+same moment: HOLD s per step (default 0.6), LAST s on the final one (default 2.0). A set with fewer steps holds its last.
+Writes <name>.gif, <name>.mp4 (when ffmpeg is there), <name>_step_k.jpg and <name>_final.jpg (= the last step).
+The GIF's palette keeps the text inks and pure white exact (a plain median cut turns the grey text red-brown beside so much red).
 Usage: python3 tools/ex22_pages/together_gif.py <out folder> <name> <stack|row|grid> "<label>=<prefix>" "<label>=<prefix>" ...
 env:   W (board width in px; default 1400 stack, 2400 row, 2000 grid), TITLE, CAPTION, HOLD, LAST, LABEL_PX, TITLE_PX,
        FONT_DIR (a folder with IBMPlexSans-Regular.ttf and IBMPlexSans-SemiBold.ttf; without it DejaVu Sans is used),
@@ -15,7 +17,7 @@ env:   W (board width in px; default 1400 stack, 2400 row, 2000 grid), TITLE, CA
 Colours from js/palette.js. The images are the owner's and are not committed; fonts are not committed either.
 Not part of the site or of the tests."""
 import os, sys, glob, re, shutil, subprocess
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageColor
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _bw
 
@@ -47,12 +49,13 @@ def steps_of(prefix):
 
 sets = [(lab, steps_of(pre)) for lab, pre in SETS]
 N = max(len(fr) for _, fr in sets)
-M, G = round(W * 0.016), round(W * 0.012)                      # outer margin, gap between panels
-LP = int(os.environ.get('LABEL_PX', round(W * {'stack': 0.0215, 'row': 0.0105, 'grid': 0.016}[LAYOUT])))   # label size, the same on every panel
+M = round(W * {'stack': 0.026, 'row': 0.014, 'grid': 0.018}[LAYOUT])      # outer margin
+G = round(W * {'stack': 0.014, 'row': 0.010, 'grid': 0.012}[LAYOUT])      # gap between panels
+LP = int(os.environ.get('LABEL_PX', round(W * {'stack': 0.0215, 'row': 0.0120, 'grid': 0.016}[LAYOUT])))   # label size, the same on every panel
 LB = round(LP * 1.75)                                            # the label's band above its panel
-TS = int(os.environ.get('TITLE_PX', round(LP * 1.3)))                  # the title: a third larger than the labels
+TS = int(os.environ.get('TITLE_PX', round(LP * 1.3)))            # the title: a third larger than the labels
 lf_b, lf_r = font(BOLD, LP), font(TEXT, LP)
-cf = font(TEXT, min(max(W * 0.0135, 15), 22))
+cf = font(TEXT, round(LP * 0.9))                                 # the caption: readable on a phone too (it is required reading)
 probe = ImageDraw.Draw(Image.new('RGB', (8, 8)))
 
 
@@ -69,6 +72,30 @@ def wrap(s, f, width):
     return out
 
 
+def balanced(s, f, width):
+    """wrapped into as few lines as width allows, then the lines evened out (no single word left alone on the last line)"""
+    lines = wrap(s, f, width); n = len(lines)
+    if n < 2: return lines
+    lo, hi = width / n * 0.8, width
+    for _ in range(18):
+        mid = (lo + hi) / 2
+        if len(wrap(s, f, mid)) <= n: hi = mid
+        else: lo = mid
+    return wrap(s, f, hi)
+
+
+def title_lines(f, width):
+    """the title broken only at its ' · ' joints when it needs more than one line (a name such as Río Dílar stays whole)"""
+    if probe.textlength(TITLE, font=f) <= width: return [TITLE]
+    out, line = [], ''
+    for seg in TITLE.split(' · '):
+        t = (line + ' · ' + seg) if line else seg
+        if probe.textlength(t, font=f) <= width or not line: line = t
+        else: out.append(line); line = seg
+    out.append(line)
+    return [ln for part in out for ln in (balanced(part, f, width) if probe.textlength(part, font=f) > width else [part])]
+
+
 def title_font(width):
     """the title on one line when it fits (from 1.2 x down to 0.9 x the size TS for this layout), else wrapped at the smaller size"""
     px = TS * 1.2
@@ -80,9 +107,9 @@ def title_font(width):
 sizes = [fr[0].size for _, fr in sets]
 if LAYOUT != 'grid':
     tf = title_font(W - 2 * M) if TITLE else None
-    t_lines = wrap(TITLE, tf, W - 2 * M) if TITLE else []
-    top = M + (len(t_lines) * round(tf.size * 1.3) + round(G * 0.6) if TITLE else 0)
-    cap_lines = wrap(CAPTION, cf, W - 2 * M) if CAPTION else []
+    t_lines = title_lines(tf, W - 2 * M) if TITLE else []
+    top = M + (len(t_lines) * round(tf.size * 1.3) + round(LP * 0.9) if TITLE else 0)
+    cap_lines = balanced(CAPTION, cf, W - 2 * M) if CAPTION else []
     cap_h = (len(cap_lines) * round(cf.size * 1.45) + G) if cap_lines else 0
 boxes = []
 if LAYOUT == 'stack':
@@ -110,12 +137,19 @@ else:   # grid, 2 columns, panels aligned at the top of their row; the cell afte
 H += H % 2; Wb = W + W % 2
 
 
-def label(d, x, y, lab):
-    """the group's name in red, semi-bold; the rest of the label in ink, regular"""
+def label(d, x, y, pw, lab):
+    """the group's name in red, semi-bold; its position in ink, regular; at the panel's right, what the picture is drawn over, in grey"""
+    lab, _, tag = lab.partition(' | ')
     name, sep, rest = lab.partition(' · ')
-    yy = y + round((LB - LP * 1.25) / 2)
+    yy = y + round((LB - LP * 1.25) / 2); x0 = x
     d.text((x, yy), name, font=lf_b, fill=RED); x += d.textlength(name, font=lf_b)
-    if sep: d.text((x, yy), ' · ' + rest, font=lf_r, fill=INK2)
+    if sep: d.text((x, yy), ' · ' + rest, font=lf_r, fill=INK2); x += d.textlength(' · ' + rest, font=lf_r)
+    if tag:
+        px = LP * 0.74
+        while px > LP * 0.5 and x + LP * 0.8 + d.textlength(tag, font=font(TEXT, px)) > x0 + pw: px -= 1
+        f = font(TEXT, px); tw = d.textlength(tag, font=f)
+        if x + LP * 0.5 + tw <= x0 + pw: d.text((x0 + pw - tw, yy + (LP - f.size) * 0.86), tag, font=f, fill=INK3)   # on the label's baseline
+        else: print('WARNING: no room for the tag', repr(tag), 'above its panel')
 
 
 def board(k):
@@ -123,26 +157,42 @@ def board(k):
     for (lab, fr), (x, y, pw, ph) in zip(sets, boxes):
         im.paste(fr[min(k, len(fr) - 1)].resize((pw, ph), Image.LANCZOS), (x, y))
         d.rectangle([x, y, x + pw - 1, y + ph - 1], outline=LINE, width=1)
-        label(d, x, y - LB, lab)
+        label(d, x, y - LB, pw, lab)
     if LAYOUT == 'grid':
         if note_cell:
             x, y, cw_, rh = note_cell; yy = y + round(rh * 0.06)
             if TITLE:
-                for ln in wrap(TITLE, tf, cw_ - 2 * G): d.text((x + G, yy), ln, font=tf, fill=INK); yy += round(tf.size * 1.3)
+                for ln in title_lines(tf, cw_ - 2 * G): d.text((x + G, yy), ln, font=tf, fill=INK); yy += round(tf.size * 1.3)
                 yy += G
-            for ln in (wrap(CAPTION, cf, cw_ - 2 * G) if CAPTION else []): d.text((x + G, yy), ln, font=cf, fill=INK3); yy += round(cf.size * 1.45)
+            for ln in (balanced(CAPTION, cf, cw_ - 2 * G) if CAPTION else []): d.text((x + G, yy), ln, font=cf, fill=INK2); yy += round(cf.size * 1.45)
     else:
         yy = M - round(tf.size * 0.12) if TITLE else M
         for ln in t_lines: d.text((M, yy), ln, font=tf, fill=INK); yy += round(tf.size * 1.3)
         yy = H - M - cap_h + G
-        for ln in cap_lines: d.text((M, yy), ln, font=cf, fill=INK3); yy += round(cf.size * 1.45)
+        for ln in cap_lines: d.text((M, yy), ln, font=cf, fill=INK2); yy += round(cf.size * 1.45)
     return im
 
 
+def gif_palette(im):
+    """255 colours: a median cut of the last frame, less the entries a shade off white, plus pure white and the text inks with
+    their steps towards white (the edges of the letters), so white stays white and grey text stays grey in the GIF"""
+    ramp = []
+    for c in (INK, INK2, INK3, RED):
+        r, g, b = ImageColor.getrgb(c)
+        ramp += [tuple(round(v + (255 - v) * t / 6) for v in (r, g, b)) for t in range(6)]
+    base = im.quantize(colors=255 - len(ramp) - 1, method=Image.Quantize.MEDIANCUT).getpalette()
+    cut = [tuple(base[i:i + 3]) for i in range(0, (255 - len(ramp) - 1) * 3, 3)]
+    cut = [c for c in cut if min(c) < 249]                                   # the near-whites go: white must be exact
+    cols = [(255, 255, 255)] + ramp + cut
+    flat = [v for c in cols for v in c]; flat += [255] * (768 - len(flat))
+    pal = Image.new('P', (1, 1)); pal.putpalette(flat)
+    return pal
+
+
 frames = [board(k) for k in range(N)]
-for k, im in enumerate(frames): im.save(os.path.join(OUT, f'{NAME}_step_{k}.jpg'), quality=92)
-frames[-1].save(os.path.join(OUT, f'{NAME}_final.jpg'), quality=93)
-pal = frames[-1].quantize(colors=255, method=Image.Quantize.MEDIANCUT)
+for k, im in enumerate(frames): im.save(os.path.join(OUT, f'{NAME}_step_{k}.jpg'), quality=93, subsampling=0)   # 4:4:4: the thin reds stay the studio red
+shutil.copyfile(os.path.join(OUT, f'{NAME}_step_{N - 1}.jpg'), os.path.join(OUT, f'{NAME}_final.jpg'))
+pal = gif_palette(frames[-1])
 gif = [im.quantize(palette=pal, dither=Image.Dither.NONE) for im in frames]
 dur = [int(1000 * (LAST if k == N - 1 else HOLD)) for k in range(N)]
 gp = os.path.join(OUT, f'{NAME}.gif')
