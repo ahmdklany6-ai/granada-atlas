@@ -1212,7 +1212,7 @@ change (seven reviewers, each finding checked by a skeptic) and my own re-readin
     line and are left out.
 - Construction years: the period MAP layer's legend still said "Only 39 of 101,674 buildings carry a usable date in
   OSM", its source line "OSM start_date" and the popups showed "no data" for a building with a Catastro year. The legend
-  now reads `manifest.layers.buildings.periodCoverage` = {dated 70,943, osm 39, catastro 70,904} (written by
+  now reads `manifest.layers.buildings.periodCoverage` = {dated 70,950, osm 54, catastro 70,896} (written by
   `tools/build_catastro_years.py`); popups (`layers.js bldPopup`, `viewer.js`) and the report row name the source.
 - Tree cover: the canopy MAP layer and the studio climate sheets still asked only the Copernicus service (down since
   23 Nov: neither the browser nor the GitHub runner got an answer). New in `js/ext.js`: `canopyGrid` (live service,
@@ -1223,4 +1223,15 @@ change (seven reviewers, each finding checked by a skeptic) and my own re-readin
   levels are now 255 / 60 / 0 and read with wide margins.
 - Bus MAP layer: source line and popup now tell consortium stops (inferred) from the city file; the trees note no
   longer says "inside the municipality".
+- OSM century dates ("C11", "C16"; 15 landmarks such as El Bañuelo, Corral del Carbón, Dar al-Horra) were never parsed
+  (`analysis.js parseYear` read only 4-digit years), so since 5.50 a Catastro year replaced them. They now count from
+  the first year of the century, in the app and in `buildings_lite.json`.
+- Also: GIS export buildings carry the Catastro year (`year_source`), and the sources table names the Catastro, the
+  Overture release and CTAN; the Status drawer lists the Catastro as live; the noise WMS draws roads and railways first
+  and the city map on top; the noise legend says that outside the city only roads and railways are modelled; the
+  periods card warns that old-quarter Catastro years are often rounded.
+- Not done (open): the review stopped early (usage limit) — five of its seven reviewers never ran (bus / places data,
+  Catastro / trees / canopy data, rules and tests, licences, the unchanged cards). Santa Fe, Vegas del Genil and Villa de
+  Otura were never downloaded from the Catastro (their buildings have no year). Comparisons that mix a density and a
+  WorldCover share are labelled as mixed, not converted.
 - Tests: `tests/ui_test_v39.py` (new); `tests/ui_test_v3.py` expects 692 + 827 stops.

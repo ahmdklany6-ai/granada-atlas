@@ -30,7 +30,9 @@
   ];
   // 5.50: SICA strategic noise maps drawn together — the agglomeration (city), the main roads and the railways. The
   // agglomeration map stops at the city; around the air base only the road and rail maps exist (checked 23 Nov 2026).
-  const noiseLayers = (k) => ['aglomeracion', 'carretera', 'ferrocarril'].map(s => `evaluacionambiental:mer_${s}_${k}`).join(',');
+  // 5.51: WMS paints layers in list order (first at the bottom): roads and railways first, the city map on top, so a quieter road
+  // band never covers a louder city class; outside the city only the road / rail bands exist
+  const noiseLayers = (k) => ['carretera', 'ferrocarril', 'aglomeracion'].map(s => `evaluacionambiental:mer_${s}_${k}`).join(',');
   const LST_DATE = '2025-07-28'; // an 8-day MODIS composite in high summer (day-of-year 209)
 
   function wmsTiles(url, layers, extra) {

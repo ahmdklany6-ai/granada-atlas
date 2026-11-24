@@ -101,7 +101,7 @@
       legend: pK.map(k => ({ sw: PERIOD_COL[k], label: root.GA.report.periodLabel(k), key: k })).concat([{ sw: GA.palette.paper, label: t('nodata'), key: 'no_data' }]),
       ind: B.yearCat ? [[t('v36.withYear'), `${nf(B.startTagged)} <small>(${pct(B.startCoverage, 1)})</small>`], [t('v36.yearSrc'), t('v36.yearSrcV', { o: nf(B.yearOsm), c: nf(B.yearCat) })]] : [[t('h.start'), `${nf(B.startTagged)} <small>(${pct(B.startCoverage, 1)})</small>`]],
       chart: B.startTagged ? { kind: 'hbars', unit: t('v36.bldUnit'), items: pK.map(k => ({ label: root.GA.report.periodLabel(k), v: B.periods[k] || 0, col: PERIOD_COL[k] })) } : null,
-      find: [B.startCoverage < 0.3 ? t('g.fPeriodsLow', { n: nf(B.startTagged), N: nf(B.count) }) : t('g.fPeriods')].concat(B.yearCat ? [t('v36.catCaveat')] : []),
+      find: [B.startCoverage < 0.3 ? t('g.fPeriodsLow', { n: nf(B.startTagged), N: nf(B.count) }) : t('g.fPeriods')].concat(B.yearCat ? [t('v36.catCaveat'), t('v37.catRound')] : []),
       gap: B.startCoverage < 0.3, method: B.yearCat ? t('v36.mPeriods') : t('g.mPeriods') });
 
     // 4 streets

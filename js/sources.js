@@ -141,7 +141,7 @@ is_in(${center[1].toFixed(6)},${center[0].toFixed(6)})->.c;area.c["boundary"="ad
     { name: 'Wikimedia Commons', status: 'live', use: 'reg.commons', license: '—', url: 'https://commons.wikimedia.org' },
     { name: 'Wikipedia (es/en/ar)', status: 'live', use: 'reg.wiki', license: 'CC BY-SA', url: 'https://www.wikipedia.org' },
     { name: 'OpenAlex', status: 'live', use: 'reg.openalex', note: 'reg.openalexNote', license: 'CC0', url: 'https://openalex.org' },
-    { name: 'Catastro INSPIRE (Edificios BU)', status: 'planned', use: 'reg.catastro', note: 'reg.catastroNote', url: 'https://www.catastro.hacienda.gob.es/webinspire/index.html' },
+    { name: 'Catastro INSPIRE (Edificios BU) — year of construction, downloaded 23 Nov 2026', status: 'live', use: 'reg.catastro', license: 'Catastro: free reuse with attribution', url: 'https://www.catastro.hacienda.gob.es/webinspire/index.html' },
     { name: 'IGN MDT25 (terrain, supplied)', status: 'live', use: 'reg.mdt', license: 'CC BY 4.0', url: 'https://centrodedescargas.cnig.es/' },
     { name: 'OpenStreetMap extract (supplied, 23 Oct 2026) + Overpass facilities snapshot (30 Oct 2026)', status: 'live', use: 'reg.osmLocal', license: 'ODbL 1.0', url: 'https://www.openstreetmap.org/copyright' },
     { name: 'Google Street View (link-out only)', status: 'live', use: 'reg.sv', note: 'reg.svNote', license: 'Google Maps Terms', url: 'https://developers.google.com/maps/documentation/urls/get-started' },

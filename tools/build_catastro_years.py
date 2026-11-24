@@ -52,6 +52,25 @@ for ft in L['features']:
     y, n = year_of(ft['geometry'])
     if y: p['period'] = next(k for a, b, k in PERIODS if a <= y <= b); p['pc'] = 1; lh += 1
     else: p['period'] = 'no_data'; p.pop('pc', None)
+# 5.51: an OSM century date ("C16") wins over the Catastro year, as in the app (analysis.js parseYear): the lite layer has no
+# ids, so the period is set on the lite footprint that contains the tile building's centre
+import re as _re
+from shapely.geometry import shape as _shape
+cent = []
+for f in sorted(g for g in glob.glob(os.path.join(ROOT, 'data/vec/buildings/*.json')) if not g.endswith('index.json')):
+    for ft in json.load(open(f))['features']:
+        sd = str(ft['properties'].get('sd') or '')
+        if sd and not _re.search(r'(1[0-9]{3}|20[0-9]{2})', sd):
+            c = _re.match(r'^\s*~?C(\d{1,2})\b', sd, _re.I)
+            if c and 1 <= int(c.group(1)) <= 21:
+                try: cent.append((_shape(ft['geometry']).representative_point(), (int(c.group(1)) - 1) * 100 + 1))
+                except Exception: pass
+lgeo = [_shape(ft['geometry']) for ft in L['features']]; ltree = STRtree(lgeo); nc = 0
+for pt, y in cent:
+    for i in ltree.query(pt):
+        if lgeo[i].contains(pt):
+            p = L['features'][i]['properties']; p['period'] = next(k for a, b, k in PERIODS if a <= y <= b); p.pop('pc', None); nc += 1; break
+print('lite: century dates from OSM applied', nc, 'of', len(cent))
 json.dump(L, open(lp, 'w'), separators=(',', ':'))
 print('lite: features', len(L['features']), 'with a Catastro period', lh)
 # 5.51: the period layer's legend reads this block — both sources counted (OSM start_date wins where it exists)
@@ -59,7 +78,7 @@ import re
 osm = both = 0
 for f in sorted(g for g in glob.glob(os.path.join(ROOT, 'data/vec/buildings/*.json')) if not g.endswith('index.json')):
     for ft in json.load(open(f))['features']:
-        p = ft['properties']; o = bool(re.search(r'(1[0-9]{3}|20[0-9]{2})', str(p.get('sd') or '')))
+        p = ft['properties']; o = bool(re.search(r'(1[0-9]{3}|20[0-9]{2})', str(p.get('sd') or '')) or re.match(r'^\s*~?C(\d{1,2})\b', str(p.get('sd') or ''), re.I))  # 5.51: century dates count as OSM
         osm += o; both += (o or bool(p.get('cy')))
 MP = os.path.join(ROOT, 'data/manifest.json'); M = json.load(open(MP))
 M['layers']['buildings']['periodCoverage'] = {'dated': both, 'total': tot, 'osm': osm, 'catastro': both - osm,

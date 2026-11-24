@@ -103,7 +103,7 @@ try:
         b, pg, errs = boot(p, lambda r: None)
         aid = save_area(pg, -3.6230, 37.1440, 600, 'Armilla')
         t0 = time.time(); pg.evaluate(f'GA.pages.go("fabric", "{aid}")')
-        pg.wait_for_function('GA.fabric.state && GA.fabric.state.cards.some(c => c.id === "trees" && !c.gapOnly)', timeout=90000); dt = time.time() - t0
+        pg.wait_for_function('GA.fabric.state && GA.fabric.state.X && GA.fabric.state.X.R && GA.fabric.state.X.R.canopy', timeout=90000); dt = time.time() - t0  # the card itself appears earlier, with the OSM trees
         cn = pg.evaluate('(() => { const c = GA.fabric.state.X.R.canopy; return c ? { wc: !!c.wc, err: c.liveErr, mean: c.mean } : null; })()')
         check(cn is not None and cn['wc'] and dt < 45, f'hanging service: the tree card still arrives from WorldCover after {dt:.0f} s (limit 45)', cn)
         check(not errs, 'no page errors (hanging host)', errs[:3]); b.close()
