@@ -7,7 +7,7 @@ fade_gif.py (<prefix>_step_0.jpg, _step_1.jpg ...) of each alternative and lays 
 Above every panel its label: the group's name in the studio red, semi-bold, then its position in ink, and at the right what
 the picture is drawn over, in grey ("Residents · the river is ours | drawn over an AI-generated view": the part before " · "
 is the name, the part after " | " the source). A caption says it once more for the whole board. All panels change step at the
-same moment: HOLD s per step (default 0.6), LAST s on the final one (default 2.0). A set with fewer steps holds its last.
+same moment: HOLD s per step (default 0.6), LAST s on the final one (default 4.0: three panels to read). A set with fewer steps holds its last.
 Writes <name>.gif, <name>.mp4 (when ffmpeg is there), <name>_step_k.jpg and <name>_final.jpg (= the last step).
 The GIF's palette keeps the text inks and pure white exact (a plain median cut turns the grey text red-brown beside so much red).
 Usage: python3 tools/ex22_pages/together_gif.py <out folder> <name> <stack|row|grid> "<label>=<prefix>" "<label>=<prefix>" ...
@@ -28,7 +28,7 @@ assert LAYOUT in ('stack', 'row', 'grid'), LAYOUT
 SETS = [a.split('=', 1) for a in sys.argv[4:]]
 assert len(SETS) >= 2 and all(len(s) == 2 for s in SETS), 'give "<label>=<prefix>" for each alternative'
 W = int(os.environ.get('W', {'stack': 1400, 'row': 2400, 'grid': 2000}[LAYOUT]))
-HOLD, LAST = float(os.environ.get('HOLD', 0.6)), float(os.environ.get('LAST', 2.0))
+HOLD, LAST = float(os.environ.get('HOLD', 0.6)), float(os.environ.get('LAST', 4.0))
 TITLE, CAPTION = os.environ.get('TITLE', ''), os.environ.get('CAPTION', '')
 FONT_DIR = os.environ.get('FONT_DIR', '')
 BOLD = os.environ.get('LABEL_FONT') or (os.path.join(FONT_DIR, 'IBMPlexSans-SemiBold.ttf') if FONT_DIR else '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf')
@@ -134,7 +134,26 @@ else:   # grid, 2 columns, panels aligned at the top of their row; the cell afte
         y += LB + rh + G
     H = y - G + M
     tf = title_font(cw - 2 * G) if TITLE else None
+    if TITLE:   # sized from its broken lines, not from the unbroken title
+        px = TS * 1.5
+        while px > tf.size and (len(title_lines(font(BOLD, px), cw - 2 * G)) > 2 or max(probe.textlength(ln, font=font(BOLD, px)) for ln in title_lines(font(BOLD, px), cw - 2 * G)) > cw - 2 * G): px -= 1
+        tf = font(BOLD, px)
 H += H % 2; Wb = W + W % 2
+
+
+def tag_px():
+    """one size for every source tag on the board: as large as fits beside the longest label on its panel, at most 0.87 x the label"""
+    px = LP * 0.87
+    for (lab, _), (x, y, pw, ph) in zip(sets, boxes):
+        lab, _, tag = lab.partition(' | ')
+        if not tag: continue
+        name, sep, rest = lab.partition(' · ')
+        lw = probe.textlength(name, font=lf_b) + (probe.textlength(' · ' + rest, font=lf_r) if sep else 0)
+        while px > LP * 0.5 and lw + LP * 0.9 + probe.textlength(tag, font=font(TEXT, px)) > pw: px -= 1
+    return int(round(px))
+
+
+TAG_PX = tag_px()
 
 
 def label(d, x, y, pw, lab):
@@ -145,9 +164,7 @@ def label(d, x, y, pw, lab):
     d.text((x, yy), name, font=lf_b, fill=RED); x += d.textlength(name, font=lf_b)
     if sep: d.text((x, yy), ' · ' + rest, font=lf_r, fill=INK2); x += d.textlength(' · ' + rest, font=lf_r)
     if tag:
-        px = LP * 0.74
-        while px > LP * 0.5 and x + LP * 0.8 + d.textlength(tag, font=font(TEXT, px)) > x0 + pw: px -= 1
-        f = font(TEXT, px); tw = d.textlength(tag, font=f)
+        f = font(TEXT, TAG_PX); tw = d.textlength(tag, font=f)
         if x + LP * 0.5 + tw <= x0 + pw: d.text((x0 + pw - tw, yy + (LP - f.size) * 0.86), tag, font=f, fill=INK3)   # on the label's baseline
         else: print('WARNING: no room for the tag', repr(tag), 'above its panel')
 
@@ -160,11 +177,13 @@ def board(k):
         label(d, x, y - LB, pw, lab)
     if LAYOUT == 'grid':
         if note_cell:
-            x, y, cw_, rh = note_cell; yy = y + round(rh * 0.06)
-            if TITLE:
-                for ln in title_lines(tf, cw_ - 2 * G): d.text((x + G, yy), ln, font=tf, fill=INK); yy += round(tf.size * 1.3)
-                yy += G
-            for ln in (balanced(CAPTION, cf, cw_ - 2 * G) if CAPTION else []): d.text((x + G, yy), ln, font=cf, fill=INK2); yy += round(cf.size * 1.45)
+            x, y, cw_, rh = note_cell
+            tl = title_lines(tf, cw_ - 2 * G) if TITLE else []; cl = balanced(CAPTION, cf, cw_ - 2 * G) if CAPTION else []
+            block = len(tl) * round(tf.size * 1.3) + (G if tl and cl else 0) + len(cl) * round(cf.size * 1.45) if (tl or cl) else 0
+            yy = y + max(0, (rh - block) // 2)                    # the note in the middle of its cell
+            for ln in tl: d.text((x + G, yy), ln, font=tf, fill=INK); yy += round(tf.size * 1.3)
+            if tl: yy += G
+            for ln in cl: d.text((x + G, yy), ln, font=cf, fill=INK2); yy += round(cf.size * 1.45)
     else:
         yy = M - round(tf.size * 0.12) if TITLE else M
         for ln in t_lines: d.text((M, yy), ln, font=tf, fill=INK); yy += round(tf.size * 1.3)
@@ -186,19 +205,31 @@ def gif_palette(im):
     cols = [(255, 255, 255)] + ramp + cut
     flat = [v for c in cols for v in c]; flat += [255] * (768 - len(flat))
     pal = Image.new('P', (1, 1)); pal.putpalette(flat)
-    return pal
+    return pal, {c: i for i, c in enumerate(cols[:1 + len(ramp)])}
+
+
+def to_gif(im, pal, exact):
+    """the frame on the palette; a pixel that is exactly white or an ink step gets that entry itself (Pillow's nearest-colour
+    search is coarse and may hand it a neighbour a few levels off)"""
+    import numpy as np
+    q = im.quantize(palette=pal, dither=Image.Dither.NONE)
+    a = np.asarray(im).astype(np.uint32); key = (a[..., 0] << 16) | (a[..., 1] << 8) | a[..., 2]
+    idx = np.array(q)
+    for (r, g, b), i in exact.items(): idx[key == ((r << 16) | (g << 8) | b)] = i
+    out = Image.fromarray(idx.astype(np.uint8), 'P'); out.putpalette(q.getpalette())
+    return out
 
 
 frames = [board(k) for k in range(N)]
 for k, im in enumerate(frames): im.save(os.path.join(OUT, f'{NAME}_step_{k}.jpg'), quality=93, subsampling=0)   # 4:4:4: the thin reds stay the studio red
 shutil.copyfile(os.path.join(OUT, f'{NAME}_step_{N - 1}.jpg'), os.path.join(OUT, f'{NAME}_final.jpg'))
-pal = gif_palette(frames[-1])
-gif = [im.quantize(palette=pal, dither=Image.Dither.NONE) for im in frames]
+pal, exact = gif_palette(frames[-1])
+gif = [to_gif(im, pal, exact) for im in frames]
 dur = [int(1000 * (LAST if k == N - 1 else HOLD)) for k in range(N)]
 gp = os.path.join(OUT, f'{NAME}.gif')
 gif[0].save(gp, save_all=True, append_images=gif[1:], duration=dur, loop=0, optimize=False)
 print(gp, round(os.path.getsize(gp) / 1e6, 1), 'MB,', N, 'frames,', Wb, 'x', H, 'durations', dur, '| label', LP, 'px, caption', cf.size, 'px, title', tf.size if TITLE else '-', 'px')
-print('panel boxes (x, y, w, h):', boxes, '| label band', LB, 'px above each | fonts', os.path.basename(BOLD), os.path.basename(TEXT))
+print('panel boxes (x, y, w, h):', boxes, '| label band', LB, 'px above each | tag', TAG_PX, 'px | fonts', os.path.basename(BOLD), os.path.basename(TEXT))
 if shutil.which('ffmpeg'):
     tmp = os.path.join(OUT, '_mp4_' + NAME); os.makedirs(tmp, exist_ok=True); n = 0
     for k, im in enumerate(frames):

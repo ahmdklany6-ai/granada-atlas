@@ -1382,3 +1382,12 @@ Flight ceiling over the strip 13–17 m above the ground (RD 118/2019 surfaces m
   + `walk3d.html` (three.js r128 from cdnjs): a walkable 3D scene of the residents' north edge with a "market walk": 20 shop
   pavilions (1–2 floors, each checked under the flight ceiling) and a covered market opposite the San Cayetano stop; walk / model
   views and six viewpoints. Shops, uses, names and sizes are ours (examples). Not published, not on the site.
+- Build-up GIFs of the west edge (24 Nov, owner's pictures from an image chat: red line drawings added step by step):
+  `tools/ex22_pages/fade_gif.py <out> <name> <opacity> <photo|auto|auto:img,img> <step1> …` lifts the red ink off each step and lays it
+  over ONE photo faded on white (owner: 40 %, each layer at once, 0.6 s per step, no fades); `auto` rebuilds the clean photo when
+  it was not sent. `tools/ex22_pages/together_gif.py <out> <name> <stack|row|grid> "<label | source>=<prefix>" …` puts the three
+  build-ups on one board (stack for a phone, grid for a 16:9 screen); IBM Plex Sans (owner: no handwriting font here; TTFs made
+  from the npm package `@ibm/plex-sans` with fontTools, FONT_DIR, never committed); the GIF palette keeps the text inks exact.
+  HONESTY: the developer's steps are drawn over the owner's site photo; the residents' and Defence's steps came back on an
+  AI-GENERATED view (hangars, straight fence: not the site). Every board says so above each panel and in its caption; keep that
+  until those two are redone over the site photo. Nothing of this (pictures, GIFs, fonts) is in the repository.
