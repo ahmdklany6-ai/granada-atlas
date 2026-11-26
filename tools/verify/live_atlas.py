@@ -149,7 +149,7 @@ with sync_playwright() as p:
         for ly, nm in ((3, 'streetsA'), (4, 'streetsB'), (5, 'streetsAB')):
             if lang == 'en' or ly == 5: slide(2, ly, nm, (lambda: check(sum(int(x) for x in pg.evaluate('[...document.querySelectorAll(".tour-sign")].map(e => e.dataset.n)')) == 13, f'{lang}: 13 dead-end signs')) if ly == 5 else None)
         for ly, nm in ((1, 'chg'), (2, 'inc'), (3, 'rent')):
-            if lang == 'en' or ly == 1: slide(3, ly, nm, lambda: check(len(pg.evaluate('GA.tour.labels')) == 34 and not [x for x in pg.evaluate('GA.tour.labels') if x['forced']], f'{lang}: 34 municipality labels, none forced'))
+            if lang == 'en' or ly == 1: slide(3, ly, nm, lambda: (lambda P: check(10 <= len(P) <= 34 and not [x for x in P if x['forced']], f'{lang}: a label for each municipality in view (5.53: closer map; {len(P)} of 34), none forced', [x['id'] for x in P if x['forced']]))(pg.evaluate('GA.tour.labels')))
         slide(3, 4, 'last', lambda: check(pg.evaluate('document.querySelectorAll(".tour-dots i").length') == 5, f'{lang}: chapter 7 has five slides (the barrio slide is its last)'))
         check(not [e for e in errs if 'rtl-text' not in e], f'{lang}: no page errors (5.33 tour)', errs[:3]); ctx.close()
     # ---- 5.46: the measuring tool (button top-right, line on top, total in km and m) ----
