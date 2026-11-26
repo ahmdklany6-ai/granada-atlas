@@ -155,7 +155,7 @@
     'straightA', 'straightB', 'routeA-case', 'routeB-case', 'routeA', 'routeB', 'arrowA', 'arrowB', 'endsA', 'endsB', 'rail', 'barrio-lbl'];
   const ORDER = RS().LOW.concat(['veil'], RS().MID, ORDER0.slice(1)); // research layers under the 5.33 layers, photographs under the veil
   Object.assign(GROUPS, RS().RG);
-  CHS().forEach((c, i) => { LAYERS[i + 1] = c.slides.length; VIS[i + 1] = c.slides.map(sl => sl.old ? OLDVIS[sl.old[0]][sl.old[1] - 1] : sl.groups); });
+  CHS().forEach((c, i) => { LAYERS[i + 1] = c.slides.length; VIS[i + 1] = c.slides.map(sl => sl.old ? (sl.groups || OLDVIS[sl.old[0]][sl.old[1] - 1]) : sl.groups); });
   VIS[0] = [[]];
   const slideOf = (st, ly) => { const c = CHS()[st - 1]; return c ? c.slides[ly - 1] : null; };
   const cur = () => slideOf(S.step, S.layer);
@@ -267,6 +267,7 @@
   let raf = 0; const schedule = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; place(); }); };
   function place() {
     const o = $('#tour-lbls'); if (!o || !map) return; const W = o.clientWidth, H = o.clientHeight; const svg = o.querySelector('svg'); let lines = '';
+    const EDGE = 10; // 5.53: an anchor within 10 px of the map edge = a sliver of the municipality; its label is not drawn
     const obs = obstacles(); const taken = []; S.placed = [];
     // 1. the dead-end signs: grouped when closer than 20 px, never hidden
     o.querySelectorAll('.tour-sign').forEach(e => e.remove());
@@ -279,7 +280,11 @@
     items.sort((x, y) => (x.prio - y.prio) || ((x.areaPx || 0) - (y.areaPx || 0)));
     const DIRS = []; for (let r = 1; r <= 9; r++) for (let k = 0; k < 12; k++) { const an = k * Math.PI / 6 + (r % 2 ? 0 : Math.PI / 12); DIRS.push([Math.cos(an) * r * 13, Math.sin(an) * r * 11]); }
     items.forEach(it => {
-      const p = map.project(it.ll); const tries = [[it.w, it.h, false]]; if (it.alt) tries.push([it.wAlt, it.hAlt, true]);
+      const p = map.project(it.ll);
+      // 5.53: the agglomeration maps zoom in — a label whose point lies outside the map view, or under the card or the map
+      // controls, is not drawn (its municipality is not on screen)
+      if (p.x < EDGE || p.y < EDGE || p.x > W - EDGE || p.y > H - EDGE || obs.some(q => p.x >= q.l && p.x <= q.r && p.y >= q.t && p.y <= q.b)) { it.el.style.display = 'none'; return; } it.el.style.display = ''; // …or behind the card / the map controls
+      const tries = [[it.w, it.h, false]]; if (it.alt) tries.push([it.wAlt, it.hAlt, true]);
       const offs = (it.avoidAnchor ? [] : [[0, 0]]).concat(it.avoidAnchor ? DIRS.map(([dx, dy]) => [dx * 1.25, dy * 1.35]) : DIRS);
       let pick = null, best = null;
       for (const [w, h, short] of tries) {
@@ -313,7 +318,7 @@
       html = `<b dir="auto">${esc(nmL(p.name))}</b><table><tr><td>${t('x33.val.' + key)}</td><td>${v == null ? `<em>${esc(t('tour.missing'))} — ${esc(t('x33.miss.' + key))}</em>` : L(esc(v))}</td></tr><tr><td>${t('x33.year')}</td><td>${L(esc(yearOf(key, p) || '—'))}</td></tr><tr><td>${t('tour.src')}</td><td dir="ltr">${esc(srcOf(key))}</td></tr></table>`; } }
     if (o && o[0] === 2) { const f = one(['towns-fill']); if (f) { const p = f.properties, k = KIND[p.k] ? p.k : 'core';
       const sc = S.D.scatter || {};
-      html = `<b dir="auto">${esc(nmL(p.nm))}</b><p class="tour-kind">${t('x45.kind.' + k, { n: L(nf(sc.houses_min)), d: L(nf(sc.within_m) + '\u00A0m'), o: L(nf(sc.outline_m) + '\u00A0m') })}</p><table><tr><td>${t('x45.area.' + k)}</td><td>${L(nf(p.ha, 1) + ' ha')}</td></tr>${k === 'scatter' ? `<tr><td>${t('x45.houses')}</td><td>${L(nf(p.houses))}</td></tr>` : ''}<tr><td>${t('x45.pop')}</td><td>${L(nf(p.pop))}</td></tr><tr><td>${t('x33.chg')}</td><td>${pct(p.chg)}</td></tr></table><small>${t('x45.popSrc')}</small>`; } }
+      html = `<b dir="auto">${esc(nmL(p.nm))}</b><p class="tour-kind">${t('x45.kind.' + k, { n: L(nf(sc.houses_min)), d: L(nf(sc.within_m) + '\u00A0m'), o: L(nf(sc.outline_m) + '\u00A0m') })}</p><table><tr><td>${t('x45.area.' + k)}</td><td>${L(nf(p.ha * 10)) + ' ' + t('r.u.du')}</td></tr>${k === 'scatter' ? `<tr><td>${t('x45.houses')}</td><td>${L(nf(p.houses))}</td></tr>` : ''}<tr><td>${t('x45.pop')}</td><td>${L(nf(p.pop))}</td></tr><tr><td>${t('x33.chg')}</td><td>${pct(p.chg)}</td></tr></table><small>${t('x45.popSrc')}</small>`; } }
     if (!html) return false;
     if (pop) pop.remove(); pop = new maplibregl.Popup({ className: 'atlas-popup tour-pop', offset: 8, maxWidth: '300px' }).setLngLat(e.lngLat).setHTML(GA.ltrNums ? GA.ltrNums(html) : html).addTo(map);
     return true;
@@ -335,23 +340,23 @@
         return `<ul class="lg">${order.map(c => `<li><i class="sw ln" style="border-top:6px solid ${T.fence[c]}"></i><span>${t('tour.s2.c.' + c)} · ${L(nf((st.fence_m[c] || 0) / 1000, 1) + ' km')} · ${L(nf((st.fence_share[c] || 0) * 100) + ' %')}</span></li>`).join('')}</ul><p class="fine">${t('tour.s2.l2note')}</p>`; }
       if (STREETS.includes(layer)) { const keys = layer === 3 ? ['A'] : layer === 4 ? ['B'] : ['A', 'B'];
         return `<ul class="lg"><li><img class="tour-sign-sw" src="${signURL()}" alt=""><span>${t('x33.lgDead', { n: D.dead.length })}</span></li>${keys.map(k => { const c = k === 'A' ? T.routeA : T.routeB; return swCased(c, t('x33.lgRoute' + k)) + swLine(c, 2, t('x33.lgStraight' + k), true) + swEnd(c, t('x33.lgEnds')); }).join('')}</ul><p class="fine">${t('x33.fade')}</p>`; }
-      if (layer === 6) { const lu = D.edge.stats.band_landuse_ha; return `<ul class="lg">${swFill(T.band, t('tour.s2.lgBand'), `;border:1.5px dashed ${T.bandLine}`)}${Object.keys(T.bandlu).filter(c => lu[c]).map(c => swFill(T.bandlu[c], `${t('tour.s2.lu.' + c)} · ${L(nf(lu[c], 1) + ' ha')}`)).join('')}</ul>`; }
+      if (layer === 6) { const lu = D.edge.stats.band_landuse_ha; return `<ul class="lg">${swFill(T.band, t('tour.s2.lgBand'), `;border:1.5px dashed ${T.bandLine}`)}${Object.keys(T.bandlu).filter(c => lu[c]).map(c => swFill(T.bandlu[c], `${t('tour.s2.lu.' + c)} · ${L(nf(lu[c] * 10)) + ' ' + t('r.u.du')}`)).join('')}</ul>`; }
       return `<ul class="lg">${swLine(P.south.metro, 4, t('tour.lgMetro'))}${swLine(P.south.tram, 3, t('tour.lgTram'), true)}${railLg()}${swFill(T.baseFill, t('tour.lgBase'), `;opacity:.5;border:2px solid ${T.baseLine}`)}</ul>`;
     }
     const fiveSw = swLine(T.five, 3, t('tour.lgFive'));
     if (layer <= 3) { const key = METRIC[layer - 1]; const c = CLS[key]();
-      return `<ul class="lg">${c.cols.map((col, i) => swFill(col, L(c.labels[i]), `;opacity:${T.choroAlpha}`)).join('')}${key === 'rent' ? swFill(T.missing, t('tour.s3.noIdx'), `;opacity:${T.choroAlpha * 0.6}`) : ''}${fiveSw}</ul>`; }
+      return `<ul class="lg">${c.cols.map((col, i) => swFill(col, L(c.labels[i]), `;opacity:${T.choroAlpha}`)).join('')}${key === 'rent' ? swFill(T.missing, t('tour.s3.noIdx'), `;opacity:${T.choroAlpha * 0.6}`) : ''}${fiveSw}${swFill(T.baseFill, t('tour.lgBase'), `;opacity:.45;border:2.5px solid ${T.baseLine}`)}</ul>`; }
     return `<ul class="lg">${swLine(T.barrio, 2, t('tour.s3.lgBarrio'))}</ul>`;
   }
   function bodyHTML(step, layer) {
     const D = S.D; if (!D) return ''; const st = D.edge.stats; const A = D.area.stats;
-    if (step === 1) return `<ul class="tour-facts"><li><b>${t('tour.s1.area', { ha: nf(st.area_ha) })}</b></li><li>${t('tour.s1.since')}</li><li>${t('tour.s1.ala')}</li><li>${t('tour.s1.fence', { km: nf(st.perimeter_km, 1) })}</li></ul>`;
+    if (step === 1) return `<ul class="tour-facts"><li><b>${t('tour.s1.area', { ha: nf(st.area_ha * 10) })}</b></li><li>${t('tour.s1.since')}</li><li>${t('tour.s1.ala')}</li><li>${t('tour.s1.fence', { km: nf(st.perimeter_km, 1) })}</li></ul>`;
     if (step === 2) {
       if (layer === 1) return `<p>${t('x45.s2.l1t', { n: nf(A.five.pop2025) })}</p><ul class="tour-towns">${D.townList.map(r => `<li><span dir="auto">${esc(nmL(r.nm))}</span><span>${L(nf(r.pop))} · ${pct(r.chg)}${r.shape ? '' : ` · <em>${esc(t('x33.noShape'))}</em>`}</span></li>`).join('')}</ul>`;
       if (layer === 2) return `<p>${t('tour.s2.l2t')}</p>`;
       if (STREETS.includes(layer)) { const keys = layer === 3 ? ['A'] : layer === 4 ? ['B'] : ['A', 'B'];
         return `<p>${t('tour.s2.l3t', { n: st.deadends })}</p><ul class="tour-facts">${D.routes.filter(r => keys.includes(r.key)).map(r => `<li><b>${r.key}</b> · ${t('tour.s2.route', { a: nmL(ROUTE[r.r].a), b: nmL(ROUTE[r.r].b), w: nf(r.walk_m / 1000, 1), s: nf(r.straight_m / 1000, 1), r: nf(r.ratio, 2) })}</li>`).join('')}</ul>`; }
-      if (layer === 6) return `<p>${t('tour.s2.l4t', { ha: nf(st.band_ha) })}</p>`;
+      if (layer === 6) return `<p>${t('tour.s2.l4t', { ha: nf(st.band_ha * 10) })}</p>`;
       return `<p>${t('tour.s2.l5t', { m: D.metroGap == null ? '—' : nf(Math.round(D.metroGap / 5) * 5) })}</p>`;
     }
     const g = D.byName.Granada, lg = D.byName['Las Gabias'], ch = D.byName['Churriana de la Vega'];
@@ -386,7 +391,7 @@
         <button type="button" class="btn btn-small" data-tour="exit">${t('tour.exit')}</button>
       </div>`;
     c.dataset.step = step; c.dataset.layer = layer; c.dataset.slide = sl.id;
-    if (RS().X.anim && sl.anim) RS().frame(map, sl, RS().X.anim.i);
+    if (RS().X.anim && sl.anim && RS().X.anim.slide === sl.id) RS().frame(map, sl, RS().X.anim.i); // 5.53: only this slide's own timeline (2.3 has 9 frames, 2.2 six)
     if (GA.ltrNumsDOM) GA.ltrNumsDOM(c);
   }
 
@@ -414,7 +419,7 @@
     return p;
   }
   // the feature each slide frames
-  const viewKey = () => { const o = old(); if (o) { if (o[0] === 3 && o[1] === 4 && S.D && S.D.bb.barrio) return 'barrio'; if (streets()) return 'streets'; if (o[0] === 2 && o[1] === 7) return 'rail'; return String(o[0]); }
+  const viewKey = () => { const o = old(); const sv = cur(); if (o && sv && sv.view && S.D && S.D.bb[sv.view]) return sv.view; if (o) { if (o[0] === 3 && o[1] === 4 && S.D && S.D.bb.barrio) return 'barrio'; if (streets()) return 'streets'; if (o[0] === 2 && o[1] === 7) return 'rail'; return String(o[0]); }
     const sl = cur(); return sl && S.D && S.D.bb[sl.view] ? sl.view : '2'; };
   let lastPad = null;
   // 5.39 (owner): slide 1 on wide screens — the base in the middle of the map, as large as fits; zoomed out a little only

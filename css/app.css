@@ -1159,3 +1159,15 @@ img.sw-rail { width: 48px; height: 27px; flex: none; vertical-align: middle; }
 .tr-inv h3 { font-size: 15px; margin: 14px 0 4px; }
 .tr-invt td { white-space: normal; }
 @media (max-width: 700px) { .tour-card { width: auto; } .tr-inv { padding: 0; } .tr-inv-in { max-height: 100vh; border-radius: 0; } }
+
+/* ---------- 5.53: area switch before the five analyses; heat-map legend; jobs table ---------- */
+.atl-ar { flex: none; display: inline-flex; border: 1px solid var(--line-2); border-radius: 3px; overflow: hidden; margin-inline-end: 6px; }
+.atl-arb { border: 0; background: var(--white); color: var(--ink-2); font: 500 12px/1.2 var(--f-ui); padding: 5px 8px; min-height: 32px; cursor: pointer; white-space: nowrap; }
+.atl-arb + .atl-arb { border-inline-start: 1px solid var(--line-2); }
+.atl-arb.on { background: var(--ink); color: var(--white); font-weight: 600; }
+.atl-arb:hover:not(.on) { color: var(--red); }
+.atl-arb:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+@media (min-width: 1200px) and (max-width: 1439px) { .atl-tp { padding: 5px 7px; gap: 4px; font-size: 12px; } .atl-arb { padding: 5px 7px; } .atl-ar { margin-inline-end: 4px; } } /* 5.53: the area switch + five analyses fit the top bar from 1200 px (English is the longest) */
+.tour-c-b .lg .sw.tr-grad { width: 42px; }
+.tr-jobs { font-size: 10px; } .tr-jobs th[scope=row] { min-width: 92px; } .tr-jobs th, .tr-jobs td { padding: 3px 2px; }
+.tr-jobs tr.hi th[scope=row] { color: var(--red); font-weight: 600; }

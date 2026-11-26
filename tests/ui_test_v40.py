@@ -96,6 +96,14 @@ try:
         ctx, pg, errs = boot(path='#/tour/4/2', motion='reduce'); at(pg, 4, 2); time.sleep(1.5)
         check(pg.evaluate('GA.tourResearch.X.anim.i') == 2 and not pg.evaluate('GA.tourResearch.X.anim.playing'), 'reduced motion: the flood slide shows its last frame without playing', pg.evaluate('GA.tourResearch.X.anim'))
         ctx.close()
+        # 5.53 review: the photo slide 2.3 ends on its last flight (frame 7); going back to 2.2 (6 frames) and 2.1 must still work
+        ctx, pg, errs = boot(path='#/tour/2/3', motion='reduce'); at(pg, 2, 3); time.sleep(1.5)
+        last = pg.evaluate('GA.tourResearch.X.anim.i')
+        pg.keyboard.press('ArrowLeft'); at(pg, 2, 2); time.sleep(1.2)
+        on22 = pg.evaluate('GA.tourResearch.X.anim && GA.tourResearch.X.anim.slide')
+        pg.keyboard.press('ArrowLeft'); at(pg, 2, 1); time.sleep(1.2)
+        check(last == 7 and on22 == 'h2' and pg.evaluate('GA.tourResearch.X.anim.slide') == 'h1' and not errs, 'back from 2.3 at its last flight: 2.2 and 2.1 open with their own timelines, no error', (last, on22, errs[:2]))
+        ctx.close()
 
         # ---------- C. interaction ----------
         ctx, pg, errs = boot(path='#/tour/7/2'); at(pg, 7, 2)

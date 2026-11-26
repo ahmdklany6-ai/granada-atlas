@@ -129,7 +129,7 @@ for f in T['features']: towns[f['properties']['nm']] += f['properties']['ha']
 LU = json.load(open(P('data/vec/landuse_overview.json'))); lu_g = []
 for f in LU['features']:
     c = f['properties'].get('lu')
-    if c in ('farmland', 'orchard', 'meadow', 'farmyard', 'vineyard', 'greenhouse_horticulture', 'residential', 'industrial', 'retail', 'commercial', 'greenfield', 'construction', 'grass', 'forest'):
+    if c in ('farmland', 'orchard', 'meadow', 'farmyard', 'vineyard', 'greenhouse_horticulture', 'residential', 'industrial', 'retail', 'commercial', 'greenfield', 'construction', 'brownfield', 'grass', 'forest'):  # 5.53: brownfield too (land in transformation)
         try: lu_g.append((c, transform(fwd, shape(f['geometry']).buffer(0))))
         except Exception: pass
 lu_tree = STRtree([g for _, g in lu_g])
@@ -164,13 +164,36 @@ from shapely.geometry import Polygon
 FAC = {k: [transform(fwd, shape(f['geometry'])).centroid for f in json.load(open(P(f'data/vec/fac_{k}.json')))['features']] for k in ('education', 'health', 'stay')}
 FAC_CLS = {k: [f['properties'].get('cls') for f in json.load(open(P(f'data/vec/fac_{k}.json')))['features']] for k in ('education', 'health', 'stay')}
 BUS = [(transform(fwd, shape(f['geometry'])), f['properties']) for f in json.load(open(P('data/vec/bus_service.json')))['features']]
+# 5.53: every OSM footprint of the tiles once — centre, footprint, construction year (OSM start_date, else the Catastro cy)
+import glob as _glob, re as _re
+def year_of(p):
+    sd = str(p.get('sd') or ''); m4 = _re.search(r'(1[0-9]{3}|20[0-9]{2})', sd)
+    if m4: return int(m4.group(1))
+    c = _re.match(r'^\s*~?C(\d{1,2})\b', sd, _re.I)
+    if c: return (int(c.group(1)) - 1) * 100 + 1
+    return p.get('cy')
+BLD = []
+for fn in sorted(_glob.glob(P('data/vec/buildings/*.json'))):
+    if fn.endswith('index.json'): continue
+    for f in json.load(open(fn))['features']:
+        try: g = transform(fwd, shape(f['geometry']))
+        except Exception: continue
+        if g.is_empty: continue
+        BLD.append((g.centroid, g, year_of(f['properties'])))
+BTREE = STRtree([b[0] for b in BLD])
+def blds_in(gm): return [BLD[i] for i in BTREE.query(gm) if gm.contains(BLD[i][0])]
 for name, gm in OUT_G.items():
     m = R['munis'][name]; area = gm.area / 1e4
     sp = m['sp'] = {'area_ha': round(area, 1), 'base_ha': round(gm.intersection(base).area / 1e4, 1), 'town_ha': round(towns.get(name, 0), 1) if name in FIVE else None}
     sp['in_frame_pct'] = round(gm.intersection(FRAME).area / gm.area * 100)
+    # 5.53 (owner: "it says no data although there is data"): what counts is where the buildings are, not the empty
+    # mountain share of the municipality — the frame holds 99.6–100 % of the five towns' mapped buildings
+    bb_ = blds_in(gm); sp['bld_n'] = len(bb_); sp['bld_frame_pct'] = round(sum(1 for b in bb_ if FRAME.contains(b[0])) / len(bb_) * 100, 1) if bb_ else None
+    sp['yr_pct'] = round(sum(1 for b in bb_ if b[2]) / len(bb_) * 100, 1) if bb_ else None
+    OK = (sp['bld_frame_pct'] or 0) >= 95; sp['frame_part'] = OK and sp['in_frame_pct'] < 95  # figures cover the part inside the frame
     sp['lu_ha'] = lu_ha(gm)
     # GHS-POP 2020 inside the outline (cell centres)
-    sp['ghs_pop'] = round(sum(v for x, y, v in pc if gm.contains(Point(x, y)))) if sp['in_frame_pct'] >= 95 else None
+    sp['ghs_pop'] = round(sum(v for x, y, v in pc if gm.contains(Point(x, y)))) if OK else None
     # LST / NDVI: cells whose centre is inside
     vals_l, vals_n = [], []
     for i in range(len(lst)):
@@ -179,15 +202,15 @@ for name, gm in OUT_G.items():
             if gm.contains(Point(x, y)):
                 if lst[i][j] is not None: vals_l.append(lst[i][j])
                 if ndvi[i][j] is not None: vals_n.append(ndvi[i][j])
-    sp['lst'] = round(statistics.median(vals_l), 1) if vals_l and sp['in_frame_pct'] >= 60 else None
-    sp['ndvi'] = round(statistics.median(vals_n), 2) if vals_n and sp['in_frame_pct'] >= 60 else None
+    sp['lst'] = round(statistics.median(vals_l), 1) if vals_l and OK else None
+    sp['ndvi'] = round(statistics.median(vals_n), 2) if vals_n and OK else None
     sp['lst_cells'] = len(vals_l)
     sh, cov = wc_share(gm); sp['tree_pct'] = sh if cov >= 95 else None; sp['tree_cov'] = cov
     for k, pts in FAC.items(): sp['n_' + k] = sum(1 for p in pts if gm.contains(p))
     sp['n_school'] = sum(1 for p, c in zip(FAC['education'], FAC_CLS['education']) if c in ('school', 'kindergarten') and gm.contains(p))
     bs = [pr for p, pr in BUS if gm.contains(p)]; sp['bus_stops'] = len(bs); sp['bus_trips'] = sum(pr.get('trips_day') or 0 for pr in bs)
     # people within 500 m (straight line) of a school and of a health facility — GHS-POP cells, spatial analysis
-    if sp['in_frame_pct'] >= 95:
+    if OK:
         for k in ('education', 'health'):
             pts = [p for p in FAC[k]]; tr = STRtree(pts); within = tot = 0
             for x, y, v in pc:
@@ -196,18 +219,43 @@ for name, gm in OUT_G.items():
                 if any(pts[i].distance(q) <= 500 for i in tr.query(q.buffer(500))): within += v
             sp['reach500_' + k] = round(within / tot * 100, 1) if tot else None
     # ex13b: commerce points (shops, food, services) and public spaces (squares, parks ≥ 1,000 m², playgrounds, civic)
-    for cat in ('retail', 'food', 'service', 'market'): sp['n_' + cat] = sum(1 for q in CEN['points'] if q[2] == cat and gm.contains(Point(q[0], q[1]))) if sp['in_frame_pct'] >= 95 else None
-    if sp['in_frame_pct'] >= 95:
+    for cat in ('retail', 'food', 'service', 'market'): sp['n_' + cat] = sum(1 for q in CEN['points'] if q[2] == cat and gm.contains(Point(q[0], q[1]))) if OK else None
+    if OK:
         for kk in ('square', 'park'): sp['n_' + kk] = sum(1 for a in HUM['areas'][kk] if gm.contains(Polygon(a['p'][0]).representative_point()))
         for kk in ('playground', 'cafe', 'civic'): sp['n_' + kk] = sum(1 for q in HUM['points'][kk] if gm.contains(Point(q[0], q[1])))
     print(name, sp, flush=True)
 src('sp_outline', 'IGN outlines × repository layers', '2026', 'spatial', 'areas measured in EPSG:25830 inside the official outline')
 src('ghs', 'JRC GHSL — GHS-POP R2023A, 2020, 100 m', '2020', 'estimate', 'modelled residents per 100 m cell, summed by cell centre inside the outline', 'https://human-settlement.emergency.copernicus.eu/ghs_pop2023.php', 'CC BY 4.0')
-src('lst', 'USGS Landsat 8/9 Collection 2 surface temperature (ST_B10), June–August 2024–2026, 30 clear scenes', '2024–2026', 'spatial', 'median of the summer-median 90 m cells whose centre is inside the outline (≥ 60 % of the municipality inside the frame)', 'https://www.usgs.gov/landsat-missions/landsat-collection-2-surface-temperature', 'public domain')
+src('lst', 'USGS Landsat 8/9 Collection 2 surface temperature (ST_B10), June–August 2024–2026, 30 clear scenes', '2024–2026', 'spatial', 'median of the summer-median 90 m cells whose centre is inside the outline; Las Gabias and Alhendín: the part inside the 12 × 10 km frame, which holds 99.6 % and 100 % of their mapped buildings', 'https://www.usgs.gov/landsat-missions/landsat-collection-2-surface-temperature', 'public domain')
 src('wc', 'ESA WorldCover 2021 v200, 10 m, class 10 tree cover', '2021', 'spatial', 'tree cells ÷ cells with data inside the outline (sampled every 30 m)', 'https://esa-worldcover.org', 'CC BY 4.0')
 src('lu', 'OpenStreetMap landuse (supplied extract, 23 Oct 2026)', '2026', 'spatial', 'mapped land-use polygons intersected with the outline; unmapped land is not counted', None, 'ODbL 1.0')
 src('reach', 'GHS-POP 2020 × OpenStreetMap schools / health facilities', '2020 / 2026', 'spatial', 'share of modelled residents within 500 m straight-line distance of a mapped facility — a spatial measure of proximity, not observed behaviour', None, 'CC BY 4.0 / ODbL')
 src('bus', 'Bus stops and weekday trips (city file + CTAN consortium, Monday 26 Oct 2026)', '2026', 'official', 'scheduled trips per day summed over the stops inside the outline (a trip is counted at every stop it serves)', None, 'see layer sources')
+
+# ---------------- 5.53: each town's built-up outline by year (owner: "a polygon of the town's boundary with its growth") ----------------
+# Rebuilt from TODAY's buildings and their construction year: footprints of the buildings standing by year Y, each grown
+# 30 m, merged, shrunk 20 m (a closing that joins a street block into one shape), pieces under 1 ha dropped, simplified 6 m.
+# Demolished buildings are absent and buildings without a year are left out (their share is given) — an estimate.
+GY = [1996, 2000, 2005, 2010, 2015, 2020, 2025]  # earlier years left out: few buildings in the old cores carry a year (Ogíjares: 35 dated before 1970)
+GF = []
+for name in FIVE:
+    bb_ = blds_in(OUT_G[name]); dated = [b for b in bb_ if b[2]]
+    for Y in GY:
+        sel = [b[1].buffer(30, 4) for b in dated if b[2] <= Y]
+        if not sel: continue
+        u = unary_union(sel).buffer(-20, 4)
+        parts = [q for q in (u.geoms if hasattr(u, 'geoms') else [u]) if q.area >= 1e4]
+        if not parts: continue
+        g = unary_union(parts).simplify(8)
+        GF.append({'type': 'Feature', 'properties': {'name': name, 'y': Y, 'ha': round(g.area / 1e4, 1), 'n': len(sel)}, 'geometry': mapping(transform(inv, g))})
+    print('growth', name, [(f['properties']['y'], f['properties']['ha']) for f in GF if f['properties']['name'] == name], flush=True)
+def _rnd(o):
+    if isinstance(o, float): return round(o, 5)
+    if isinstance(o, (list, tuple)): return [_rnd(x) for x in o]
+    if isinstance(o, dict): return {a: _rnd(b) for a, b in o.items()}
+    return o
+json.dump(_rnd({'type': 'FeatureCollection', 'years': GY, 'features': GF}), open(P('data/ref/research_growth.json'), 'w'), separators=(',', ':'))
+src('growth', 'OSM footprints + construction year (OSM start_date, else Catastro INSPIRE 2026)', '1996–2025', 'estimate', 'built-up outline of the buildings standing in each year: footprints grown 30 m, merged, shrunk 20 m, pieces < 1 ha dropped; demolished buildings are missing and buildings without a year are left out', None, 'ODbL 1.0 / Catastro')
 
 # ---------------- 100 m grid in the base frame: construction periods and floors ----------------
 PER = ['pre_1900', '1900_1939', '1940_1959', '1960_1979', '1980_1999', '2000_plus', 'no_data']

@@ -124,7 +124,7 @@ try:
             check(fr['inside'] and fr['w'] >= 0.5 * fr['free'], f'step 1: the base fills the view (bbox inside; {fr["w"]:.0f} px of the {fr["free"]:.0f} px not under the card, {fr["h"]:.0f} of {fr["ch"]:.0f} px high)', fr)
             check(pg.evaluate('location.hash') == '#/tour/1', 'step 1 in the URL (#/tour/1)')
             card = pg.evaluate('document.querySelector("#tour-card").innerText')
-            check('371 ha' in card and '8.7 km' in card and '1922' in card and 'Ala 78' in card and '130984030' in card, 'step 1 card: 371 ha (measured), June 1922, Ala 78, 8.7 km fence, OSM way', card[:300])
+            check('3,710 dunams' in card and '8.7 km' in card and '1922' in card and 'Ala 78' in card and '130984030' in card, 'step 1 card: 3,710 dunams (measured; 5.53: dunams, not hectares), June 1922, Ala 78, 8.7 km fence, OSM way', card[:300])
             check(sorted(pg.evaluate(VISIBLE)) == want(pg) == sorted(['tour-veil', 'tour-base-fill', 'tour-base-line']), 'step 1: only the base (and the veil) drawn', pg.evaluate(VISIBLE))
             check(pg.evaluate('getComputedStyle(document.querySelector("#atl-panel")).display') == 'none', 'step 1: the atlas panel steps aside during the tour')
             pg.screenshot(path=f'{OUT}/C_step1.png')
@@ -148,7 +148,7 @@ try:
                 if i == 3: check('13 ' in card and '×1.49' in card and '5.8 km' in card and '3.9 km' in card, 'layer 3 (route A): 13 dead ends; 5.8 km instead of 3.9 km (×1.49)', card[:400])
                 if i == 4: check('13 ' in card and '×1.29' in card and '6.9 km' in card and '5.4 km' in card, 'layer 4 (route B): 6.9 km instead of 5.4 km (×1.29)', card[:400])
                 if i == 5: check('×1.49' in card and '×1.29' in card, 'layer 5: both routes', card[:400])
-                if i == 6: check('287 ha' in card and 'confirmed' in card, 'layer 6: 287 ha band; BOE limit "to be confirmed"', card[:300])
+                if i == 6: check('2,869-dunam' in card and 'confirmed' in card, 'layer 6: 2,869-dunam band; BOE limit "to be confirmed"', card[:300])
                 if i == 7: check('20 m' in card, 'layer 7: the metro about 20 m from the north fence', card[:300])
                 pg.screenshot(path=f'{OUT}/C_step2_{i}.png')
             check(len(set(titles)) == 7 and len(set(legends)) == 7, 'the seven 5.33 slides: card title and legend change with every slide', titles)
@@ -170,9 +170,9 @@ try:
             pg.evaluate('document.querySelector("#tt-in").remove()')
             # the 5.33 step-3 maps: the agglomeration
             go_old(3, 1)
-            bb3 = D['bb']['3']; b3 = pg.evaluate('GA.app.map.getBounds().toArray()')
+            bb3 = D['bb']['cityTowns']; b3 = pg.evaluate('GA.app.map.getBounds().toArray()')  # 5.53 (owner: "zoom in and mark the base"): Granada city + the five towns
             tol = 0.01
-            check(b3[0][0] <= bb3[0][0] + tol and b3[0][1] <= bb3[0][1] + tol and b3[1][0] >= bb3[1][0] - tol and b3[1][1] >= bb3[1][1] - tol, 'population-change map: the whole agglomeration in view', (b3, bb3))
+            check(b3[0][0] <= bb3[0][0] + tol and b3[0][1] <= bb3[0][1] + tol and b3[1][0] >= bb3[1][0] - tol and b3[1][1] >= bb3[1][1] - tol, 'population-change map: Granada city and the five towns in view (5.53: closer, base marked)', (b3, bb3))
             card = pg.evaluate('document.querySelector("#tour-card").innerText')
             check('+15.3 %' in card and '−0.8 %' in card and '€16,893' in card and '€12,492' in card and '€13,167' in card, 'card: five towns +15.3 % vs Granada city −0.8 %; income €16,893 vs Las Gabias €12,492, Churriana €13,167', card[:400])
             titles = []

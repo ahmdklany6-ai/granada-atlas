@@ -173,6 +173,8 @@
     water: D.blueDeep, // rivers and flood extents keep the atlas water family (analytical need: water is read as water)
     flood: { q10: D.blueDark, q100: D.blueMid, q500: D.bluePale, zfp: D.blueDeep, dph: D.blueDeep },
     scen: { A: D.ink, B: RED, C: D.warmGrey },
+    // 5.53: the heat map (summer surface heat): transparent → blush → rose → red → oxblood (identity colours, no new hue)
+    heat: [D.blush, D.rose, RED, BASE.oxblood],
     chart: { a: D.ink, b: D.warmGrey2, hi: RED, band: D.redTint, grid: D.line, axis: D.ink3, male: D.ink3, female: D.warmGrey2, old: D.ink },
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = P;

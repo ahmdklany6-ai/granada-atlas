@@ -78,13 +78,15 @@ def centred(pg, tag):
     check(dx <= 0.05 and dy <= 0.05, f'{tag}: the base in the middle of the map (dx {dx * 100:.1f} %, dy {dy * 100:.1f} %)', G)
     check(b['l'] >= 0 and b['r'] <= G['w'] and b['t'] >= 0 and b['b'] <= G['h'], f'{tag}: the whole base on screen', G)
     check(G['under'] == 0, f'{tag}: the card covers no part of the outline', G)
-JS_LABELS = r'''() => { const els = [...document.querySelectorAll('#tour-lbls .tour-lbl')]; const R = els.map(e => { const r = e.getBoundingClientRect(); return { id: e.dataset.id, l: r.left, t: r.top, r: r.right, b: r.bottom, txt: e.innerText, html: e.innerHTML, shadow: getComputedStyle(e).textShadow }; });
+JS_LABELS = r'''() => { const els = [...document.querySelectorAll('#tour-lbls .tour-lbl')].filter(e => e.style.display !== 'none'); const R = els.map(e => { const r = e.getBoundingClientRect(); return { id: e.dataset.id, l: r.left, t: r.top, r: r.right, b: r.bottom, txt: e.innerText, html: e.innerHTML, shadow: getComputedStyle(e).textShadow }; });
   const bad = []; for (let i = 0; i < R.length; i++) for (let j = i + 1; j < R.length; j++) { const a = R[i], c = R[j]; if (a.l < c.r - 0.5 && c.l < a.r - 0.5 && a.t < c.b - 0.5 && c.t < a.b - 0.5) bad.push(a.id + '/' + c.id); }
   const obs = ['#tour-card', '.maplibregl-ctrl-top-right', '.maplibregl-ctrl-bottom-right', '.maplibregl-ctrl-bottom-left'].map(q => document.querySelector(q)).filter(e => e && e.offsetWidth && !e.hidden).map(e => e.getBoundingClientRect());
   const under = R.filter(a => obs.some(o => a.l < o.right && o.left < a.r && a.t < o.bottom && o.top < a.b)).map(a => a.id);
   const st = document.querySelector('.stage').getBoundingClientRect(); const out = R.filter(a => a.l < st.left - 0.5 || a.r > st.right + 0.5 || a.t < st.top - 0.5 || a.b > st.bottom + 0.5).map(a => a.id);
   const P = GA.tour.labels; const leaders = document.querySelectorAll('#tour-lbls svg line').length / 2;
-  return { n: R.length, R, bad, under, out, forced: P.filter(p => p.forced).length, short: P.filter(p => p.short).length, needLeader: P.filter(p => p.leader).length, leaders }; }'''
+  const cv = GA.app.map.getCanvas(), sr = document.querySelector('.stage').getBoundingClientRect(); const ob = ['#tour-card', '.maplibregl-ctrl-top-right', '.maplibregl-ctrl-bottom-right', '.maplibregl-ctrl-bottom-left', '#atl-topics'].flatMap(q => [...document.querySelectorAll(q)]).filter(e => e.offsetWidth && !e.hidden && getComputedStyle(e).display !== 'none').map(e => { const r = e.getBoundingClientRect(); return { l: r.left - sr.left - 4, t: r.top - sr.top - 4, r: r.right - sr.left + 4, b: r.bottom - sr.top + 4 }; }).filter(o => o.r - o.l > 10 && o.b - o.t > 10);
+  const inView = GA.tour.state.step && GA.tour.data ? GA.tour.data.area.features.filter(f => { const q = GA.app.map.project(f.properties.lp); return q.x >= 10 && q.y >= 10 && q.x <= cv.clientWidth - 10 && q.y <= cv.clientHeight - 10 && !ob.some(o => q.x >= o.l && q.x <= o.r && q.y >= o.t && q.y <= o.b); }).length : 0;
+  return { inView, n: R.length, R, bad, under, out, forced: P.filter(p => p.forced).length, forcedIds: P.filter(p => p.forced).map(p => [p.id, p.box.l|0, p.box.t|0, p.box.r|0, p.box.b|0]), short: P.filter(p => p.short).length, needLeader: P.filter(p => p.leader).length, leaders }; }'''
 
 srv = subprocess.Popen([sys.executable, '-m', 'http.server', str(PORT), '--bind', '127.0.0.1'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
 try:
@@ -233,7 +235,7 @@ try:
                 pg.mouse.click(xy[0], xy[1]); time.sleep(0.8)
                 pop = pg.evaluate('(document.querySelector(".tour-pop") || {}).innerText || ""'); a_ha = AT[key][0][2] if AT[key] else -1
                 kind_txt = pg.evaluate('(k) => { const d = document.createElement("div"); const sc = GA.tour.data.scatter; d.innerHTML = GA.i18n.t("x45.kind." + k, { n: sc.houses_min, d: sc.within_m + "\u00A0m", o: sc.outline_m + "\u00A0m" }); return d.textContent; }', want_k)
-                check(kind_txt in pop.replace('\n', ' ') and f'{a_ha:.1f} ha' in pop and pg.evaluate(f'GA.i18n.t("x45.area.{want_k}")') in pop, f'{tag} B 5.45: a click on a {want_k} area says what it is and gives its own area ({a_ha} ha)', pop[:300])
+                check(kind_txt in pop.replace('\n', ' ') and (f'{a_ha * 10:,.0f} ' + pg.evaluate('GA.i18n.t("r.u.du")')) in pop and pg.evaluate(f'GA.i18n.t("x45.area.{want_k}")') in pop, f'{tag} B 5.45: a click on a {want_k} area says what it is and gives its own area ({a_ha * 10:,.0f} dunams in the visitor\'s language; 5.53: dunams, not hectares)', pop[:300])
                 if want_k == 'scatter': check(pg.evaluate('GA.i18n.t("x45.houses")') in pop and str(AT[key][0][3]) in pop and '100' in pop and '30' in pop, f'{tag} B 5.45: scattered houses: the rule (10 houses, 100 m, 30 m) and the OSM house count as a lower bound', pop[:300])
             pg.evaluate('document.querySelectorAll(".maplibregl-popup-close-button").forEach(b => b.click())')
             if lang in ('en', 'ar'): pg.screenshot(path=f'{OUT}/B_towns_{lang}.png')
@@ -294,7 +296,7 @@ try:
                 check(0.45 <= V['op'] <= 0.55 and all(abs(s - V['op']) < 0.02 for s in V['sw']), f'{tg}: fill opacity {V["op"]}, legend swatches at the same opacity', V)
                 check(V['muni'].upper() == '#FFFFFF' and V['five'] == V['red'] and V['order'][0] < V['order'][1] < V['order'][2], f'{tg}: white municipal outlines, red outline of the five towns on top', V)
                 Lb = pg.evaluate(JS_LABELS)
-                check(Lb['n'] == 34 and not Lb['bad'] and not Lb['under'] and not Lb['out'] and Lb['forced'] == 0, f'{tg}: 34 labels, none overlapping, none under the card or controls ({Lb["short"]} value-only, {Lb["needLeader"]} with leader lines)', {k: Lb[k] for k in ('n', 'bad', 'under', 'out', 'forced')})
+                check(Lb['n'] == Lb['inView'] >= 10 and not Lb['bad'] and not Lb['under'] and not Lb['out'] and Lb['forced'] == 0, f'{tg}: a label for every municipality in view ({Lb["n"]}; 5.53: the map zooms in), none overlapping, none under the card or controls ({Lb["short"]} value-only, {Lb["needLeader"]} with leader lines)', {k: Lb[k] for k in ('inView', 'n', 'bad', 'under', 'out', 'forced', 'forcedIds')})
                 check(Lb['leaders'] == Lb['needLeader'], f'{tg}: a leader line for every label moved off its polygon ({Lb["leaders"]})', Lb['leaders'])
                 inside = pg.evaluate('''() => GA.tour.data.area.features.filter(f => { const pt = f.properties.lp; const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
                   return !polys.some(rs => { let ins = false; rs.forEach(r => { for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const a = r[i], b = r[j]; if ((a[1] > pt[1]) !== (b[1] > pt[1]) && pt[0] < (b[0] - a[0]) * (pt[1] - a[1]) / (b[1] - a[1]) + a[0]) ins = !ins; } }); return ins; }); }).map(f => f.properties.name)''')

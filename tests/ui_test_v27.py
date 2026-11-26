@@ -95,7 +95,7 @@ try:
                         check([x[0] for x in L if x[2] == 'true'] == [lang], f'{tag}: the current language is marked', L)
                         lp = B['lang']; check(lp and (lp['r'] >= B['vw'] - 20 if lang == 'en' else lp['l'] <= 20), f'{tag}: language buttons at the end of the top bar ({"right" if lang == "en" else "left, mirrored"})', lp)
                     if '5' in ITEMS:
-                        T = pg.evaluate('''() => { const row = document.querySelector('#atl-topics'); const bs = [...row.querySelectorAll('button')]; const vr = row.getBoundingClientRect();
+                        T = pg.evaluate('''() => { const row = document.querySelector('#atl-topics'); const bs = [...row.querySelectorAll('button[data-topic]')]; const vr = row.getBoundingClientRect();
                           return { n: bs.length, on: bs.filter(b => b.classList.contains('on')).map(b => b.dataset.topic), full: bs.every(b => { const r = b.getBoundingClientRect(); return r.left >= vr.left - 1 && r.right <= vr.right + 1 && r.width > 0; }), scroll: getComputedStyle(row).overflowX, vis: vr.width > 0 && vr.height > 0 }; }''')
                         check(T['n'] == 6 and T['vis'] and T['on'] == [''], f'{tag}: the five analyses + "no topic" on screen, "no topic" marked', T)
                         check(T['full'] if w >= 700 else (T['scroll'] in ('auto', 'scroll')), f'{tag}: {"every analysis button fully visible" if w >= 700 else "a sideways-scrolling row on the phone"}', T)
@@ -104,9 +104,9 @@ try:
                 ctx, pg, errs = boot(w, lang); tag = f'{w}px {lang}'
                 if '5' in ITEMS:
                     pg.click('#atl-topics [data-topic="climate"]'); time.sleep(3)
-                    check(pg.evaluate('GA.atlas.state.topic') == 'climate' and pg.evaluate('document.querySelector("#atl-topics .on").dataset.topic') == 'climate', f'{tag}: a topic button sets the analysis and is marked')
+                    check(pg.evaluate('GA.atlas.state.topic') == 'climate' and pg.evaluate('document.querySelector("#atl-topics [data-topic].on").dataset.topic') == 'climate', f'{tag}: a topic button sets the analysis and is marked')
                     pg.evaluate('GA.atlas.setTopic("human")'); time.sleep(3)
-                    vis5 = pg.evaluate('(() => { const row = document.querySelector("#atl-topics"), on = row.querySelector(".on"); const r = row.getBoundingClientRect(), b = on.getBoundingClientRect(); return b.left >= r.left - 1 && b.right <= r.right + 1; })()')
+                    vis5 = pg.evaluate('(() => { const row = document.querySelector("#atl-topics"), on = row.querySelector("[data-topic].on"); const r = row.getBoundingClientRect(), b = on.getBoundingClientRect(); return b.left >= r.left - 1 && b.right <= r.right + 1; })()')
                     check(vis5, f'{tag}: the current analysis is scrolled into view in the row (05, the last one)')
                     pg.click('#atl-burger'); time.sleep(0.6)
                     vis = pg.evaluate('''(() => { const r = document.querySelector('#atl-topics').getBoundingClientRect(); const side = document.querySelector('#atl-side').getBoundingClientRect(); const e = document.elementFromPoint(r.left + Math.min(r.width - 2, 60), r.top + r.height / 2); return r.height > 0 && !!e && !!e.closest('#atl-topics'); })()''')

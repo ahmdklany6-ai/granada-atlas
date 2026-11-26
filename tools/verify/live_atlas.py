@@ -6,7 +6,7 @@ corridor indicators; factory → "No data for this area"; Back to Granada; ar / 
 towns (91,476 residents) and fence classes, step 3 agglomeration (+15.3 % / −0.8 %), rent layer with IPVA + missing €/m²;
 the last Enter returns to the map with the tour layers removed. The older checks run with window.__noIntro (test opt-out).
 Screenshots are printed as base64 JPEG between ===IMG name=== / ===END=== (job log only)."""
-import base64, io, json, os, time, urllib.request
+import re, base64, io, json, os, time, urllib.request
 from playwright.sync_api import sync_playwright
 from PIL import Image
 SITE = os.environ.get('SITE') or 'https://ahmdklany6-ai.github.io/granada-atlas/'
@@ -44,7 +44,7 @@ with sync_playwright() as p:
         if lang == 'en':
             wait = lambda js: pg.wait_for_function(js, timeout=120000)
             pg.click('#tour-start'); wait('GA.tour.state.built && GA.tour.state.step === 1'); time.sleep(3.5)
-            card = pg.evaluate('document.querySelector("#tour-card").innerText'); check('371 ha' in card and 'Ala 78' in card, 'tour step 1: the air base, 371 ha (measured), Ala 78', card[:120]); emit('tour_1', pg.screenshot())
+            card = pg.evaluate('document.querySelector("#tour-card").innerText'); check('3,710 dunams' in card and 'Ala 78' in card, 'tour step 1: the air base, 3,710 dunams (measured), Ala 78', card[:120]); emit('tour_1', pg.screenshot())
             # 5.52: the 14-chapter research tour; the 5.33 slides at their new place
             def at(c, k): pg.evaluate(f'location.hash = "#/tour/{c}/{k}"'); wait(f'GA.tour.state.step === {c} && GA.tour.state.layer === {k}'); time.sleep(3.5); return pg.evaluate('document.querySelector("#tour-card").innerText')
             card = at(1, 3); check('91,476' in card, 'tour 1.3: five towns, 91,476 residents', card[:160]); emit('tour_2_1', pg.screenshot())
@@ -53,6 +53,8 @@ with sync_playwright() as p:
             card = at(6, 3); check('IPVA' in card and 'Missing' in card, 'tour 6.3 rents: INE IPVA index, €/m² shown as missing', card[:200]); emit('tour_3_3', pg.screenshot())
             card = at(3, 3); check('51.3' in card and 'What the data show' in card and 'Spatial analysis' in card, 'research tour 3.3: base surface 51.3 °C, finding and data-kind badge', card[:300]); emit('tour_r_3_3', pg.screenshot())
             card = at(7, 2); check(pg.evaluate('!!document.querySelector(".tr-chart")') and 'Population pyramid' in card, 'research tour 7.2: population pyramid chart', card[:200])
+            at(6, 2); check(pg.evaluate('GA.app.map.getLayoutProperty("tour-r-growth-fill", "visibility") === "visible" && GA.app.map.getSource("tour-r-growth")._data.features.length === 35'), '5.53: tour 6.2 — the five towns\' built-up outlines by year (35)')
+            card = at(1, 4); check('dunams' in card and not re.search(r'\d ha\b', card), '5.53: areas in dunams, not hectares (tour 1.4)', card[:200])
             pg.click('[data-tour="inv"]'); time.sleep(0.6); check(pg.evaluate('document.querySelectorAll("#tr-inv .tr-invt tr").length') > 40, 'research tour: data inventory opens (> 40 datasets)'); pg.keyboard.press('Escape'); time.sleep(0.4)
             at(14, 3)
             pg.keyboard.press('Enter'); time.sleep(1.5)
@@ -63,7 +65,7 @@ with sync_playwright() as p:
       const st = R('.stage'), s = R('#map-draw-section'), d = R('.ga-3dctl'), n = R('.ga-north'), sc = R('.maplibregl-ctrl-scale');
       return { zoom: document.querySelectorAll('.maplibregl-ctrl-zoom-in').length, row: !!(s && d && Math.abs(s[1] - d[1]) < 4 && st[2] - Math.max(s[2], d[2]) <= 16 && Math.min(s[1], d[1]) - st[1] <= 16),
         north: !!(n && sc && (Math.abs(n[2] - sc[0]) <= 12 || Math.abs(sc[2] - n[0]) <= 12) && Math.min(n[0], sc[0]) - st[0] <= 20),
-        langs: [...document.querySelectorAll('#tb-lang button')].map(b => b.textContent.trim()), topics: document.querySelectorAll('#atl-topics button').length }; }"""
+        langs: [...document.querySelectorAll('#tb-lang button')].map(b => b.textContent.trim()), topics: document.querySelectorAll('#atl-topics button[data-topic]').length }; }"""
     def layout_check(pg, tag):
         L = pg.evaluate(LAYOUT)
         check(L['zoom'] == 0 and L['row'] and L['north'], f'{tag}: no zoom buttons; Draw section + 3D top-right; north arrow beside the scale bar (5.29)', L)
@@ -126,7 +128,8 @@ with sync_playwright() as p:
     ctx, pg, errs = boot({'width': 1440, 'height': 900}, lang='en')
     pg.evaluate('GA.app.map.jumpTo({ center: [-3.6315, 37.1435], zoom: 15.2 })'); time.sleep(9)
     n = pg.evaluate('GA.app.map.queryRenderedFeatures({ layers: ["ly-smetro-icon", "ly-tram-icon"].filter(l => GA.app.map.getLayer(l)) }).length')
-    check(n == 2, f'5.33: tram and metro pictograms on the map near Armilla ({n})'); emit('x33_icons_armilla', pg.screenshot(clip={'x': 300, 'y': 120, 'width': 900, 'height': 640}))
+    check(n == 2, f'5.33: tram and metro pictograms on the map near Armilla ({n})');
+    check(pg.evaluate('document.querySelectorAll("#atl-topics .atl-arb").length') == 2, '5.53: Granada / Air-base switch before the five analyses'); emit('x33_icons_armilla', pg.screenshot(clip={'x': 300, 'y': 120, 'width': 900, 'height': 640}))
     ctx.close()
     for lang in ('en', 'ar'):
         ctx, pg, errs = boot({'width': 1440 if lang == 'en' else 1280, 'height': 900 if lang == 'en' else 800}, intro=True, lang=lang)
