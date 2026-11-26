@@ -65,7 +65,7 @@ with sync_playwright() as p:
       const st = R('.stage'), s = R('#map-draw-section'), d = R('.ga-3dctl'), n = R('.ga-north'), sc = R('.maplibregl-ctrl-scale');
       return { zoom: document.querySelectorAll('.maplibregl-ctrl-zoom-in').length, row: !!(s && d && Math.abs(s[1] - d[1]) < 4 && st[2] - Math.max(s[2], d[2]) <= 16 && Math.min(s[1], d[1]) - st[1] <= 16),
         north: !!(n && sc && (Math.abs(n[2] - sc[0]) <= 12 || Math.abs(sc[2] - n[0]) <= 12) && Math.min(n[0], sc[0]) - st[0] <= 20),
-        langs: [...document.querySelectorAll('#tb-lang button')].map(b => b.textContent.trim()), topics: document.querySelectorAll('#atl-topics button').length }; }"""
+        langs: [...document.querySelectorAll('#tb-lang button')].map(b => b.textContent.trim()), topics: document.querySelectorAll('#atl-topics button[data-topic]').length }; }"""
     def layout_check(pg, tag):
         L = pg.evaluate(LAYOUT)
         check(L['zoom'] == 0 and L['row'] and L['north'], f'{tag}: no zoom buttons; Draw section + 3D top-right; north arrow beside the scale bar (5.29)', L)

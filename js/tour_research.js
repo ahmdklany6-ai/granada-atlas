@@ -17,7 +17,7 @@
   const L = (s) => `<span dir="ltr" class="num">${s}</span>`;
   const sgn = (v, d) => v == null || !isFinite(v) ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '') + nf(Math.abs(v), d == null ? 1 : d);
   // 5.53 (owner: "not in hectares"): areas in dunams (1 dunam = 1,000 m² = 0.1 ha)
-  const DU = (ha) => ha == null ? null : ha * 10; const du = (ha, d) => nf(DU(ha), d || 0) + ' ' + t('r.u.du');
+  const DU = (ha) => ha == null ? null : ha * 10; const du = (ha, d) => L(nf(DU(ha), d || 0)) + ' ' + t('r.u.du'); // 5.53: only the number is LTR; the word follows it in the reader's direction
   const RM = () => root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const FIVE = ['Armilla', 'Churriana de la Vega', 'Las Gabias', 'Alhendín', 'Ogíjares'];
   const SIX = FIVE.concat(['Granada']);
@@ -35,7 +35,7 @@
     towns: ['OpenStreetMap residential areas + building footprints (tools/build_tour_towns.py)', '2026', 'spatial', 'continuous residential areas; scattered houses outlined 30 m around'],
     history: ['IGN MTN50 1932 · Catastrones · AMS 1956 (traced) · JRC GHSL 1975–2020', '1932–2020', 'historical', 'outer built-up extent of Granada per date; traced by hand or from the GHSL built-up grid (modelled)'],
     ams: ['IGN — PNOA histórico, vuelo americano AMS 1956–1957 (WMS)', '1956–1957', 'historical', 'aerial photograph, CC BY 4.0 scne.es / IGN'],
-    pnoa: ['IGN — PNOA 2024 orthophoto (WMS)', '2024', 'official', 'aerial photograph, CC BY 4.0 scne.es / IGN'],
+    pnoa: ['IGN — PNOA 2022 orthophoto (WMS; 2023–2024 are blank over Granada)', '2022', 'official', 'aerial photograph, CC BY 4.0 scne.es / IGN'],
     noise: ['MITECO SICA — strategic noise maps, 3rd phase (roads, railways, agglomeration), Lden', '2017–2022', 'estimate', 'modelled noise levels, not measured; no map exists for the aerodrome'],
     water: ['OpenStreetMap waterways (supplied extract)', '2026', 'official', 'mapped rivers, streams, canals and irrigation ditches (acequias); unmapped ditches are absent'],
     flow: ['Computed from IGN MDT25 (tools/build_flow.js)', '2026', 'spatial', 'D8 flow paths by upslope area on the 25 m terrain model'],
@@ -52,7 +52,7 @@
     metro: ['OpenStreetMap (metro 2026) · IGN MTN50 1931 (tram traced)', '1931 / 2026', 'historical', 'lines as mapped / traced'],
     band1981: ['BOE 1981 (security zone of the base) · OpenStreetMap landuse', '1981 / 2026', 'official', '300 m band around the base and what lies in it'],
     routes: ['OpenStreetMap streets (tools/build_base_edge.py)', '2026', 'spatial', 'shortest walking route on the mapped network vs the straight line'],
-    photos: ['IGN — PNOA histórico (WMS): AMS 1956–57, Interministerial 1973–86, Nacional 1981–86, OLISTAT 1997–98, PNOA 2004 / 2010 / 2016 / 2022 / 2024', '1956–2024', 'historical', 'aerial photographs, one flight at a time; CC BY 4.0 scne.es / IGN'],
+    photos: ['IGN — PNOA histórico (WMS): AMS 1956–57, Interministerial 1973–86, Nacional 1981–86, OLISTAT 1997–98, PNOA 2004 / 2010 / 2016 / 2022 (IGN returns PNOA 2023–2024 blank over Granada)', '1956–2022', 'historical', 'aerial photographs, one flight at a time; CC BY 4.0 scne.es / IGN'],
     scen: ['Research scenarios of this atlas (A remain · B transform · C relocate)', '2026', 'scenario', 'hypothetical, for research questions only — no option is recommended'],
     proj: ['Linear trends of the INE padrón 2005–2025 and 2015–2025, extended to 2076', '2026', 'projection', 'arithmetic extension of past growth; not a forecast — births, deaths, migration and housing supply are not modelled'],
   };
@@ -65,7 +65,7 @@
   const CH = [
     { k: 'intro', slides: [
       S('i2', { old: [1, 1], src: ['base_edge'], link: 'proven' }),
-      S('i1', { groups: ['veil', 'rMuni', 'rGran', 'rFive', 'base'], view: 'city', src: ['outline', 'pop', 'base_edge'], chart: 'popBar', link: 'context', labels: 'names' }),
+      S('i1', { groups: ['veil', 'rMuni', 'rGran', 'rFive', 'base'], view: 'cityTowns', src: ['outline', 'pop', 'base_edge'], chart: 'popBar', link: 'context', labels: 'names' }),
       S('i3', { old: [2, 1], src: ['towns', 'pop'], link: 'context' }),
       S('i4', { groups: ['veil', 'rFive', 'towns', 'base'], view: 'five', src: ['outline', 'base_edge', 'towns'], chart: 'baseVs', link: 'proven', labels: 'baseShare' }),
     ] },
@@ -94,16 +94,16 @@
       S('a3', { groups: ['rAms', 'rGrid', 'rBaseLine', 'rFive'], view: 'near', src: ['ams', 'periods'], gridOnly: 5, chart: 'periods', link: 'testable' }),
     ] },
     { k: 'tour', slides: [
-      S('t1', { old: [3, 1], groups: ['veil', 'chg', 'muniLine', 'five', 'base'], view: 'city', src: ['tour_area'], link: 'context' }),
+      S('t1', { old: [3, 1], groups: ['veil', 'chg', 'muniLine', 'five', 'base'], view: 'cityTowns', src: ['tour_area'], link: 'context' }),
       S('t2', { groups: ['veil', 'rGrowth', 'rFive', 'base'], view: 'five', src: ['pop', 'growth'], need: ['growth'], chart: 'popSeries', anim: 'years', link: 'context', labels: 'popYear' }),
-      S('t3', { old: [3, 3], groups: ['veil', 'rent', 'muniLine', 'five', 'base'], view: 'city', src: ['tour_area'], link: 'context' }),
-      S('t4', { groups: ['veil', 'rMuni', 'rFive', 'rPts', 'base'], view: 'city', src: ['vut', 'stay'], need: ['stay'], pts: 'stay', chart: 'vut', link: 'context' }),
+      S('t3', { old: [3, 3], groups: ['veil', 'rent', 'muniLine', 'five', 'base'], view: 'cityTowns', src: ['tour_area'], link: 'context' }),
+      S('t4', { groups: ['veil', 'rMuni', 'rFive', 'rPts', 'base'], view: 'cityTowns', src: ['vut', 'stay'], need: ['stay'], pts: 'stay', chart: 'vut', link: 'context' }),
     ] },
     { k: 'pop', slides: [
       S('p1', { groups: ['veil', 'rImg', 'rFive', 'rBaseLine'], view: 'near', src: ['ghs'], img: 'ghs', chart: 'ghs', link: 'context' }),
       S('p2', { groups: ['veil', 'rFive', 'rHi', 'base'], view: 'five', src: ['pyr'], chart: 'pyramid', pick: true, link: 'context' }),
       S('p3', { groups: ['veil', 'rFive', 'base'], view: 'five', src: ['demo', 'foreign'], chart: 'demo', link: 'context' }),
-      S('p4', { old: [3, 2], groups: ['veil', 'inc', 'muniLine', 'five', 'base'], view: 'city', src: ['tour_area', 'incsrc'], chart: 'incsrc', link: 'context' }),
+      S('p4', { old: [3, 2], groups: ['veil', 'inc', 'muniLine', 'five', 'base'], view: 'cityTowns', src: ['tour_area', 'incsrc'], chart: 'incsrc', link: 'context' }),
       S('p5', { old: [3, 4], src: [], link: 'missing' }),
     ] },
     { k: 'life', slides: [
@@ -177,12 +177,14 @@
     const b1 = D.bb[1], dx = (b1[1][0] - b1[0][0]) * 0.45, dy = (b1[1][1] - b1[0][1]) * 0.3; D.bb.basewide = [[b1[0][0] - dx, b1[0][1] - dy], [b1[1][0] + dx, b1[1][1] + dy]];
     if (X.H) { const g = X.H.extents.ghsl_2020.geometry; D.bb.city = U().bboxOf([g, D.base.geometry]); }
     else D.bb.city = D.bb[3];
+    // 5.53: 'Granada city and the five towns' — the city box joined with the base-and-towns box (bb.city alone leaves out Las Gabias and Alhendín)
+    { const a = D.bb.city, b = D.bb[2]; D.bb.cityTowns = [[Math.min(a[0][0], b[0][0]), Math.min(a[0][1], b[0][1])], [Math.max(a[1][0], b[1][0]), Math.max(a[1][1], b[1][1])]]; }
   }
 
   // ---------- map layers (ids tour-r-*) ----------
   // 5.53 (owner: "add other years"): every national aerial-photo flight on the IGN historical service, one at a time
   const PH = [['ams56', 'AMS_1956-1957', '1956–1957'], ['inter7386', 'Interministerial_1973-1986', '1973–1986'], ['nac8186', 'Nacional_1981-1986', '1981–1986'],
-    ['olistat', 'OLISTAT', '1997–1998'], ['pnoa2004', 'PNOA2004', '2004'], ['pnoa2010', 'PNOA2010', '2010'], ['pnoa2016', 'PNOA2016', '2016'], ['pnoa2022', 'PNOA2022', '2022'], ['pnoa2024', 'PNOA2024', '2024']]
+    ['olistat', 'OLISTAT', '1997–1998'], ['pnoa2004', 'PNOA2004', '2004'], ['pnoa2010', 'PNOA2010', '2010'], ['pnoa2016', 'PNOA2016', '2016'], ['pnoa2022', 'PNOA2022', '2022']]
     .map(([id, layer, period]) => ({ id, layer, period, lid: 'r-ph-' + id }));
   const RG = {
     rMuni: ['r-muni'], rGran: ['r-gran'], rFive: ['r-five'], rHi: ['r-hi'], rChoro: ['r-choro'], rBaseLine: ['r-baseline'],
@@ -223,7 +225,7 @@
     gj('r-flood', X.F || FC()); gj('r-base', FC([D.base])); gj('r-wind', FC()); gj('r-heat', FC()); gj('r-growth', FC());
     if (GA.ext && GA.ext.wmsTiles) {
       src('r-ams', { type: 'raster', tiles: [GA.ext.wmsTiles(GA.ext.SVC.ignHist, 'AMS_1956-1957')], tileSize: 256, attribution: '© IGN — PNOA histórico, AMS 1956–57 (CC BY 4.0)' });
-      src('r-pnoa', { type: 'raster', tiles: [GA.ext.wmsTiles(GA.ext.SVC.ignHist, 'PNOA2024')], tileSize: 256, attribution: '© IGN — PNOA 2024 (CC BY 4.0)' });
+      src('r-pnoa', { type: 'raster', tiles: [GA.ext.wmsTiles(GA.ext.SVC.ignHist, 'PNOA2022')], tileSize: 256, attribution: '© IGN — PNOA 2022 (CC BY 4.0)' });
       src('r-noise', { type: 'raster', tiles: [GA.ext.wmsTiles(GA.ext.SVC.noise, GA.ext.noiseLayers('lden'))], tileSize: 256, attribution: 'MITECO — SICA' });
       PH.forEach(ph => src(ph.lid, { type: 'raster', tiles: [GA.ext.wmsTiles(GA.ext.SVC.ignHist, ph.layer)], tileSize: 256, attribution: '© IGN — PNOA histórico, ' + ph.period + ' (CC BY 4.0)' }));
     }
@@ -406,7 +408,7 @@
     years: { n: 30, label: (i) => String(1996 + i), step: 380 },
   };
   function frame(map, sl, i) {
-    const a = sl.anim; X.anim = Object.assign(X.anim || {}, { i, slide: sl.id });
+    const a = sl.anim; { const n = ANIM[a] && ANIM[a].n; if (n) i = Math.max(0, Math.min(i, n - 1)); } X.anim = Object.assign(X.anim || {}, { i, slide: sl.id });
     if (a === 'growth') { map.setFilter(ID('r-hist-fill'), ['<=', ['get', 'i'], i]); map.setFilter(ID('r-hist-line'), ['==', ['get', 'i'], i]); }
     if (a === 'period') { map.setFilter(ID('r-grid'), ['any', ['<=', ['get', 'fp'], i], ['==', ['get', 'fp'], 6]]);
       map.setPaintProperty(ID('r-grid'), 'fill-color', ['case', ['==', ['get', 'fp'], 6], Q.unknown, ['==', ['get', 'fp'], i], Q.hot, ['step', ['get', 'fp'], Q.grey[4], 2, Q.grey[3], 4, Q.grey[2]]]); }
@@ -438,13 +440,17 @@
   const svg = (h, body, label) => `<svg class="tr-chart" viewBox="0 0 ${W0} ${h}" width="100%" role="img" aria-label="${esc(label || '')}" dir="ltr">${body}</svg>`;
   const tx = (x, y, s, o) => `<text x="${x}" y="${y}"${o ? ' ' + o : ''}>${esc(s)}</text>`;
   // horizontal bars: rows [{name, v, hi, muni, note}]; same scale inside one chart; null → "no data"
+  // 5.53: a word unit (dunams) in an RTL language goes visually to the left of the number, so a right-to-left reader meets the
+  // number first, then the word (the chart text is an LTR embed)
+  const RTL = () => typeof document !== 'undefined' && document.documentElement.dir === 'rtl';
+  const valTxt = (num, o) => o.uw && RTL() ? (o.u || '').trim() + ' ' + num : num + (o.u || '');
   function hbars(rows, o) {
     o = o || {}; const lw = o.lw || 118, h = rows.length * 20 + 18; const max = o.max || Math.max(...rows.map(r => r.v == null ? 0 : r.v), 1e-9); const w = W0 - lw - 52;
     let b = '';
     rows.forEach((r, i) => { const y = 8 + i * 20;
       b += `<g class="tr-row" ${r.muni ? `data-muni="${esc(r.muni)}"` : ''}${r.fr != null ? ` data-fr="${r.fr}"` : ''}>${tx(lw - 6, y + 11, r.name, 'text-anchor="end" class="lbl"')}`;
       if (r.v == null) b += tx(lw + 4, y + 11, t('r.nodata'), 'class="miss"');
-      else { const bw = Math.max(1, r.v / max * w); b += `<rect x="${lw}" y="${y + 2}" width="${bw.toFixed(1)}" height="12" fill="${r.hi ? Q.hot : Q.grey[r.ref ? 2 : 3]}"/>${tx(lw + bw + 4, y + 12, (o.fmt || ((v) => nf(v, o.d || 0)))(r.v) + (o.u || ''), 'class="val"')}`; }
+      else { const bw = Math.max(1, r.v / max * w); b += `<rect x="${lw}" y="${y + 2}" width="${bw.toFixed(1)}" height="12" fill="${r.hi ? Q.hot : Q.grey[r.ref ? 2 : 3]}"/>${tx(lw + bw + 4, y + 12, valTxt((o.fmt || ((v) => nf(v, o.d || 0)))(r.v), o), 'class="val"')}`; }
       b += '</g>'; });
     return svg(h, b, o.label);
   }
@@ -467,7 +473,7 @@
   const CHART = {
     popBar: () => hbars(rows5(n => M(n).pop['2025']), { label: t('r.ch.pop') }) + `<p class="fine">${t('r.lb.granPop', { n: L(nf(M('Granada').pop['2025'])) })}</p>`,
     baseVs: () => { const rows = []; FIVE.forEach(n => { rows.push({ name: nmL(n) + ' · ' + t('r.lb.built'), muni: n, v: DU(M(n).sp.town_ha) }); rows.push({ name: t('r.lb.baseIn'), muni: n, v: DU(M(n).sp.base_ha), hi: true }); });
-      return hbars(rows, { u: ' ' + t('r.u.du'), label: t('r.ch.basevs'), lw: 150 }); },
+      return hbars(rows, { u: ' ' + t('r.u.du'), uw: true, label: t('r.ch.basevs'), lw: 150 }); },
     periods: () => { const tot = [0, 0, 0, 0, 0, 0, 0]; X.G.cells.forEach(c => { for (let k = 0; k < 7; k++) tot[k] += c[2 + k]; });
       const rows = PER.map((p, i) => ({ name: perL(p), v: tot[i], fr: i })).concat([{ name: t('r.lb.noyear'), v: tot[6], ref: true }]);
       return hbars(rows, { label: t('r.ch.periods'), lw: 96 }); },
@@ -487,7 +493,7 @@
       const pr = cmipBand(); if (pr) s += lineChart([{ pts: pr.med, col: Q.hot, w: 2 }], { x0: 1960, x1: 2050, y0: Math.floor(pr.lo) - 1, y1: Math.ceil(pr.hi) + 1, yt: [20, 22, 24, 26].filter(v => v >= pr.lo - 1 && v <= pr.hi + 1), yfmt: (v) => v + '°', xt: [1960, 1990, 2020, 2050], h: 130, band: pr.band, split: 2015, label: t('r.ch.cmip') });
       return s; },
     lst: () => { const C = X.cache.climStats; const rows = rows5(n => M(n).sp.lst).concat([{ name: t('r.lb.baseSurf'), v: C ? C.estate : null, hi: true }, { name: t('r.lb.veg'), v: C ? C.vegetated : null, ref: true }]);
-      return hbars(rows, { u: ' °C', d: 1, label: t('r.ch.lst'), max: 55, lw: 120 }); },
+      return hbars(rows, { u: ' °C', d: 1, label: t('r.ch.lst'), max: 55, lw: 120 }) + framePart(); },
     trees: () => hbars(rows5(n => M(n).sp.tree_pct, { six: true }), { u: ' %', d: 1, label: t('r.ch.trees') }),
     air: () => { const A = X.R.climate.air_base, B = X.R.climate.air_city; if (!A) return `<p class="tr-miss">${t('r.nodata')}</p>`; const ks = Object.keys(A).sort();
       const pts = (D, k) => ks.map((m, i) => [i, D[m] && D[m][k]]);
@@ -497,7 +503,7 @@
       return hbars(rows, { label: t('r.ch.flood'), lw: 150, u: ' ' + t('r.lb.bld') }); },
     seal: () => { const S_ = lu.seal; const rows = []; FIVE.forEach(n => { const h = M(n).sp.lu_ha; const a = S_.dark.reduce((s, k) => s + (h[k] || 0), 0), o = S_.grey.reduce((s, k) => s + (h[k] || 0), 0); rows.push({ name: nmL(n), muni: n, v: a + o ? a / (a + o) * 100 : null }); });
       return hbars(rows, { u: ' %', d: 0, label: t('r.ch.seal'), max: 100 }); },
-    farm: () => hbars(rows5(n => { const h = M(n).sp.lu_ha; return DU((h.farmland || 0) + (h.orchard || 0) + (h.meadow || 0)); }), { u: ' ' + t('r.u.du'), label: t('r.ch.farm') }),
+    farm: () => hbars(rows5(n => { const h = M(n).sp.lu_ha; return DU((h.farmland || 0) + (h.orchard || 0) + (h.meadow || 0)); }), { u: ' ' + t('r.u.du'), uw: true, label: t('r.ch.farm') }),
     popSeries: () => { const ser = SIX.map(n => { const p = M(n).pop, b = p['1996']; return { muni: n, name: nmL(n), pts: Object.keys(p).map(Number).sort().map(y => [y, p[y] / b * 100]), col: n === 'Granada' ? Q.chart.axis : n === 'Las Gabias' ? Q.hot : Q.ink, w: n === 'Granada' ? 1.4 : 1.6, dash: n === 'Granada' ? '4 3' : null, end: nmS(n) }; });
       const mx = Math.max(...ser.flatMap(s => s.pts.map(p => p[1])));
       return lineChart(ser, { x0: 1996, x1: 2033, y0: 50, y1: Math.ceil(mx / 50) * 50, yt: [100, 200, 300].filter(v => v <= mx + 50), xt: [1996, 2005, 2015, 2025], h: 180, label: t('r.ch.series') }); },
@@ -521,7 +527,7 @@
     unemp: () => { const m = X.R.sepe_month; return `<h4 class="tr-sm">${t('r.lb.censusRate', { y: M('Armilla').act.year })}</h4>` + hbars(rows5(n => M(n).act.rate, { six: true }), { u: ' %', d: 1 }) +
       `<h4 class="tr-sm">${t('r.lb.sepePer', { m: m ? m.slice(0, 4) + '-' + m.slice(4) : '—' })}</h4>` + hbars(rows5(n => { const s = M(n).sepe && M(n).sepe[m]; const p = M(n).act; return s && p.employed ? s.total / (p.employed + p.unemployed + p.inactive) * 1000 : null; }, { six: true }), { d: 0, u: ' ‰' }); },
     bus: () => hbars(rows5(n => IND.bus.v(n), { six: true }), { label: t('r.ch.bus'), u: '' }),
-    change: () => hbars(rows5(n => { const h = M(n).sp.lu_ha; return DU((h.greenfield || 0) + (h.construction || 0) + (h.brownfield || 0)); }), { u: ' ' + t('r.u.du'), d: 0, label: t('r.ch.change') }) + `<p class="fine">${t('r.ch.changeKey')}</p>`,
+    change: () => hbars(rows5(n => { const h = M(n).sp.lu_ha; return DU((h.greenfield || 0) + (h.construction || 0) + (h.brownfield || 0)); }), { u: ' ' + t('r.u.du'), uw: true, d: 0, label: t('r.ch.change') }) + `<p class="fine">${t('r.ch.changeKey')}</p>`,
     table: () => table(),
     indicator: () => `<div class="tr-pick" role="group">${Object.keys(IND).map(k => `<button type="button" class="btn btn-small" data-ind="${k}" aria-pressed="${k === X.ind}">${t('r.ind.' + k)}</button>`).join('')}</div>` + hbars(rows5(IND[X.ind].v, { hi: (n) => { const r = maxOf(rows5(IND[X.ind].v)); return r && r.muni === n; } }), { u: IND[X.ind].u, d: IND[X.ind].d }),
     proj: () => projChart(),
@@ -575,7 +581,7 @@
     const head = `<tr><th></th>${FIVE.map(n => `<th data-muni="${esc(n)}" class="tr-row" title="${esc(nmL(n))}">${esc(nmS(n))}</th>`).join('')}</tr>`;
     const body = rows.map(([k, f, u, d, kind]) => { const vs = FIVE.map(f); const mx = Math.max(...vs.filter(v => v != null)); const mn = Math.min(...vs.filter(v => v != null));
       return `<tr><th scope="row"><span class="tr-kind k-${kind}" aria-hidden="true">${KIND[kind]}</span> ${t('r.ind.' + k)}</th>${vs.map((v, i) => { const w = v == null || mx === mn ? 0 : (v - Math.min(0, mn)) / (mx - Math.min(0, mn)) * 100;
-        return `<td data-muni="${esc(FIVE[i])}" class="tr-row${v === mx && v != null ? ' max' : ''}">${v == null ? `<em>${t('r.nodata')}</em>` : `${L(nf(v, d) + u)}<i class="tr-mini" style="width:${w.toFixed(0)}%"></i>`}</td>`; }).join('')}</tr>`; }).join('');
+        return `<td data-muni="${esc(FIVE[i])}" class="tr-row${v === mx && v != null ? ' max' : ''}">${v == null ? `<em>${t('r.nodata')}</em>` : `${/^ [^\s%€°]/.test(u) ? L(nf(v, d)) + u : L(nf(v, d) + u)}<i class="tr-mini" style="width:${w.toFixed(0)}%"></i>`}</td>`; }).join('')}</tr>`; }).join('');
     return `<div class="tr-table-w"><table class="tr-table">${head}${body}</table></div><p class="fine">${t('r.tableKey')}</p>`;
   }
   const MISS = ['floods', 'easement', 'acnoise', 'airst', 'pgou', 'price', 'migr', 'move', 'drain', 'jobsplace', 'baseinside', 'crops', 'c2076'];
@@ -583,12 +589,14 @@
   // ---------- labels on the map (HTML, placed by the engine) ----------
   function labels(sl) {
     if (!X.R || !X.lp || !sl) return [];
-    const out = []; const lp = (n) => X.lp[n]; const it = (n, html, cls, prio) => out.push({ id: sl.id + '-' + n, ll: lp(n), html, cls: cls || 'muni five', prio: prio == null ? 1 : prio });
+    const out = []; const TD = S_D(); const core = (n) => { const f = TD && TD.towns && TD.towns.features.find(g => g.properties.k === 'core' && g.properties.nm === n); return f && f.properties.lp; };
+    // 5.53: the five towns are labelled at their town centre (inside the closer analysis view), the rest at the municipality's pole
+    const lp = (n) => core(n) || X.lp[n]; const it = (n, html, cls, prio) => out.push({ id: sl.id + '-' + n, ll: lp(n), html, cls: cls || 'muni five', prio: prio == null ? 1 : prio });
     const v = (s) => `<span class="v" dir="ltr">${esc(s)}</span>`;
     if (sl.labels === 'names') SIX.forEach(n => it(n, `<b dir="auto">${esc(nmL(n))}</b>`, n === 'Granada' ? 'muni' : 'muni five', n === 'Granada' ? 0 : 1));
     if (sl.labels === 'names5') FIVE.forEach(n => it(n, `<b dir="auto">${esc(nmL(n))}</b>`));
     if (sl.labels === 'clim') { const C = X.R.climate, b = U().bboxOf([S_D().base.geometry]); const c = [(b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2];
-      if (C.temp) out.push({ id: 'clim-facts', ll: c, html: `<b>${esc(t('r.lb.climMap'))}</b><span class="v" dir="ltr">${esc(t('r.lb.climFacts', { mx: nf(C.temp.max[6], 1), mn: nf(C.temp.min[0], 1), r: nf(C.rain.reduce((a, q) => a + q, 0)) }))}</span>`, cls: 'muni five', prio: 0, avoidAnchor: true });
+      if (C.temp) out.push({ id: 'clim-facts', ll: c, html: `<b>${esc(t('r.lb.climMap'))}</b><span class="v" dir="auto">${esc(t('r.lb.climFacts', { mx: nf(C.temp.max[6], 1), mn: nf(C.temp.min[0], 1), r: nf(C.rain.reduce((a, q) => a + q, 0)) }))}</span>`, cls: 'muni five', prio: 0, avoidAnchor: true });
       if (C.cell) out.push({ id: 'clim-cell', ll: [C.cell[1], C.cell[0]], html: `<b>${esc(t('r.lb.cellPt'))}</b><span class="v" dir="ltr">${C.cell[0].toFixed(3)} N · ${Math.abs(C.cell[1]).toFixed(3)} W · ${nf(C.cell[2])} m</span>`, cls: 'muni', prio: 0, avoidAnchor: true }); }
     if (sl.labels === 'baseShare') FIVE.forEach(n => it(n, `<b dir="auto">${esc(nmL(n))}</b>${v(t('r.lb.baseInV', { h: nf(DU(M(n).sp.base_ha), 0) }))}`));
     if (sl.labels === 'lst') FIVE.forEach(n => it(n, `<b dir="auto">${esc(nmL(n))}</b>${M(n).sp.lst == null ? `<span class="v miss">${esc(t('v36.outside'))}</span>` : v(nf(M(n).sp.lst, 1) + ' °C')}`));
@@ -617,7 +625,7 @@
   }
   function inRing(pt, ring) { let inside = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const a = ring[i], b = ring[j]; if ((a[1] > pt[1]) !== (b[1] > pt[1]) && pt[0] < (b[0] - a[0]) * (pt[1] - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside; } return inside; }
   function muniPop(n) { const m = M(n); const row = (k, v) => `<tr><td>${t(k)}</td><td>${v}</td></tr>`;
-    return `<b dir="auto">${esc(nmL(n))}</b><table>${row('r.ind.pop', L(nf(m.pop['2025'])))}${row('r.ind.age', L(nf(m.demo.age, 1)))}${row('r.ind.unemp', L(nf(m.act.rate, 1) + ' %'))}${row('r.ind.baseha', L(du(m.sp.base_ha)))}${row('r.ind.lst', m.sp.lst == null ? `<em>${t('v36.outside')}</em>` : L(nf(m.sp.lst, 1) + ' °C'))}</table><small>INE · IGN · ${t('r.popSrc')}</small>`; }
+    return `<b dir="auto">${esc(nmL(n))}</b><table>${row('r.ind.pop', L(nf(m.pop['2025'])))}${row('r.ind.age', L(nf(m.demo.age, 1)))}${row('r.ind.unemp', L(nf(m.act.rate, 1) + ' %'))}${row('r.ind.baseha', du(m.sp.base_ha))}${row('r.ind.lst', m.sp.lst == null ? `<em>${t('v36.outside')}</em>` : L(nf(m.sp.lst, 1) + ' °C'))}</table><small>INE · IGN · ${t('r.popSrc')}</small>`; }
 
   // ---------- card parts ----------
   function srcInfo(k) { if (X.R && X.R.sources[k]) { const s = X.R.sources[k]; return { name: s.name, year: s.year, kind: s.kind, method: s.method, url: s.url }; } const l = LSRC[k]; return l ? { name: l[0], year: l[1], kind: l[2], method: l[3] } : null; }
@@ -736,7 +744,7 @@
     ['Buildings + construction year', 'OSM + Catastro INSPIRE', '2026', 'footprint → 100 m grid', 'historical', 'med', '2 5', 'used'],
     ['Floors', 'OSM building:levels', '2026', 'footprint → 100 m grid', 'spatial', 'low', '2 11', 'used'],
     ['City growth extents', 'IGN MTN50 · AMS · JRC GHSL', '1932–2020', '≈ 30–100 m', 'historical', 'med', '2', 'used'],
-    ['Aerial photographs (9 flights)', 'IGN PNOA histórico (WMS)', '1956–2024', '0.5–1 m', 'historical', 'high', '2 5', 'used'],
+    ['Aerial photographs (8 flights)', 'IGN PNOA histórico (WMS)', '1956–2022', '0.5–1 m', 'historical', 'high', '2 5', 'used'],
     ['Town built-up outlines by year', 'OSM footprints + Catastro year (rebuilt)', '1996–2025', 'footprint → outline', 'estimate', 'med', '6', 'used'],
     ['Climate normals, hot days, wind, rain', 'ERA5 (Open-Meteo)', '1991–2024', '0.25° (≈ 25 km)', 'official', 'med', '3', 'used'],
     ['Climate projection', 'CMIP6 HighResMIP (Open-Meteo)', '1950–2050', '≈ 25–50 km', 'projection', 'low', '3 14', 'used'],

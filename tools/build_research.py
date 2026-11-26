@@ -129,7 +129,7 @@ for f in T['features']: towns[f['properties']['nm']] += f['properties']['ha']
 LU = json.load(open(P('data/vec/landuse_overview.json'))); lu_g = []
 for f in LU['features']:
     c = f['properties'].get('lu')
-    if c in ('farmland', 'orchard', 'meadow', 'farmyard', 'vineyard', 'greenhouse_horticulture', 'residential', 'industrial', 'retail', 'commercial', 'greenfield', 'construction', 'grass', 'forest'):
+    if c in ('farmland', 'orchard', 'meadow', 'farmyard', 'vineyard', 'greenhouse_horticulture', 'residential', 'industrial', 'retail', 'commercial', 'greenfield', 'construction', 'brownfield', 'grass', 'forest'):  # 5.53: brownfield too (land in transformation)
         try: lu_g.append((c, transform(fwd, shape(f['geometry']).buffer(0))))
         except Exception: pass
 lu_tree = STRtree([g for _, g in lu_g])

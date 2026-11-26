@@ -22,7 +22,7 @@ Generated from `js/tour_research.js` (INV, MISS) and `data/ref/research.json` (s
 | Buildings + construction year | OSM + Catastro INSPIRE | 2026 | footprint → 100 m grid | Historical data | medium | 2 5 | used |
 | Floors | OSM building:levels | 2026 | footprint → 100 m grid | Spatial analysis | low | 2 11 | used |
 | City growth extents | IGN MTN50 · AMS · JRC GHSL | 1932–2020 | ≈ 30–100 m | Historical data | medium | 2 | used |
-| Aerial photographs (9 flights) | IGN PNOA histórico (WMS) | 1956–2024 | 0.5–1 m | Historical data | high | 2 5 | used |
+| Aerial photographs (8 flights) | IGN PNOA histórico (WMS) | 1956–2022 | 0.5–1 m | Historical data | high | 2 5 | used |
 | Town built-up outlines by year | OSM footprints + Catastro year (rebuilt) | 1996–2025 | footprint → outline | Estimate / model | medium | 6 | used |
 | Climate normals, hot days, wind, rain | ERA5 (Open-Meteo) | 1991–2024 | 0.25° (≈ 25 km) | Official data | medium | 3 | used |
 | Climate projection | CMIP6 HighResMIP (Open-Meteo) | 1950–2050 | ≈ 25–50 km | Projection | low | 3 14 | used |

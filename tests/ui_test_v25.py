@@ -170,7 +170,7 @@ try:
             pg.evaluate('document.querySelector("#tt-in").remove()')
             # the 5.33 step-3 maps: the agglomeration
             go_old(3, 1)
-            bb3 = D['bb']['city']; b3 = pg.evaluate('GA.app.map.getBounds().toArray()')  # 5.53 (owner: "zoom in and mark the base"): Granada city + the five towns
+            bb3 = D['bb']['cityTowns']; b3 = pg.evaluate('GA.app.map.getBounds().toArray()')  # 5.53 (owner: "zoom in and mark the base"): Granada city + the five towns
             tol = 0.01
             check(b3[0][0] <= bb3[0][0] + tol and b3[0][1] <= bb3[0][1] + tol and b3[1][0] >= bb3[1][0] - tol and b3[1][1] >= bb3[1][1] - tol, 'population-change map: Granada city and the five towns in view (5.53: closer, base marked)', (b3, bb3))
             card = pg.evaluate('document.querySelector("#tour-card").innerText')

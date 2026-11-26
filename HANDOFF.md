@@ -1299,21 +1299,26 @@ missing and say "unavailable" when nothing is found; keep every existing layer a
 Each screenshot carried a one-line note (Arabic). What was done, note by note:
 - "No need to zoom out this far / zoom in" (1.2 region, 2.4 floors, 3.3 heat, 3.4 vegetation, 4.1 water): every analysis
   slide that framed the whole 12 × 10 km frame now frames the base and the five town centres (`view: 'near'` =
-  `D.bb[2]`); the region slide frames Granada city and the towns (`view: 'city'`).
+  `D.bb[2]`); the region slide and the agglomeration maps (1.1, 6.1, 6.3, 6.4, 7.4) frame Granada city and all five towns
+  (`view: 'cityTowns'` = `bb.city` ∪ `bb[2]`; `bb.city` alone left out Las Gabias and Alhendín). The five towns are
+  labelled at their town centre (the core polylabel of tour_towns.json), so their labels stay inside the closer views.
 - "Not in hectares" (1.4, 12.1): every area in the tour is in dunams (1 dunam = 1,000 m², `r.u.du`; charts, map labels,
   texts, popups of the 5.33 slides, the 1981 band). The atlas cards outside the tour still use hectares (not asked).
-- "Add other years" (2.3): the photo slide steps through every national flight on the IGN historical WMS — AMS 1956–57,
-  Interministerial 1973–86, Nacional 1981–86, OLISTAT 1997–98, PNOA 2004 / 2010 / 2016 / 2022 / 2024 (`PH`), one at a
+- "Add other years" (2.3): the photo slide steps through eight national flights on the IGN historical WMS that cover the
+  base — AMS 1956–57, Interministerial 1973–86, Nacional 1981–86, OLISTAT 1997–98, PNOA 2004 / 2010 / 2016 / 2022 (`PH`;
+  PNOA 2023 and 2024 return white over Granada, §5; SIGPAC and PNOA 2006/2008/2013/2019 could be added), one at a
   time (`RG.rPhoto` holds the flight on screen so the layer state test still matches the groups).
 - "Add something explanatory on the map" (3.1): the wind rose is drawn on the map around the base (sector length = share
   of hours, the most frequent direction in red), with the reanalysis grid point the temperatures come from
   (37.153 N 3.690 W, 685 m) and the base's climate figures as a map label.
 - "Make a heat map here too" (3.2): a MapLibre heatmap of the summer surface temperature (Landsat 90 m blocks, weight
   = (LST − 44 °C) / 8, squared), colours `palette.research.heat` (blush → rose → red → oxblood).
+  The legend says it is a relative density of hot ground, not a °C scale (a heatmap's colour depends on zoom and neighbours).
 - "A polygon of the town's boundary with its growth" (6.2): `data/ref/research_growth.json` — each town's built-up
   outline in 1996, 2000, 2005, 2010, 2015, 2020, 2025, rebuilt from today's buildings and their construction year
   (OSM start_date, else Catastro): footprints +30 m, merged, −20 m, pieces < 1 ha dropped, simplified 8 m. Demolished
-  buildings are missing; 73–84 % of the buildings carry a year. The timeline shows the outline of the latest year ≤ the
+  buildings are missing; 73–84 % of the buildings carry a year, and the undated ones are in no year's outline (the
+  legend says so). The timeline shows the outline of the latest year ≤ the
   population year, with the 1996 outline dashed. Earlier years left out: the old cores have few dated buildings.
 - "Zoom and mark the base" (6.3 rents; also 6.1 change and 7.4 income): the agglomeration maps frame Granada city and the
   towns, with the base outline; labels of municipalities outside the view are not drawn (`place()` in js/tour.js).
@@ -1333,9 +1338,20 @@ Each screenshot carried a one-line note (Arabic). What was done, note by note:
   the sheet shows. The 5.20 boards (`data/boards/south_metro_tram_*.jpg`) still show the old stub.
 - "Not understood, and not in hectares" (12.1): the slide now says in plain words what greenfield / construction /
   brownfield mean (OSM tags: land prepared for building, building sites, disused industrial land), that it is what is seen
-  on the ground and not the official plan; dunams.
+  on the ground and not the official plan; dunams. `lu_ha` now includes brownfield (it was drawn red but not counted;
+  research.json patched with the brownfield values only — a full rebuild needs the runner folder, else runner-only
+  fields such as climate, SEPE and floods are dropped).
 - "Make the analyses on the base and around it too" (top bar): a two-way switch "Granada | Air base & around" at the
   start of the topic row (`js/atlas.js renderTopicRow`, `setArea`); with the base chosen, the five analyses use the base
-  frame (data/ex13b) and the map fits the base and the towns; "No topic" reads "(base overview)".
+  frame (data/ex13b) and the map fits the base and the towns (base bbox ± 0.022°, from the switch and when a topic is chosen); "No topic"
+  reads "(base overview)" in the top bar and the sidebar.
 - Tests: `tests/research.test.js` (frame coverage, growth outlines); `ui_test_v25` (dunams, the closer agglomeration
-  map), `ui_test_v33` (dunams in the 5.45 popups, labels of the municipalities in view), `ui_test_v40` unchanged.
+  map), `ui_test_v33` (dunams in the 5.45 popups, labels of the municipalities in view), `ui_test_v40` unchanged;
+  `ui_test_v27` and `live_atlas.py` count only `[data-topic]` buttons in the topic row (the switch adds two).
+- Review fixes: going back from 2.3 replayed its timeline frame on 2.2/2.1 (fewer frames) and stopped the slide change —
+  `renderCard()` now replays only the slide's own timeline and `frame()` clamps the index; dunams in Arabic/Hebrew: only
+  the number is LTR, the word follows; the climate label and `r.pt.cell` translated; the base listed in the legends of
+  6.1/6.3/7.4; the surface-heat chart carries the `r.framePart` note.
+  Map labels whose anchor lies within 10 px of the map edge are not drawn (`EDGE` in `place()`; v33 counts the same).
+  Top bar: the English switch label is "Base & around" and, from 1200 to 1439 px, the topic buttons are 12 px with less
+  padding, so the switch and the five analyses fit in one row in every language (v27).

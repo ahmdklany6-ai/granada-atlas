@@ -36,7 +36,7 @@
     const top = $('.topbar'); const btn = document.createElement('button'); btn.type = 'button'; btn.id = 'atl-burger'; btn.className = 'atl-burger'; btn.setAttribute('aria-controls', 'atl-side'); btn.setAttribute('aria-expanded', 'false');
     btn.innerHTML = '<span aria-hidden="true">☰</span>'; top.insertBefore(btn, top.firstChild);
     const row = document.createElement('nav'); row.id = 'atl-topics'; row.className = 'atl-topics'; top.appendChild(row);
-    row.addEventListener('click', (e) => { const q = e.target.closest('[data-area-q]'); if (q) { setArea(q.dataset.areaQ); return; } const b = e.target.closest('[data-topic]'); if (b) setTopic(b.dataset.topic || null); });
+    row.addEventListener('click', (e) => { const q = e.target.closest('[data-area-q]'); if (q) { setArea(q.dataset.areaQ, { around: true }); return; } const b = e.target.closest('[data-topic]'); if (b) setTopic(b.dataset.topic || null); });
     const lg = document.createElement('div'); lg.id = 'tb-lang'; lg.className = 'tb-lang'; lg.setAttribute('role', 'group');
     lg.innerHTML = [['ar', 'عربي'], ['he', 'עברית'], ['en', 'English']].map(([l, n]) => `<button type="button" data-lang="${l}" lang="${l}" dir="${l === 'en' ? 'ltr' : 'rtl'}">${n}</button>`).join('');
     top.appendChild(lg); lg.addEventListener('click', (e) => { const b = e.target.closest('[data-lang]'); if (b && b.dataset.lang !== I.lang) I.setLang(b.dataset.lang); });
@@ -91,7 +91,7 @@
     renderTopicRow(); renderLangBar();
     const side = $('#atl-side'); if (!side) return; $('[data-i18n="v23.menu"]', side).textContent = t('v23.menu'); $('#atl-side-x').setAttribute('aria-label', t('close'));
     SECTIONS.forEach(k => { const h = $(`[data-sec-t="${k}"]`, side); h.querySelector('.atl-sec-n').textContent = t('v23.sec.' + k); h.setAttribute('aria-expanded', String(!!open[k])); h.querySelector('.atl-caret').textContent = open[k] ? '▾' : '▸'; $('#atl-sec-' + k).hidden = !open[k]; });
-    $('#atl-sec-research').innerHTML = `<p class="fine">${t('v23.researchLead')}</p><div class="atl-list" role="radiogroup">${TOPICS.map((k, i) => `<button type="button" class="atl-item ${S.topic === k ? 'on' : ''}" role="radio" aria-checked="${S.topic === k}" data-topic="${k}"><span class="atl-num">${String(i + 1).padStart(2, '0')}</span><span>${t('e13.t.' + k)}</span></button>`).join('')}<button type="button" class="atl-item atl-none ${!S.topic ? 'on' : ''}" role="radio" aria-checked="${!S.topic}" data-topic=""><span class="atl-num">—</span><span>${t('v23.noTopic')}</span></button></div>`;
+    $('#atl-sec-research').innerHTML = `<p class="fine">${t('v23.researchLead')}</p><div class="atl-list" role="radiogroup">${TOPICS.map((k, i) => `<button type="button" class="atl-item ${S.topic === k ? 'on' : ''}" role="radio" aria-checked="${S.topic === k}" data-topic="${k}"><span class="atl-num">${String(i + 1).padStart(2, '0')}</span><span>${t('e13.t.' + k)}</span></button>`).join('')}<button type="button" class="atl-item atl-none ${!S.topic ? 'on' : ''}" role="radio" aria-checked="${!S.topic}" data-topic=""><span class="atl-num">—</span><span>${t(S.area === 'base' ? 'v39.noTopicBase' : 'v23.noTopic')}</span></button></div>`;
     $('#atl-sec-areas').innerHTML = `<div class="atl-list" role="radiogroup">${AREAS.map(a => `<button type="button" class="atl-item ${S.area === a ? 'on' : ''}" role="radio" aria-checked="${S.area === a}" data-area="${a}">${dot(a)}<span>${areaName(a)}</span></button>`).join('')}</div><p class="fine"><button type="button" class="btn btn-tiny" data-atl-go="areas">${t('nav.areas')}</button> <button type="button" class="btn btn-tiny" data-atl-pn="study">${t('v8.tabStudy')}</button></p>`;
     let lx = $('#atl-layers-x'); if (!lx) { lx = document.createElement('div'); lx.id = 'atl-layers-x'; lx.className = 'atl-layers-x'; $('#atl-sec-layers').insertBefore(lx, $('#atl-sec-layers').firstChild); }
     lx.innerHTML = `<button type="button" class="btn btn-tiny" data-atl-reset="layers">${t('v23.resetLayers')}</button> <button type="button" class="btn btn-tiny" data-atl-reset="topic" ${S.topic ? '' : 'disabled'}>${t('v23.resetTopic')}</button> <button type="button" class="btn btn-tiny" data-atl-legend>${t('v23.legendToggle')}</button>`;
@@ -300,14 +300,16 @@
   function applyTopicLayers(k, again) { if (!k) return; showTopicLayers(k); reveal(k, false); (COMPANION[k] || []).forEach(id => APP.L.S[id] && !APP.L.S[id].on && APP.L.setOn(id, true)); raise(); if (again) toast(t('v23.topicRestored')); }
 
   // ---------- WHERE / WHAT ----------
+  // 5.53: from the top-bar switch the base is framed with the towns around it (as when a topic is chosen on the base)
+  const baseBB = (around) => { const b = bboxOf(baseF().geometry.coordinates), d = around ? 0.022 : 0; return [[b[0][0] - d, b[0][1] - d * 0.8], [b[1][0] + d, b[1][1] + d * 0.8]]; };
   async function setArea(a, opts) {
     if (!AREAS.includes(a)) return; opts = opts || {}; await loadAll(); S.area = a; S.min = false; closeSide();
     const hl = []; if (a === 'factory' && estate()) hl.push(estate()); if (a === 'base' && baseF()) hl.push(baseF()); if (a === 'metro' && track()) hl.push(track());
     map.getSource('atl-hl').setData(FC(hl));
     if (a === 'metro') APP.L.S.south_metro && !APP.L.S.south_metro.on && APP.L.setOn('south_metro', true);
     if (a === 'factory') APP.L.S.escuzar_pole && !APP.L.S.escuzar_pole.on && APP.L.setOn('escuzar_pole', true);
-    const bb = a === 'city' ? CITY_BB : a === 'factory' ? bboxOf(estate().geometry.coordinates) : a === 'base' ? bboxOf(baseF().geometry.coordinates) : corridor().ll;
-    if (!opts.noFly) map.fitBounds(bb, { padding: pad(a === 'city' ? 40 : 70), duration: REDUCED ? 0 : 1800, maxZoom: a === 'city' ? 12 : 15, essential: true });
+    const bb = a === 'city' ? CITY_BB : a === 'factory' ? bboxOf(estate().geometry.coordinates) : a === 'base' ? baseBB(opts.around) : corridor().ll;
+    if (!opts.noFly) map.fitBounds(bb, { padding: pad(a === 'city' ? 40 : 70), duration: REDUCED ? 0 : 1800, maxZoom: a === 'city' ? 12 : opts.around ? 14 : 15, essential: true });
     if (S.topic && coverage(a).ok) { buildTopic(S.topic); setFrameOutline(); applyTopicLayers(S.topic); } // 5.26: the factory has its own frame
     applyMask(); markers(); renderSide(); renderPanel(); $('#atl-back').hidden = a === 'city';
     legendChanged();
