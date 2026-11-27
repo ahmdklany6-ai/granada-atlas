@@ -1,103 +1,116 @@
-"""Presentation · Granada's historical maps laid over each other at their true place and scale (owner, 27 Nov 2026, with a sketch:
-frames of different sizes overlapping, each map covering the area of its own time, so one sees where the city went on and what
-was added). One common scale for the whole slide; every map in its own frame, the oldest on top (smallest), the newest below.
-Maps (IGN / CNIG WMS, georeferenced by IGN, CC BY 4.0):
-  1895  Minutas cartográficas, planimetría del municipio de Granada (document 180181, dated 15 Mar 1895; the city itself hatched)
-  1932  Mapa Topográfico Nacional 1:50,000, 1st edition, sheet 1009 "Granada"
-  MTN25 Mapa Topográfico Nacional 1:25,000, 1st edition (the IGN series 1975–2003; the sheet's year is not given by the service)
-Frames: centred on the city of their time (data/ref/history_extents.json) with a margin; maps in greys (owner's style), frames
-in ink, the year on a red tab. Older plans (Vico 1613, Dalmau 1796, Coello 1853) are not georeferenced in any service we can
-reach here; they can be added by hand (control points) when the images are supplied.
-Writes <out>/hist_stack.png / .svg / .pdf.   Usage: python3 tools/ex22_pages/history_stack.py <out dir>   (FONT_DIR: IBM Plex Sans)
+"""Presentation · Granada's historical maps laid over each other at their true place and scale, one added at a time (owner,
+27 Nov 2026, with a sketch: frames of different sizes overlapping, each map covering the area of its own time and moved towards
+where the city grew; then "shift each frame towards the growth, add any other maps even of the same period, keep the maps in
+their own colours, write no dates (I write them), make a video that adds one each time").
+One common scale for all; each map in its own frame, centred halfway between its city and the part added since the map before
+(70 % towards the added part, so the frames walk with the growth). A new map goes UNDER the ones already shown (the older stay readable on top).
+Maps (IGN / CNIG WMS, georeferenced by IGN, CC BY 4.0), in order:
+  Minutas cartográficas (Granada municipality planimetry, 1895; the city itself left blank)
+  MTN50 drafts "catastrones" (sheet 1009, undated, 1910–1970)
+  MTN50 1st edition (sheet 1009, 1932)
+  MTN25 1st edition (series 1975–2003; sheet year not given by the service)
+  MTN25 today (mapa-raster, mtn_rasterizado)
+The city of each map: data/ref/history_extents.json (1932, catastrones, GHSL 1990, GHSL 2020), only to place the frames.
+Writes <out>/stack_<k>.png (k = 1..5), stack.mp4, stack.gif, stack_final.pdf / .svg.
+Usage: python3 tools/ex22_pages/history_stack.py <out dir>
 Not part of the site or of the tests."""
-import os, sys, json, html, base64, io, urllib.request, urllib.parse
+import os, sys, json, base64, io, urllib.request, urllib.parse, shutil, subprocess
 import numpy as np
-from PIL import Image, ImageOps
-from shapely.geometry import shape, box
+from PIL import Image
+from shapely.geometry import shape
 from shapely import transform as stransform
 from pyproj import Transformer
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import _bw
 
 OUT = sys.argv[1]; os.makedirs(OUT, exist_ok=True)
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
-FONT_DIR = os.environ.get('FONT_DIR', '')
-RED, INK, INK3 = _bw._P['red'], '#1A1A1A', '#5F5F5F'
-W, H, M = 1920, 1080, 40
+W, H, M = 1920, 1080, 36
 T = Transformer.from_crs(4326, 25830, always_xy=True)
 to_utm = lambda g: stransform(g, lambda c: np.column_stack(T.transform(c[:, 0], c[:, 1])))
 ext = json.load(open(os.path.join(ROOT, 'data', 'ref', 'history_extents.json')))['extents']
 geo = {k: to_utm(shape(v['geometry'])).buffer(0) for k, v in ext.items()}
-MIN, MTN = 'https://www.ign.es/wms/minutas-cartograficas', 'https://www.ign.es/wms/primera-edicion-mtn'
+MIN, MTN, RAS = 'https://www.ign.es/wms/minutas-cartograficas', 'https://www.ign.es/wms/primera-edicion-mtn', 'https://www.ign.es/wms-inspire/mapa-raster'
 
 
-def around(g, pad, aspect=None):
-    x0, y0, x1, y1 = g.bounds; x0 -= pad; y0 -= pad; x1 += pad; y1 += pad
-    if aspect:
-        cx, cy, w, h = (x0 + x1) / 2, (y0 + y1) / 2, x1 - x0, y1 - y0
-        if w / h < aspect: w = h * aspect
-        else: h = w / aspect
-        x0, x1, y0, y1 = cx - w / 2, cx + w / 2, cy - h / 2, cy + h / 2
-    return (x0, y0, x1, y1)
+def frame(city, prev, pad, aspect):
+    """a frame around the city of the map, centred halfway between that city and what was added since the map before"""
+    x0, y0, x1, y1 = city.bounds; w, h = x1 - x0 + 2 * pad, y1 - y0 + 2 * pad
+    if w / h < aspect: w = h * aspect
+    else: h = w / aspect
+    c = city.centroid
+    if prev is not None:
+        new = city.difference(prev.buffer(50))
+        if not new.is_empty and new.area > 1e5: c = type(c)(c.x * 0.3 + new.centroid.x * 0.7, c.y * 0.3 + new.centroid.y * 0.7)
+    return (c.x - w / 2, c.y - h / 2, c.x + w / 2, c.y + h / 2)
 
 
-# (year tab, what, url, layer, frame bounds in EPSG:25830), drawn bottom to top
-MAPS = [('MTN25', 'IGN 1:25,000, 1st edition (series 1975–2003)', MTN, 'MTN25', around(geo['ghsl_1990'], 700, 1.05)),
-        ('1932', 'IGN 1:50,000, 1st edition', MTN, 'MTN50', around(geo['mtn50_1932'], 650, 1.25)),
-        ('1895', 'IGN minuta, planimetry of the municipality', MIN, 'Minutas', around(geo['mtn50_1932'].buffer(-250), 450, 0.95))]
-allb = [m[4] for m in MAPS]
-X0, Y0 = min(b[0] for b in allb), min(b[1] for b in allb); X1, Y1 = max(b[2] for b in allb), max(b[3] for b in allb)
-s = min((W - 2 * M) / (X1 - X0), (H - 2 * M - 40) / (Y1 - Y0))               # px per metre, one scale for all
-ox = (W - (X1 - X0) * s) / 2; oy = (H - 40 - (Y1 - Y0) * s) / 2
-f = lambda x, y: (ox + (x - X0) * s, oy + (Y1 - y) * s)
+core = geo['mtn50_1932'].buffer(-250)
+MAPS = [('minutas', MIN, 'Minutas', frame(core, None, 420, 0.95)),
+        ('catastrones', MTN, 'catastrones', frame(geo['catastrones'], core, 500, 1.15)),
+        ('mtn50', MTN, 'MTN50', frame(geo['mtn50_1932'], geo['catastrones'], 650, 1.25)),
+        ('mtn25', MTN, 'MTN25', frame(geo['ghsl_1990'], geo['mtn50_1932'], 650, 1.0)),
+        ('today', RAS, 'mtn_rasterizado', frame(geo['ghsl_2020'], geo['ghsl_1990'], 700, 1.15))]
+# one common scale on the ground; the view zooms out as maps are added (each step fits the maps shown so far)
 
 
-def wms(url, layer, bb, wpx, hpx, name):
-    fp = os.path.join(OUT, f'wms_stack_{name}.jpg')
+def wms(name, url, layer, bb, long_px=2200):
+    fp = os.path.join(OUT, f'wms3_{name}.jpg')
     if not os.path.exists(fp):
+        w, h = bb[2] - bb[0], bb[3] - bb[1]; k = long_px / max(w, h)
         q = dict(SERVICE='WMS', VERSION='1.3.0', REQUEST='GetMap', LAYERS=layer, STYLES='', CRS='EPSG:25830',
-                 BBOX=','.join('%.1f' % v for v in bb), WIDTH=int(wpx * 2), HEIGHT=int(hpx * 2), FORMAT='image/jpeg')
-        with urllib.request.urlopen(url + '?' + urllib.parse.urlencode(q), timeout=180) as r: data = r.read()
+                 BBOX=','.join('%.1f' % v for v in bb), WIDTH=int(w * k), HEIGHT=int(h * k), FORMAT='image/jpeg')
+        with urllib.request.urlopen(url + '?' + urllib.parse.urlencode(q), timeout=240) as r: data = r.read()
         Image.open(io.BytesIO(data)).convert('RGB').save(fp, quality=92)
-    im = ImageOps.autocontrast(Image.open(fp).convert('L'), cutoff=1)
-    im = Image.eval(im, lambda v: int(70 + v * 0.72))
-    buf = io.BytesIO(); im.save(buf, 'JPEG', quality=88); return base64.b64encode(buf.getvalue()).decode()
+    return base64.b64encode(open(fp, 'rb').read()).decode()
 
 
-esc = lambda t: html.escape(t, quote=True)
-svg = ['<defs><filter id="sh" x="-5%" y="-5%" width="115%" height="115%"><feDropShadow dx="6" dy="8" stdDeviation="7" flood-color="#000" flood-opacity="0.28"/></filter></defs>']
-for tab, what, url, layer, bb in MAPS:
-    (x, y1), (x1, y) = f(bb[0], bb[1]), f(bb[2], bb[3]); w, h = x1 - x, y1 - y
-    img = wms(url, layer, bb, w, h, layer)
-    svg.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" fill="#FFFFFF" filter="url(#sh)"/>')
-    svg.append(f'<image href="data:image/jpeg;base64,{img}" x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" preserveAspectRatio="none"/>')
-    svg.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" fill="none" stroke="#FFFFFF" stroke-width="6"/>'
-               f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" fill="none" stroke="{INK}" stroke-width="1.5"/>')
-    tw = 34 + len(tab) * 26
-    svg.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{tw}" height="56" fill="{RED}"/>'
-               f'<text x="{x + 16:.1f}" y="{y + 42:.1f}" font-size="40" font-weight="600" fill="#FFFFFF">{esc(tab)}</text>')
-    svg.append(f'<rect x="{x:.1f}" y="{y + 56:.1f}" width="{len(what) * 8.2 + 24:.1f}" height="28" fill="#FFFFFF" fill-opacity="0.9"/>'
-               f'<text x="{x + 12:.1f}" y="{y + 76:.1f}" font-size="16" fill="{INK}">{esc(what)}</text>')
-km = 1; bw = km * 1000 * s; bx, by = W - M - bw - 20, H - 52
-svg.append(f'<rect x="{bx:.1f}" y="{by}" width="{bw / 2:.1f}" height="6" fill="{INK}"/><rect x="{bx + bw / 2:.1f}" y="{by}" width="{bw / 2:.1f}" height="6" fill="#FFFFFF" stroke="{INK}"/>'
-           f'<text x="{bx:.1f}" y="{by + 24}" font-size="14" fill="{INK3}" text-anchor="middle">0</text><text x="{bx + bw:.1f}" y="{by + 24}" font-size="14" fill="{INK3}" text-anchor="middle">1 km</text>')
-svg.append(f'<text x="{M}" y="{H - 30}" font-size="13" fill="{INK3}">IGN / CNIG WMS, CC BY 4.0: Minutas cartográficas (1895), Primera edición MTN50 (1932) and MTN25 · all maps at one scale, at their true place</text>')
+TOP = max(m[3][3] for m in MAPS)                                  # svg y = TOP - northing (metres)
+items = []
+for name, url, layer, bb in MAPS:
+    x, y, w, h = bb[0], TOP - bb[3], bb[2] - bb[0], bb[3] - bb[1]
+    items.append((bb, f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" fill="#FFFFFF" filter="url(#sh)"/>'
+                      f'<image href="data:image/jpeg;base64,{wms(name, url, layer, bb)}" x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" preserveAspectRatio="none"/>'
+                      f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" fill="none" stroke="#FFFFFF" stroke-width="{{sw6}}"/>'
+                      f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" fill="none" stroke="#1A1A1A" stroke-width="{{sw1}}"/>'))
 
-font_css = ''
-if FONT_DIR:
-    b64 = lambda n: base64.b64encode(open(os.path.join(FONT_DIR, n), 'rb').read()).decode()
-    font_css = (f"@font-face{{font-family:'Plex';src:url(data:font/ttf;base64,{b64('IBMPlexSans-Regular.ttf')});font-weight:400}}"
-                f"@font-face{{font-family:'Plex';src:url(data:font/ttf;base64,{b64('IBMPlexSans-SemiBold.ttf')});font-weight:500 700}}")
-doc = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">'
-       f'<style>{font_css}text{{font-family:Plex,"IBM Plex Sans",Arial,sans-serif}}</style><rect width="{W}" height="{H}" fill="#F5F5F5"/>'
-       + ''.join(svg) + '</svg>')
-open(os.path.join(OUT, 'hist_stack.svg'), 'w').write(doc)
+
+def doc(k):   # maps 1..k: the newest drawn first (underneath), the oldest last (on top); the view fits them
+    bs = [b for b, _ in items[:k]]
+    X0, Y0, X1, Y1 = min(b[0] for b in bs), min(b[1] for b in bs), max(b[2] for b in bs), max(b[3] for b in bs)
+    sc = min((W - 2 * M) / (X1 - X0), (H - 2 * M) / (Y1 - Y0)); vw, vh = W / sc, H / sc
+    vx, vy = (X0 + X1) / 2 - vw / 2, TOP - (Y0 + Y1) / 2 - vh / 2
+    m = lambda px: f'{px / sc:.2f}'
+    body = ''.join(svg.replace('{sw6}', m(6)).replace('{sw1}', m(1.2)) for _, svg in reversed(items[:k]))
+    shadow = f'<defs><filter id="sh" x="-5%" y="-5%" width="115%" height="115%"><feDropShadow dx="{m(6)}" dy="{m(8)}" stdDeviation="{m(7)}" flood-color="#000" flood-opacity="0.3"/></filter></defs>'
+    km = 2 if 2000 * sc < 300 else 1 if 1000 * sc < 520 else 0.5
+    bw = km * 1000 * sc; bx, by = W - M - bw, H - 44
+    lab = f'{km:g} km'
+    scale = (f'<rect x="{bx - 14:.1f}" y="{by - 12}" width="{bw + 46:.1f}" height="40" fill="#FFFFFF" fill-opacity="0.9"/>'
+             f'<rect x="{bx:.1f}" y="{by}" width="{bw / 2:.1f}" height="6" fill="#1A1A1A"/><rect x="{bx + bw / 2:.1f}" y="{by}" width="{bw / 2:.1f}" height="6" fill="#FFFFFF" stroke="#1A1A1A"/>'
+             f'<text x="{bx:.1f}" y="{by + 22}" font-size="13" fill="#5F5F5F" text-anchor="middle" font-family="Arial">0</text>'
+             f'<text x="{bx + bw:.1f}" y="{by + 22}" font-size="13" fill="#5F5F5F" text-anchor="middle" font-family="Arial">{lab}</text>')
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}"><rect width="{W}" height="{H}" fill="#F5F5F5"/>'
+            f'<svg x="0" y="0" width="{W}" height="{H}" viewBox="{vx:.1f} {vy:.1f} {vw:.1f} {vh:.1f}">{shadow}{body}</svg>{scale}</svg>')
+
+
 from playwright.sync_api import sync_playwright
+frames = []
 with sync_playwright() as p:
-    b = p.chromium.launch(); pg = b.new_page(viewport={'width': W, 'height': H}, device_scale_factor=2)
-    pg.set_content(f'<html><body style="margin:0">{doc}</body></html>', wait_until='load'); pg.wait_for_timeout(500)
-    pg.screenshot(path=os.path.join(OUT, 'hist_stack.png'))
-    pg.pdf(path=os.path.join(OUT, 'hist_stack.pdf'), width=f'{W / 96:.3f}in', height=f'{H / 96:.3f}in', print_background=True,
+    b = p.chromium.launch(); pg = b.new_page(viewport={'width': W, 'height': H}, device_scale_factor=1)
+    for k in range(1, len(items) + 1):
+        d = doc(k); pg.set_content(f'<html><body style="margin:0">{d}</body></html>', wait_until='load'); pg.wait_for_timeout(300)
+        fp = os.path.join(OUT, f'stack_{k}.png'); pg.screenshot(path=fp); frames.append(Image.open(fp).convert('RGB'))
+    open(os.path.join(OUT, 'stack_final.svg'), 'w').write(d)
+    pg.pdf(path=os.path.join(OUT, 'stack_final.pdf'), width=f'{W / 96:.3f}in', height=f'{H / 96:.3f}in', print_background=True,
            margin={'top': '0', 'right': '0', 'bottom': '0', 'left': '0'})
     b.close()
-print('written', os.path.join(OUT, 'hist_stack.png'))
+HOLD, LAST = 1.8, 3.5
+pal = frames[-1].quantize(colors=255, method=Image.Quantize.MEDIANCUT)
+gif = [im.quantize(palette=pal, dither=Image.Dither.FLOYDSTEINBERG) for im in frames]
+gif[0].save(os.path.join(OUT, 'stack.gif'), save_all=True, append_images=gif[1:], duration=[int(HOLD * 1000)] * (len(gif) - 1) + [int(LAST * 1000)], loop=0)
+tmp = os.path.join(OUT, '_mp4s'); os.makedirs(tmp, exist_ok=True); n = 0
+for i, im in enumerate(frames):
+    for _ in range(int((LAST if i == len(frames) - 1 else HOLD) * 25)): im.save(os.path.join(tmp, f'{n:05d}.png')); n += 1
+subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-framerate', '25', '-i', os.path.join(tmp, '%05d.png'), '-c:v', 'libx264',
+                '-pix_fmt', 'yuv420p', '-crf', '18', os.path.join(OUT, 'stack.mp4')], check=True)
+shutil.rmtree(tmp)
+print('written', len(frames), 'frames, stack.mp4, stack.gif in', OUT)
