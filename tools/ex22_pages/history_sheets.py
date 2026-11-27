@@ -207,7 +207,7 @@ frames[0].save(os.path.join(OUT, 'sheets.pdf'), save_all=True, append_images=fra
 tmp = os.path.join(OUT, '_mp4h'); os.makedirs(tmp, exist_ok=True); n = 0
 for i, im in enumerate(frames):
     small = im.resize((W, H), Image.LANCZOS)
-    for _ in range(int((3.5 if i == len(frames) - 1 else 1.8) * 25)): small.save(os.path.join(tmp, f'{n:05d}.png')); n += 1
+    for _ in range(int((2.5 if i == len(frames) - 1 else 0.6) * 25)): small.save(os.path.join(tmp, f'{n:05d}.png')); n += 1
 subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-framerate', '25', '-i', os.path.join(tmp, '%05d.png'), '-c:v', 'libx264',
                 '-pix_fmt', 'yuv420p', '-crf', '18', os.path.join(OUT, 'sheets.mp4')], check=True)
 shutil.rmtree(tmp)
