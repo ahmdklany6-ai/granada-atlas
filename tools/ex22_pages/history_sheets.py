@@ -186,9 +186,9 @@ BASE = f'<image href="data:image/jpeg;base64,{HILL}" x="0" y="0" width="{W}" hei
 STEP_END = np.cumsum([len(st) for st in STEPS]).tolist()
 
 
-def doc(k):   # the first k steps: the newest underneath, the oldest on top; the small village sheets always on top
+def doc(k):   # the first k steps, each new map laid on top
     n = STEP_END[k - 1] if k else 0; small = SMALL_IDX
-    order = [i for i in reversed(range(n)) if i not in small] + [i for i in range(n) if i in small]
+    order = list(range(n))   # owner: each new map on top, even when it covers an older one completely
     return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">{DEFS}{BASE}'
             + ''.join(SHEETS[i] for i in order) + SCALE + '</svg>')
 
