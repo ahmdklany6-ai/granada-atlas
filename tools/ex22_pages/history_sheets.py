@@ -107,19 +107,33 @@ def road_w(p):
     return {'motorway': 2.4, 'trunk': 2.0, 'primary': 1.6, 'secondary': 1.2, 'tertiary': 0.7}.get(p.get('hw'), 0.5 if (p.get('hw') or '').endswith('_link') else None)
 
 
-ROADS = lines('streets_major.json', road_w, '#B3B3B3')
+ROADS = lines('streets_major.json', road_w, '#992B2A')   # owner: the roads in our red
 WATER = lines('water.json', water_w, '#9DBCD1')
 
 
 def wms(name, url, layer, bb, long_px=2200):
     fp = os.path.join(OUT, f'wms3_{name}.jpg')
     if not os.path.exists(fp):
-        w_, h_ = bb[2] - bb[0], bb[3] - bb[1]; k = long_px / max(w_, h_)
+        w_, h_ = bb[2] - bb[0], bb[3] - bb[1]; k = (min(long_px, 2000) if 'ideandalucia' in url else long_px) / max(w_, h_)   # IECA: at most 2048 px
         q = dict(SERVICE='WMS', VERSION='1.3.0', REQUEST='GetMap', LAYERS=layer, STYLES='', CRS='EPSG:25830',
-                 BBOX=','.join('%.1f' % v for v in bb), WIDTH=int(w_ * k), HEIGHT=int(h_ * k), FORMAT='image/jpeg')
-        with urllib.request.urlopen(url + '?' + urllib.parse.urlencode(q), timeout=240) as r: data = r.read()
-        Image.open(io.BytesIO(data)).convert('RGB').save(fp, quality=92)
-    return base64.b64encode(open(fp, 'rb').read()).decode()
+                 BBOX=','.join('%.1f' % v for v in bb), WIDTH=int(w_ * k), HEIGHT=int(h_ * k), FORMAT='image/png' if 'ideandalucia' in url else 'image/jpeg')
+        def get(qq):
+            with urllib.request.urlopen(url + '?' + urllib.parse.urlencode(qq), timeout=240) as r: data = r.read()
+            try: return Image.open(io.BytesIO(data)).convert('RGBA')
+            except Exception: raise SystemExit(f'WMS {name} {layer}: not an image: {data[:300]!r}')
+        if 'ideandalucia' in url:   # the service refuses big images (memory): tiles of at most 900 px, stitched
+            Wp, Hp = q['WIDTH'], q['HEIGHT']; im_ = Image.new('RGBA', (Wp, Hp)); TS = 900
+            for ty in range(0, Hp, TS):
+                for tx in range(0, Wp, TS):
+                    tw, th = min(TS, Wp - tx), min(TS, Hp - ty)
+                    xa, xb = bb[0] + tx / k, bb[0] + (tx + tw) / k; yb, ya = bb[3] - ty / k, bb[3] - (ty + th) / k
+                    im_.paste(get(dict(q, BBOX='%.2f,%.2f,%.2f,%.2f' % (xa, ya, xb, yb), WIDTH=tw, HEIGHT=th)), (tx, ty))
+        else:
+            im_ = get(q)
+        if 'ideandalucia' in url: im_.save(fp + '.png'); open(fp, 'wb').close()   # IECA: keep its transparency (no data = see-through)
+        else: Image.alpha_composite(Image.new('RGBA', im_.size, (255, 255, 255, 255)), im_).convert('RGB').save(fp, quality=92)
+    if os.path.exists(fp + '.png'): return 'png', base64.b64encode(open(fp + '.png', 'rb').read()).decode()
+    return 'jpeg', base64.b64encode(open(fp, 'rb').read()).decode()
 
 
 # owner (mid-way): "if there are other small maps here and there, put them": the minutas of the villages around
@@ -130,7 +144,7 @@ ESM = os.environ.get('ES_ATLAS')
 if ESM:
     from map_spain_granada_topo import topo as _topo
     for i_, n_, g_ in _topo(ESM)['municipalities']:
-        if n_ in ('Maracena', 'La Zubia', 'Huétor Vega', 'Cájar', 'Cúllar Vega', 'Vegas del Genil', 'Cenes de la Vega', 'Pulianas', 'Gójar') and i_.startswith('18'):
+        if n_ in ('Maracena', 'La Zubia', 'Huétor Vega', 'Cájar', 'Cúllar Vega', 'Vegas del Genil', 'Cenes de la Vega', 'Pulianas', 'Gójar', 'Ogíjares', 'Alhendín', 'Otura', 'Jun', 'Peligros', 'Albolote', 'Atarfe', 'Santa Fe', 'Monachil', 'Huétor de Santillán') and i_.startswith('18'):
             TOWNS.append((n_, to_utm(g_).representative_point()))
 SMALL = []
 for n_, c_ in TOWNS:
@@ -141,19 +155,31 @@ def _blank(q):   # a sheet the service returns empty (no minuta there) is left o
     wms(*q); a_ = np.asarray(Image.open(os.path.join(OUT, f'wms3_{q[0]}.jpg')).convert('L'), float); return a_.std() < 6 or a_.mean() > 247
 SMALL = [q for q in SMALL if not _blank(q)]
 print('small sheets:', [q[0] for q in SMALL])
-STEPS = [[MAPS[0]], SMALL, [MAPS[1]], [MAPS[2]], [MAPS[3]], [MAPS[4]]]
+# owner: "look for more maps; add one at a time": the Andalucía 1:10,000 maps (IECA, IDEAndalucía WMS) of 2007 and 2013,
+# framed on where the city grew in those years (GHSL 2000→2015) and on the southern towns
+IECA10, IECAR = 'https://www.ideandalucia.es/services/toporaster10/wms', 'https://www.ideandalucia.es/wms/mta10r_2001-2013'
+_new = geo['ghsl_2015'].difference(geo['ghsl_2000'].buffer(50))
+_b = _new.bounds; M2007 = ('mta10_2007', IECA10, 'toporaster10', (_b[0] - 500, _b[1] - 500, _b[2] + 500, _b[3] + 500))
+from shapely.ops import unary_union as _uu
+_t = _uu([to_utm(shape(ft['geometry'])) for ft in json.load(open(os.path.join(ROOT, 'data', 'vec', 'tour_towns.json')))['features']]).bounds
+M2013 = ('mta10_2013', IECAR, 'mta10_raster_2013', (_t[0] - 600, _t[1] - 600, _t[2] + 600, _t[3] + 600))
+for q in (M2007, M2013):   # kept inside the view
+    pass
+# one map per step (owner): Granada 1895, then each village minuta, then the city maps in time
+STEPS = [[MAPS[0]]] + [[q] for q in SMALL] + [[MAPS[1]], [MAPS[2]], [MAPS[3]], [M2007], [M2013], [MAPS[4]]]
+SMALL_IDX = set(range(1, 1 + len(SMALL)))
 
 SHEETS = []
 for name, url, layer, bb in [m for st in STEPS for m in st]:
     (x, y1), (x1, y) = f(bb[0], bb[1]), f(bb[2], bb[3]); ww, hh = x1 - x, y1 - y
-    SHEETS.append(f'<rect x="{x - 5:.1f}" y="{y - 5:.1f}" width="{ww + 10:.1f}" height="{hh + 10:.1f}" fill="#FFFFFF" filter="url(#sh)"/>'
-                  f'<image href="data:image/jpeg;base64,{wms(name, url, layer, bb)}" x="{x:.1f}" y="{y:.1f}" width="{ww:.1f}" height="{hh:.1f}" preserveAspectRatio="none"/>'
-                  f'<rect x="{x:.1f}" y="{y:.1f}" width="{ww:.1f}" height="{hh:.1f}" fill="none" stroke="#D6D6D6" stroke-width="0.8"/>')
+    kind, data_ = wms(name, url, layer, bb)
+    under = '' if kind == 'png' else f'<rect x="{x:.1f}" y="{y:.1f}" width="{ww:.1f}" height="{hh:.1f}" fill="#FFFFFF" filter="url(#sh)"/>'
+    SHEETS.append(under + f'<image href="data:image/{kind};base64,{data_}" x="{x:.1f}" y="{y:.1f}" width="{ww:.1f}" height="{hh:.1f}" preserveAspectRatio="none"/>')
 bw = 1000 * sc; bx, by = W - 40 - 2 * bw, H - 46
 SCALE = (f'<rect x="{bx - 14:.1f}" y="{by - 12}" width="{2 * bw + 46:.1f}" height="40" fill="#FFFFFF" fill-opacity="0.85"/>'
          f'<rect x="{bx:.1f}" y="{by}" width="{bw:.1f}" height="6" fill="#1A1A1A"/><rect x="{bx + bw:.1f}" y="{by}" width="{bw:.1f}" height="6" fill="#FFFFFF" stroke="#1A1A1A"/>'
          + ''.join(f'<text x="{bx + k * bw:.1f}" y="{by + 22}" font-size="13" fill="#5F5F5F" text-anchor="middle" font-family="Arial">{k}{" km" if k == 2 else ""}</text>' for k in range(3)))
-DEFS = '<defs><filter id="sh" x="-10%" y="-10%" width="125%" height="125%"><feDropShadow dx="8" dy="12" stdDeviation="10" flood-color="#000" flood-opacity="0.35"/></filter></defs>'
+DEFS = '<defs><filter id="sh" x="-10%" y="-10%" width="125%" height="125%"><feDropShadow dx="8" dy="12" stdDeviation="10" flood-color="#000" flood-opacity="0.22"/></filter></defs>'
 BASE = f'<image href="data:image/jpeg;base64,{HILL}" x="0" y="0" width="{W}" height="{H}"/>' + WATER + ROADS
 
 
@@ -161,7 +187,7 @@ STEP_END = np.cumsum([len(st) for st in STEPS]).tolist()
 
 
 def doc(k):   # the first k steps: the newest underneath, the oldest on top; the small village sheets always on top
-    n = STEP_END[k - 1] if k else 0; small = set(range(STEP_END[0], STEP_END[1]))
+    n = STEP_END[k - 1] if k else 0; small = SMALL_IDX
     order = [i for i in reversed(range(n)) if i not in small] + [i for i in range(n) if i in small]
     return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">{DEFS}{BASE}'
             + ''.join(SHEETS[i] for i in order) + SCALE + '</svg>')
