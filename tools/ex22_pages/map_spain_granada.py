@@ -230,7 +230,7 @@ print('written', sp, 'and .png .pdf')
 
 # ---------- the same two maps alone, one per page, without any text but the scale bar (owner, 27 Nov 2026)
 # owner: black, white and red only, the sea pale blue
-SEA, LAND, OTHER = P['basemap']['water'], '#FFFFFF', P['analysis']['gray1']
+SEA, LAND, OTHER = '#E6EEF1', P['analysis']['gray2'], P['analysis']['gray1']   # sea paler than basemap water; Spain a shade darker than its neighbours
 LINE, LINE2, INK2, INK3 = P['analysis']['grey3'], P['analysis']['grey2'], '#1A1A1A', '#5F5F5F'
 def render(name, body, w=W, h=H):
     d = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">'
