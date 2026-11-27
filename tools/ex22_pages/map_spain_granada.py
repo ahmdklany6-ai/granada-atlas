@@ -226,3 +226,52 @@ with sync_playwright() as p:
            margin={'top': '0', 'right': '0', 'bottom': '0', 'left': '0'})
     b.close()
 print('written', sp, 'and .png .pdf')
+
+
+# ---------- the same two maps alone, one per page, without any text but the scale bar (owner, 27 Nov 2026)
+def render(name, body, w=W, h=H):
+    d = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">'
+         f'<style>{font_css}text{{font-family:Plex,"IBM Plex Sans",DejaVu Sans,sans-serif}}</style>'
+         f'<rect width="{w}" height="{h}" fill="#FFFFFF"/>' + ''.join(body) + '</svg>')
+    open(os.path.join(OUT, name + '.svg'), 'w').write(d)
+    with sync_playwright() as p:
+        b = p.chromium.launch(); pg = b.new_page(viewport={'width': w, 'height': h}, device_scale_factor=2)
+        pg.set_content(f'<html><body style="margin:0">{d}</body></html>', wait_until='load'); pg.wait_for_timeout(400)
+        pg.screenshot(path=os.path.join(OUT, name + '.png'), clip={'x': 0, 'y': 0, 'width': w, 'height': h})
+        pg.pdf(path=os.path.join(OUT, name + '.pdf'), width=f'{w / 96:.3f}in', height=f'{h / 96:.3f}in', print_background=True,
+               margin={'top': '0', 'right': '0', 'bottom': '0', 'left': '0'})
+        b.close()
+    print('written', name, '.svg .png .pdf')
+
+
+page = dict(x=0, y=0, w=W, h=H)
+# map A: Spain
+svg = []; add = svg.append
+fA, sA = fitter((-560000, 3860000, 1250000, 4900000), page, pad=0.0)
+for n, g in nb.items(): add(f'<path d="{path(g, fA)}" fill="{OTHER}" stroke="{LINE}" stroke-width="0.8" fill-rule="evenodd"/>')
+add(f'<path d="{path(spain_pen, fA)}" fill="{LAND}" stroke="none" fill-rule="evenodd"/>')
+add(f'<path d="{path(gr_prov, fA)}" fill="{RED_T}" stroke="none"/>')
+add(f'<path d="{"".join(lines(g, fA) for i, n, g in prov if i not in CANARY)}" fill="none" stroke="{LINE2}" stroke-width="1" stroke-linejoin="round"/>')
+add(f'<path d="{lines(spain_pen, fA)}" fill="none" stroke="{INK2}" stroke-width="1.5" stroke-linejoin="round"/>')
+add(f'<path d="{path(gr_muni, fA)}" fill="{RED}" stroke="{RED}" stroke-width="1.2"/>')
+add(f'<path d="{lines(gr_prov, fA)}" fill="none" stroke="{RED}" stroke-width="2.4" stroke-linejoin="round"/>')
+cb = canary.bounds; iw, ih = (cb[2] - cb[0]) * sA + 40, (cb[3] - cb[1]) * sA + 30
+ix, iy = 40, H - ih - 40
+add(f'<rect x="{ix}" y="{iy}" width="{iw:.1f}" height="{ih:.1f}" fill="{SEA}" stroke="{LINE2}" stroke-width="1"/>')
+fC = lambda x, y: (ix + 20 + (x - cb[0]) * sA, iy + 15 + (cb[3] - y) * sA)
+add(f'<path d="{path(canary, fC)}" fill="{LAND}" stroke="{INK2}" stroke-width="1.1" fill-rule="evenodd"/>')
+add(f'<path d="{"".join(lines(g, fC) for i, n, g in prov if i in CANARY)}" fill="none" stroke="{LINE2}" stroke-width="0.9"/>')
+scalebar(W - 300, H - 80, sA, 200, 100)
+render('01a_spain', svg)
+
+# map B: the province of Granada
+svg = []; add = svg.append
+fB, sB = fitter(gr_prov.buffer(12000).bounds, dict(x=0, y=0, w=W, h=H), pad=0.0)
+add(f'<path d="{path(spain_pen, fB)}" fill="{OTHER}" stroke="none" fill-rule="evenodd"/>')
+add(f'<path d="{"".join(lines(g, fB) for i, n, g in prov if i not in CANARY and i != "18")}" fill="none" stroke="{LINE2}" stroke-width="1.2"/>')
+add(f'<path d="{path(gr_prov, fB)}" fill="{LAND}" stroke="none"/>')
+add(f'<path d="{"".join(lines(g, fB) for i, n, g in muni18)}" fill="none" stroke="{LINE2}" stroke-width="1" stroke-linejoin="round"/>')
+add(f'<path d="{path(gr_muni, fB)}" fill="{RED}" stroke="{RED}" stroke-width="1"/>')
+add(f'<path d="{lines(gr_prov, fB)}" fill="none" stroke="{RED}" stroke-width="3" stroke-linejoin="round"/>')
+scalebar(W - 300, H - 80, sB, 40, 20)
+render('01b_province_granada', svg)
