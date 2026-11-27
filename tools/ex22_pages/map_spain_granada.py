@@ -255,12 +255,14 @@ add(f'<path d="{"".join(lines(g, fA) for i, n, g in prov if i not in CANARY)}" f
 add(f'<path d="{lines(spain_pen, fA)}" fill="none" stroke="{INK2}" stroke-width="1.5" stroke-linejoin="round"/>')
 add(f'<path d="{path(gr_muni, fA)}" fill="{RED}" stroke="{RED}" stroke-width="1.2"/>')
 add(f'<path d="{lines(gr_prov, fA)}" fill="none" stroke="{RED}" stroke-width="2.4" stroke-linejoin="round"/>')
-cb = canary.bounds; iw, ih = (cb[2] - cb[0]) * sA + 40, (cb[3] - cb[1]) * sA + 30
-ix, iy = 40, H - ih - 40
-add(f'<rect x="{ix}" y="{iy}" width="{iw:.1f}" height="{ih:.1f}" fill="{SEA}" stroke="{LINE2}" stroke-width="1"/>')
-fC = lambda x, y: (ix + 20 + (x - cb[0]) * sA, iy + 15 + (cb[3] - y) * sA)
-add(f'<path d="{path(canary, fC)}" fill="{LAND}" stroke="{INK2}" stroke-width="1.1" fill-rule="evenodd"/>')
-add(f'<path d="{"".join(lines(g, fC) for i, n, g in prov if i in CANARY)}" fill="none" stroke="{LINE2}" stroke-width="0.9"/>')
+# names (owner: the countries back, the Canary Islands inset out)
+for n, (lon, lat), sz in (('PORTUGAL', (-8.4, 39.6), 22), ('FRANCE', (1.2, 43.9), 22), ('MOROCCO', (-4.6, 35.25), 22),
+                          ('ALGERIA', (-0.3, 35.55), 22)):
+    x, y = fA(*T30(lon, lat)); text(x, y, n, sz, INK3, 500, 'middle', ls=3)
+for n, (lon, lat) in (('Atlantic Ocean', (-12.0, 41.5)), ('Mediterranean Sea', (3.6, 38.6)), ('Bay of Biscay', (-5.0, 44.4))):
+    x, y = fA(*T30(lon, lat)); text(x, y, n, 20, P['basemap']['seaLabel'], 400, 'middle', 'italic')
+x, y = fA(*T30(-3.7, 40.2)); text(x, y, 'SPAIN', 40, INK, 600, 'middle', ls=8)
+x, y = fA(*T30(-2.55, 36.55)); halo_text(x, y, 'Granada', 24, RED, 600, 'middle')
 scalebar(W - 300, H - 80, sA, 200, 100)
 render('01a_spain', svg)
 
@@ -273,5 +275,12 @@ add(f'<path d="{path(gr_prov, fB)}" fill="{LAND}" stroke="none"/>')
 add(f'<path d="{"".join(lines(g, fB) for i, n, g in muni18)}" fill="none" stroke="{LINE2}" stroke-width="1" stroke-linejoin="round"/>')
 add(f'<path d="{path(gr_muni, fB)}" fill="{RED}" stroke="{RED}" stroke-width="1"/>')
 add(f'<path d="{lines(gr_prov, fB)}" fill="none" stroke="{RED}" stroke-width="3" stroke-linejoin="round"/>')
+for n, (lon, lat) in (('Jaén', (-3.55, 37.95)), ('Córdoba', (-4.6, 37.55)), ('Málaga', (-4.6, 36.95)), ('Almería', (-2.3, 37.1)),
+                      ('Albacete', (-2.1, 38.35)), ('Murcia', (-1.95, 37.95))):
+    x, y = fB(*T30(lon, lat))
+    if 60 < x < W - 60 and 30 < y < H - 30: text(x, y, n, 24, INK3, 500, 'middle')
+x, y = fB(*T30(-2.7, 36.6)); text(x, y, 'Mediterranean Sea', 22, P['basemap']['seaLabel'], 400, 'middle', 'italic')
+x, y = fB(*T30(-3.0, 37.75)); halo_text(x, y, 'Province of Granada', 26, RED, 600, 'middle')
+gx, gy = fB(*gr_muni.centroid.coords[0]); halo_text(gx, gy - 34, 'Granada', 24, INK, 600, 'middle')
 scalebar(W - 300, H - 80, sB, 40, 20)
 render('01b_province_granada', svg)
