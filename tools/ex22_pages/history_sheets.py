@@ -169,8 +169,32 @@ for q in (M2007, M2013):   # kept inside the view
 STEPS = [[MAPS[0]]] + [[q] for q in SMALL] + [[MAPS[1]], [MAPS[2]], [MAPS[3]], [M2013], [MAPS[4]]]   # owner (with screenshots): the 2007 line map out, MTN25 1st edition in
 SMALL_IDX = set(range(1, 1 + len(SMALL)))
 
+# owner (27 Nov): city plans from the Archivo Municipal de Granada (scans the owner downloaded; private, never committed). Each is
+# placed by a similarity transform (scale, rotation, shift) fitted to landmarks read by eye on the scan: APPROXIMATE.
+MUNI = os.environ.get('MUNI_DIR')
+LM = {'cat': (-3.59904, 37.17599), 'palace': (-3.5893, 37.1770), 'gen': (-3.58528, 37.17694), 'alc': (-3.5927, 37.1770)}
+PLANS = [('plan_1889', 'p32_1.jpg', 0.4527, [((233.2, 440.0), 'cat'), ((370.0, 484.0), 'alc'), ((452.6, 506.7), 'palace'), ((542.0, 527.0), 'gen')]),
+         ('plan_1930', 'p34_1.jpg', 0.6365, [((456.4, 395.7), 'cat'), ((645.8, 387.7), 'palace'), ((708.0, 344.6), 'gen')]),
+         ('plan_1936', 'p36_1.jpg', 0.574, [((385.0, 500.0), 'cat'), ((570.0, 490.0), 'palace'), ((660.0, 460.0), 'gen')])]
+PLAN_SVG = {}
+if MUNI:
+    for name, fn, s_, pts in PLANS:
+        src = np.array([[px / s_, py / s_] for (px, py), _ in pts]); dst = np.array([f(*T.transform(*LM[k])) for _, k in pts])
+        zs = src[:, 0] + 1j * src[:, 1]; zd = dst[:, 0] + 1j * dst[:, 1]
+        A_ = np.vstack([zs, np.ones(len(zs))]).T; (a_, b_), *_ = np.linalg.lstsq(A_, zd, rcond=None)
+        res = np.abs(A_ @ np.array([a_, b_]) - zd).max() / sc
+        im_ = Image.open(os.path.join(MUNI, fn)).convert('RGB'); buf_ = io.BytesIO(); im_.save(buf_, 'JPEG', quality=90)
+        PLAN_SVG[name] = (f'<g transform="matrix({a_.real:.6f} {a_.imag:.6f} {-a_.imag:.6f} {a_.real:.6f} {b_.real:.2f} {b_.imag:.2f})">'
+                          f'<rect width="{im_.width}" height="{im_.height}" fill="#FFFFFF" filter="url(#sh)"/>'
+                          f'<image href="data:image/jpeg;base64,{base64.b64encode(buf_.getvalue()).decode()}" width="{im_.width}" height="{im_.height}"/></g>')
+        print(name, 'scale %.3f px/px, rotation %.1f deg, worst landmark misfit %.0f m' % (abs(a_), math.degrees(np.angle(a_)), res))
+    # in time: 1889 first; 1930 and 1936 after the MTN50 drafts and before / after the 1932 map
+    STEPS = [[('plan_1889',)]] + STEPS[:-5] + [STEPS[-5], [('plan_1930',)], STEPS[-4], [('plan_1936',)]] + STEPS[-3:]
+
 SHEETS = []
-for name, url, layer, bb in [m for st in STEPS for m in st]:
+for item in [m for st in STEPS for m in st]:
+    if len(item) == 1: SHEETS.append(PLAN_SVG[item[0]]); continue
+    name, url, layer, bb = item
     (x, y1), (x1, y) = f(bb[0], bb[1]), f(bb[2], bb[3]); ww, hh = x1 - x, y1 - y
     kind, data_ = wms(name, url, layer, bb)
     under = '' if kind == 'png' else f'<rect x="{x:.1f}" y="{y:.1f}" width="{ww:.1f}" height="{hh:.1f}" fill="#FFFFFF" filter="url(#sh)"/>'
