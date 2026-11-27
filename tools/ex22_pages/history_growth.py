@@ -6,7 +6,7 @@ Frames (1920 x 1080, no title; owner's style: black, white, red, pale blue water
   2  1956–1957   traced from the AMS aerial photos (approximate)
   3  1975, 4 1990, 5 2000   JRC GHSL GHS-BUILT-S R2023A, observed epochs
   6  2020        JRC GHSL, modelled epoch (said so on the frame)
-Each frame: the new extent in the studio red, the earlier ones in greys; the municipal boundary dashed.
+Each frame: the city that year as one red shape (the extents up to then merged) with its edge; the municipal boundary dashed.
 Before 1932 nothing is drawn as an extent: no mapped source in the project (the Albaicín and the Alhambra are places, not extents).
 Data: data/ref/history_extents.json, data/vec/admin.json, data/vec/water.json, data/terrain/dem_mdt25.bin (all in the repository).
 Writes <out>/hist_<k>.png / .svg, hist_growth.gif, hist_growth.mp4. Fonts: FONT_DIR (IBM Plex Sans, not committed).
@@ -14,6 +14,7 @@ Usage: python3 tools/ex22_pages/history_growth.py <out dir>
 Not part of the site or of the tests."""
 import os, sys, json, math, html, base64, io, shutil, subprocess
 import numpy as np
+from shapely.ops import unary_union
 from PIL import Image
 from shapely.geometry import shape, box, Point
 from shapely import transform as stransform
@@ -100,13 +101,10 @@ def scalebar(x, y, km=2, step=1):
 def frame(k):
     s = [f'<image href="data:image/png;base64,{HILL}" x="0" y="0" width="{W}" height="{H}"/>']
     # extents: earlier in greys (newest darkest), the current one red
-    if k > 0:   # the current extent red underneath, the earlier ones grey on top of it (oldest darkest): rings of growth
-        done = STAGES[:k]
-        s.append(f'<path d="{path(geoms[done[-1][0]])}" fill="{RED}" fill-opacity="0.6" stroke="{RED}" stroke-width="2"/>')
-        older = done[:-1]
-        for j, (key, yr, _) in enumerate(reversed(older)):          # newest of the older first (lightest), oldest last (darkest)
-            grey = ['#E4E4E4', '#D6D6D6', '#C8C8C8', '#BABABA', '#ACACAC'][min(len(older) - 1 - j, 4)]
-            s.append(f'<path d="{path(geoms[key])}" fill="{grey}" stroke="#8A8A8A" stroke-width="0.9"/>')
+    if k > 0:   # owner: no grey rings; the city as it was that year, one shape (all extents up to then merged), and its edge
+        from shapely.ops import unary_union
+        city = unary_union([geoms[key] for key, _, _ in STAGES[:k]]).buffer(0)
+        s.append(f'<path d="{path(city)}" fill="{RED}" fill-opacity="0.6" stroke="{RED}" stroke-width="2.2" stroke-linejoin="round" fill-rule="evenodd"/>')
     s.append(f'<path d="{path(muni)}" fill="none" stroke="{INK}" stroke-width="1.3" stroke-dasharray="7 5"/>')
     for n, g in rivers: s.append(f'<path d="{lpath(g)}" fill="none" stroke="{RIVER}" stroke-width="{3.2 if "Genil" in n else 2.4}" stroke-linecap="round"/>')
     # the two places the city grew from
@@ -134,7 +132,7 @@ def frame(k):
         key, yr, what = STAGES[k - 1]
         s.append(text(46, 100, yr, 88, RED, 600))
         s.append(text(48, 138, what, 20, INK3))
-        if key.startswith('ghsl'): s.append(text(48, 166, '≈ %s km² built-up' % ext[key]['km2'], 20, INK3))
+        s.append(text(48, 166, '≈ %.0f km² (the red shape)' % (unary_union([geoms[q] for q, _, _ in STAGES[:k]]).area / 1e6), 20, INK3))
     s.append(scalebar(W - 250, H - 70))
     s.append(text(46, H - 30, 'Municipal boundary dashed · relief: IGN MDT25 · rivers, Albaicín boundary: OSM · extents: IGN MTN50 1932, AMS 1956–57 (traced), JRC GHSL R2023A', 14, INK3))
     return s
