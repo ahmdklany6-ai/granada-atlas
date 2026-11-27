@@ -106,7 +106,7 @@ add = svg.append
 
 def text(x, y, s, size=18, fill=INK, weight=400, anchor='start', style='', ls=0):
     add(f'<text x="{x:.1f}" y="{y:.1f}" font-size="{size}" font-weight="{weight}" fill="{fill}" text-anchor="{anchor}"'
-        f'{" letter-spacing=%r" % ls if ls else ""}{" font-style=%r" % style if style else ""}>{esc(s)}</text>')
+        f'{" letter-spacing=\"%s\"" % ls if ls else ""}{" font-style=%r" % style if style else ""}>{esc(s)}</text>')
 
 
 def halo_text(x, y, s, size=18, fill=INK, weight=400, anchor='start', style=''):
@@ -288,3 +288,63 @@ x, y = fB(*T30(-3.0, 37.75)); halo_text(x, y, 'Province of Granada', 26, RED, 60
 gx, gy = fB(*gr_muni.centroid.coords[0]); halo_text(gx, gy - 34, 'Granada', 24, '#000000', 600, 'middle')
 scalebar(W - 300, H - 80, sB, 40, 20)
 render('01b_province_granada', svg)
+
+
+# ---------- the two bare maps as SVG for Illustrator (owner, 27 Nov 2026: "as an Illustrator file, so I can edit colours and lines")
+# one named group per kind of thing (Illustrator shows each as a group/sub-layer); every province / municipality its own path;
+# text stays text, in IBM Plex Sans (Illustrator substitutes it if the font is not installed); no CSS, no embedded font
+def ai_svg(name, groups, w=W, h=H):
+    body = ''.join(f'<g id="{gid}">{"".join(items)}</g>' for gid, items in groups)
+    d = (f'<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="{w}px" height="{h}px" '
+         f'viewBox="0 0 {w} {h}">{body}</svg>')
+    d = d.replace('<text ', '<text font-family="IBMPlexSans, IBM Plex Sans, Arial" ')
+    open(os.path.join(OUT, name + '_illustrator.svg'), 'w').write(d)
+    print('written', name + '_illustrator.svg')
+
+
+def grab(fn):
+    """the SVG strings that fn() adds through the module's add()"""
+    global svg, add
+    keep = svg, add; svg = []; add = svg.append
+    fn(); out = svg
+    svg, add = keep
+    return out
+
+
+def poly_paths(items, f, fill, stroke, sw):
+    return [f'<path id="{esc(str(n or i))}" d="{path(g, f)}" fill="{fill}" stroke="{stroke}" stroke-width="{sw}" stroke-linejoin="round" fill-rule="evenodd"/>' for i, n, g in items]
+
+
+sea = lambda: [f'<rect width="{W}" height="{H}" fill="{SEA}"/>']
+# map A
+ga = [('Sea', sea()),
+      ('Neighbouring_countries', [f'<path id="{n}" d="{path(g, fA)}" fill="{OTHER}" stroke="{LINE}" stroke-width="0.8" fill-rule="evenodd"/>' for n, g in nb.items()]),
+      ('Spain_provinces', poly_paths([(i, n, g) for i, n, g in prov if i not in CANARY and i != '18'], fA, LAND, LINE2, 1)),
+      ('Spain_coast_and_border', [f'<path d="{lines(spain_pen, fA)}" fill="none" stroke="{INK2}" stroke-width="1.5" stroke-linejoin="round"/>']),
+      ('Province_of_Granada', poly_paths([('18', 'Granada province', gr_prov)], fA, RED_T, RED, 2.4)),
+      ('Municipality_of_Granada', poly_paths([('18087', 'Granada municipality', gr_muni)], fA, RED, RED, 1.2)),
+      ('Labels', grab(lambda: ([text(*fA(*T30(lon, lat)), n, 22, INK3, 500, 'middle', ls=3) for n, (lon, lat) in
+                                (('PORTUGAL', (-8.4, 39.6)), ('FRANCE', (1.2, 43.9)), ('MOROCCO', (-4.6, 35.25)), ('ALGERIA', (-0.3, 35.55)))],
+                               [text(*fA(*T30(lon, lat)), n, 20, '#5F7F90', 400, 'middle', 'italic') for n, (lon, lat) in
+                                (('Atlantic Ocean', (-12.0, 41.5)), ('Mediterranean Sea', (3.6, 38.6)), ('Bay of Biscay', (-5.0, 44.4)))],
+                               text(*fA(*T30(-3.7, 40.2)), 'SPAIN', 40, '#000000', 600, 'middle', ls=8),
+                               halo_text(*fA(*T30(-2.55, 36.55)), 'Granada', 24, RED, 600, 'middle')))),
+      ('Scale_bar', grab(lambda: scalebar(W - 300, H - 80, sA, 200, 100)))]
+ai_svg('01a_spain', ga)
+# map B
+def labels_b():
+    for n, (lon, lat) in (('Jaén', (-3.55, 37.95)), ('Córdoba', (-4.6, 37.55)), ('Málaga', (-4.6, 36.95)), ('Almería', (-2.3, 37.1)),
+                          ('Albacete', (-2.1, 38.35)), ('Murcia', (-1.95, 37.95))):
+        x, y = fB(*T30(lon, lat))
+        if 60 < x < W - 60 and 30 < y < H - 30: text(x, y, n, 24, INK3, 500, 'middle')
+    text(*fB(*T30(-2.7, 36.6)), 'Mediterranean Sea', 22, '#5F7F90', 400, 'middle', 'italic')
+    halo_text(*fB(*T30(-3.0, 37.75)), 'Province of Granada', 26, RED, 600, 'middle')
+    gx, gy = fB(*gr_muni.centroid.coords[0]); halo_text(gx, gy - 34, 'Granada', 24, '#000000', 600, 'middle')
+gb = [('Sea', sea()),
+      ('Other_provinces', poly_paths([(i, n, g) for i, n, g in prov if i not in CANARY and i != '18'], fB, OTHER, LINE2, 1.2)),
+      ('Municipalities_of_the_province', poly_paths([(i, n, g) for i, n, g in muni18 if i != '18087'], fB, LAND, LINE2, 1)),
+      ('Municipality_of_Granada', poly_paths([('18087', 'Granada municipality', gr_muni)], fB, RED, RED, 1)),
+      ('Province_of_Granada_outline', [f'<path d="{lines(gr_prov, fB)}" fill="none" stroke="{RED}" stroke-width="3" stroke-linejoin="round"/>']),
+      ('Labels', grab(labels_b)),
+      ('Scale_bar', grab(lambda: scalebar(W - 300, H - 80, sB, 40, 20)))]
+ai_svg('01b_province_granada', gb)
