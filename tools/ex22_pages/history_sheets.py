@@ -166,7 +166,7 @@ M2013 = ('mta10_2013', IECAR, 'mta10_raster_2013', (_t[0] - 600, _t[1] - 600, _t
 for q in (M2007, M2013):   # kept inside the view
     pass
 # one map per step (owner): Granada 1895, then each village minuta, then the city maps in time
-STEPS = [[MAPS[0]]] + [[q] for q in SMALL] + [[MAPS[1]], [MAPS[2]], [MAPS[3]], [M2007], [M2013], [MAPS[4]]]
+STEPS = [[MAPS[0]]] + [[q] for q in SMALL] + [[MAPS[1]], [MAPS[2]], [MAPS[3]], [M2013], [MAPS[4]]]   # owner: the white 2007 map out
 SMALL_IDX = set(range(1, 1 + len(SMALL)))
 
 SHEETS = []
