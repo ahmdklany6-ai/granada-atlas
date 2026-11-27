@@ -229,10 +229,13 @@ print('written', sp, 'and .png .pdf')
 
 
 # ---------- the same two maps alone, one per page, without any text but the scale bar (owner, 27 Nov 2026)
+# owner: black, white and red only, the sea pale blue
+SEA, LAND, OTHER = P['basemap']['water'], '#FFFFFF', P['analysis']['gray1']
+LINE, LINE2, INK2, INK3 = P['analysis']['grey3'], P['analysis']['grey2'], '#1A1A1A', '#5F5F5F'
 def render(name, body, w=W, h=H):
     d = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">'
          f'<style>{font_css}text{{font-family:Plex,"IBM Plex Sans",DejaVu Sans,sans-serif}}</style>'
-         f'<rect width="{w}" height="{h}" fill="#FFFFFF"/>' + ''.join(body) + '</svg>')
+         f'<rect width="{w}" height="{h}" fill="{SEA}"/>' + ''.join(body) + '</svg>')
     open(os.path.join(OUT, name + '.svg'), 'w').write(d)
     with sync_playwright() as p:
         b = p.chromium.launch(); pg = b.new_page(viewport={'width': w, 'height': h}, device_scale_factor=2)
@@ -260,8 +263,8 @@ for n, (lon, lat), sz in (('PORTUGAL', (-8.4, 39.6), 22), ('FRANCE', (1.2, 43.9)
                           ('ALGERIA', (-0.3, 35.55), 22)):
     x, y = fA(*T30(lon, lat)); text(x, y, n, sz, INK3, 500, 'middle', ls=3)
 for n, (lon, lat) in (('Atlantic Ocean', (-12.0, 41.5)), ('Mediterranean Sea', (3.6, 38.6)), ('Bay of Biscay', (-5.0, 44.4))):
-    x, y = fA(*T30(lon, lat)); text(x, y, n, 20, P['basemap']['seaLabel'], 400, 'middle', 'italic')
-x, y = fA(*T30(-3.7, 40.2)); text(x, y, 'SPAIN', 40, INK, 600, 'middle', ls=8)
+    x, y = fA(*T30(lon, lat)); text(x, y, n, 20, '#5F7F90', 400, 'middle', 'italic')
+x, y = fA(*T30(-3.7, 40.2)); text(x, y, 'SPAIN', 40, '#000000', 600, 'middle', ls=8)
 x, y = fA(*T30(-2.55, 36.55)); halo_text(x, y, 'Granada', 24, RED, 600, 'middle')
 scalebar(W - 300, H - 80, sA, 200, 100)
 render('01a_spain', svg)
@@ -279,8 +282,8 @@ for n, (lon, lat) in (('Jaén', (-3.55, 37.95)), ('Córdoba', (-4.6, 37.55)), ('
                       ('Albacete', (-2.1, 38.35)), ('Murcia', (-1.95, 37.95))):
     x, y = fB(*T30(lon, lat))
     if 60 < x < W - 60 and 30 < y < H - 30: text(x, y, n, 24, INK3, 500, 'middle')
-x, y = fB(*T30(-2.7, 36.6)); text(x, y, 'Mediterranean Sea', 22, P['basemap']['seaLabel'], 400, 'middle', 'italic')
+x, y = fB(*T30(-2.7, 36.6)); text(x, y, 'Mediterranean Sea', 22, '#5F7F90', 400, 'middle', 'italic')
 x, y = fB(*T30(-3.0, 37.75)); halo_text(x, y, 'Province of Granada', 26, RED, 600, 'middle')
-gx, gy = fB(*gr_muni.centroid.coords[0]); halo_text(gx, gy - 34, 'Granada', 24, INK, 600, 'middle')
+gx, gy = fB(*gr_muni.centroid.coords[0]); halo_text(gx, gy - 34, 'Granada', 24, '#000000', 600, 'middle')
 scalebar(W - 300, H - 80, sB, 40, 20)
 render('01b_province_granada', svg)
