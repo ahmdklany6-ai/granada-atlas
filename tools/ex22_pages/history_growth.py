@@ -32,6 +32,7 @@ WATER, RIVER, WLAB = '#EEF3F5', '#8FB0BF', '#5F7F90'
 GREYS = ['#B4B4B4', '#C4C4C4', '#D2D2D2', '#DDDDDD', '#E6E6E6']        # earlier periods, newest darkest
 W, H = 1920, 1080
 X0, X1, Y0, Y1 = 437200, 455400, 4108400, 4118640                        # EPSG:25830, 18.2 x 10.24 km (16:9)
+if os.environ.get('FRAME'): X0, Y0, X1, Y1 = map(float, os.environ['FRAME'].split(','))   # owner (28 Nov): zoomed out to the base and the five towns
 sc = W / (X1 - X0)
 f = lambda x, y: ((x - X0) * sc, (Y1 - y) * sc)
 T = Transformer.from_crs(4326, 25830, always_xy=True)
@@ -128,13 +129,13 @@ def frame(k):
     x, y = f(*T.transform(-3.665, 37.152)); s.append(text(x, y + 26, 'the farmed plain', 16, INK3, 400, 'middle', True, True))
     # the year, big, top left; what it is, small
     if k == 0:
-        s.append(text(46, 92, 'before 1932', 64, INK, 600))
-        s.append(text(48, 128, 'two hills, the Darro between them, the Genil and the Vega below', 20, INK3))
+        s.append(text(46, 92, 'before 1932', 64, INK, 600, halo=True))
+        s.append(text(48, 128, 'two hills, the Darro between them, the Genil and the Vega below', 20, INK3, halo=True))
     else:
         key, yr, what = STAGES[k - 1]
-        s.append(text(46, 100, yr, 88, RED, 600))
-        s.append(text(48, 138, what, 20, INK3))
-        s.append(text(48, 166, '≈ %.0f km² (the red shape)' % (unary_union([geoms[q] for q, _, _ in STAGES[:k]]).area / 1e6), 20, INK3))
+        s.append(text(46, 100, yr, 88, RED, 600, halo=True))
+        s.append(text(48, 138, what, 20, INK3, halo=True))
+        s.append(text(48, 166, '≈ %.0f km² (the red shape)' % (unary_union([geoms[q] for q, _, _ in STAGES[:k]]).area / 1e6), 20, INK3, halo=True))
     s.append(scalebar(W - 250, H - 70))
     s.append(text(46, H - 30, 'Relief: IGN MDT25 · rivers, Albaicín boundary: OSM · extents: IGN MTN50 1932, AMS 1956–57 (traced), JRC GHSL R2023A', 14, INK3))
     return s

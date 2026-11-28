@@ -52,6 +52,8 @@ g = (g - np.percentile(g, 2)) / (np.percentile(g, 98) - np.percentile(g, 2)); g 
 levels = np.array([0.0, 0.2, 0.35, 0.5, 0.65, 0.8, 1.0])
 tone = np.digitize(g, levels[1:-1])                          # 0..5
 GREYS = np.array([186, 200, 212, 222, 231, 240], float)      # dark photo → darker grey, all light
+FAR = RES >= 2                                                # zoomed out (owner): lighter everywhere, contours clearer, more of a map
+if FAR: GREYS = np.array([212, 222, 230, 237, 243, 248], float)
 base_t = GREYS[tone]
 
 # ---- 2. hillshade (light) and contours
@@ -64,13 +66,20 @@ gy, gx = np.gradient(D, RES)
 slope = np.arctan(np.hypot(gx, gy) * 3); asp = np.arctan2(-gx, gy)
 hs = np.sin(math.radians(40)) * np.cos(slope) + np.cos(math.radians(40)) * np.sin(slope) * np.cos(math.radians(315) - asp)
 shade = np.clip(0.80 + 0.20 * hs / max(hs.max(), 1e-6), 0.80, 1.0)
-img = base_t * (0.55 + 0.45 * shade)                         # shading lightened (owner: less)
+img = base_t * ((0.72 + 0.28 * shade) if FAR else (0.55 + 0.45 * shade))   # shading lightened (owner: less, and less again zoomed out)
 cont = np.zeros((H, W), bool); cidx = np.zeros((H, W), bool)
 for step, arr in ((5, cont), (25, cidx)):
     q = np.floor(D / step)
     e = (q != np.roll(q, 1, 0)) | (q != np.roll(q, 1, 1))
     arr |= e
-img = np.where(cont, img * 0.86, img); img = np.where(cidx, img * 0.78, img)
+if FAR:   # contours clearer: 10 m lines, 50 m index, thicker
+    cont = np.zeros((H, W), bool); cidx = np.zeros((H, W), bool)
+    for step, arr in ((10, cont), (50, cidx)):
+        q = np.floor(D / step); arr |= (q != np.roll(q, 1, 0)) | (q != np.roll(q, 1, 1))
+    cidx = ndimage.binary_dilation(cidx)
+    img = np.where(cont, img * 0.74, img); img = np.where(cidx, img * 0.58, img)
+else:
+    img = np.where(cont, img * 0.86, img); img = np.where(cidx, img * 0.78, img)
 canvas = Image.fromarray(np.clip(img, 0, 255).astype(np.uint8), 'L').convert('RGB')
 d = ImageDraw.Draw(canvas, 'RGBA')
 
@@ -116,7 +125,7 @@ for pr in F['parcels']:
         seg = LineString([a, b]).intersection(p.buffer(-1.5))
         for sg in ([seg] if seg.geom_type == 'LineString' else [q for q in getattr(seg, 'geoms', []) if q.geom_type == 'LineString']):
             if sg.length > 3: lines.append([px(*xy) for xy in sg.coords])
-    alpha = int(40 + 50 * (1 - t))
+    alpha = int((25 + 30 * (1 - t)) if FAR else (40 + 50 * (1 - t)))
     for l in lines: d.line(l, fill=(90, 90, 90, alpha), width=1)
 # parcel lines
 for pr in F['parcels']:
@@ -176,11 +185,12 @@ for b in F['buildings']:
     lv = b.get('lv') or 1; off = min(2.5 + 1.2 * lv, 9) / RES
     for r in rings(b['r'])[:1]: sd.polygon([(x + off * 0.7, y + off * 0.7) for x, y in (px(*xy) for xy in r)], fill=110)
 sh = sh.filter(ImageFilter.GaussianBlur(2))
+if FAR: sh = sh.point(lambda v: v // 3)                      # zoomed out: a faint shadow only
 canvas = Image.composite(Image.new('RGB', (W, H), (60, 60, 60)), canvas, sh); d = ImageDraw.Draw(canvas, 'RGBA')
 for b in F['buildings']:
     rs = rings(b['r'])
     if not rs: continue
-    d.polygon([px(*xy) for xy in rs[0]], fill=(252, 252, 250, 255), outline=(45, 45, 45, 255))
+    d.polygon([px(*xy) for xy in rs[0]], fill=(252, 252, 250, 255), outline=(125, 125, 125, 255) if FAR else (45, 45, 45, 255))   # zoomed out: lighter edges, towns read as texture, not black
 # the fence on top
 for r in rings(F['base']): d.line([px(*xy) for xy in r], fill=(20, 20, 20, 255), width=4, joint='curve')
 
