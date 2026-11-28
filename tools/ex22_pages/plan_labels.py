@@ -19,6 +19,7 @@ T = Transformer.from_crs(4326, 25830, always_xy=True)
 px = lambda x, y: ((x - X0) / RES, (Y1 - y) / RES)
 d = ImageDraw.Draw(im)
 DARK, RED = (90, 29, 34), (153, 43, 42)
+if os.environ.get('METRO_BLACK') == '1': DARK = (20, 20, 20)   # owner (28 Nov): the metro in black
 k = 2.1167 / RES                                              # sizes are set for the A1 print (2.12 m per pixel)
 # metro
 L1 = json.load(open(os.path.join(ROOT, 'data', 'ex21', 'metro_l1.json')))

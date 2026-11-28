@@ -254,9 +254,10 @@ canvas = Image.composite(texim, canvas, mask); d = ImageDraw.Draw(canvas, 'RGBA'
 # ---- 5. water, roads, metro
 for w in F.get('water', []):
     ww, nm = w.get('ww'), (w.get('nm') or '')
-    if ww == 'river' or nm.startswith('Río'): wd, col = 10, (88, 133, 160, 255)        # owner (28 Nov): rivers clearer
-    elif ww in ('stream', 'canal'): wd, col = 4, (110, 155, 180, 255)
-    else: wd, col = 2, (140, 175, 195, 230)
+    LR = os.environ.get('RIVER_LIGHT') == '1'                   # owner (28 Nov, later): the rivers a little lighter
+    if ww == 'river' or nm.startswith('Río'): wd, col = 10, (125, 162, 184, 255) if LR else (88, 133, 160, 255)   # owner (28 Nov): rivers clearer
+    elif ww in ('stream', 'canal'): wd, col = 4, (148, 182, 200, 255) if LR else (110, 155, 180, 255)
+    else: wd, col = 2, (170, 198, 212, 230) if LR else (140, 175, 195, 230)
     for r in rings(w['r']): d.line([px(*xy) for xy in r], fill=col, width=wd, joint='curve')
 ROADS_RED = os.environ.get('ROADS_RED') == '1'
 RW = {'motorway': 26, 'trunk': 22, 'primary': 18, 'secondary': 15, 'tertiary': 12, 'residential': 9, 'unclassified': 8, 'living_street': 8,
