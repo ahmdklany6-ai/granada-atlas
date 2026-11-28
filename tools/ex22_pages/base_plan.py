@@ -55,8 +55,8 @@ GREYS = np.array([186, 200, 212, 222, 231, 240], float)      # dark photo → da
 FAR = RES >= 2                                                # zoomed out (owner): lighter everywhere, contours clearer, more of a map
 if FAR: GREYS = np.array([212, 222, 230, 237, 243, 248], float)
 base_t = GREYS[tone]
-MAP = os.environ.get('MAPSTYLE') == '1'   # owner (28 Nov): "people say it looks like an aerial photo": the photo only classifies,
-if MAP: base_t = np.full((H, W), 246.0)    # every area is drawn flat with one texture per kind of land
+MAP = os.environ.get('MAPSTYLE') in ('1', '2'); MID = os.environ.get('MAPSTYLE') == '2'   # 2: owner's middle way   # owner (28 Nov): "people say it looks like an aerial photo": the photo only classifies,
+if MAP: base_t = np.full((H, W), 252.0 if MID else 246.0)    # every area is drawn flat with one texture per kind of land
 
 # ---- 2. hillshade (light) and contours
 man = json.load(open(os.path.join(ROOT, 'data', 'manifest.json')))['terrain']['dem']
@@ -147,7 +147,12 @@ if MAP:
     fill = np.full(n_ + 1, 246.0)
     for i in range(1, n_ + 1):
         if KIND[i]: fill[i] = FILL[KIND[i]]
-    shade_m = (0.93 + 0.07 * shade)
+    if MID:   # owner (28 Nov): "a middle way" and "it is grey, not black and white": each parcel one flat tone from its own photo
+        TONES = np.array([206.0, 224.0, 240.0, 252.0])        # (four steps, light), white paper, black lines; no circles
+        for i in range(1, n_ + 1):
+            if KIND[i] == 'built' or not KIND[i]: fill[i] = 252.0
+            else: fill[i] = TONES[min(3, int(np.nan_to_num(mean[i - 1], nan=0.9) / 0.25))]
+    shade_m = (0.96 + 0.04 * shade) if MID else (0.93 + 0.07 * shade)
     img2 = np.where(L_ > 0, fill[L_] * shade_m, base_t * shade_m)
     img2 = np.where(cont | cidx, img2 * (0.80 if FAR else 0.86), img2)
     canvas = Image.fromarray(np.clip(img2, 0, 255).astype(np.uint8), 'L').convert('RGB'); d = ImageDraw.Draw(canvas, 'RGBA')
@@ -160,13 +165,14 @@ if MAP:
         ux, uy = e1 if math.hypot(*e1) > math.hypot(*e2) else e2; nn = math.hypot(ux, uy) or 1; ux, uy = ux / nn, uy / nn
         c = p.centroid; L2 = math.hypot(*e1) + math.hypot(*e2); inner = p.buffer(-1.0 * sc_)
         if inner.is_empty: continue
+        if MID and kind != 'crop': continue                     # middle way: only crops keep fine lines, sparse
         if kind in ('crop', 'grass'):                          # parallel lines along the parcel, one density per kind
-            gap = (4.0 if kind == 'crop' else 9.0) * sc_
+            gap = ((7.0 if kind == 'crop' else 9.0) if MID else (4.0 if kind == 'crop' else 9.0)) * sc_
             for s_ in np.arange(-L2, L2, gap):
                 a_ = (c.x - uy * s_ - ux * L2, c.y + ux * s_ - uy * L2); b_ = (c.x - uy * s_ + ux * L2, c.y + ux * s_ + uy * L2)
                 seg = LineString([a_, b_]).intersection(inner)
                 for sg in ([seg] if seg.geom_type == 'LineString' else [q for q in getattr(seg, 'geoms', []) if q.geom_type == 'LineString']):
-                    if sg.length > 2: d.line([px(*xy) for xy in sg.coords], fill=(120, 120, 120, 120 if kind == 'crop' else 80), width=1)
+                    if sg.length > 2: d.line([px(*xy) for xy in sg.coords], fill=(30, 30, 30, 70) if MID else (120, 120, 120, 120 if kind == 'crop' else 80), width=1)
         elif kind == 'trees':                                  # trees: dots on a grid along the parcel
             gap = 7.0 * sc_; rr = max(1.2, 2.2 / RES)
             from shapely.geometry import Point as _Pt
@@ -185,7 +191,7 @@ if MAP:
                 if inner.contains(_Pt(x_, y_)):
                     X_, Y_ = px(x_, y_); d.point((X_, Y_), fill=(90, 90, 90, 200))
     for pr in F['parcels']:                                    # every parcel with a clear edge
-        for r in rings(pr): d.line([px(*xy) for xy in r], fill=(140, 140, 140, 200), width=1)
+        for r in rings(pr): d.line([px(*xy) for xy in r], fill=(25, 25, 25, 190) if MID else (140, 140, 140, 200), width=1)
     print('parcel kinds:', {k_: int(sum(1 for q in KIND[1:] if q == k_)) for k_ in FILL})
 gsmall = Image.fromarray((g * 255).astype(np.uint8))
 rng = np.random.default_rng(3)
@@ -281,7 +287,7 @@ canvas = Image.composite(Image.new('RGB', (W, H), (60, 60, 60)), canvas, sh); d 
 for b in F['buildings']:
     rs = rings(b['r'])
     if not rs: continue
-    d.polygon([px(*xy) for xy in rs[0]], fill=(252, 252, 250, 255), outline=(125, 125, 125, 255) if FAR else (45, 45, 45, 255))   # zoomed out: lighter edges, towns read as texture, not black
+    d.polygon([px(*xy) for xy in rs[0]], fill=(255, 255, 255, 255), outline=(20, 20, 20, 255) if (MAP and MID) else (125, 125, 125, 255) if FAR else (45, 45, 45, 255))   # zoomed out: lighter edges, towns read as texture, not black
 # the fence on top
 for r in rings(F['base']): d.line([px(*xy) for xy in r], fill=(20, 20, 20, 255), width=4, joint='curve')
 
