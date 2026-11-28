@@ -56,5 +56,7 @@ for ft in json.load(open(os.path.join(ROOT, 'data', 'vec', 'water.json')))['feat
     if ft['geometry']['type'] not in ('LineString', 'MultiLineString'): continue
     r = rings_of(to_utm(shape(ft['geometry'])))
     if r: out['water'].append({'r': r, 'ww': ft['properties'].get('ww'), 'nm': ft['properties'].get('nm')})
+if os.environ.get('BASE_FROM'):   # the base's outline from a frame built by build_ex22_frame.py (ALL.json)
+    out['base'] = json.load(open(os.environ['BASE_FROM']))['base']
 json.dump(out, open(OUTF, 'w'))
 print(OUTF, {k: len(v) for k, v in out.items() if isinstance(v, list)})
