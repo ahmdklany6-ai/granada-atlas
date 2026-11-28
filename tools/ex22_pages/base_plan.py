@@ -55,6 +55,8 @@ GREYS = np.array([186, 200, 212, 222, 231, 240], float)      # dark photo → da
 FAR = RES >= 2                                                # zoomed out (owner): lighter everywhere, contours clearer, more of a map
 if FAR: GREYS = np.array([212, 222, 230, 237, 243, 248], float)
 base_t = GREYS[tone]
+MAP = os.environ.get('MAPSTYLE') == '1'   # owner (28 Nov): "people say it looks like an aerial photo": the photo only classifies,
+if MAP: base_t = np.full((H, W), 246.0)    # every area is drawn flat with one texture per kind of land
 
 # ---- 2. hillshade (light) and contours
 man = json.load(open(os.path.join(ROOT, 'data', 'manifest.json')))['terrain']['dem']
@@ -66,7 +68,7 @@ gy, gx = np.gradient(D, RES)
 slope = np.arctan(np.hypot(gx, gy) * 3); asp = np.arctan2(-gx, gy)
 hs = np.sin(math.radians(40)) * np.cos(slope) + np.cos(math.radians(40)) * np.sin(slope) * np.cos(math.radians(315) - asp)
 shade = np.clip(0.80 + 0.20 * hs / max(hs.max(), 1e-6), 0.80, 1.0)
-img = base_t * ((0.72 + 0.28 * shade) if FAR else (0.55 + 0.45 * shade))   # shading lightened (owner: less, and less again zoomed out)
+img = base_t * ((0.93 + 0.07 * shade) if MAP else (0.72 + 0.28 * shade) if FAR else (0.55 + 0.45 * shade))   # shading lightened (owner: less, and less again zoomed out)
 cont = np.zeros((H, W), bool); cidx = np.zeros((H, W), bool)
 for step, arr in ((5, cont), (25, cidx)):
     q = np.floor(D / step)
@@ -102,10 +104,93 @@ def poly_of(r):
 
 # ---- 3. field textures in the rustic parcels (lines along the parcel, density from the photo tone)
 FR = box(X0, Y0, X1, Y1)
+if MAP:
+    # each parcel's kind: OSM land use where mapped, else from the photo inside it (mean tone, roughness) and building cover
+    lab = Image.new('I', (W, H), 0); ld = ImageDraw.Draw(lab); polys = []
+    for i, pr in enumerate(F['parcels'], 1):
+        p = poly_of(pr)
+        if p is None or p.is_empty: polys.append(None); continue
+        polys.append(p)
+        for j, r in enumerate(rings(pr)): ld.polygon([px(*xy) for xy in r], fill=i if j == 0 else 0)
+    L_ = np.asarray(lab, np.int32); n_ = len(F['parcels'])
+    bmask = Image.new('L', (W, H), 0); bd = ImageDraw.Draw(bmask)
+    for b in F['buildings']:
+        rs = rings(b['r'])
+        if rs: bd.polygon([px(*xy) for xy in rs[0]], fill=1)
+    idx = np.arange(1, n_ + 1)
+    mean = ndimage.mean(g, L_, idx); rough = ndimage.standard_deviation(ndimage.gaussian_filter(g, 1), L_, idx)
+    bcov = ndimage.mean(np.asarray(bmask, float), L_, idx)
+    LUK = {}
+    for lu in F.get('landuse', []):
+        q = poly_of(lu['r'])
+        if q is None: continue
+        k_ = {'orchard': 'trees', 'forest': 'trees', 'plant_nursery': 'trees', 'farmland': 'crop', 'meadow': 'grass', 'grass': 'grass',
+              'greenfield': 'bare', 'brownfield': 'bare', 'construction': 'bare', 'quarry': 'bare'}.get(lu.get('lu'),
+              'built' if lu.get('lu') in ('residential', 'industrial', 'commercial', 'retail', 'farmyard', 'cemetery', 'religious', 'railway') else None)
+        if k_: LUK[q.representative_point().coords[0]] = (q, k_)
+    KIND = np.zeros(n_ + 1, object)
+    for i in range(n_):
+        p = polys[i]
+        if p is None: continue
+        kind = None
+        c = p.representative_point()
+        for (q, k_) in LUK.values():
+            if q.contains(c): kind = k_; break
+        if kind is None or kind == 'crop':
+            if bcov[i] > 0.18: kind = 'built'
+            elif mean[i] < 0.22 and rough[i] > 0.07: kind = 'trees'
+            elif mean[i] < 0.62: kind = 'crop'
+            elif mean[i] < 0.80: kind = 'grass'
+            else: kind = 'bare'
+        KIND[i + 1] = kind
+    FILL = {'trees': 230, 'crop': 237, 'grass': 242, 'bare': 247, 'built': 249}
+    fill = np.full(n_ + 1, 246.0)
+    for i in range(1, n_ + 1):
+        if KIND[i]: fill[i] = FILL[KIND[i]]
+    shade_m = (0.93 + 0.07 * shade)
+    img2 = np.where(L_ > 0, fill[L_] * shade_m, base_t * shade_m)
+    img2 = np.where(cont | cidx, img2 * (0.80 if FAR else 0.86), img2)
+    canvas = Image.fromarray(np.clip(img2, 0, 255).astype(np.uint8), 'L').convert('RGB'); d = ImageDraw.Draw(canvas, 'RGBA')
+    R2 = np.random.default_rng(5); sc_ = (2.2 if FAR else 1.0)
+    for i in range(1, n_ + 1):
+        p, kind = polys[i - 1], KIND[i]
+        if p is None or not kind or p.area < 300 * sc_: continue
+        mr = p.minimum_rotated_rectangle; cs = list(mr.exterior.coords)
+        e1 = (cs[1][0] - cs[0][0], cs[1][1] - cs[0][1]); e2 = (cs[2][0] - cs[1][0], cs[2][1] - cs[1][1])
+        ux, uy = e1 if math.hypot(*e1) > math.hypot(*e2) else e2; nn = math.hypot(ux, uy) or 1; ux, uy = ux / nn, uy / nn
+        c = p.centroid; L2 = math.hypot(*e1) + math.hypot(*e2); inner = p.buffer(-1.0 * sc_)
+        if inner.is_empty: continue
+        if kind in ('crop', 'grass'):                          # parallel lines along the parcel, one density per kind
+            gap = (4.0 if kind == 'crop' else 9.0) * sc_
+            for s_ in np.arange(-L2, L2, gap):
+                a_ = (c.x - uy * s_ - ux * L2, c.y + ux * s_ - uy * L2); b_ = (c.x - uy * s_ + ux * L2, c.y + ux * s_ + uy * L2)
+                seg = LineString([a_, b_]).intersection(inner)
+                for sg in ([seg] if seg.geom_type == 'LineString' else [q for q in getattr(seg, 'geoms', []) if q.geom_type == 'LineString']):
+                    if sg.length > 2: d.line([px(*xy) for xy in sg.coords], fill=(120, 120, 120, 120 if kind == 'crop' else 80), width=1)
+        elif kind == 'trees':                                  # trees: dots on a grid along the parcel
+            gap = 7.0 * sc_; rr = max(1.2, 2.2 / RES)
+            from shapely.geometry import Point as _Pt
+            from shapely.prepared import prep as _prep
+            pin = _prep(inner)
+            for s_ in np.arange(-L2, L2, gap):
+                for t_ in np.arange(-L2, L2, gap):
+                    x_, y_ = c.x + ux * t_ - uy * s_, c.y + uy * t_ + ux * s_
+                    if pin.contains(_Pt(x_, y_)):
+                        X_, Y_ = px(x_, y_); d.ellipse([X_ - rr, Y_ - rr, X_ + rr, Y_ + rr], outline=(120, 120, 120, 170), width=1)
+        elif kind == 'bare':                                   # bare ground: sparse specks
+            from shapely.geometry import Point as _Pt
+            x0_, y0_, x1_, y1_ = inner.bounds; npt = int(inner.area / (40 * sc_ * sc_))
+            for _ in range(npt):
+                x_, y_ = R2.uniform(x0_, x1_), R2.uniform(y0_, y1_)
+                if inner.contains(_Pt(x_, y_)):
+                    X_, Y_ = px(x_, y_); d.point((X_, Y_), fill=(90, 90, 90, 200))
+    for pr in F['parcels']:                                    # every parcel with a clear edge
+        for r in rings(pr): d.line([px(*xy) for xy in r], fill=(140, 140, 140, 200), width=1)
+    print('parcel kinds:', {k_: int(sum(1 for q in KIND[1:] if q == k_)) for k_ in FILL})
 gsmall = Image.fromarray((g * 255).astype(np.uint8))
 rng = np.random.default_rng(3)
 built = [poly_of(b['r']) for b in F['buildings']]
-for pr in F['parcels']:
+for pr in ([] if MAP else F['parcels']):
     p = poly_of(pr)
     if p is None or p.is_empty or p.area < 1500 or p.area > 400000: continue
     mr = p.minimum_rotated_rectangle; cs = list(mr.exterior.coords)
@@ -127,7 +212,7 @@ for pr in F['parcels']:
     alpha = int((25 + 30 * (1 - t)) if FAR else (40 + 50 * (1 - t)))
     for l in lines: d.line(l, fill=(90, 90, 90, alpha), width=1)
 # parcel lines
-for pr in F['parcels']:
+for pr in ([] if MAP else F['parcels']):
     for r in rings(pr): d.line([px(*xy) for xy in r], fill=(120, 120, 120, 150), width=1)
 
 # ---- 4. the base: a shade darker inside the fence, the fence black
