@@ -44,11 +44,19 @@ def label(x, y, t, size, bold, fill, sp=0):
         xx += d.textlength(ch, font=f) + sp * k
 
 
-FIVE = {}
+from shapely.geometry import box as _box
+from shapely import transform as _st
+import numpy as _np
+_to = lambda g: _st(g, lambda c: _np.column_stack(T.transform(c[:, 0], c[:, 1])))
 for f in json.load(open(os.path.join(ROOT, 'data', 'vec', 'tour_towns.json')))['features']:
-    c = shape(f['geometry']).centroid; FIVE[f['properties']['nm']] = T.transform(c.x, c.y)
-for n, (x, y) in FIVE.items():
-    X, Y = px(x, y); label(X, Y, n.upper(), 46, True, (26, 26, 26), sp=3)   # owner: in black, like GRANADA
+    g = _to(shape(f['geometry'])).buffer(0); n = f['properties']['nm']
+    inside = g.intersection(_box(X0, Y0, X1, Y1))
+    if inside.is_empty or inside.area < 0.05 * g.area: continue          # the town is outside this frame
+    c = (g if inside.area > 0.6 * g.area else inside).representative_point()   # on the part of the town that is shown
+    X, Y = px(c.x, c.y); t = n.upper(); fb = font(True, 46)
+    hw = (d.textlength(t, font=fb) + 3 * k * (len(t) - 1)) / 2 + 20 * k
+    X = min(max(X, hw), W - hw); Y = min(max(Y, 50 * k), H - 50 * k)  # whole name on the sheet
+    label(X, Y, t, 46, True, (26, 26, 26), sp=3)   # owner: in black, like GRANADA
 OTHER = {'Santa Fe': (-3.7186, 37.1886), 'Albolote': (-3.6555, 37.2306), 'Peligros': (-3.6283, 37.2333), 'Maracena': (-3.6337, 37.2073),
          'Pulianas': (-3.6100, 37.2240), 'Atarfe': (-3.6890, 37.2230), 'Vegas del Genil': (-3.6830, 37.1745), 'Cúllar Vega': (-3.6700, 37.1550),
          'Huétor Vega': (-3.5700, 37.1490), 'Cájar': (-3.5730, 37.1350), 'La Zubia': (-3.5850, 37.1200), 'Monachil': (-3.5420, 37.1330),
