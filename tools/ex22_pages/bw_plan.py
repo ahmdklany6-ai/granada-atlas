@@ -101,19 +101,25 @@ for casing in (True, False):
         w_ = MAIN[hw] * k * (0.7 if s_.get('hw', '').endswith('_link') else 1)
         for r in rings(s_['r']): d.line([px(*p) for p in r], fill=BLK if casing else 255, width=int(w_ + (3 * k if casing else 0)), joint='curve')
 
-# ---- buildings: white with a black edge and a light shadow towards the north (owner, 28 Nov)
-shd = Image.new('L', (W, H), 0); sd = ImageDraw.Draw(shd)
-for b in F['buildings']:
-    rs = rings(b['r'])
-    if not rs or len(rs[0]) < 3: continue
-    off = min(3.0 + 1.5 * (b.get('lv') or 1), 10) / RES        # metres, a little longer for taller buildings
-    pts = [px(*p) for p in rs[0]]
-    for t in np.linspace(0.25, 1, 4): sd.polygon([(x, y - off * t) for x, y in pts], fill=255)
-shd = shd.filter(ImageFilter.GaussianBlur(max(1, 0.6 / RES)))
-im = Image.composite(Image.new('L', (W, H), 200), im, shd); d = ImageDraw.Draw(im)
-for b in F['buildings']:
-    rs = rings(b['r'])
-    if rs and len(rs[0]) > 2: d.polygon([px(*p) for p in rs[0]], fill=255, outline=BLK)
+# ---- buildings: BLD=black → solid black (the owner's choice for the large map); otherwise white with a black edge and a light
+# shadow towards the north (owner, 28 Nov, for the close-up)
+if os.environ.get('BLD') == 'black':
+    for b in F['buildings']:
+        rs = rings(b['r'])
+        if rs and len(rs[0]) > 2: d.polygon([px(*p) for p in rs[0]], fill=BLK)
+elif True:   # buildings: white with a black edge and a light shadow towards the north (owner, 28 Nov)
+    shd = Image.new('L', (W, H), 0); sd = ImageDraw.Draw(shd)
+    for b in F['buildings']:
+        rs = rings(b['r'])
+        if not rs or len(rs[0]) < 3: continue
+        off = min(3.0 + 1.5 * (b.get('lv') or 1), 10) / RES        # metres, a little longer for taller buildings
+        pts = [px(*p) for p in rs[0]]
+        for t in np.linspace(0.25, 1, 4): sd.polygon([(x, y - off * t) for x, y in pts], fill=255)
+    shd = shd.filter(ImageFilter.GaussianBlur(max(1, 0.6 / RES)))
+    im = Image.composite(Image.new('L', (W, H), 200), im, shd); d = ImageDraw.Draw(im)
+    for b in F['buildings']:
+        rs = rings(b['r'])
+        if rs and len(rs[0]) > 2: d.polygon([px(*p) for p in rs[0]], fill=255, outline=BLK)
 
 # ---- metro: a heavy black line with white stop dots
 T = Transformer.from_crs(4326, 25830, always_xy=True)
