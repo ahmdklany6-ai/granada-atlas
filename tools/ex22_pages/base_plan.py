@@ -54,6 +54,7 @@ tone = np.digitize(g, levels[1:-1])                          # 0..5
 GREYS = np.array([186, 200, 212, 222, 231, 240], float)      # dark photo → darker grey, all light
 FAR = RES >= 2                                                # zoomed out (owner): lighter everywhere, contours clearer, more of a map
 if FAR: GREYS = np.array([212, 222, 230, 237, 243, 248], float)
+if os.environ.get('LIGHTER') == '1': GREYS = np.array([226, 233, 239, 244, 248, 252], float)   # owner (28 Nov): every grey lighter
 base_t = GREYS[tone]
 MAP = os.environ.get('MAPSTYLE') in ('1', '2'); MID = os.environ.get('MAPSTYLE') == '2'   # 2: owner's middle way   # owner (28 Nov): "people say it looks like an aerial photo": the photo only classifies,
 if MAP: base_t = np.full((H, W), 252.0 if MID else 246.0)    # every area is drawn flat with one texture per kind of land
@@ -68,7 +69,8 @@ gy, gx = np.gradient(D, RES)
 slope = np.arctan(np.hypot(gx, gy) * 3); asp = np.arctan2(-gx, gy)
 hs = np.sin(math.radians(40)) * np.cos(slope) + np.cos(math.radians(40)) * np.sin(slope) * np.cos(math.radians(315) - asp)
 shade = np.clip(0.80 + 0.20 * hs / max(hs.max(), 1e-6), 0.80, 1.0)
-img = base_t * ((0.93 + 0.07 * shade) if MAP else (0.72 + 0.28 * shade) if FAR else (0.55 + 0.45 * shade))   # shading lightened (owner: less, and less again zoomed out)
+img = base_t * ((0.93 + 0.07 * shade) if MAP else (0.72 + 0.28 * shade) if FAR else (0.55 + 0.45 * shade))
+if os.environ.get('LIGHTER') == '1': img = base_t * (0.84 + 0.16 * shade)   # shading lightened (owner: less, and less again zoomed out)
 cont = np.zeros((H, W), bool); cidx = np.zeros((H, W), bool)
 for step, arr in ((5, cont), (25, cidx)):
     q = np.floor(D / step)
