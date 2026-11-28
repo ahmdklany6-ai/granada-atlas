@@ -23,7 +23,7 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
 F = json.load(open(FRM)); X0, Y0, X1, Y1 = F['frame']
 RES = float(os.environ.get('RES', 2.1167)); W, H = int((X1 - X0) / RES), int((Y1 - Y0) / RES)
 px = lambda x, y: ((x - X0) / RES, (Y1 - y) / RES)
-k = 2.1167 / RES                                                  # line widths are set for the A1 print
+k = float(os.environ.get('K', 2.1167 / RES))                      # line widths are set for the A1 print
 BLK = 0
 
 
@@ -123,11 +123,14 @@ FD = os.environ.get('FONT_DIR', '')
 font = lambda b, s: ImageFont.truetype(os.path.join(FD, 'IBMPlexSans-SemiBold.ttf' if b else 'IBMPlexSans-Regular.ttf') if FD else '/usr/share/fonts/truetype/dejavu/DejaVuSans%s.ttf' % ('-Bold' if b else ''), int(s * k))
 
 
+NAME = int(os.environ.get('NAME_GREY', 110))   # owner (28 Nov): names in grey (NAME_GREY=255 with no halo would be white)
+
+
 def label(x, y, t, size, bold, sp=0):
     f = font(bold, size); w = sum(d.textlength(c, font=f) for c in t) + sp * k * (len(t) - 1)
     hw = w / 2 + 16 * k; x = min(max(x, hw), W - hw); y = min(max(y, 40 * k), H - 40 * k); xx = x - w / 2
     for c in t:
-        d.text((xx, y), c, font=f, fill=BLK, anchor='lm', stroke_width=int(7 * k), stroke_fill=255); xx += d.textlength(c, font=f) + sp * k
+        d.text((xx, y), c, font=f, fill=NAME, anchor='lm', stroke_width=int(7 * k), stroke_fill=255); xx += d.textlength(c, font=f) + sp * k
 
 
 from shapely.geometry import box
@@ -145,18 +148,20 @@ OTHER = {'Santa Fe': (-3.7186, 37.1886), 'Albolote': (-3.6555, 37.2306), 'Peligr
 for n, ll in OTHER.items():
     X, Y = px(*T.transform(*ll))
     if 0 < X < W and 0 < Y < H: label(X, Y, n, 32, False)
-gx, gy = px(*T.transform(-3.5986, 37.1773)); label(gx, gy, 'GRANADA', 110, True, 12)
+gx, gy = px(*T.transform(-3.5986, 37.1773))
+if 0 < gx < W and 0 < gy < H: label(gx, gy, 'GRANADA', 110, True, 12)   # only when the city centre is in the frame
 
 # ---- scale bar 2 km
-bw = 2000 / RES; bx, by = W - bw - 60 * k, H - 70 * k
+bw = (2000 if RES > 1.5 else 500) / RES; bx, by = W - bw - 60 * k, H - 70 * k
 for i in range(4): d.rectangle([bx + i * bw / 4, by, bx + (i + 1) * bw / 4, by + 8 * k], fill=BLK if i % 2 == 0 else 255, outline=BLK)
-f = font(False, 26); d.text((bx, by + 30 * k), '0', font=f, fill=BLK, anchor='mm'); d.text((bx + bw, by + 30 * k), '2 km', font=f, fill=BLK, anchor='mm')
+f = font(False, 26); d.text((bx, by + 30 * k), '0', font=f, fill=BLK, anchor='mm'); d.text((bx + bw, by + 30 * k), '2 km' if RES > 1.5 else '500 m', font=f, fill=BLK, anchor='mm')
 
 im.save(os.path.join(OUT, 'bw_plan.png'), optimize=True)
 im.resize((W // 6, H // 6), Image.LANCZOS).save(os.path.join(OUT, 'bw_small.jpg'), quality=88)
 if os.environ.get('A1') == '1':
     dpi = 300; mm = lambda v: int(round(v / 25.4 * dpi))
-    page = Image.new('L', (mm(841), mm(594)), 255); mw, mh = mm((X1 - X0) / 25), mm((Y1 - Y0) / 25)
+    SC = float(os.environ.get('SCALE', 25000)) / 1000   # metres on the ground per mm on paper
+    page = Image.new('L', (mm(841), mm(594)), 255); mw, mh = mm((X1 - X0) / SC), mm((Y1 - Y0) / SC)
     page.paste(im.resize((mw, mh), Image.LANCZOS), ((page.width - mw) // 2, (page.height - mh) // 2))
-    page.save(os.path.join(OUT, 'bw_A1_1-25000.pdf'), resolution=dpi)
+    page.save(os.path.join(OUT, 'bw_A1_1-%d.pdf' % int(SC * 1000)), resolution=dpi)
 print('written', OUT)
