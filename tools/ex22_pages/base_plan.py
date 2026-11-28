@@ -165,6 +165,7 @@ canvas = Image.composite(texim, canvas, mask); d = ImageDraw.Draw(canvas, 'RGBA'
 for w in F.get('water', []):
     wd = 7 if w.get('ww') == 'river' else 3
     for r in rings(w['r']): d.line([px(*xy) for xy in r], fill=(150, 175, 190, 255), width=wd, joint='curve')
+ROADS_RED = os.environ.get('ROADS_RED') == '1'
 RW = {'motorway': 26, 'trunk': 22, 'primary': 18, 'secondary': 15, 'tertiary': 12, 'residential': 9, 'unclassified': 8, 'living_street': 8,
       'service': 5, 'track': 4, 'footway': 2, 'path': 2, 'cycleway': 3, 'pedestrian': 5}
 st = sorted(F['streets'], key=lambda s: RW.get(s.get('hw'), 6))
@@ -174,7 +175,10 @@ for casing in (True, False):
         if w_ < 2.5 and casing: continue
         for r in rings(s_['r']):
             pts = [px(*xy) for xy in r]
-            if casing: d.line(pts, fill=(130, 130, 130, 255), width=int(w_ + 3), joint='curve')
+            if ROADS_RED:   # owner (28 Nov): roads in a light red (palette rose / red tint)
+                if casing: d.line(pts, fill=(201, 139, 128, 255), width=int(w_ + 3), joint='curve')
+                else: d.line(pts, fill=(240, 222, 216, 255) if w_ >= 2.5 else (201, 139, 128, 210), width=max(1, int(w_)), joint='curve')
+            elif casing: d.line(pts, fill=(130, 130, 130, 255), width=int(w_ + 3), joint='curve')
             else: d.line(pts, fill=(246, 246, 244, 255) if w_ >= 2.5 else (150, 150, 150, 200), width=max(1, int(w_)), joint='curve')
 for m in F.get('metro_ext', []):
     for r in rings(m['r']): d.line([px(*xy) for xy in r], fill=(40, 40, 40, 255), width=3)
