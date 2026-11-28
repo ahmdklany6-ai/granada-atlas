@@ -16,6 +16,7 @@ import os, sys, json, math, html, base64, io, shutil, subprocess
 import numpy as np
 from shapely.ops import unary_union
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
 from shapely.geometry import shape, box, Point
 from shapely import transform as stransform
 from pyproj import Transformer
@@ -51,6 +52,8 @@ c0 = int((X0 - man['ox']) / man['px']); c1 = int(math.ceil((X1 - man['ox']) / ma
 r0 = int((man['oy'] - Y1) / man['py']); r1 = int(math.ceil((man['oy'] - Y0) / man['py']))
 crop = Image.fromarray(shade[r0:r1, c0:c1], 'L').resize((W, H), Image.BICUBIC)
 buf = io.BytesIO(); crop.save(buf, 'PNG'); HILL = base64.b64encode(buf.getvalue()).decode()
+if os.environ.get('BG'):   # owner (28 Nov): the drawn plan (base_plan.py on this frame) as the background instead of the relief
+    _bg = Image.open(os.environ['BG']).convert('RGB').resize((W, H), Image.LANCZOS); buf = io.BytesIO(); _bg.save(buf, 'PNG'); HILL = base64.b64encode(buf.getvalue()).decode()
 
 # --- vectors
 ext = json.load(open(os.path.join(ROOT, 'data', 'ref', 'history_extents.json')))['extents']

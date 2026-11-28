@@ -24,7 +24,7 @@ SRC, OUT = sys.argv[1], sys.argv[2]; os.makedirs(OUT, exist_ok=True)
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
 F = json.load(open(SRC))
 X0, Y0, X1, Y1 = F['frame']
-RES = 0.75                                                   # metres per pixel
+RES = float(os.environ.get('RES', 0.75))                     # metres per pixel
 W, H = int((X1 - X0) / RES), int((Y1 - Y0) / RES)
 px = lambda x, y: ((x - X0) / RES, (Y1 - y) / RES)
 print('canvas', W, H)
@@ -32,7 +32,7 @@ print('canvas', W, H)
 
 # ---- 1. the aerial photo as flat tones
 def ortho():
-    fp = os.path.join(OUT, 'pnoa.png')
+    fp = os.path.join(OUT, 'pnoa_%d_%d.png' % (X0, Y0))
     if os.path.exists(fp): return Image.open(fp).convert('L')
     im = Image.new('L', (W // 2, H // 2)); TS = 1200; k = (W // 2) / (X1 - X0)
     for ty in range(0, H // 2, TS):
@@ -80,7 +80,8 @@ def rings(r):
     out = []
     def walk(o):
         if o and isinstance(o[0], (int, float)): return
-        if o and isinstance(o[0][0], (int, float)): out.append(o); return
+        if o and isinstance(o[0], (list, tuple)) and o[0] and isinstance(o[0][0], (int, float)): out.append(o); return
+        if o and isinstance(o[0], (list, tuple)) and not o[0]: return
         for q in o: walk(q)
     walk(r); return out
 
@@ -129,6 +130,7 @@ for r in rings(F['base']): md.polygon([px(*xy) for xy in r], fill=255)
 # specks, and the darkest ground (dense vegetation) as flat light-grey patches with a thin edge. The three classes come from the
 # photo's own tones inside the fence (quantiles), so the pattern follows the real ground.
 M_ = np.asarray(mask) > 0
+if not M_.any(): M_[0, 0] = True                              # no base in this frame
 gs = ndimage.gaussian_filter(g, 5)
 q1, q2 = np.quantile(gs[M_], [0.18, 0.55])
 patch = M_ & (gs < q1); grass = M_ & (gs >= q1) & (gs < q2); soil = M_ & (gs >= q2)
@@ -182,13 +184,14 @@ for b in F['buildings']:
 # the fence on top
 for r in rings(F['base']): d.line([px(*xy) for xy in r], fill=(20, 20, 20, 255), width=4, joint='curve')
 
-# scale bar (500 m)
-bw = 500 / RES; bx, by = W - bw - 120, H - 110
-d.rectangle([bx - 30, by - 30, bx + bw + 120, by + 70], fill=(255, 255, 255, 220))
-for i in range(5): d.rectangle([bx + i * bw / 5, by, bx + (i + 1) * bw / 5, by + 14], fill=(20, 20, 20) if i % 2 == 0 else (255, 255, 255), outline=(20, 20, 20))
-from PIL import ImageFont
-fnt = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 34)
-d.text((bx, by + 22), '0', font=fnt, fill=(60, 60, 60)); d.text((bx + bw - 30, by + 22), '500 m', font=fnt, fill=(60, 60, 60))
+# scale bar (500 m); NOSCALE=1 leaves it out (when another drawing puts its own)
+if os.environ.get('NOSCALE') != '1':
+    bw = (500 if RES < 1.5 else 2000) / RES; bx, by = W - bw - 120, H - 110
+    d.rectangle([bx - 30, by - 30, bx + bw + 120, by + 70], fill=(255, 255, 255, 220))
+    for i in range(5): d.rectangle([bx + i * bw / 5, by, bx + (i + 1) * bw / 5, by + 14], fill=(20, 20, 20) if i % 2 == 0 else (255, 255, 255), outline=(20, 20, 20))
+    from PIL import ImageFont
+    fnt = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 34)
+    d.text((bx, by + 22), '0', font=fnt, fill=(60, 60, 60)); d.text((bx + bw - 30, by + 22), '500 m' if RES < 1.5 else '2 km', font=fnt, fill=(60, 60, 60))
 canvas.save(os.path.join(OUT, 'base_plan.png'), optimize=True)
 canvas.resize((W // 3, H // 3), Image.LANCZOS).save(os.path.join(OUT, 'base_plan_small.jpg'), quality=90)
 print('written', os.path.join(OUT, 'base_plan.png'))
