@@ -125,8 +125,30 @@ for pr in F['parcels']:
 base = poly_of(F['base'])
 mask = Image.new('L', (W, H), 0); md = ImageDraw.Draw(mask)
 for r in rings(F['base']): md.polygon([px(*xy) for xy in r], fill=255)
-dark = Image.new('RGB', (W, H), (0, 0, 0))
-canvas = Image.composite(Image.blend(canvas, dark, 0.10), canvas, mask); d = ImageDraw.Draw(canvas, 'RGBA')
+# owner (28 Nov, with three samples): inside the base, bare soil as white with sparse black specks, grass as grey mottling with
+# specks, and the darkest ground (dense vegetation) as flat light-grey patches with a thin edge. The three classes come from the
+# photo's own tones inside the fence (quantiles), so the pattern follows the real ground.
+M_ = np.asarray(mask) > 0
+gs = ndimage.gaussian_filter(g, 5)
+q1, q2 = np.quantile(gs[M_], [0.18, 0.55])
+patch = M_ & (gs < q1); grass = M_ & (gs >= q1) & (gs < q2); soil = M_ & (gs >= q2)
+patch = ndimage.binary_opening(ndimage.binary_closing(patch, iterations=4), iterations=3)
+R_ = np.random.default_rng(11)
+tex = np.full((H, W), 248.0)
+mott = ndimage.gaussian_filter(R_.random((H, W)), 2.2) + 0.6 * ndimage.gaussian_filter(R_.random((H, W)), 5)   # grass: grey blobs, mixed sizes
+mott = (mott - mott[M_].mean()) / mott[M_].std()
+tex = np.where(grass & (mott > 0.35), 205 + 15 * R_.random((H, W)), tex)
+tex = np.where(grass & (mott > 1.3), 180, tex)
+spk = R_.random((H, W))
+tex = np.where(soil & (spk > 0.993), 75 + 60 * R_.random((H, W)), tex)       # soil: dark specks of varied tone
+tex = np.where(grass & (spk > 0.995), 90, tex)
+spk2 = ndimage.binary_dilation(M_ & ~patch & (spk > 0.9988))                # larger specks
+tex = np.where(spk2, 60, tex)
+tex = np.where(patch, 222 + 4 * ndimage.gaussian_filter(R_.random((H, W)), 3), tex)
+edge = patch & ~ndimage.binary_erosion(patch, iterations=2)
+tex = np.where(edge, 150, tex)
+texim = Image.fromarray(np.clip(tex, 0, 255).astype(np.uint8), 'L').convert('RGB')
+canvas = Image.composite(texim, canvas, mask); d = ImageDraw.Draw(canvas, 'RGBA')
 
 # ---- 5. water, roads, metro
 for w in F.get('water', []):
