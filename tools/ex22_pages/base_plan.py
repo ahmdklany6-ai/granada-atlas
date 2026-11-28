@@ -255,6 +255,10 @@ canvas = Image.composite(texim, canvas, mask); d = ImageDraw.Draw(canvas, 'RGBA'
 for w in F.get('water', []):
     ww, nm = w.get('ww'), (w.get('nm') or '')
     LR = os.environ.get('RIVER_LIGHT') == '1'                   # owner (28 Nov, later): the rivers a little lighter
+    if os.environ.get('RIVER_BLACK') == '1':                      # owner (28 Nov, later still): rivers in black
+        wd, col = (8, (25, 25, 25, 255)) if (ww == 'river' or nm.startswith('Río')) else (3, (40, 40, 40, 255)) if ww in ('stream', 'canal') else (1, (60, 60, 60, 220))
+        for r in rings(w['r']): d.line([px(*xy) for xy in r], fill=col, width=wd, joint='curve')
+        continue
     if ww == 'river' or nm.startswith('Río'): wd, col = 10, (125, 162, 184, 255) if LR else (88, 133, 160, 255)   # owner (28 Nov): rivers clearer
     elif ww in ('stream', 'canal'): wd, col = 4, (148, 182, 200, 255) if LR else (110, 155, 180, 255)
     else: wd, col = 2, (170, 198, 212, 230) if LR else (140, 175, 195, 230)

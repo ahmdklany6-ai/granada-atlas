@@ -20,6 +20,7 @@ px = lambda x, y: ((x - X0) / RES, (Y1 - y) / RES)
 d = ImageDraw.Draw(im)
 DARK, RED = (90, 29, 34), (153, 43, 42)
 if os.environ.get('METRO_BLACK') == '1': DARK = (20, 20, 20)   # owner (28 Nov): the metro in black
+if os.environ.get('METRO_GREY') == '1': DARK = (85, 85, 85)    # owner (28 Nov, later): dark grey
 k = 2.1167 / RES                                              # sizes are set for the A1 print (2.12 m per pixel)
 # metro
 L1 = json.load(open(os.path.join(ROOT, 'data', 'ex21', 'metro_l1.json')))
