@@ -60,7 +60,11 @@ dash = ((xx + yy) // 3) % 4 != 0                                  # a fine break
 ink |= (c10 & dash) | c50
 
 # ---- farmland: fine 45° hatch inside the field parcels
-fields = mask_of(F['parcels'])
+FIELD_LU = ('farmland', 'orchard', 'meadow', 'grass', 'vineyard', 'plant_nursery', 'greenfield')
+if F.get('landuse'):   # owner (28 Nov): close up, hatch the farmland only (as on the large map), not every Catastro parcel
+    fields = mask_of([lu for lu in F['landuse'] if lu.get('lu') in FIELD_LU], get=lambda lu: lu['r'])
+else:
+    fields = mask_of(F['parcels'])
 gap = max(4, int(round(9 * k)))
 hatch = ((xx + yy) % gap) == 0
 ink |= fields & hatch
