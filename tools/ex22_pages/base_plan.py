@@ -76,8 +76,7 @@ if FAR:   # contours clearer: 10 m lines, 50 m index, thicker
     cont = np.zeros((H, W), bool); cidx = np.zeros((H, W), bool)
     for step, arr in ((10, cont), (50, cidx)):
         q = np.floor(D / step); arr |= (q != np.roll(q, 1, 0)) | (q != np.roll(q, 1, 1))
-    cidx = ndimage.binary_dilation(cidx)
-    img = np.where(cont, img * 0.74, img); img = np.where(cidx, img * 0.58, img)
+    img = np.where(cont | cidx, img * 0.80, img)   # owner (28 Nov): every contour as light as the 10 m ones
 else:
     img = np.where(cont, img * 0.86, img); img = np.where(cidx, img * 0.78, img)
 canvas = Image.fromarray(np.clip(img, 0, 255).astype(np.uint8), 'L').convert('RGB')
@@ -163,8 +162,11 @@ canvas = Image.composite(texim, canvas, mask); d = ImageDraw.Draw(canvas, 'RGBA'
 
 # ---- 5. water, roads, metro
 for w in F.get('water', []):
-    wd = 7 if w.get('ww') == 'river' else 3
-    for r in rings(w['r']): d.line([px(*xy) for xy in r], fill=(150, 175, 190, 255), width=wd, joint='curve')
+    ww, nm = w.get('ww'), (w.get('nm') or '')
+    if ww == 'river' or nm.startswith('Río'): wd, col = 10, (88, 133, 160, 255)        # owner (28 Nov): rivers clearer
+    elif ww in ('stream', 'canal'): wd, col = 4, (110, 155, 180, 255)
+    else: wd, col = 2, (140, 175, 195, 230)
+    for r in rings(w['r']): d.line([px(*xy) for xy in r], fill=col, width=wd, joint='curve')
 ROADS_RED = os.environ.get('ROADS_RED') == '1'
 RW = {'motorway': 26, 'trunk': 22, 'primary': 18, 'secondary': 15, 'tertiary': 12, 'residential': 9, 'unclassified': 8, 'living_street': 8,
       'service': 5, 'track': 4, 'footway': 2, 'path': 2, 'cycleway': 3, 'pedestrian': 5}
